@@ -1,0 +1,27 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "plugins-marketplace",
+  "owner": {
+    "name": "your-team",
+    "email": "your-team@mercadolibre.com"
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "description": "Claude Code skills and plugins marketplace"
+  },
+  "plugins": [
+    {
+      "name": "example",
+      "source": "./plugins/example",
+      "description": "Example plugin. Demonstrates plugin and skill structure.",
+      "author": {
+        "name": "your-team"
+      },
+      "category": "example",
+      "keywords": [
+        "example",
+        "marketplace"
+      ]
+    }
+  ]
+}

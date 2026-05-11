@@ -1,0 +1,46 @@
+{
+  "skill_name": "example-skill",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "How do I contribute a new skill to this marketplace?",
+      "expected_output": "Step-by-step guide for contributing a skill: use /skill-creator, prototype in skills/, promote to plugins/ when ready, register in marketplace.json, and open a PR.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["skill-creator", "/skill-creator", "SKILL.md"],
+          "description": "Should mention the skill-creator tool"
+        },
+        {
+          "type": "contains_any",
+          "values": ["plugins/", "skills/", "marketplace.json"],
+          "description": "Should reference the directory structure"
+        },
+        {
+          "type": "contains_any",
+          "values": ["PR", "pull request", "eval-config"],
+          "description": "Should mention PR process or eval requirement"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "What are the naming conventions for skills in this marketplace?",
+      "expected_output": "Skills use kebab-case names, descriptions should be ~100 chars with trigger keywords, and commands follow the /command-name format.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["kebab-case", "kebab", "lowercase"],
+          "description": "Should mention kebab-case naming"
+        },
+        {
+          "type": "contains_any",
+          "values": ["description", "keywords", "trigger"],
+          "description": "Should mention the importance of description for skill activation"
+        }
+      ],
+      "files": []
+    }
+  ]
+}

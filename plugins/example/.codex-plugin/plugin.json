@@ -1,0 +1,22 @@
+{
+  "name": "example",
+  "version": "1.0.0",
+  "description": "Example plugin. Demonstrates the plugin and skill structure. Replace or delete once you add your first real plugin.",
+  "author": {
+    "name": "",
+    "email": "",
+    "url": ""
+  },
+  "keywords": [
+    "example",
+    "marketplace",
+    "template"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Example Plugin",
+    "shortDescription": "Example plugin demonstrating plugin and skill structure.",
+    "category": "Example",
+    "capabilities": ["Read"]
+  }
+}

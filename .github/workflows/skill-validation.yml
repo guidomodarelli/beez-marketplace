@@ -1,0 +1,20 @@
+# This workflow satisfies the "skill validation" required status check
+# defined in the repository ruleset (branching-model-trunk-main).
+#
+# PR validation is handled by the YaCI custom-check pipeline in
+# fury_plugins-marketplaces-rp. This stub exists only to keep the
+# required check green until the ruleset is updated to remove it.
+
+name: Skill Validation
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, ready_for_review, synchronize]
+
+jobs:
+  skill-validation:
+    name: skill validation
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "PR validation is handled by the YaCI custom-check pipeline (fury_plugins-marketplaces-rp)."
