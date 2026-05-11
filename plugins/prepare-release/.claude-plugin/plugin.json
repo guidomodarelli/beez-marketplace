@@ -1,0 +1,12 @@
+{
+  "name": "prepare-release",
+  "description": "Automates release branch creation from develop and PR to master. Reads last tag from master, calculates next MINOR version, and opens release/x.x.x PR.",
+  "version": "1.0.0",
+  "author": {
+    "name": "lpadularrosa"
+  },
+  "repository": "https://github.com/melisource/fury_groot-marketplace",
+  "license": "MIT",
+  "category": "development",
+  "keywords": ["release", "git", "versioning", "gitflow", "github", "prepare-release"]
+}
