@@ -1,6 +1,6 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "plugins-marketplace",
+  "name": "groot-marketplace",
   "owner": {
     "name": "your-team",
     "email": "your-team@mercadolibre.com"
@@ -31,7 +31,6 @@
         "name": "lpadularrosa"
       },
       "repository": "https://github.com/melisource/fury_groot-marketplace",
-      "license": "MIT",
       "category": "development",
       "keywords": [
         "release",
