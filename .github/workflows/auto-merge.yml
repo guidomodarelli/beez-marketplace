@@ -1,0 +1,53 @@
+name: Auto Approve and Merge
+
+on:
+  status:
+
+permissions:
+  pull-requests: write
+  contents: write
+
+jobs:
+  auto-approve-merge:
+    if: github.event.state == 'success' && github.event.context == 'Marketplace Check'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto-approve and merge PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const sha = context.payload.sha;
+
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+            });
+
+            const pr = prs.find(p => p.head.sha === sha);
+            if (!pr) {
+              console.log('No open PR found for commit', sha);
+              return;
+            }
+
+            console.log(`Found PR #${pr.number}: ${pr.title}`);
+
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              event: 'APPROVE',
+              body: '✅ Auto-approved — Marketplace Check passed.',
+            });
+
+            console.log(`Auto-approved PR #${pr.number}`);
+
+            await github.rest.pulls.merge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              merge_method: 'squash',
+            });
+
+            console.log(`Merged PR #${pr.number}`);

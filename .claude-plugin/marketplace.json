@@ -1,6 +1,6 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "plugins-marketplace",
+  "name": "groot-marketplace",
   "owner": {
     "name": "your-team",
     "email": "your-team@mercadolibre.com"
@@ -21,6 +21,24 @@
       "keywords": [
         "example",
         "marketplace"
+      ]
+    },
+    {
+      "name": "prepare-release",
+      "source": "./plugins/prepare-release",
+      "description": "Automates release branch creation from develop and PR to master. Reads last tag from master, calculates next MINOR version, and opens release/x.x.x PR.",
+      "author": {
+        "name": "lpadularrosa"
+      },
+      "repository": "https://github.com/melisource/fury_groot-marketplace",
+      "category": "development",
+      "keywords": [
+        "release",
+        "git",
+        "versioning",
+        "gitflow",
+        "github",
+        "prepare-release"
       ]
     }
   ]

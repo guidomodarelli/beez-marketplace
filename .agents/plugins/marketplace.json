@@ -12,6 +12,15 @@
         "authentication": "ON_INSTALL"
       },
       "category": "example"
+    },
+    {
+      "name": "prepare-release",
+      "source": "./plugins/prepare-release",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "development"
     }
   ]
 }
