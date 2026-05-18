@@ -40,6 +40,28 @@
         "github",
         "prepare-release"
       ]
+    },
+    {
+      "name": "groot-queue",
+      "source": "./plugins/groot-queue",
+      "description": "Support queue monitor for [Core] - Groot (SSHP). Lists, classifies, analyzes SLA risk, suggests solutions via runbooks, sends Slack alerts, and assigns unattended tickets using round-robin.",
+      "author": {
+        "name": "lpadularrosa"
+      },
+      "repository": "https://github.com/melisource/fury_groot-marketplace",
+      "category": "operations",
+      "keywords": [
+        "groot-queue",
+        "groot",
+        "support",
+        "jira",
+        "sshp",
+        "queue",
+        "triage",
+        "sla",
+        "slack",
+        "round-robin"
+      ]
     }
   ]
 }

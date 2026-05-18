@@ -1,0 +1,48 @@
+{
+  "skill": "groot-queue",
+  "version": "1.0.0",
+  "description": "Eval cases for groot-queue support queue monitor",
+  "test_cases": [
+    {
+      "id": "help-no-args",
+      "description": "Invoking /groot-queue without arguments shows help",
+      "input": "/groot-queue",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "list"
+        },
+        {
+          "type": "contains",
+          "value": "classify"
+        },
+        {
+          "type": "contains",
+          "value": "assign-unassigned"
+        }
+      ]
+    },
+    {
+      "id": "setup-command",
+      "description": "setup subcommand verifies dependencies",
+      "input": "/groot-queue setup",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["ACLI", "acli", "setup"]
+        }
+      ]
+    },
+    {
+      "id": "list-command",
+      "description": "list subcommand queries Jira for open incidents",
+      "input": "/groot-queue list",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["SSHP", "Groot", "acli jira"]
+        }
+      ]
+    }
+  ]
+}
