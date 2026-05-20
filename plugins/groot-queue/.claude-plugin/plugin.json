@@ -1,7 +1,7 @@
 {
   "name": "groot-queue",
   "description": "Support queue monitor for [Core] - Groot (SSHP). Lists, classifies, analyzes SLA risk, suggests solutions via runbooks, sends Slack alerts, and assigns unattended tickets using round-robin. Invoke with /groot-queue.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "lpadularrosa"
   },
