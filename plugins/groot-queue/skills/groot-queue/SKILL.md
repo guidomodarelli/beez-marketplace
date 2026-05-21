@@ -60,23 +60,42 @@ El orden define el turno. El índice actual se persiste en:
 
 ---
 
+## Inicialización del entorno de desarrollo
+
+- [ ] Primer paso: tener instalado acli:
+   ```bash
+   brew tap atlassian-labs/acli
+   brew install acli
+   ```
+- [ ] Segundo paso: configurar acli con tus credenciales de Atlassian:
+   ```bash
+   acli jira auth login --web
+   ```
+   y seleccionar https://mercadolibre.atlassian.net.
+- [ ] Tercer paso: correr /groot-queue setup para configurar el entorno de desarrollo:
+   ```bash
+   /groot-queue setup
+   ```
+
+---
+
 ## Subcomandos
 
 Parsear el argumento del usuario para determinar el subcomando:
 
 | Argumento | Acción |
 |-----------|--------|
-| `list` | Listar todos los incidentes abiertos |
+| `setup` | Verificar e instalar dependencias necesarias (ACLI, Slack MCP, permisos, estado round-robin) |
 | `classify` | Clasificar y agrupar por tipo de problema + urgencia |
+| `assign-unassigned` | Asignar en Jira todos los tickets sin responsable usando round-robin |
+| `add-rule` | Agregar una nueva regla de triage (DESCARTAR / DERIVAR / FIX_APLICADO) a la knowledge base mediante flujo interactivo |
+| `list` | Listar todos los incidentes abiertos |
 | `detail SSHP-XXXXXX` | Detalle completo de un ticket con clasificación y sugerencia |
 | `solve SSHP-XXXXXX` | Sugerir solución basada en runbooks + análisis |
 | `alerts` | Detectar tickets en riesgo de SLA y notificar por Slack DM |
 | `stats` | Estadísticas agregadas de la cola |
-| `setup` | Verificar e instalar dependencias necesarias (ACLI, Slack MCP, permisos, estado round-robin) |
-| `assign-unassigned` | Asignar en Jira todos los tickets sin responsable usando round-robin |
 | `save SSHP-XXXXXX <desc>` | Guardar la solución aplicada a un ticket en la knowledge base |
-| `add-rule` | Agregar una nueva regla de triage (DESCARTAR / DERIVAR / FIX_APLICADO) a la knowledge base mediante flujo interactivo |
-| _(sin argumento)_ | Mostrar ayuda con los subcomandos disponibles |
+| _(sin argumento)_ | Mostrar ayuda con los subcomandos disponibles y la sección de inicialización del entorno de desarrollo |
 
 ---
 
@@ -166,7 +185,7 @@ Luego mostrar tickets agrupados por categoría, ordenados por urgencia dentro de
 
 Indicadores de urgencia:
 - 1-2: `🟢`
-- 3: `🟡`  
+- 3: `🟡`
 - 4-5: `🔴`
 
 ### `detail SSHP-XXXXXX`
@@ -475,5 +494,5 @@ Fecha: <YYYY-MM-DD>
 - **La base de conocimiento vive fuera de la skill**. No duplicar runbooks ni reglas acá: siempre referenciar `triage-rules.md` / `runbooks.md` / `solutions/` por path absoluto.
 - Siempre mostrar el link a Jira: `https://mercadolibre.atlassian.net/browse/SSHP-XXXXXX`
 - Las respuestas deben ser en español
-- Si no hay argumento, mostrar el menú de subcomandos disponibles
+- Si no hay argumento, mostrar el menú de subcomandos disponibles **y** la sección "Inicialización del entorno de desarrollo" (los tres pasos con sus comandos)
 - Para `alerts`, usar Slack MCP tools solo si el usuario lo solicita explícitamente la primera vez; después mantener la preferencia
