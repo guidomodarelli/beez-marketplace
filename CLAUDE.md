@@ -49,16 +49,31 @@ plugins/<name>/
 }
 ```
 
-**Codex** `.codex-plugin/plugin.json` requires an `interface` block:
+**Codex** `.codex-plugin/plugin.json` requires the following minimum schema (validated by the Marketplace Check pipeline — a manifest missing any of these fields will fail CI):
+
 ```json
 {
+  "name": "<kebab-case>",
+  "version": "<must match .claude-plugin/plugin.json>",
+  "description": "...",
+  "author": { "name": "...", "email": "", "url": "" },
+  "keywords": ["..."],
+  "skills": "./skills/",
   "interface": {
     "displayName": "Human-readable name",
     "shortDescription": "One-line description",
-    "category": "Productivity"
+    "category": "Productivity",
+    "capabilities": ["Read", "Write", "Bash"]
   }
 }
 ```
+
+Critical points (learned the hard way — see `plugins/prepare-release/.codex-plugin/plugin.json` and `plugins/example/.codex-plugin/plugin.json` as canonical references):
+
+- **`version` is mandatory** and must match the sibling `.claude-plugin/plugin.json`. This applies even when the plugin is being added to Codex for the first time while already existing on the Claude side — the "shared version" rule trumps "new plugins start at 1.0.0".
+- **`skills: "./skills/"`** is required so Codex's loader resolves the skill directory. Without it, the plugin loads but no skills appear.
+- **`interface.capabilities`** is required, not optional. Declare it accurately based on what the skill does: `Read` for file reads, `Write` for file writes, `Bash` for shell-outs. Don't copy blindly from another plugin.
+- **`author.email` and `author.url`** must be present even as empty strings — match the structure of existing plugins.
 
 Codex plugins **cannot** include: `commands`, `hooks`, or `agents`.
 

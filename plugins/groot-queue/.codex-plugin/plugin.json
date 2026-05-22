@@ -1,8 +1,11 @@
 {
   "name": "groot-queue",
+  "version": "1.1.0",
   "description": "Support queue monitor for [Core] - Groot (SSHP). Lists, classifies, analyzes SLA risk, suggests solutions via runbooks, sends Slack alerts, and assigns unattended tickets using round-robin.",
   "author": {
-    "name": "lpadularrosa"
+    "name": "lpadularrosa",
+    "email": "",
+    "url": ""
   },
   "repository": "https://github.com/melisource/fury_groot-marketplace",
   "license": "MIT",
@@ -21,9 +24,11 @@
     "shipping",
     "mercado-libre"
   ],
+  "skills": "./skills/",
   "interface": {
     "displayName": "Groot Queue Monitor",
     "shortDescription": "Monitor and triage the [Core] - Groot SSHP support queue.",
-    "category": "Operations"
+    "category": "Operations",
+    "capabilities": ["Read", "Write", "Bash"]
   }
 }
