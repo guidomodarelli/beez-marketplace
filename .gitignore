@@ -60,3 +60,6 @@ __pycache__/
 *.pyc
 *.pyo
 **/.in_use/
+
+# groot-queue: per-user round-robin state (not shared across the team)
+roundrobin-state.json
