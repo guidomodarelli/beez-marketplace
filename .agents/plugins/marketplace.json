@@ -21,6 +21,15 @@
         "authentication": "ON_INSTALL"
       },
       "category": "development"
+    },
+    {
+      "name": "groot-queue",
+      "source": "./plugins/groot-queue",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "operations"
     }
   ]
 }

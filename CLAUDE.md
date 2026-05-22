@@ -49,16 +49,31 @@ plugins/<name>/
 }
 ```
 
-**Codex** `.codex-plugin/plugin.json` requires an `interface` block:
+**Codex** `.codex-plugin/plugin.json` requires the following minimum schema (validated by the Marketplace Check pipeline — a manifest missing any of these fields will fail CI):
+
 ```json
 {
+  "name": "<kebab-case>",
+  "version": "<must match .claude-plugin/plugin.json>",
+  "description": "...",
+  "author": { "name": "...", "email": "", "url": "" },
+  "keywords": ["..."],
+  "skills": "./skills/",
   "interface": {
     "displayName": "Human-readable name",
     "shortDescription": "One-line description",
-    "category": "Productivity"
+    "category": "Productivity",
+    "capabilities": ["Read", "Write", "Bash"]
   }
 }
 ```
+
+Critical points (learned the hard way — see `plugins/prepare-release/.codex-plugin/plugin.json` and `plugins/example/.codex-plugin/plugin.json` as canonical references):
+
+- **`version` is mandatory** and must match the sibling `.claude-plugin/plugin.json`. This applies even when the plugin is being added to Codex for the first time while already existing on the Claude side — the "shared version" rule trumps "new plugins start at 1.0.0".
+- **`skills: "./skills/"`** is required so Codex's loader resolves the skill directory. Without it, the plugin loads but no skills appear.
+- **`interface.capabilities`** is required, not optional. Declare it accurately based on what the skill does: `Read` for file reads, `Write` for file writes, `Bash` for shell-outs. Don't copy blindly from another plugin.
+- **`author.email` and `author.url`** must be present even as empty strings — match the structure of existing plugins.
 
 Codex plugins **cannot** include: `commands`, `hooks`, or `agents`.
 
@@ -97,6 +112,56 @@ Each registry references its provider's subdirectory path.
 ### Porting to Codex
 
 Use the `codex-compatibility-analyzer` plugin (available via the assets CLI) to analyze and migrate existing Claude Code plugins to Codex. It validates prerequisites, assesses portability, creates `.codex-plugin/plugin.json`, and registers the plugin in `.agents/plugins/marketplace.json`.
+
+### Subcommands pattern (multi-provider, no duplication)
+
+When a plugin needs multiple discrete actions (e.g. `/myplugin setup`, `/myplugin list`, `/myplugin sync`) and you want it to work in **both** Claude Code and Codex, use the **hybrid subcommands pattern**.
+
+**The problem**:
+- Codex cannot use the `commands/` directory — only `skills/` is read.
+- Claude Code can use `commands/<name>.md` to enable the nicer `/plugin:name` slash syntax.
+- Duplicating subcommand bodies across both is a maintenance trap.
+
+**The pattern**: keep the lógica in **one place** inside the skill, and have Claude's `commands/` be thin wrappers that defer to it.
+
+```
+plugins/<name>/
+├── .claude-plugin/plugin.json
+├── .codex-plugin/plugin.json
+├── commands/                              ← Only Claude reads this
+│   ├── setup.md          ← 3-line wrapper: defers to subcommands/setup.md
+│   ├── list.md
+│   └── ...
+└── skills/<name>/
+    ├── SKILL.md          ← Dispatcher: parses argument, reads subcommands/<arg>.md
+    ├── subcommands/      ← SINGLE SOURCE OF TRUTH (read by both providers)
+    │   ├── setup.md
+    │   ├── list.md
+    │   └── ...
+    └── knowledge/        ← Shared reference files (read on-demand by subcommands)
+```
+
+**Skill dispatcher** (`skills/<name>/SKILL.md`) — at activation, parse the first token after the skill name and read the matching `subcommands/<token>.md`. Without a token, show the help table. This is what makes the plugin work in Codex: the skill is the entry point, the dispatcher routes to subcommand files.
+
+**Claude command wrappers** (`commands/<name>.md`) — keep them to ~3 lines, e.g.:
+```markdown
+---
+description: <same as skill table>
+argument-hint: <if applicable>
+---
+
+Leé y seguí literalmente las instrucciones de `~/.claude/skills/<plugin>/subcommands/<name>.md`, aplicándolas a `$ARGUMENTS`.
+```
+
+**Invocation matrix**:
+
+| Provider | User types | What loads |
+|----------|-----------|------------|
+| Claude Code | `/myplugin:setup` | `commands/setup.md` → reads `subcommands/setup.md` |
+| Claude Code | `/myplugin setup` | Skill activates → dispatcher reads `subcommands/setup.md` |
+| Codex | `/myplugin setup` | Skill activates → dispatcher reads `subcommands/setup.md` |
+
+**Reference implementation**: see `plugins/groot-queue/`. Use it as the template when porting any multi-action plugin to be multi-provider.
 
 ## Local Testing
 

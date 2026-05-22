@@ -91,6 +91,39 @@ fury ai assets marketplace install --name <marketplace-slug> --codex
 
 ---
 
+## Local development install (symlink)
+
+While developing a plugin, you can symlink its skill directory directly into your client's local skills folder so edits in the repo are reflected live (no reinstall, no `git pull` cycle through the marketplace cache).
+
+```bash
+SKILL_SRC="$PWD/plugins/<plugin-name>/skills/<skill-name>"
+ln -sfn "$SKILL_SRC" ~/.claude/skills/<skill-name>   # Claude Code
+ln -sfn "$SKILL_SRC" ~/.codex/skills/<skill-name>    # Codex
+```
+
+Restart the client after creating the symlink. Any subsequent edit to `SKILL.md`, `subcommands/*.md`, or `knowledge/*` is picked up on the next invocation.
+
+### What works and what doesn't with a symlink
+
+| Invocation | Works | Notes |
+|------------|-------|-------|
+| `/<plugin-name> <subcommand>` (Claude Code) | ✅ | Skill activates by description; dispatcher in `SKILL.md` routes to `subcommands/<arg>.md` |
+| `/<plugin-name> <subcommand>` (Codex) | ✅ | Same flow as above |
+| Natural language ("check the X queue") | ✅ | Description match activates the skill |
+| `/<plugin-name>:<subcommand>` (Claude Code colon syntax) | ❌ | Requires a real marketplace install — Claude Code only reads `commands/` from plugins registered through its plugin system, not from a symlinked skill |
+
+The colon syntax is purely cosmetic: `/<plugin-name> <subcommand>` enters through the skill dispatcher and produces the same result. Use the marketplace install (next section) only when you need the `:` shorthand or want to test the full plugin install path.
+
+### Uninstall
+
+```bash
+rm ~/.claude/skills/<skill-name> ~/.codex/skills/<skill-name>
+```
+
+Removes the symlinks only — the repo is untouched.
+
+---
+
 ## Adding a plugin
 
 1. Create a feature branch: `feature/<plugin-name>`
