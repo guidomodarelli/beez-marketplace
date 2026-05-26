@@ -89,7 +89,6 @@ Lista de usernames de Jira para la rotación. Editá esta lista para cambiar el 
 ```
 TEAM:
   - frgonzalez       # Francisco Gonzalez
-  - lpadularrosa     # Lucas Nahuel Padularrosa
   - maescobar        # Matias Joel Escobar
   - jgibelli         # Julian Nicolas Gibelli
   - nicogutierre     # Julio Nicolas Gutierrez
