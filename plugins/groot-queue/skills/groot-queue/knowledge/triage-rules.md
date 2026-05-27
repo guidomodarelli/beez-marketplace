@@ -67,8 +67,9 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Razón**: Groot Soporte atiende **errores sistémicos**. El cambio de líder/supervisor es operación que el líder actual puede ejecutar por autogestión desde la tool de Groot admin.
 - **Verificación previa**: Confirmar que no hay error técnico. Si el requester dice "intenté y me da error" → reclasificar como `VALIDO_GROOT` (runbook Jerarquía/Líder).
 - **Excepción — líder actual inactivo**: Si el líder actual está **inactivo / desvinculado / dado de baja / fuera de la empresa / sin acceso a la tool**, la autogestión no es posible. En ese caso **no aplica** esta regla → reclasificar como `VALIDO_GROOT` (runbook Jerarquía/Líder) y Groot ejecuta el cambio.
-  - Señales de la excepción: el requester menciona explícitamente que el líder "ya no está", "fue dado de baja", "está inactivo", "no trabaja más", "no tiene acceso", "está desvinculado", "salió de la empresa", "não está mais", "foi desligado".
+  - Señales de la excepción: el requester menciona explícitamente que el líder "ya no está", "fue dado de baja", "está inactivo", "no trabaja más", "no tiene acceso", "salió de la empresa", "não está mais", "foi desligado", "não tem acesso".
   - Verificación: confirmar en Groot admin que el líder actual figura como inactivo / sin acceso antes de reclasificar.
+  - **Límite**: si Groot admin muestra al líder como **activo**, mantener veredicto `DESCARTAR` y solicitar al requester que lo contacte directamente para ejecutar la operación.
 - **Acción**: Cerrar como `Won't Do` redirigiendo al requester a la tool de autogestión.
 - **Comentario sugerido**:
   > "Hola, desde soporte Groot sólo atendemos errores sistémicos. Este tipo de solicitud la pueden hacer los líderes actuales a través de https://envios.adminml.com/tools/auth/users/shared?active=true usando la opción de cambio de líder."

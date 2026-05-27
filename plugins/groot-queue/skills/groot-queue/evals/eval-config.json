@@ -43,6 +43,80 @@
           "values": ["SSHP", "Groot", "acli jira"]
         }
       ]
+    },
+    {
+      "id": "derive-no-args",
+      "description": "derive without a ticket key shows usage message",
+      "input": "/groot-queue derive",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["SSHP-XXXXXX", "Uso:", "ticket", "argumento"]
+        }
+      ]
+    },
+    {
+      "id": "derive-shows-plan",
+      "description": "derive with a ticket key shows the derivation plan before executing",
+      "input": "/groot-queue derive SSHP-1234567",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["R-DER", "Equipo destino", "Derivar a otro equipo", "acli jira workitem view", "⚠️"]
+        }
+      ]
+    },
+    {
+      "id": "derive-listed-in-help",
+      "description": "invoking /groot-queue without args shows derive in the subcommands table",
+      "input": "/groot-queue",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "derive"
+        }
+      ]
+    },
+    {
+      "id": "derive-multi-ticket-spaces",
+      "description": "derive accepts multiple ticket keys separated by spaces",
+      "input": "/groot-queue derive SSHP-1111111 SSHP-2222222 SSHP-3333333",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["Plan de derivación", "tickets", "acli jira workitem view", "R-DER"]
+        }
+      ]
+    },
+    {
+      "id": "derive-multi-ticket-commas",
+      "description": "derive accepts multiple ticket keys separated by commas",
+      "input": "/groot-queue derive SSHP-1111111,SSHP-2222222,SSHP-3333333",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["Plan de derivación", "tickets", "acli jira workitem view", "R-DER"]
+        }
+      ]
+    },
+    {
+      "id": "r-desc-04-inactive-leader-exception",
+      "description": "R-DESC-04 exception: ticket where requester states the current leader is inactive/offboarded must be classified as VALIDO_GROOT, not DESCARTAR",
+      "input": "Classify this ticket: Summary='Cambio de supervisor directo - líder fue dado de baja'. Description='Necesitamos mover 5 reps al supervisor Y. El líder actual ya no trabaja más en la empresa, fue dado de baja la semana pasada y no tiene acceso a ninguna tool.' Apply triage rules.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "VALIDO_GROOT"
+        },
+        {
+          "type": "not_contains",
+          "value": "DESCARTAR"
+        },
+        {
+          "type": "contains_any",
+          "values": ["R-DESC-04", "líder", "inactivo", "dado de baja", "Excepción"]
+        }
+      ]
     }
   ]
 }
