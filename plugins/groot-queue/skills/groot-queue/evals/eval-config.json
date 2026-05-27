@@ -100,6 +100,17 @@
       ]
     },
     {
+      "id": "assign-unassigned-asks-derive-when-derivable",
+      "description": "assign-unassigned asks user whether to derive tickets after showing results, when at least one assigned ticket matches a R-DER rule",
+      "input": "/groot-queue assign-unassigned",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["derivar", "Derivar", "derivable", "R-DER", "¿Querés"]
+        }
+      ]
+    },
+    {
       "id": "r-desc-04-inactive-leader-exception",
       "description": "R-DESC-04 exception: ticket where requester states the current leader is inactive/offboarded must be classified as VALIDO_GROOT, not DESCARTAR",
       "input": "Classify this ticket: Summary='Cambio de supervisor directo - líder fue dado de baja'. Description='Necesitamos mover 5 reps al supervisor Y. El líder actual ya no trabaja más en la empresa, fue dado de baja la semana pasada y no tiene acceso a ninguna tool.' Apply triage rules.",
