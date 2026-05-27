@@ -84,18 +84,34 @@ Los subcomandos **deben leer estos archivos** cada vez que los necesiten (sin ca
 
 ## Equipo para Round-Robin
 
-Lista de usernames de Jira para la rotación. Editá esta lista para cambiar el equipo:
+Lista de miembros para la rotación. Editá esta lista para cambiar el equipo. El campo `email` se usa directamente en `assign-unassigned` — no se deriva del username:
 
 ```
 TEAM:
-  - frgonzalez       # Francisco Gonzalez
-  - maescobar        # Matias Joel Escobar
-  - jgibelli         # Julian Nicolas Gibelli
-  - nicogutierre     # Julio Nicolas Gutierrez
-  - hfurs            # Hector Furs
-  - gsosa            # Gustavo Gabriel Sosa Sotelo
-  - levillanueva     # Leonardo Manuel Villanueva
-  - gmodarelli       # Guido Modarelli
+  - username: frgonzalez
+    email: francisco.gonzalez@mercadolibre.com
+    name: Francisco Gonzalez
+  - username: maescobar
+    email: matias.escobar@mercadolibre.com
+    name: Matias Joel Escobar
+  - username: jgibelli
+    email: julian.gibelli@mercadolibre.com
+    name: Julian Nicolas Gibelli
+  - username: nicogutierre
+    email: nicolasj.gutierrez@mercadolibre.com
+    name: Julio Nicolas Gutierrez
+  - username: hfurs
+    email: hectoranibal.furs@mercadolibre.com
+    name: Hector Furs
+  - username: gsosa
+    email: gustavo.sosa@mercadolibre.com
+    name: Gustavo Gabriel Sosa Sotelo
+  - username: levillanueva
+    email: leonardo.villanueva@mercadolibre.com
+    name: Leonardo Manuel Villanueva
+  - username: gmodarelli
+    email: guido.modarelli@mercadolibre.com
+    name: Guido Modarelli
 ```
 
 El orden define el turno. El índice actual se persiste en:
