@@ -37,7 +37,7 @@ Leer el `TEAM` desde `~/.claude/skills/groot-queue/SKILL.md`. Si está vacío, a
       ```bash
       acli jira workitem assign --key <KEY> --assignee <email> --yes
       ```
-      - El `<email>` se construye con el patrón `<nombre>.<apellido>@mercadolibre.com`. Algunos usernames no coinciden directamente con el email — si falla, buscar el email correcto vía `/fury:fury-users-search`.
+      - El `<email>` se lee directamente del campo `email` del miembro en la sección TEAM del SKILL.md. No construir el email desde el username.
       - Si falla: reportar el error, **NO avanzar el índice** (la transición ya ocurrió, pero se reporta).
 
    d. Verificar asignación en una **nueva llamada Bash separada**:
