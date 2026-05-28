@@ -43,6 +43,132 @@
           "values": ["SSHP", "Groot", "acli jira"]
         }
       ]
+    },
+    {
+      "id": "derive-no-args",
+      "description": "derive without a ticket key shows usage message",
+      "input": "/groot-queue derive",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["SSHP-XXXXXX", "Uso:", "ticket", "argumento"]
+        }
+      ]
+    },
+    {
+      "id": "derive-invalid-args",
+      "description": "derive without any valid ticket key rejects invalid arguments before querying Jira",
+      "input": "/groot-queue derive INVALID-123",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["SSHP-XXXXXX", "key válida", "keys válidas", "Uso:", "ticket válida"]
+        }
+      ]
+    },
+    {
+      "id": "derive-shows-plan",
+      "description": "derive with a ticket key shows the derivation plan or setup precondition before executing",
+      "input": "/groot-queue derive SSHP-1234567",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["R-DER", "Equipo destino", "Derivar a otro equipo", "acli jira workitem view", "Atlassian", "configuración", "setup", "autorización", "permiso", "acli", "⚠️"]
+        }
+      ]
+    },
+    {
+      "id": "derive-listed-in-help",
+      "description": "invoking /groot-queue without args shows derive in the subcommands table",
+      "input": "/groot-queue",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "derive"
+        }
+      ]
+    },
+    {
+      "id": "derive-multi-ticket-spaces",
+      "description": "derive accepts multiple ticket keys separated by spaces",
+      "input": "/groot-queue derive SSHP-1111111 SSHP-2222222 SSHP-3333333",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["Plan de derivación", "tickets", "acli jira workitem view", "R-DER"]
+        }
+      ]
+    },
+    {
+      "id": "derive-multi-ticket-commas",
+      "description": "derive accepts multiple ticket keys separated by commas",
+      "input": "/groot-queue derive SSHP-1111111,SSHP-2222222,SSHP-3333333",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["Plan de derivación", "tickets", "acli jira workitem view", "R-DER"]
+        }
+      ]
+    },
+    {
+      "id": "assign-unassigned-asks-derive-when-derivable",
+      "description": "assign-unassigned asks user whether to derive tickets after showing results, when at least one assigned ticket matches a R-DER rule",
+      "input": "Explain how /groot-queue assign-unassigned handles assigned tickets that match an R-DER rule after successful assignment. Do not execute Jira commands.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["derivar", "Derivar", "derivable", "R-DER", "¿Querés"]
+        }
+      ]
+    },
+    {
+      "id": "rder03-triage-destination",
+      "description": "triage rules route R-DER-03 vincular/desvincular cases to IAM Commerce",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Vincular/desvincular cuenta corporativa'. Description='Aparece como cuenta Meli y debería ser externo en Groot. No hay Kioske, TOTEM ni Shield involucrados. Cambio de contraseña requerido'. Apply triage rules.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "R-DER-03"
+        },
+        {
+          "type": "contains",
+          "value": "IAM Commerce"
+        }
+      ]
+    },
+    {
+      "id": "rder05-triage-slack-redirect",
+      "description": "triage rules route R-DER-05 taxonomy/app nav cases to the authz Slack channel",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Taxonomía de proceso madre incorrecta en app nav'. Description='El owner real es plataforma/authz y corresponde redireccionar por Slack, no por squad Jira'. Apply triage rules.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "R-DER-05"
+        },
+        {
+          "type": "contains",
+          "value": "#help-authz-internal-admins"
+        }
+      ]
+    },
+    {
+      "id": "r-desc-04-inactive-leader-exception",
+      "description": "R-DESC-04 exception: ticket where requester states the current leader is inactive/offboarded must be classified as VALIDO_GROOT, not DESCARTAR",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Cambio de supervisor directo - líder fue dado de baja'. Description='Necesitamos mover 5 reps al supervisor Y. El líder actual ya no trabaja más en la empresa, fue dado de baja la semana pasada y no tiene acceso a ninguna tool.' Apply triage rules.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "VALIDO_GROOT"
+        },
+        {
+          "type": "not_contains_any",
+          "values": ["⛔ DESCARTAR"]
+        },
+        {
+          "type": "contains_any",
+          "values": ["R-DESC-04", "líder", "inactivo", "dado de baja", "Excepción"]
+        }
+      ]
     }
   ]
 }

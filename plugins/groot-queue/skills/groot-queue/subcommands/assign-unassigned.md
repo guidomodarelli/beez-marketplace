@@ -4,7 +4,7 @@ description: Asigna en Jira todos los tickets sin responsable usando round-robin
 
 # /groot-queue:assign-unassigned
 
-Asignar todos los tickets sin responsable usando round-robin. **Este es el único command que escribe en Jira** (transiciona estado + asigna responsable).
+Asignar todos los tickets sin responsable usando round-robin. **Este command escribe en Jira** (transiciona estado + asigna responsable). Ver también `derive`, que escribe comentario + transición de estado.
 
 ## Pre-condición
 
@@ -86,6 +86,39 @@ Estado del round-robin:
 ```
 
 Si no hay tickets sin asignar, mostrar: "✅ No hay tickets sin assignee en la cola."
+
+## 9. Detección post-asignación de tickets derivables
+
+Solo ejecutar este paso si hubo al menos un ticket con estado **✓ OK** en la tabla del paso 8.
+
+**9a. Cargar reglas de derivación:**
+Leer `~/.claude/skills/groot-queue/knowledge/triage-rules.md`.
+
+**9b. Evaluar cada ticket ✓ OK:**
+Para cada ticket asignado exitosamente, obtener su contenido actualizado con:
+```bash
+acli jira workitem view <KEY>
+```
+Aplicar **únicamente las reglas R-DER** del algoritmo de triage (misma lógica que el paso 2b de `derive.md`). Tomar la primera regla que matchee.
+
+**9c. Si ningún ticket matchea una regla R-DER:** no mostrar nada adicional, terminar.
+
+**9d. Si uno o más tickets matchean**, mostrar la tabla y la pregunta de confirmación:
+
+```
+🔀 Tickets derivables detectados (N):
+| Key          | Summary                  | Regla     | Equipo destino |
+|--------------|--------------------------|-----------|----------------|
+| SSHP-XXXXX   | ...                      | R-DER-10  | IAM Soporte    |
+| SSHP-XXXXX   | ...                      | R-DER-07  | IAM Soporte    |
+
+¿Querés derivar estos N tickets ahora? (sí / no)
+```
+
+**9e. Esperar respuesta del usuario:**
+- **Sí** (o "s", "yes", "y"): ejecutar el flujo completo de `~/.claude/skills/groot-queue/subcommands/derive.md` con las keys de los tickets derivables, exactamente como si el usuario hubiera corrido `/groot-queue derive <KEY1> <KEY2> ...`.
+- **No** (o cualquier otra respuesta): terminar mostrando:
+  > "Derivación omitida. Podés ejecutarla luego con `/groot-queue derive <KEY1> <KEY2> ...`"
 
 ## History cap
 
