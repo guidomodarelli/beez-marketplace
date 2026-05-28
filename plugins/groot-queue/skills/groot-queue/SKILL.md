@@ -5,7 +5,7 @@ description: "Monitorea la cola de soporte [Core] - Groot (SSHP). Lista, clasifi
 
 # Groot Queue Monitor
 
-**Propósito**: Monitorear y gestionar la cola de soporte "[Core] - Groot" del proyecto Jira SSHP. Read-only salvo el subcomando `assign-unassigned`, que asigna tickets en Jira usando round-robin.
+**Propósito**: Monitorear y gestionar la cola de soporte "[Core] - Groot" del proyecto Jira SSHP. Read-only salvo los subcomandos `assign-unassigned`, que asigna tickets en Jira usando round-robin, y `derive`, que puede postear nota interna y transicionar estado con MCP Atlassian compatible.
 
 Esta skill funciona como **índice + dispatcher** de subcomandos. La lógica concreta de cada acción vive en `subcommands/<nombre>.md` (single source of truth, compartido entre Claude Code y Codex).
 
@@ -37,7 +37,7 @@ Path absoluto (post-install): `~/.claude/skills/groot-queue/subcommands/<nombre>
 
 | Subcomando | Acción |
 |------------|--------|
-| `setup` | Verificar e instalar dependencias necesarias (ACLI, Slack MCP, permisos, estado round-robin) |
+| `setup` | Verificar e instalar dependencias necesarias (ACLI, Atlassian MCP, Slack MCP, permisos, estado round-robin) |
 | `list` | Listar todos los incidentes abiertos |
 | `classify` | Clasificar y agrupar por tipo de problema + urgencia |
 | `detail SSHP-XXXXXX` | Detalle completo de un ticket con clasificación y sugerencia |
@@ -45,6 +45,7 @@ Path absoluto (post-install): `~/.claude/skills/groot-queue/subcommands/<nombre>
 | `alerts` | Detectar tickets en riesgo de SLA y notificar por Slack DM |
 | `stats` | Estadísticas agregadas de la cola |
 | `assign-unassigned` | Asignar en Jira todos los tickets sin responsable usando round-robin |
+| `derive SSHP-XXXXXX` | Derivar un ticket al equipo correcto: detecta regla R-DER y, si hay MCP Atlassian compatible, postea nota interna y transiciona estado |
 | `save SSHP-XXXXXX <desc>` | Guardar la solución aplicada a un ticket en la knowledge base |
 | `add-rule` | Agregar una nueva regla de triage a la knowledge base |
 | _(sin argumento)_ | Mostrar esta ayuda + inicialización del entorno de desarrollo |
@@ -67,6 +68,7 @@ Toda la lógica de negocio (reglas de triage, runbooks procedurales, lógica de 
 │   ├── alerts.md
 │   ├── stats.md
 │   ├── assign-unassigned.md
+│   ├── derive.md
 │   ├── save.md
 │   └── add-rule.md
 └── knowledge/
@@ -138,13 +140,19 @@ El orden define el turno. El índice actual se persiste en:
    acli jira auth login --web
    ```
    y seleccionar https://mercadolibre.atlassian.net.
-- [ ] **Tercer paso**: correr el subcomando `setup` para verificar e instalar el resto del entorno.
+- [ ] **Tercer paso**: habilitar el MCP de Atlassian en Claude Code:
+   ```bash
+   claude mcp add --transport http "Atlassian" https://mcp.atlassian.com/v1/mcp
+   ```
+   Luego ejecutar `/mcp` dentro de Claude Code y completar el flujo OAuth para `mercadolibre.atlassian.net`.
+   Requerido para que `/groot-queue:derive` pueda ejecutar la transición "Derivar a otro equipo".
+- [ ] **Cuarto paso**: correr el subcomando `setup` para verificar e instalar el resto del entorno.
 
 ---
 
 ## Reglas globales
 
-- **WRITE CONTROLADO**: el subcomando `assign-unassigned` escribe en Jira (transición + asignación). `save` y `add-rule` escriben en la knowledge base local. Todos los demás subcomandos son read-only.
+- **WRITE CONTROLADO**: los subcomandos `assign-unassigned` y `derive` pueden escribir en Jira (`assign-unassigned`: transición + asignación; `derive`: nota interna + transición de estado solo si hay MCP Atlassian compatible). `save` y `add-rule` escriben en la knowledge base local. Todos los demás subcomandos son read-only.
 - **La base de conocimiento vive fuera de los subcomandos**. No duplicar runbooks ni reglas: siempre referenciar `classification.md` / `triage-rules.md` / `runbooks.md` / `solutions/` por path.
 - Siempre mostrar el link a Jira: `https://mercadolibre.atlassian.net/browse/SSHP-XXXXXX`.
 - Las respuestas deben ser en español.

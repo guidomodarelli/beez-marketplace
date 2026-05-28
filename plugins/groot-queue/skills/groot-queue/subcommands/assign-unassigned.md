@@ -95,7 +95,7 @@ Solo ejecutar este paso si hubo al menos un ticket con estado **✓ OK** en la t
 Leer `~/.claude/skills/groot-queue/knowledge/triage-rules.md`.
 
 **9b. Evaluar cada ticket ✓ OK:**
-Para cada ticket asignado exitosamente, reusar el contenido obtenido en el paso 6d (verificación de asignación). Si ese contenido ya no está en contexto, re-obtenerlo con:
+Para cada ticket asignado exitosamente, obtener su contenido actualizado con:
 ```bash
 acli jira workitem view <KEY>
 ```
