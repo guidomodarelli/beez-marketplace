@@ -1,5 +1,5 @@
 ---
-description: Deriva uno o más tickets SSHP al equipo correspondiente aplicando la regla R-DER que matchea y, si hay MCP Atlassian compatible, posteando nota interna y transicionando el estado en Jira.
+description: Deriva uno o más tickets SSHP al equipo correspondiente aplicando la regla R-DER que matchea, posteando nota interna y transicionando estado en Jira via MCP Atlassian. Requiere MCP Atlassian instalado, autenticado y con acceso a mercadolibre.atlassian.net.
 argument-hint: SSHP-XXXXXX [SSHP-YYYYYY ...]
 ---
 
@@ -25,6 +25,54 @@ Ejemplos válidos:
 - Este subcomando no tiene modo demo ni modo sintético sin key válida. Si el input pide clasificar, simular o demostrar sin una key `SSHP-XXXXXX`, tratarlo como error de uso.
 - Si no queda ninguna key válida, abortar con:
   > "Uso: `/groot-queue derive SSHP-XXXXXX [SSHP-YYYYYY ...]`. Proporcioná al menos una key de ticket válida."
+
+## Pre-condición: MCP Atlassian
+
+**Verificar antes de proceder con cualquier otra acción. Si alguno de los siguientes pasos falla, abortar y no continuar.**
+
+**A. Disponibilidad de herramientas:**
+Intentar llamar `mcp__Atlassian__getAccessibleAtlassianResources` (o herramienta equivalente si el proveedor usa un prefijo distinto).
+
+Si la herramienta **no existe** en el contexto → abortar con:
+```
+❌ MCP Atlassian no disponible.
+
+/groot-queue:derive requiere el MCP de Atlassian para ejecutar la derivación.
+Instalalo con:
+  claude mcp add --transport http "Atlassian" https://mcp.atlassian.com/v1/mcp
+Luego completá el flujo OAuth con /mcp dentro de Claude Code.
+Podés verificar el entorno completo con /groot-queue setup.
+```
+
+**B. Autenticación y `cloudId`:**
+Usar el resultado de la llamada anterior:
+- Si retorna error de autenticación (401 / 403 o equivalente) → abortar con:
+  ```
+  ❌ MCP Atlassian no autenticado.
+
+  Ejecutá /mcp dentro de Claude Code y completá el flujo OAuth para mercadolibre.atlassian.net.
+  ```
+- Si retorna recursos: elegir el que represente `mercadolibre.atlassian.net` y guardar su `cloudId`.
+- Si `mercadolibre.atlassian.net` **no aparece** en los recursos → abortar con:
+  ```
+  ❌ No se encontró mercadolibre.atlassian.net en los recursos del MCP de Atlassian.
+
+  Verificá que hayas autorizado acceso a ese workspace durante el flujo OAuth.
+  Ejecutá /groot-queue setup para diagnóstico completo.
+  ```
+
+**C. Capacidad de nota interna JSM:**
+Confirmar que el proveedor expone capacidad de crear **nota interna de Jira Service Management** (no solo comentario público). `addCommentToJiraIssue` por sí sola no alcanza si solo crea comentarios públicos.
+
+Si solo hay capacidad de comentario público y no nota interna → abortar con:
+```
+❌ El MCP de Atlassian disponible no expone capacidad de nota interna JSM.
+
+/groot-queue:derive no puede ejecutar la derivación sin riesgo de publicar
+información interna al reporter. Completá la derivación manualmente en Jira.
+```
+
+Solo continuar al algoritmo si los tres puntos anteriores pasaron. El `cloudId` obtenido en el punto B se reutiliza en los pasos 4b y 4c.
 
 ## Referencia de squads destino → IDs de Jira
 
@@ -86,34 +134,20 @@ Antes de ejecutar **cualquier** acción en Jira, mostrar el plan para todos los 
 
   SSHP-VVVVVV  ⚠️  MANUAL_REDIRECT — #help-authz-internal-admins (R-DER-05 sin transición Jira)
 
-  SSHP-UUUUUU  ⚠️  MANUAL_MCP_UNAVAILABLE — MCP Atlassian no disponible o sin nota interna JSM (derivar manualmente)
-
 ═══════════════════════════════════════════════════════════════
-Tickets a derivar automáticamente: N  |  Tickets sin acción: M  |  Derivación manual/redirección/MCP pendiente: K
-
-Validando capacidad de ejecución...
+Tickets a derivar automáticamente: N  |  Tickets sin acción: M  |  Derivación manual/redirección pendiente: K
 ```
 
 ### 4. Fase de ejecución — procesar cada ticket derivable en secuencia
 
 Para cada ticket marcado para derivar automáticamente (en el orden del plan). Omitir los tickets `MANUAL_DERIVATION` y `MANUAL_REDIRECT`, y mantenerlos solo en el reporte final:
 
-**4a. Resolver herramienta MCP Atlassian compatible y `cloudId` válido**
-
-Antes de ejecutar acciones automáticas, confirmar que el proveedor actual expone herramientas MCP de Atlassian para comentar y transicionar issues:
-
-- Preferir el prefijo `mcp__Atlassian__...` cuando el setup instaló el servidor como `Atlassian`.
-- Herramientas requeridas: transición de issue y creación de **nota interna de Jira Service Management**. `addCommentToJiraIssue` por sí sola no alcanza si solo crea comentarios públicos.
-- Si el proveedor expone las mismas capacidades con otro prefijo, usar esas herramientas equivalentes y dejar explícito cuál se usó.
-- Resolver el `cloudId` antes de llamar a cualquier tool:
-  1. Llamar `mcp__Atlassian__getAccessibleAtlassianResources` o herramienta equivalente.
-  2. Elegir el recurso que represente `mercadolibre.atlassian.net`.
-  3. Usar el `cloudId` retornado por ese recurso. Si el proveedor documenta o valida otro formato para ese sitio (por ejemplo URL completa o hostname), usar ese valor validado y dejarlo explícito.
-- Si no hay herramientas MCP de Atlassian disponibles, no se puede resolver el `cloudId`, o no hay una capacidad confirmada de **nota interna JSM**, **no ejecutar acciones automáticas**. Marcar todos los tickets derivables como `MANUAL_MCP_UNAVAILABLE`, mostrar el plan con los campos que deben completarse en Jira y pedir completar la transición manualmente.
+**4a. `cloudId` de la pre-condición:**
+Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la pre-condición MCP Atlassian. No resolver de nuevo; el valor ya está disponible.
 
 **4b. Agregar nota interna** con MCP Atlassian:
 
-- `cloudId`: valor validado en el paso 4a para `mercadolibre.atlassian.net`
+- `cloudId`: valor validado en la pre-condición para `mercadolibre.atlassian.net`
 - `issueIdOrKey`: `"SSHP-XXXXXX"`
 - `commentBody`: el comentario sugerido de la regla R-DER tal como está en `triage-rules.md`
 - `contentFormat`: `"markdown"`
@@ -125,7 +159,7 @@ Antes de ejecutar acciones automáticas, confirmar que el proveedor actual expon
 
 **4c. Transicionar estado** con MCP Atlassian en una llamada **separada**, después de que la nota retorne exitosamente:
 
-- `cloudId`: valor validado en el paso 4a para `mercadolibre.atlassian.net`
+- `cloudId`: valor validado en la pre-condición para `mercadolibre.atlassian.net`
 - `issueIdOrKey`: `"SSHP-XXXXXX"`
 - `transition`: `{"id": "121"}` ← ID fijo "Derivar a otro equipo" en SSHP
 - `fields`:
@@ -196,10 +230,9 @@ Resultados de derivación (N tickets procesados):
 | SSHP-ZZZZZZ   | —         | NO_DERIVA    | —            | —          | —   |
 | SSHP-WWWWWW   | R-DER-03  | IAM Commerce | Manual       | Manual     | —   |
 | SSHP-VVVVVV   | R-DER-05  | Slack channel | Manual       | Manual     | —   |
-| SSHP-UUUUUU   | R-DER-10  | IAM Soporte  | Manual MCP   | Manual MCP | —   |
 | SSHP-WWWWWW   | R-DER-07  | IAM Soporte  | ✓            | ✗ Bad Req  | —   |
 
-Resumen: N derivados ✓  |  M sin acción  |  K manuales/redirecciones/MCP pendiente  |  E con errores parciales
+Resumen: N derivados ✓  |  M sin acción  |  K manuales/redirecciones pendiente  |  E con errores parciales
 ```
 
 Links de Jira al final para cada ticket derivado:
