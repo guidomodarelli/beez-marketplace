@@ -21,11 +21,7 @@ Open `.claude-plugin/marketplace.json` and `.agents/plugins/marketplace.json` an
 
 > The CI pipeline will block PRs that still have the template default name (`plugins-marketplace`).
 
-### 2. Delete the example plugin
-
-Remove `plugins/example/` and its entry in `marketplace.json`. It is only there to illustrate the structure.
-
-### 3. Install pre-commit hooks
+### 2. Install pre-commit hooks
 
 ```bash
 pip install pre-commit && pre-commit install
@@ -138,6 +134,19 @@ A plugin must appear in at least one registry. A plugin is only installed for a 
 > All `plugin.json` files within the same plugin (`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`) must share the same version. The RP enforces this — if any skill changes, all provider manifests must bump together.
 
 **Commit format:** `feat(marketplace): add <name>`
+
+---
+
+## Bumping a plugin version
+
+Use the `create-version` script to bump a plugin's version. It updates the `version` field in **both** provider manifests (`.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`) at once, keeping them in sync.
+
+```bash
+npm run create-version              # interactive: pick a plugin from a numbered menu
+npm run create-version groot-queue  # target a plugin directly by name
+```
+
+The script then asks how to set the new version — a semver bump (`patch` / `minor` / `major`) computed from the current one, or a custom exact version. Before writing, it validates that both manifests already share the same version and aborts if they differ, so you never bump from an inconsistent state.
 
 ---
 

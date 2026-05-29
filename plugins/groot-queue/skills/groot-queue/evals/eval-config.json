@@ -90,23 +90,23 @@
     },
     {
       "id": "derive-multi-ticket-spaces",
-      "description": "derive accepts multiple ticket keys separated by spaces",
+      "description": "derive accepts multiple ticket keys separated by spaces (shows the derivation plan or the MCP precondition abort)",
       "input": "/groot-queue derive SSHP-1111111 SSHP-2222222 SSHP-3333333",
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["Plan de derivación", "tickets", "acli jira workitem view", "R-DER"]
+          "values": ["Plan de derivación", "R-DER", "Atlassian"]
         }
       ]
     },
     {
       "id": "derive-multi-ticket-commas",
-      "description": "derive accepts multiple ticket keys separated by commas",
+      "description": "derive accepts multiple ticket keys separated by commas (shows the derivation plan or the MCP precondition abort)",
       "input": "/groot-queue derive SSHP-1111111,SSHP-2222222,SSHP-3333333",
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["Plan de derivación", "tickets", "acli jira workitem view", "R-DER"]
+          "values": ["Plan de derivación", "R-DER", "Atlassian"]
         }
       ]
     },
@@ -148,6 +148,72 @@
         {
           "type": "contains",
           "value": "#help-authz-internal-admins"
+        }
+      ]
+    },
+    {
+      "id": "discard-listed-in-help",
+      "description": "invoking /groot-queue without args shows discard in the subcommands table",
+      "input": "/groot-queue",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "discard"
+        }
+      ]
+    },
+    {
+      "id": "discard-no-args",
+      "description": "discard without a ticket key shows usage message",
+      "input": "/groot-queue discard",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["SSHP-XXXXXX", "Uso:", "ticket", "argumento"]
+        }
+      ]
+    },
+    {
+      "id": "discard-invalid-args",
+      "description": "discard without any valid ticket key rejects invalid arguments before querying Jira",
+      "input": "/groot-queue discard INVALID-123",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["SSHP-XXXXXX", "key válida", "keys válidas", "Uso:", "ticket válida"]
+        }
+      ]
+    },
+    {
+      "id": "discard-shows-plan",
+      "description": "discard with a ticket key shows the discard plan or setup precondition before executing",
+      "input": "/groot-queue discard SSHP-1234567",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["Plan de descarte", "R-DESC", "Won't Do", "Atlassian"]
+        }
+      ]
+    },
+    {
+      "id": "discard-multi-ticket-spaces",
+      "description": "discard accepts multiple ticket keys separated by spaces (shows the discard plan or the MCP precondition abort)",
+      "input": "/groot-queue discard SSHP-1111111 SSHP-2222222 SSHP-3333333",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["Plan de descarte", "R-DESC", "Atlassian"]
+        }
+      ]
+    },
+    {
+      "id": "assign-unassigned-asks-discard-when-discardable",
+      "description": "assign-unassigned asks user whether to discard tickets after showing results, when at least one assigned ticket matches an R-DESC rule",
+      "input": "Explain how /groot-queue assign-unassigned handles assigned tickets that match an R-DESC rule after successful assignment. Do not execute Jira commands.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["descartar", "Descartar", "descartable", "R-DESC", "¿Querés"]
         }
       ]
     },

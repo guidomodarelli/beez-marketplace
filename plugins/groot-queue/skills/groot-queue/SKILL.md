@@ -5,7 +5,7 @@ description: "Monitorea la cola de soporte [Core] - Groot (SSHP). Lista, clasifi
 
 # Groot Queue Monitor
 
-**Propósito**: Monitorear y gestionar la cola de soporte "[Core] - Groot" del proyecto Jira SSHP. Read-only salvo los subcomandos `assign-unassigned`, que asigna tickets en Jira usando round-robin, y `derive`, que puede postear nota interna y transicionar estado con MCP Atlassian compatible.
+**Propósito**: Monitorear y gestionar la cola de soporte "[Core] - Groot" del proyecto Jira SSHP. Read-only salvo los subcomandos `assign-unassigned`, que asigna tickets en Jira usando round-robin; `derive`, que postea nota interna y transiciona estado con MCP Atlassian; y `discard`, que postea comentario público y cierra tickets que no corresponden a Groot Soporte.
 
 Esta skill funciona como **índice + dispatcher** de subcomandos. La lógica concreta de cada acción vive en `subcommands/<nombre>.md` (single source of truth, compartido entre Claude Code y Codex).
 
@@ -46,6 +46,7 @@ Path absoluto (post-install): `~/.claude/skills/groot-queue/subcommands/<nombre>
 | `stats` | Estadísticas agregadas de la cola |
 | `assign-unassigned` | Asignar en Jira todos los tickets sin responsable usando round-robin |
 | `derive SSHP-XXXXXX` | Derivar un ticket al equipo correcto: detecta regla R-DER y, si hay MCP Atlassian compatible, postea nota interna y transiciona estado |
+| `discard SSHP-XXXXXX` | Descartar un ticket que no corresponde a Groot Soporte: detecta regla R-DESC y, si hay MCP Atlassian compatible, postea comentario público y cierra el ticket |
 | `save SSHP-XXXXXX <desc>` | Guardar la solución aplicada a un ticket en la knowledge base |
 | `add-rule` | Agregar una nueva regla de triage a la knowledge base |
 | _(sin argumento)_ | Mostrar esta ayuda + inicialización del entorno de desarrollo |
@@ -69,6 +70,7 @@ Toda la lógica de negocio (reglas de triage, runbooks procedurales, lógica de 
 │   ├── stats.md
 │   ├── assign-unassigned.md
 │   ├── derive.md
+│   ├── discard.md
 │   ├── save.md
 │   └── add-rule.md
 └── knowledge/
@@ -152,7 +154,7 @@ El orden define el turno. El índice actual se persiste en:
 
 ## Reglas globales
 
-- **WRITE CONTROLADO**: los subcomandos `assign-unassigned` y `derive` pueden escribir en Jira (`assign-unassigned`: transición + asignación; `derive`: nota interna + transición de estado solo si hay MCP Atlassian compatible). `save` y `add-rule` escriben en la knowledge base local. Todos los demás subcomandos son read-only.
+- **WRITE CONTROLADO**: los subcomandos `assign-unassigned`, `derive` y `discard` pueden escribir en Jira (`assign-unassigned`: transición + asignación; `derive`: nota interna + transición de estado; `discard`: comentario público + transición de cierre — los tres requieren MCP Atlassian compatible). `save` y `add-rule` escriben en la knowledge base local. Todos los demás subcomandos son read-only.
 - **La base de conocimiento vive fuera de los subcomandos**. No duplicar runbooks ni reglas: siempre referenciar `classification.md` / `triage-rules.md` / `runbooks.md` / `solutions/` por path.
 - Siempre mostrar el link a Jira: `https://mercadolibre.atlassian.net/browse/SSHP-XXXXXX`.
 - Las respuestas deben ser en español.

@@ -11,19 +11,6 @@
   },
   "plugins": [
     {
-      "name": "example",
-      "source": "./plugins/example",
-      "description": "Example plugin. Demonstrates plugin and skill structure.",
-      "author": {
-        "name": "your-team"
-      },
-      "category": "example",
-      "keywords": [
-        "example",
-        "marketplace"
-      ]
-    },
-    {
       "name": "prepare-release",
       "source": "./plugins/prepare-release",
       "description": "Automates release branch creation from develop and PR to master. Reads last tag from master, calculates next MINOR version, and opens release/x.x.x PR.",

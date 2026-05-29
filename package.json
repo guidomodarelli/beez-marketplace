@@ -1,0 +1,8 @@
+{
+  "name": "fury-groot-marketplace",
+  "private": true,
+  "description": "Multi-provider marketplace of skills and plugins for AI agents at Mercado Libre.",
+  "scripts": {
+    "create-version": "node scripts/create-version.js"
+  }
+}

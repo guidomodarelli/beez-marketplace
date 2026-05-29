@@ -68,7 +68,7 @@ plugins/<name>/
 }
 ```
 
-Critical points (learned the hard way — see `plugins/prepare-release/.codex-plugin/plugin.json` and `plugins/example/.codex-plugin/plugin.json` as canonical references):
+Critical points (learned the hard way — see `plugins/prepare-release/.codex-plugin/plugin.json` as the canonical reference):
 
 - **`version` is mandatory** and must match the sibling `.claude-plugin/plugin.json`. This applies even when the plugin is being added to Codex for the first time while already existing on the Claude side — the "shared version" rule trumps "new plugins start at 1.0.0".
 - **`skills: "./skills/"`** is required so Codex's loader resolves the skill directory. Without it, the plugin loads but no skills appear.
@@ -179,3 +179,15 @@ run-evals skills/my-skill
 # Run evals for all skills
 run-evals --all
 ```
+
+## Bumping a plugin version
+
+```bash
+# Interactive: pick a plugin from a numbered menu
+npm run create-version
+
+# Target a plugin directly by name
+npm run create-version <plugin-name>
+```
+
+Updates the `version` field in **both** provider manifests (`.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`) so they stay in sync. Offers a semver bump (`patch`/`minor`/`major`) or a custom exact version, and aborts if the two manifests are not already on the same version. Implemented in `scripts/create-version.js` (zero external deps).

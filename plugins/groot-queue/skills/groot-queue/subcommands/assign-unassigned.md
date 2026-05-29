@@ -120,6 +120,42 @@ Aplicar **únicamente las reglas R-DER** del algoritmo de triage (misma lógica 
 - **No** (o cualquier otra respuesta): terminar mostrando:
   > "Derivación omitida. Podés ejecutarla luego con `/groot-queue derive <KEY1> <KEY2> ...`"
 
+## 10. Detección post-asignación de tickets descartables
+
+Solo ejecutar este paso si hubo al menos un ticket con estado **✓ OK** en la tabla del paso 8 que **no fue incluido como derivable en el paso 9**.
+
+**10a. Cargar reglas de descarte:**
+Si `triage-rules.md` ya fue leído en el paso 9a, reutilizar. Si no, leer `~/.claude/skills/groot-queue/knowledge/triage-rules.md`.
+
+**10b. Evaluar cada ticket ✓ OK no derivable:**
+Para cada ticket asignado exitosamente que no matcheó una regla R-DER en el paso 9:
+- Si el contenido ya fue obtenido en el paso 9b, reutilizarlo; si no, obtenerlo con:
+  ```bash
+  acli jira workitem view <KEY>
+  ```
+- Aplicar **únicamente los pasos 14–22 del algoritmo de triage** de `triage-rules.md` (reglas R-DESC), en orden: R-DESC-03, R-DESC-06, R-DESC-07, R-DESC-08, R-DESC-04, R-DESC-09, R-DESC-05, R-DESC-02, R-DESC-01.
+- Tomar la primera regla que matchee.
+- Las verificaciones previas (R-DESC-03, R-DESC-04, R-DESC-05, R-DESC-06, R-DESC-07, R-DESC-08) que requieren inspección en Groot admin: si no es posible confirmarlas desde el contenido del ticket, marcar como `REVISAR_MANUAL` y no incluirlo en la lista de descartables.
+
+**10c. Si ningún ticket matchea una regla R-DESC:** no mostrar nada adicional, terminar.
+
+**10d. Si uno o más tickets matchean**, mostrar la tabla y la pregunta de confirmación:
+
+```
+⛔ Tickets descartables detectados (N):
+| Key          | Summary                  | Regla      | Acción           |
+|--------------|--------------------------|------------|------------------|
+| SSHP-XXXXX   | ...                      | R-DESC-02  | Cerrar Won't Do  |
+| SSHP-XXXXX   | ...                      | R-DESC-04  | Cerrar Won't Do  |
+
+¿Querés descartar estos N tickets ahora? (sí / no)
+```
+
+**10e. Esperar respuesta del usuario:**
+- **Sí** (o "s", "yes", "y"): ejecutar el flujo completo de `~/.claude/skills/groot-queue/subcommands/discard.md` con las keys de los tickets descartables. La confirmación ya fue obtenida en este paso — al llegar al paso 4 de `discard.md`, omitir la pregunta de confirmación y pasar directamente a la ejecución.
+- **No** (o cualquier otra respuesta): terminar mostrando:
+  > "Descarte omitido. Podés ejecutarlo luego con `/groot-queue discard <KEY1> <KEY2> ...`"
+
 ## History cap
 
 Mantener máximo 100 entradas en `history`; eliminar las más antiguas si se supera el límite.

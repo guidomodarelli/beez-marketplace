@@ -5,15 +5,6 @@
   },
   "plugins": [
     {
-      "name": "example",
-      "source": "./plugins/example",
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "example"
-    },
-    {
       "name": "prepare-release",
       "source": "./plugins/prepare-release",
       "policy": {
