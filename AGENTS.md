@@ -4,10 +4,11 @@ A multi-provider marketplace of skills and plugins for AI agents at Mercado Libr
 
 - `plugins/` — Production-ready plugins for marketplace distribution. Each plugin has provider spec directories (`.claude-plugin/`, `.codex-plugin/`) + `skills/` directory.
 - `skills/` — Standalone skills for prototyping. Same internal structure, lighter packaging.
-- `skill-installer/` — CLI tool that symlinks skills to `~/.claude/skills/` for local use.
-- `skill-eval-runner/` — Central eval runner. Skills only need `evals/eval-config.json`; the runner handles execution, assertions, and reporting.
-- `.claude-plugin/marketplace.json` — Claude Code plugin registry. New plugins must be registered here.
-- `.agents/plugins/marketplace.json` — Codex plugin registry. Add Codex-compatible plugins here.
+- `skill-eval-runner/` — Central eval runner. Skills only need `evals/eval-config.json`; the runner handles execution, assertions, and reporting. Provider-agnostic.
+- `.claude-plugin/marketplace.json` — Claude Code plugin registry. Register plugins here for Claude Code.
+- `.agents/plugins/marketplace.json` — Codex plugin registry. Register plugins here for Codex.
+
+For local development, skills symlink into each provider's own skills folder (`~/.claude/skills/` for Claude Code, `~/.codex/skills/` for Codex) — see **Local Testing**.
 
 ## Mandatory Rules
 
@@ -162,18 +163,24 @@ Leé y seguí literalmente las instrucciones de `~/.claude/skills/<plugin>/subco
 ## Local Testing
 
 ```bash
-# One-time setup: install both CLI tools
-cd skill-installer && ./install.sh
-cd ../skill-eval-runner && ./install.sh
+# One-time setup: install the eval runner (provider-agnostic)
+cd skill-eval-runner && ./install.sh
 
-# Install a skill locally (symlink — edits are live, just restart Claude Code)
-cd plugins/my-plugin/skills/my-skill && install-skill
+# Install a skill locally (symlink — edits are live, just restart your agent).
+# Point it at the skills folder of whichever provider(s) you run:
+SKILL_SRC="$PWD/plugins/<plugin-name>/skills/<skill-name>"
+ln -sfn "$SKILL_SRC" ~/.claude/skills/<skill-name>   # Claude Code
+ln -sfn "$SKILL_SRC" ~/.codex/skills/<skill-name>    # Codex
 
 # Run evals for a specific skill
-run-evals skills/my-skill
+run-evals plugins/<plugin-name>/skills/<skill-name>
 
 # Run evals for all skills
 run-evals --all
+
+# Emit machine-readable JSONL instead of the colored report
+# (one {"event":"case",...} object per case + a {"event":"summary",...} object)
+run-evals plugins/<plugin-name>/skills/<skill-name> --jsonl
 ```
 
 ## Bumping a plugin version
