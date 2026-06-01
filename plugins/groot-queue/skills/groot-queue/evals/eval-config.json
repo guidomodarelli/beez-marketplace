@@ -218,6 +218,23 @@
       ]
     },
     {
+      "id": "assign-unassigned-random-stateless",
+      "description": "assign-unassigned distributes tickets randomly across the team without persisting any local index/cache (no round-robin state file)",
+      "input": "Explain how /groot-queue assign-unassigned decides which team member each unassigned ticket goes to. Do not execute Jira commands.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "selection is random / shuffled rather than a persisted index",
+          "values": ["azar", "aleatori", "baraj", "shuffle", "random", "rand"]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "must not rely on a persisted local index or round-robin state file",
+          "values": ["next_assignee_index", "roundrobin-state.json"]
+        }
+      ]
+    },
+    {
       "id": "r-desc-04-inactive-leader-exception",
       "description": "R-DESC-04 exception: ticket where requester states the current leader is inactive/offboarded must be classified as VALIDO_GROOT, not DESCARTAR",
       "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Cambio de supervisor directo - líder fue dado de baja'. Description='Necesitamos mover 5 reps al supervisor Y. El líder actual ya no trabaja más en la empresa, fue dado de baja la semana pasada y no tiene acceso a ninguna tool.' Apply triage rules.",
