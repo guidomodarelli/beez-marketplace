@@ -1,7 +1,7 @@
 {
-  "name": "plugins-marketplace",
+  "name": "groot-marketplace",
   "interface": {
-    "displayName": "Plugins Marketplace"
+    "displayName": "Groot Marketplace"
   },
   "plugins": [
     {
