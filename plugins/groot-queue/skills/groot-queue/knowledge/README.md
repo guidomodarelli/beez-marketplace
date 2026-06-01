@@ -31,6 +31,46 @@ solutions/           Casos concretos resueltos, agrupados por categoría:
 apis/                Documentación de endpoints del ecosistema Groot.
                      (Todavía vacío — completar con specs cuando aparezca
                      necesidad.)
+
+audit-log-<YYYY>.jsonl  Log de auditoría append-only (una línea JSON por evento),
+                     **un archivo por año** (audit-log-2026.jsonl,
+                     audit-log-2027.jsonl, ...) para que no crezca
+                     indefinidamente. Registra cada derivación y descarte
+                     ejecutados por /groot-queue derive y /groot-queue discard,
+                     distinguiendo source "auto-assign" (disparado por
+                     /groot-queue assign-unassigned) de "manual". Estado
+                     per-usuario, ignorado por git.
+```
+
+## Auditar derivaciones/descartes automáticos
+
+Los archivos `audit-log-<YYYY>.jsonl` (uno por año) dejan un evento por cada ticket
+derivado o descartado, tanto en el flujo automático de `/groot-queue assign-unassigned`
+como en los `/groot-queue derive` / `/groot-queue discard` manuales. Cada línea tiene
+la forma:
+
+```json
+{"ts":"2026-06-01T14:30:00Z","action":"derive","key":"SSHP-123","rule":"R-DER-10","source":"auto-assign","destination":"IAM Soporte","result":"ok"}
+{"ts":"2026-06-01T14:31:10Z","action":"discard","key":"SSHP-456","rule":"R-DESC-04","source":"auto-assign","result":"partial-error"}
+```
+
+Campos: `ts` (ISO8601 UTC), `action` (`derive`/`discard`), `key`, `rule`,
+`source` (`auto-assign`/`manual`), `destination` (solo derive), `result`
+(`ok`/`partial-error`/`failed`/`manual`).
+
+Ejemplos de consulta para auditoría:
+
+```bash
+KB=~/.claude/skills/groot-queue/knowledge
+
+# Auditar un año puntual
+grep '"source":"auto-assign"' "$KB"/audit-log-2026.jsonl | jq .
+
+# Auditar todos los años a la vez
+cat "$KB"/audit-log-*.jsonl | grep '"result":"partial-error"' | jq .   # los que fallaron a medias
+
+# Conteo por regla (todos los años)
+jq -r '.rule' "$KB"/audit-log-*.jsonl | sort | uniq -c
 ```
 
 ## Cómo agregar una solución concreta

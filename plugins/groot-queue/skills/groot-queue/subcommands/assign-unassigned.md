@@ -116,7 +116,7 @@ Aplicar **únicamente las reglas R-DER** del algoritmo de triage (misma lógica 
 ```
 
 **9e. Esperar respuesta del usuario:**
-- **Sí** (o "s", "yes", "y"): ejecutar el flujo completo de `~/.claude/skills/groot-queue/subcommands/derive.md` con las keys de los tickets derivables, exactamente como si el usuario hubiera corrido `/groot-queue derive <KEY1> <KEY2> ...`.
+- **Sí** (o "s", "yes", "y"): ejecutar el flujo completo de `~/.claude/skills/groot-queue/subcommands/derive.md` con las keys de los tickets derivables, exactamente como si el usuario hubiera corrido `/groot-queue derive <KEY1> <KEY2> ...`. Al registrar en el log de auditoría (paso 4e de `derive.md`), usar `source = "auto-assign"`.
 - **No** (o cualquier otra respuesta): terminar mostrando:
   > "Derivación omitida. Podés ejecutarla luego con `/groot-queue derive <KEY1> <KEY2> ...`"
 
@@ -152,7 +152,7 @@ Para cada ticket asignado exitosamente que no matcheó una regla R-DER en el pas
 ```
 
 **10e. Esperar respuesta del usuario:**
-- **Sí** (o "s", "yes", "y"): ejecutar el flujo completo de `~/.claude/skills/groot-queue/subcommands/discard.md` con las keys de los tickets descartables. La confirmación ya fue obtenida en este paso — al llegar al paso 4 de `discard.md`, omitir la pregunta de confirmación y pasar directamente a la ejecución.
+- **Sí** (o "s", "yes", "y"): ejecutar el flujo completo de `~/.claude/skills/groot-queue/subcommands/discard.md` con las keys de los tickets descartables. La confirmación ya fue obtenida en este paso — al llegar al paso 4 de `discard.md`, omitir la pregunta de confirmación y pasar directamente a la ejecución. Al registrar en el log de auditoría (paso 5e de `discard.md`), usar `source = "auto-assign"`.
 - **No** (o cualquier otra respuesta): terminar mostrando:
   > "Descarte omitido. Podés ejecutarlo luego con `/groot-queue discard <KEY1> <KEY2> ...`"
 

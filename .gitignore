@@ -63,3 +63,6 @@ __pycache__/
 
 # groot-queue: per-user round-robin state (not shared across the team)
 roundrobin-state.json
+
+# groot-queue: per-user audit log of auto/manual derive & discard actions (one file per year)
+audit-log-*.jsonl
