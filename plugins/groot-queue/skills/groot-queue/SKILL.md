@@ -1,11 +1,11 @@
 ---
 name: groot-queue
-description: "Monitorea la cola de soporte [Core] - Groot (SSHP). Lista, clasifica, analiza urgencia, sugiere soluciones, alerta por Slack y asigna tickets sin responsable repartiéndolos al azar de forma equitativa. Usar cuando el usuario invoque /groot-queue o pregunte por tickets de soporte de Groot."
+description: "Monitorea la cola de soporte [Core] - Groot (SSHP). Lista, clasifica, analiza urgencia, sugiere soluciones, alerta por Slack y asigna tickets sin responsable balanceando la carga abierta del equipo. Usar cuando el usuario invoque /groot-queue o pregunte por tickets de soporte de Groot."
 ---
 
 # Groot Queue Monitor
 
-**Propósito**: Monitorear y gestionar la cola de soporte "[Core] - Groot" del proyecto Jira SSHP. Read-only salvo los subcomandos `assign-unassigned`, que reparte tickets sin responsable al azar entre el TEAM (stateless); `derive`, que postea nota interna y transiciona estado con MCP Atlassian; y `discard`, que postea comentario público y cierra tickets que no corresponden a Groot Soporte.
+**Propósito**: Monitorear y gestionar la cola de soporte "[Core] - Groot" del proyecto Jira SSHP. Read-only salvo los subcomandos `assign-unassigned`, que reparte tickets sin responsable balanceando la carga abierta del TEAM (menor backlog primero, azar como desempate; lee la carga desde Jira vía MCP Atlassian); `derive`, que postea nota interna y transiciona estado con MCP Atlassian; y `discard`, que postea comentario público y cierra tickets que no corresponden a Groot Soporte.
 
 Esta skill funciona como **índice + dispatcher** de subcomandos. La lógica concreta de cada acción vive en `subcommands/<nombre>.md` (single source of truth, compartido entre Claude Code y Codex).
 
@@ -44,7 +44,7 @@ Path absoluto (post-install): `~/.claude/skills/groot-queue/subcommands/<nombre>
 | `solve SSHP-XXXXXX` | Sugerir solución basada en runbooks + análisis |
 | `alerts` | Detectar tickets en riesgo de SLA y notificar por Slack DM |
 | `stats` | Estadísticas agregadas de la cola |
-| `assign-unassigned` | Asignar en Jira todos los tickets sin responsable repartiéndolos al azar entre el TEAM (stateless) |
+| `assign-unassigned` | Asignar en Jira todos los tickets sin responsable balanceando la carga abierta del TEAM (menor backlog primero, azar como desempate) |
 | `derive SSHP-XXXXXX` | Derivar un ticket al equipo correcto: detecta regla R-DER y, si hay MCP Atlassian compatible, postea nota interna y transiciona estado |
 | `discard SSHP-XXXXXX` | Descartar un ticket que no corresponde a Groot Soporte: detecta regla R-DESC y, si hay MCP Atlassian compatible, postea comentario público y cierra el ticket |
 | `save SSHP-XXXXXX <desc>` | Guardar la solución aplicada a un ticket en la knowledge base |
@@ -117,7 +117,7 @@ TEAM:
     name: Guido Modarelli
 ```
 
-El orden de la lista **no** define el turno: en cada corrida, `assign-unassigned` baraja el TEAM al azar y reparte los tickets sin repetir. La asignación **no persiste estado entre corridas** — usa un archivo scratch efímero (creado con `mktemp` y borrado al terminar) solo durante la ejecución, así la equidad no depende del orden en que cada miembro ejecute el comando ni de ninguna cache compartida.
+El orden de la lista **no** define el turno: `assign-unassigned` lee desde Jira (vía MCP Atlassian) cuántos incidentes no resueltos de SSHP/Groot —el mismo universo de tickets que reparte— tiene a su nombre cada miembro y usa ese conteo como **peso**, asignando cada ticket al de menor carga (azar solo para desempatar). La asignación **no persiste estado entre corridas** — usa un archivo scratch efímero (creado con `mktemp` y borrado al terminar) solo durante la ejecución. Como la carga se lee de Jira (fuente de verdad compartida), la equidad no depende del orden en que cada miembro ejecute el comando ni de ninguna cache local.
 
 ---
 
