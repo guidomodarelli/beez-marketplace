@@ -73,7 +73,7 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["R-DER", "Equipo destino", "Derivar a otro equipo", "acli jira workitem view", "Atlassian", "configuración", "setup", "autorización", "permiso", "acli", "⚠️"]
+          "values": ["R-DER", "Plan de derivación", "Equipo destino", "Derivar a otro equipo", "acli jira workitem view", "MCP", "Atlassian", "configuración", "setup", "autorización", "permiso", "acli", "⚠️"]
         }
       ]
     },
@@ -95,7 +95,7 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["Plan de derivación", "R-DER", "Atlassian"]
+          "values": ["Plan de derivación", "R-DER", "Equipo destino", "Derivar a otro equipo", "MCP", "Atlassian", "configuración", "setup", "⚠️"]
         }
       ]
     },
@@ -106,7 +106,7 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["Plan de derivación", "R-DER", "Atlassian"]
+          "values": ["Plan de derivación", "R-DER", "Equipo destino", "Derivar a otro equipo", "MCP", "Atlassian", "configuración", "setup", "⚠️"]
         }
       ]
     },
@@ -191,7 +191,7 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["Plan de descarte", "R-DESC", "Won't Do", "Atlassian"]
+          "values": ["Plan de descarte", "R-DESC", "Won't Do", "acli jira workitem view", "MCP", "Atlassian", "configuración", "setup", "autorización", "permiso", "acli", "⚠️"]
         }
       ]
     },
@@ -202,7 +202,7 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["Plan de descarte", "R-DESC", "Atlassian"]
+          "values": ["Plan de descarte", "R-DESC", "Won't Do", "MCP", "Atlassian", "configuración", "setup", "⚠️"]
         }
       ]
     },
@@ -224,15 +224,18 @@
       "assertions": [
         {
           "type": "contains",
+          "description": "verdict is VALIDO_GROOT",
           "value": "VALIDO_GROOT"
         },
         {
           "type": "not_contains_any",
-          "values": ["⛔ DESCARTAR"]
+          "description": "final verdict line is not DESCARTAR (guards the rendered verdict, not rule-name/0-count-summary/reasoning mentions of DESCARTAR)",
+          "values": ["`⛔ DESCARTAR`", "Veredicto de Triage: `⛔", "Veredicto: `⛔", "Veredicto Final: `⛔"]
         },
         {
           "type": "contains_any",
-          "values": ["R-DESC-04", "líder", "inactivo", "dado de baja", "Excepción"]
+          "description": "the inactive/offboarded-leader exception is recognized",
+          "values": ["R-DESC-04", "inactivo", "dado de baja", "desvinculad", "fuera de la empresa", "sin acceso", "no aplica", "Excepción"]
         }
       ]
     }

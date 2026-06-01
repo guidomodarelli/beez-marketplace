@@ -26,6 +26,9 @@ NC='\033[0m'
 # Total concurrent API calls = EVAL_JOBS * 2. Lower EVAL_JOBS if rate-limited.
 EVAL_JOBS="${EVAL_JOBS:-4}"
 EVAL_MODEL="${EVAL_MODEL:-haiku}"
+# When 1, emit machine-readable JSONL on stdout (one object per case + a summary
+# object) instead of the human-readable colored report. See --jsonl.
+EVAL_JSONL="${EVAL_JSONL:-0}"
 
 # ── Resolve paths ──────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -50,6 +53,10 @@ usage() {
     echo "  --model M, -m M              Claude model to use (default: haiku)"
     echo "                               Accepts aliases (haiku, sonnet, opus) or full model IDs."
     echo "                               Also configurable via EVAL_MODEL env var."
+    echo "  --jsonl, -J                  Emit machine-readable JSONL on stdout instead of"
+    echo "                               the colored report: one {\"event\":\"case\",...} object"
+    echo "                               per case (with failed_assertions) and a final"
+    echo "                               {\"event\":\"summary\",...} object. Also via EVAL_JSONL=1."
     echo ""
 }
 
@@ -137,10 +144,23 @@ validate_assertion_regex() {
     return 1
 }
 
+# Records a failed assertion as one JSON object into the failures file (if set),
+# so the JSONL report can list exactly which assertions broke and why.
+record_failure() {
+    local failures_file="$1"
+    local type="$2"
+    local desc="$3"
+    local detail="$4"
+    [ -n "$failures_file" ] || return 0
+    jq -nc --arg type "$type" --arg description "$desc" --arg detail "$detail" \
+        '{type: $type, description: $description, detail: $detail}' >> "$failures_file"
+}
+
 run_assertions() {
     local response="$1"
     local config_file="$2"
     local case_idx="$3"
+    local failures_file="$4"
     local case_passed=true
 
     local assertion_count
@@ -149,7 +169,7 @@ run_assertions() {
     for j in $(seq 0 $((assertion_count - 1))); do
         local type desc
         type=$(jq -r ".test_cases[$case_idx].assertions[$j].type" "$config_file")
-        desc=$(jq -r ".test_cases[$case_idx].assertions[$j].description" "$config_file")
+        desc=$(jq -r ".test_cases[$case_idx].assertions[$j].description // \"\"" "$config_file")
 
         case "$type" in
             contains)
@@ -160,6 +180,7 @@ run_assertions() {
                 else
                     echo -e "  ${RED}❌ $desc${NC} (expected: '$value')"
                     case_passed=false
+                    record_failure "$failures_file" "$type" "$desc" "expected to contain: $value"
                 fi
                 ;;
 
@@ -169,6 +190,9 @@ run_assertions() {
                 else
                     echo -e "  ${RED}❌ $desc${NC}"
                     case_passed=false
+                    local values
+                    values=$(jq -c ".test_cases[$case_idx].assertions[$j].values" "$config_file")
+                    record_failure "$failures_file" "$type" "$desc" "expected to contain any of: $values"
                 fi
                 ;;
 
@@ -178,6 +202,9 @@ run_assertions() {
                 else
                     echo -e "  ${RED}❌ $desc${NC} (found unwanted content)"
                     case_passed=false
+                    local values
+                    values=$(jq -c ".test_cases[$case_idx].assertions[$j].values" "$config_file")
+                    record_failure "$failures_file" "$type" "$desc" "found unwanted content from: $values"
                 fi
                 ;;
 
@@ -189,6 +216,7 @@ run_assertions() {
                 else
                     echo -e "  ${RED}❌ $desc${NC} (pattern: '$pattern')"
                     case_passed=false
+                    record_failure "$failures_file" "$type" "$desc" "did not match pattern: $pattern"
                 fi
                 ;;
 
@@ -218,10 +246,15 @@ run_single_case() {
     local skill_cwd="$7"
     local baseline_cwd="$8"
 
-    local id input description
+    local id input description skill_name
     id=$(jq -r ".test_cases[$i].id" "$config_file")
     input=$(jq -r ".test_cases[$i].input" "$config_file")
     description=$(jq -r ".test_cases[$i].description" "$config_file")
+    skill_name=$(jq -r '.skill' "$config_file")
+
+    # Per-case file collecting failed-assertion JSON objects (one per line).
+    local failures_file="$result_dir/$i.failures"
+    : > "$failures_file"
 
     local start_time=$SECONDS
     {
@@ -268,7 +301,7 @@ run_single_case() {
         echo ""
 
         # Assertions
-        if run_assertions "$response_with" "$config_file" "$i"; then
+        if run_assertions "$response_with" "$config_file" "$i" "$failures_file"; then
             echo ""
             echo -e "  ${GREEN}RESULT: ✅ PASSED${NC}"
             echo "0" > "$result_dir/$i.txt"
@@ -298,6 +331,23 @@ run_single_case() {
 
     local result
     result=$(cat "$result_dir/$i.txt" 2>/dev/null || echo "1")
+
+    # Build the per-case JSONL line (consumed in the print phase when --jsonl is set).
+    local status_str="passed"
+    [ "$result" -eq 0 ] || status_str="failed"
+    local failed_json="[]"
+    [ -s "$failures_file" ] && failed_json=$(jq -cs '.' "$failures_file")
+    jq -nc \
+        --arg skill "$skill_name" \
+        --arg id "$id" \
+        --argjson index "$((i + 1))" \
+        --argjson total "$total" \
+        --arg status "$status_str" \
+        --argjson duration "$elapsed" \
+        --argjson failed "$failed_json" \
+        '{event: "case", skill: $skill, id: $id, index: $index, total: $total, status: $status, duration_seconds: $duration, failed_assertions: $failed}' \
+        > "$result_dir/$i.jsonl"
+
     if [ "$result" -eq 0 ]; then
         echo -e "  ${GREEN}✅ [$done_count/$total] $id${NC}  ${duration}" >&2
     else
@@ -341,17 +391,22 @@ run_skill_evals() {
 
     local suite_start=$SECONDS
 
-    echo -e "${BLUE}════════════════════════════════════════${NC}"
-    echo -e "${BLUE}  Evaluations: ${BOLD}$skill_name${NC}"
-    echo -e "${BLUE}════════════════════════════════════════${NC}"
-    echo ""
-    echo -e "  Config:    $config_file"
-    echo -e "  Skill:     $skill_path"
-    echo -e "  Cases:     $total"
-    echo -e "  Jobs:      $EVAL_JOBS (parallel)"
-    echo -e "  Model:     $EVAL_MODEL"
-    echo -e "  Results:   $workspace"
-    echo ""
+    # In JSONL mode keep stdout pure (data only): send the human header to stderr.
+    local header_fd=1
+    [ "$EVAL_JSONL" = "1" ] && header_fd=2
+    {
+        echo -e "${BLUE}════════════════════════════════════════${NC}"
+        echo -e "${BLUE}  Evaluations: ${BOLD}$skill_name${NC}"
+        echo -e "${BLUE}════════════════════════════════════════${NC}"
+        echo ""
+        echo -e "  Config:    $config_file"
+        echo -e "  Skill:     $skill_path"
+        echo -e "  Cases:     $total"
+        echo -e "  Jobs:      $EVAL_JOBS (parallel)"
+        echo -e "  Model:     $EVAL_MODEL"
+        echo -e "  Results:   $workspace"
+        echo ""
+    } >&"$header_fd"
 
     # ── Dispatch phase: spawn cases in parallel, pool-limited ──
     local pids=()
@@ -374,14 +429,20 @@ run_skill_evals() {
     wait || true
 
     # ── Print phase: output in original order, aggregate counts ──
-    echo -e "${BLUE}════════════════════════════════════════${NC}"
-    echo -e "${BLUE}  Case Results: ${BOLD}$skill_name${NC}"
-    echo -e "${BLUE}════════════════════════════════════════${NC}"
-    echo ""
+    if [ "$EVAL_JSONL" != "1" ]; then
+        echo -e "${BLUE}════════════════════════════════════════${NC}"
+        echo -e "${BLUE}  Case Results: ${BOLD}$skill_name${NC}"
+        echo -e "${BLUE}════════════════════════════════════════${NC}"
+        echo ""
+    fi
     local passed=0
     local failed=0
     for i in $(seq 0 $((total - 1))); do
-        cat "$output_dir/$i.txt"
+        if [ "$EVAL_JSONL" = "1" ]; then
+            cat "$result_dir/$i.jsonl" 2>/dev/null || true
+        else
+            cat "$output_dir/$i.txt"
+        fi
         local result
         result=$(cat "$result_dir/$i.txt" 2>/dev/null || echo "1")
         if [ "$result" -eq 0 ]; then
@@ -400,28 +461,46 @@ run_skill_evals() {
         suite_duration="${suite_elapsed}s"
     fi
 
-    echo -e "${BLUE}════════════════════════════════════════${NC}"
-    echo -e "${BLUE}  Summary: ${BOLD}$skill_name${NC}"
-    echo -e "${BLUE}════════════════════════════════════════${NC}"
-    echo ""
-    echo -e "  Total:   $total"
-    echo -e "  Passed:  ${GREEN}$passed ✅${NC}"
-    echo -e "  Failed:  ${RED}$failed ❌${NC}"
-    echo -e "  Time:    $suite_duration"
-    echo ""
+    if [ "$EVAL_JSONL" = "1" ]; then
+        jq -nc \
+            --arg skill "$skill_name" \
+            --argjson total "$total" \
+            --argjson passed "$passed" \
+            --argjson failed "$failed" \
+            --argjson duration "$suite_elapsed" \
+            '{event: "summary", skill: $skill, total: $total, passed: $passed, failed: $failed, duration_seconds: $duration}'
+    else
+        echo -e "${BLUE}════════════════════════════════════════${NC}"
+        echo -e "${BLUE}  Summary: ${BOLD}$skill_name${NC}"
+        echo -e "${BLUE}════════════════════════════════════════${NC}"
+        echo ""
+        echo -e "  Total:   $total"
+        echo -e "  Passed:  ${GREEN}$passed ✅${NC}"
+        echo -e "  Failed:  ${RED}$failed ❌${NC}"
+        echo -e "  Time:    $suite_duration"
+        echo ""
+
+        if [ "$failed" -gt 0 ]; then
+            echo -e "  ${YELLOW}Review failed cases in: $workspace/with-skill/${NC}"
+        fi
+    fi
 
     if [ "$failed" -gt 0 ]; then
-        echo -e "  ${YELLOW}Review failed cases in: $workspace/with-skill/${NC}"
         return 1
     fi
     return 0
 }
 
 run_all_evals() {
-    echo -e "${BLUE}════════════════════════════════════════${NC}"
-    echo -e "${BLUE}  Running ALL skill evals${NC}"
-    echo -e "${BLUE}════════════════════════════════════════${NC}"
-    echo ""
+    # In JSONL mode keep stdout pure: decorative banners go to stderr.
+    local banner_fd=1
+    [ "$EVAL_JSONL" = "1" ] && banner_fd=2
+    {
+        echo -e "${BLUE}════════════════════════════════════════${NC}"
+        echo -e "${BLUE}  Running ALL skill evals${NC}"
+        echo -e "${BLUE}════════════════════════════════════════${NC}"
+        echo ""
+    } >&"$banner_fd"
 
     local total_skills=0
     local passed_skills=0
@@ -441,22 +520,30 @@ run_all_evals() {
         else
             failed_skills=$((failed_skills + 1))
         fi
-        echo ""
+        [ "$EVAL_JSONL" = "1" ] || echo ""
     done
 
     if [ "$total_skills" -eq 0 ]; then
-        echo -e "${YELLOW}No skills with evals/eval-config.json found.${NC}"
+        echo -e "${YELLOW}No skills with evals/eval-config.json found.${NC}" >&"$banner_fd"
         return 0
     fi
 
-    echo -e "${BLUE}════════════════════════════════════════${NC}"
-    echo -e "${BLUE}  Global Summary${NC}"
-    echo -e "${BLUE}════════════════════════════════════════${NC}"
-    echo ""
-    echo -e "  Skills evaluated: $total_skills"
-    echo -e "  All passed:       ${GREEN}$passed_skills ✅${NC}"
-    echo -e "  With failures:    ${RED}$failed_skills ❌${NC}"
-    echo ""
+    if [ "$EVAL_JSONL" = "1" ]; then
+        jq -nc \
+            --argjson skills "$total_skills" \
+            --argjson all_passed "$passed_skills" \
+            --argjson with_failures "$failed_skills" \
+            '{event: "global_summary", skills_evaluated: $skills, all_passed: $all_passed, with_failures: $with_failures}'
+    else
+        echo -e "${BLUE}════════════════════════════════════════${NC}"
+        echo -e "${BLUE}  Global Summary${NC}"
+        echo -e "${BLUE}════════════════════════════════════════${NC}"
+        echo ""
+        echo -e "  Skills evaluated: $total_skills"
+        echo -e "  All passed:       ${GREEN}$passed_skills ✅${NC}"
+        echo -e "  With failures:    ${RED}$failed_skills ❌${NC}"
+        echo ""
+    fi
 
     if [ "$failed_skills" -gt 0 ]; then
         return 1
@@ -485,6 +572,10 @@ while [ $# -gt 0 ]; do
         --model|-m)
             EVAL_MODEL="$2"
             shift 2
+            ;;
+        --jsonl|-J)
+            EVAL_JSONL=1
+            shift
             ;;
         *)
             args+=("$1")
