@@ -42,7 +42,8 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - Summary/description contiene: "asignar rol", "asignación de roles", "darle rol", "agregar rol a usuario".
   - Cuenta **sin** tag azul de "no es cuenta de envíos" (es decir, es de shipping).
   - No hay problema técnico: el usuario simplemente pide que le asignen un rol.
-- **Razón**: Groot Soporte **no** hace asignación de roles; eso lo hace el gestor de usuarios de la operación.
+- **Razón**: Groot Soporte **no** hace asignación de roles; eso lo hace el gestor de usuarios de la operación. Groot atiende **solo errores sistémicos**.
+- **Verificación previa**: Si el requester reporta que intentó asignar el rol y la herramienta **da error / no guarda** → reclasificar como `VALIDO_GROOT` (error sistémico, runbook Roles/Permisos). Mismo criterio de escape que `R-DESC-09`.
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "Desde Groot Soporte no hacemos asignación de roles a usuarios. Para esto debe comunicarse con el gestor de usuarios de su operación."
@@ -134,6 +135,18 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Comentario sugerido**:
   > "Esta solicitud debe ser enviada al equipo de gestión de usuario de su operación. Desde soporte Groot/Kraken no hacemos este tipo de asignaciones o remociones."
 - **Fuente**: Francisco Gonzalez, ticket SSHP-1418490 (2026-04-21). Ver `solutions/queue-management/remover-rol-gestion-usuarios-operacion.md`.
+
+### R-DESC-10 — Solicitud de asignación/cambio de valor de atributo sin error sistémico → gestor de usuarios de la operación
+- **Señales**:
+  - Summary/description pide **asignar / agregar / cambiar / quitar un valor de atributo** (CAD, facility, atributo operativo) a uno o pocos usuarios. Variantes de texto: ES "asignar atributo", "agregar atributo", "cambiar CAD", "asignar facility", "falta el atributo X", "asignar valor de atributo"; PT "atribuir atributo", "adicionar atributo", "trocar CAD", "atribuir facility", "falta o atributo", "valor de atributo faltando"; EN "assign attribute", "add attribute", "change CAD", "assign facility", "set attribute value", "missing attribute".
+  - **No** hay error técnico/sistémico: la herramienta de Groot funciona; el requester solo pide que Groot ejecute la asignación/cambio.
+  - El requester no es gestor de usuarios de la operación; pide que Groot haga la operación por él.
+- **Razón**: Groot Soporte atiende **solo errores sistémicos**. La asignación o cambio de valores de atributo sin error de la herramienta la realiza el gestor de usuarios de la operación (mismo criterio que `R-DESC-02` / `R-DESC-09` para roles, extendido a atributos). Si la solicitud es solo "ejecutá esta acción porque al usuario le falta el atributo", el canal no es la ticketera de Groot.
+- **Verificación previa**: Si el requester reporta que intentó la operación y la tool **da error / no guarda** → reclasificar como `VALIDO_GROOT` (error sistémico). Distinto de `R-DESC-03` (el valor no aparece en autogestión porque el líder no lo tiene), `R-DESC-06` (rep sin clock-in) y `R-DESC-07` (reps ya ubicados en el facility): si matchea una de esas señales específicas, usar esa regla.
+- **Acción**: Cerrar como `Won't Do`.
+- **Comentario sugerido**:
+  > "Hola, desde soporte Groot/Kraken solo atendemos errores sistémicos. La asignación o cambio de valores de atributo (CAD, facility, etc.) sin un error de la herramienta debe gestionarla el equipo de gestión de usuarios de su operación."
+- **Fuente**: Sync Groot Queue, criterio general de triage roles/atributos, 2026-06-02.
 
 ---
 
@@ -346,8 +359,9 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 20. **R-DESC-09** → si pide **remover** un rol a un operario y no hay error técnico reportado.
 21. **R-DESC-05** → si hay error "no autorizado" / "not authorized" en un módulo/URL específico y el usuario **sí** logra loguearse.
 22. **R-DESC-02** → si es solicitud de **asignación de rol** a usuario (sin error técnico) y la cuenta **no** tiene tag azul.
-23. **R-DESC-01** → si proviene de **Opex Full / SMO** y fue derivado fuera de ventana (>15 días de aging al llegar a Groot, posterior a 2025-10-28).
-24. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
+23. **R-DESC-10** → si pide **asignar / cambiar / quitar un valor de atributo** (CAD, facility, atributo operativo) sin error técnico, y no matchea R-DESC-03 / R-DESC-06 / R-DESC-07.
+24. **R-DESC-01** → si proviene de **Opex Full / SMO** y fue derivado fuera de ventana (>15 días de aging al llegar a Groot, posterior a 2025-10-28).
+25. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
 
 ---
 
