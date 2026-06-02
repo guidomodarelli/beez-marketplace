@@ -139,14 +139,19 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 
 ## Reglas `DERIVAR`
 
-### R-DER-01 — Cuenta con tag azul "no es cuenta de envíos" → IAM Soporte
+### R-DER-01 — Cuenta no marcada como shipping ("no puedo habilitar al usuario" / tag azul) → IAM Soporte
 - **Señales**:
   - La cuenta tiene el **tag azul** de "no es cuenta de envíos" / "conta não é de envios".
-  - Síntomas típicos: no aparece la opción de deshabilitar, opciones de Groot bloqueadas para esa cuenta, no se le habilitan flujos de shipping.
-- **Razón**: La cuenta no está marcada como shipping; IAM debe setear el flag correcto.
+  - El admin/gestor, al acceder al perfil en la tool de Groot (`envios.adminml.com/tools/auth/users/shared/...`), ve que **no puede habilitar al usuario** porque **no pertenece a envíos / a las remesas** y la cuenta figura desactivada. Variantes de texto: ES "no pertenece a Mercado Envío" / "no pertenece a envíos" / "no es cuenta de envíos"; PT "(usuário) não pertence às remessas" / "nao pertence as remessas" / "conta não é de envios"; EN "(user) does not belong to shipping" / "is not a shipping account" / "account is not part of shipping".
+  - Síntomas típicos: no aparece la opción de deshabilitar, opciones de Groot bloqueadas para esa cuenta, no se le habilitan flujos de shipping, cuenta **desactivada** que piden **reactivar** / "dejar el rep disponible sistémicamente".
+- **Razón**: La cuenta no está marcada como shipping; IAM debe setear el flag correcto para que Groot pueda habilitar/gestionar al usuario desde el ABM.
+- **Verificación previa**:
+  - Distinto de **R-DER-10** (el mensaje "no perteneces a envíos" lo ve el **usuario final** al crear/desbloquear su cuenta). Acá el bloqueo lo ve el **admin/gestor** al intentar habilitar la cuenta desde el ABM de Groot.
+  - El usuario afectado puede ser `ext_*` (externo): eso **no** lo convierte en **R-DER-06**, que exige que el `ext_*` aparezca reconocido como **cuenta Meli** en Kioske/TOTEM. Si la señal es "no pertenece a remesas / cuenta desactivada en la tool de Groot", aplica R-DER-01.
 - **Acción**: Derivar a **IAM Soporte**.
-- **Comentario sugerido**:
-  > "Hola, pueden marcar esta cuenta con el flag de shipping así el usuario puede operarla desde las tools de Groot."
+- **Comentario sugerido** (nota interna):
+  > "Hola derivamos este ticket para que nos ayuden marcando las cuentas como shipping asi los usuarios pueden gestionarla desde nuestro ABM"
+- **Fuente**: SSHP-1471443, 2026-06-02. Señal "no puedo habilitar / no pertenece a envíos/remesas" + comentario interno unificados en esta regla a partir de este ticket. Verificado contra el ticket real (PT: "usuario nao pertence as remessas", cuenta desactivada, usuario `ext_beatrnog`): ya resuelto y asignado a IAM Soporte (`sup_iamcommerce_01`), lo que confirma la derivación.
 
 ### R-DER-02 — Problemas de navegación App Nav → SMO (Randall + Process Dev Full)
 - **Señales**:
@@ -317,7 +322,7 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 8. **R-DER-08** → si el pedido es **cambio de nombre** del usuario (first/last name), sin error técnico de Groot.
 9. **R-DER-04** → si la URL afectada es `envios.adminml.com/logistics/...` / **package-management** / app nav / componente externo y el usuario está correctamente configurado en Groot/Kraken.
 10. **R-DER-05** → si el tema es de **clasificación/taxonomía** de proceso madre en la tool Groot o issues de **app nav** (no un error real de Groot).
-11. **R-DER-01** → si menciona "tag azul", "no es cuenta de envíos", "conta não é de envios", "sin opción de deshabilitar" y el reporte implica que IAM debe ajustar flag (visto desde admin Groot).
+11. **R-DER-01** → si menciona "tag azul", "no es cuenta de envíos", "conta não é de envios", "sin opción de deshabilitar", o el admin (accediendo al perfil en la tool de Groot) ve que "no puede habilitar al usuario" porque "no pertenece a envíos / no pertenece a Mercado Envío" / PT "não pertence às remessas" / "nao pertence as remessas" / EN "does not belong to shipping" / "not a shipping account" (cuenta desactivada que piden reactivar; IAM debe ajustar el flag de shipping).
 12. **R-DER-02** → si menciona "app nav", "navegación del app", "navegação" sin señal de R-DER-05.
 13. **R-DER-03** → si menciona "vincular cuenta", "desvincular", "cuenta Meli vs ext_", "cambio de contraseña" (sin señal de Kioske/TOTEM que apunte a R-DER-06).
 14. **R-DESC-03** → si el usuario reporta que en xtools / autogestión "no aparece CAD" / "não aparece CAD" / "no puedo seleccionar facility" + contexto de visitar otro site.
