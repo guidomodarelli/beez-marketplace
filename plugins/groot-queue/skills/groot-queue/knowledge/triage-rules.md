@@ -255,6 +255,18 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola, el mensaje 'no perteneces a envíos' indica que la cuenta no está marcada como shipping a nivel de IAM. Derivamos para que IAM Soporte ajuste el flag y el usuario pueda completar el flujo."
 - **Fuente**: Sync Groot Queue, 2026-05-18 (Francisco Gonzalez + equipo). Caso identificado como candidato a automatización (5-10% del volumen).
 
+### R-DER-11 — Error "Tax_id has already been used" al crear colaborador (documento ya en uso) → IAM Soporte
+- **Señales**:
+  - Al crear un nuevo colaborador / dar de alta una cuenta en Groot, el sistema devuelve el error literal **"Tax_id has already been used"** (string en inglés, aparece igual en tickets ES/PT/EN), acompañado de "No pudimos continuar con la creación de la cuenta" y el LDAP que no se genera.
+  - Variantes de texto en summary/description: ES "tax id ya utilizado" / "tax id ya fue usado" / "documento ya registrado" / "CUIT ya utilizado" / "no puedo crear el colaborador"; PT "tax_id já utilizado" / "tax_id already used" / "CPF já cadastrado" / "não consegue criar novo colaborador"; EN "Tax_id has already been used" / "tax id already used" / "cannot create new collaborator".
+  - Contexto típico: alta de un **new hire** cuyo CPF/CUIT/documento ya quedó asociado a otra identidad/LDAP previa.
+- **Razón**: El tax_id (CPF/CUIT/documento) ya está vinculado a otra identidad/LDAP a nivel IAM. Groot no es dueño del flujo de identidad ni puede resolver duplicados de documento; solo IAM puede verificar y liberar/vincular el tax_id existente.
+- **Verificación previa**: Distinto de **R-DER-09** (tax id *inválido* — falla de formato/validación). Acá el documento es **válido** pero **ya está en uso**. Si el error es de formato/validación → R-DER-09. Si la falla es por otra validación (rol, líder NULL, atributo) → no aplica.
+- **Acción**: Derivar a **IAM Soporte**.
+- **Comentario sugerido** (nota interna — la postea `/groot-queue:derive`):
+  > "Hola chicos, derivamos este caso para su analisis, no podemos resolver este ticket desde Groot"
+- **Fuente**: SSHP-1457833, 2026-06-02. Verificado contra el ticket real (summary PT "Nao consegue criar novo colaborador no Groot; erro tax_id already used", description EN con error literal "Tax_id has already been used", alta de un new hire): status `Resolved` y assignee `sup_iamcommerce_01` (IAM Soporte), lo que confirma la derivación.
+
 ---
 
 ## Reglas `FIX_APLICADO`
@@ -318,23 +330,24 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 4. **R-DER-06** → si LDAP `ext_*` aparece como **cuenta Meli** en Kioske/TOTEM y no puede cambiar contraseña.
 5. **R-DER-07** → si la herramienta afectada es **Shield** y el flujo es cambio de líder para colaboradores externos.
 6. **R-DER-09** → si el reporte menciona "tax id inválido", "CUIT inválido", "CPF inválido", "documento inválido" (frontend o bulk).
-7. **R-DER-10** → si el usuario final ve un mensaje tipo "no perteneces a envíos" / "no pertence a envios" al intentar crear cuenta o desbloquearla (y por eso no puede conocer su LDAP).
-8. **R-DER-08** → si el pedido es **cambio de nombre** del usuario (first/last name), sin error técnico de Groot.
-9. **R-DER-04** → si la URL afectada es `envios.adminml.com/logistics/...` / **package-management** / app nav / componente externo y el usuario está correctamente configurado en Groot/Kraken.
-10. **R-DER-05** → si el tema es de **clasificación/taxonomía** de proceso madre en la tool Groot o issues de **app nav** (no un error real de Groot).
-11. **R-DER-01** → si menciona "tag azul", "no es cuenta de envíos", "conta não é de envios", "sin opción de deshabilitar", o el admin (accediendo al perfil en la tool de Groot) ve que "no puede habilitar al usuario" porque "no pertenece a envíos / no pertenece a Mercado Envío" / PT "não pertence às remessas" / "nao pertence as remessas" / EN "does not belong to shipping" / "not a shipping account" (cuenta desactivada que piden reactivar; IAM debe ajustar el flag de shipping).
-12. **R-DER-02** → si menciona "app nav", "navegación del app", "navegação" sin señal de R-DER-05.
-13. **R-DER-03** → si menciona "vincular cuenta", "desvincular", "cuenta Meli vs ext_", "cambio de contraseña" (sin señal de Kioske/TOTEM que apunte a R-DER-06).
-14. **R-DESC-03** → si el usuario reporta que en xtools / autogestión "no aparece CAD" / "não aparece CAD" / "no puedo seleccionar facility" + contexto de visitar otro site.
-15. **R-DESC-06** → si el usuario afectado es **rep** y el reporte es previo al clock-in físico del día en el site objetivo.
-16. **R-DESC-07** → si reps no ven una bolha/función y la verificación confirma que **están** en el facility correcto.
-17. **R-DESC-08** → si el requester menciona "learning completado", "training hub", "learning hub" y pide asignación de rol post-capacitación.
-18. **R-DESC-04** → si es pedido de **cambio de líder / supervisor directo** sin error técnico (lista de usuarios a mover + nuevo líder).
-19. **R-DESC-09** → si pide **remover** un rol a un operario y no hay error técnico reportado.
-20. **R-DESC-05** → si hay error "no autorizado" / "not authorized" en un módulo/URL específico y el usuario **sí** logra loguearse.
-21. **R-DESC-02** → si es solicitud de **asignación de rol** a usuario (sin error técnico) y la cuenta **no** tiene tag azul.
-22. **R-DESC-01** → si proviene de **Opex Full / SMO** y fue derivado fuera de ventana (>15 días de aging al llegar a Groot, posterior a 2025-10-28).
-23. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
+7. **R-DER-11** → si al crear/dar de alta un colaborador el error es "Tax_id has already been used" / ES "tax id ya utilizado" / PT "tax_id já utilizado" (documento **válido** pero ya en uso; distinto de R-DER-09 que es tax id *inválido*).
+8. **R-DER-10** → si el usuario final ve un mensaje tipo "no perteneces a envíos" / "no pertence a envios" al intentar crear cuenta o desbloquearla (y por eso no puede conocer su LDAP).
+9. **R-DER-08** → si el pedido es **cambio de nombre** del usuario (first/last name), sin error técnico de Groot.
+10. **R-DER-04** → si la URL afectada es `envios.adminml.com/logistics/...` / **package-management** / app nav / componente externo y el usuario está correctamente configurado en Groot/Kraken.
+11. **R-DER-05** → si el tema es de **clasificación/taxonomía** de proceso madre en la tool Groot o issues de **app nav** (no un error real de Groot).
+12. **R-DER-01** → si menciona "tag azul", "no es cuenta de envíos", "conta não é de envios", "sin opción de deshabilitar", o el admin (accediendo al perfil en la tool de Groot) ve que "no puede habilitar al usuario" porque "no pertenece a envíos / no pertenece a Mercado Envío" / PT "não pertence às remessas" / "nao pertence as remessas" / EN "does not belong to shipping" / "not a shipping account" (cuenta desactivada que piden reactivar; IAM debe ajustar el flag de shipping).
+13. **R-DER-02** → si menciona "app nav", "navegación del app", "navegação" sin señal de R-DER-05.
+14. **R-DER-03** → si menciona "vincular cuenta", "desvincular", "cuenta Meli vs ext_", "cambio de contraseña" (sin señal de Kioske/TOTEM que apunte a R-DER-06).
+15. **R-DESC-03** → si el usuario reporta que en xtools / autogestión "no aparece CAD" / "não aparece CAD" / "no puedo seleccionar facility" + contexto de visitar otro site.
+16. **R-DESC-06** → si el usuario afectado es **rep** y el reporte es previo al clock-in físico del día en el site objetivo.
+17. **R-DESC-07** → si reps no ven una bolha/función y la verificación confirma que **están** en el facility correcto.
+18. **R-DESC-08** → si el requester menciona "learning completado", "training hub", "learning hub" y pide asignación de rol post-capacitación.
+19. **R-DESC-04** → si es pedido de **cambio de líder / supervisor directo** sin error técnico (lista de usuarios a mover + nuevo líder).
+20. **R-DESC-09** → si pide **remover** un rol a un operario y no hay error técnico reportado.
+21. **R-DESC-05** → si hay error "no autorizado" / "not authorized" en un módulo/URL específico y el usuario **sí** logra loguearse.
+22. **R-DESC-02** → si es solicitud de **asignación de rol** a usuario (sin error técnico) y la cuenta **no** tiene tag azul.
+23. **R-DESC-01** → si proviene de **Opex Full / SMO** y fue derivado fuera de ventana (>15 días de aging al llegar a Groot, posterior a 2025-10-28).
+24. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
 
 ---
 
