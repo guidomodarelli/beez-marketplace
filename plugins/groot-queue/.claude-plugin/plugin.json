@@ -1,7 +1,7 @@
 {
   "name": "groot-queue",
-  "description": "Support queue monitor for [Core] - Groot (SSHP). Lists, classifies, analyzes SLA risk, suggests solutions via runbooks, sends Slack alerts, and assigns unattended tickets by balancing each member's open workload (least-loaded first, random tiebreak). Invoke with /groot-queue.",
-  "version": "1.8.0",
+  "description": "Support queue monitor for [Core] - Groot (SSHP). Lists, classifies, analyzes SLA risk, suggests solutions via runbooks, sends Slack alerts, and assigns unattended tickets by distributing them evenly across the team. Invoke with /groot-queue.",
+  "version": "1.9.0",
   "author": {
     "name": "lpadularrosa"
   },
@@ -18,7 +18,7 @@
     "triage",
     "sla",
     "slack",
-    "load-balancing",
+    "random-assignment",
     "shipping",
     "mercado-libre"
   ]

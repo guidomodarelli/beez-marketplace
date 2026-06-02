@@ -218,14 +218,14 @@
       ]
     },
     {
-      "id": "assign-unassigned-load-balanced",
-      "description": "assign-unassigned balances each member's current open workload read from Jira (least-loaded first), without persisting any local index/cache (no round-robin state file)",
+      "id": "assign-unassigned-random-stateless",
+      "description": "assign-unassigned distributes tickets randomly across the team without persisting any local index/cache (no round-robin state file)",
       "input": "Explain how /groot-queue assign-unassigned decides which team member each unassigned ticket goes to. Do not execute Jira commands.",
       "assertions": [
         {
           "type": "contains_any",
-          "description": "selection balances current workload (least-loaded first) rather than a persisted index",
-          "values": ["carga", "balance", "equilibr", "backlog", "menor", "menos", "workload", "peso", "asignaciones"]
+          "description": "selection is random / shuffled rather than a persisted index",
+          "values": ["azar", "aleatori", "baraj", "shuffle", "random", "rand"]
         },
         {
           "type": "not_contains_any",
