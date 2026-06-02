@@ -25,6 +25,7 @@ For local development, skills symlink into each provider's own skills folder (`~
 - **Reference files are loaded on-demand** — skills declare them but only load when the relevant command executes.
 - **Skills EXECUTE actions** — they write files, run installations, produce reports. They don't just show instructions.
 - **Start in `skills/`, promote to `plugins/`** when production-ready.
+- **Matcher signals must ALWAYS be trilingual (ES + PT + EN)** — any text-matching signal in a skill's knowledge base (e.g. triage rules, classifiers, ticket matchers like `triage-rules.md`) must list the Spanish, Portuguese, **and** English variants of the wording. The support queues (e.g. SSHP) receive tickets in all three languages; a signal written in a single language silently misses real tickets. Before writing or editing any signal, verify it against the real source (e.g. fetch the actual Jira issue) to capture exact wording, language, and status.
 
 ## Plugin Structure
 
