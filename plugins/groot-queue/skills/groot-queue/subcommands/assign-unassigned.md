@@ -1,16 +1,16 @@
 ---
-description: Asigna en Jira todos los tickets sin responsable repartiéndolos al azar de forma equitativa sobre el TEAM configurado.
+description: Asigna en Jira todos los tickets sin responsable repartiéndolos de forma equitativa sobre el TEAM configurado.
 ---
 
 # /groot-queue:assign-unassigned
 
-Asignar todos los tickets sin responsable repartiéndolos al azar entre el TEAM, de forma **equitativa y sin estado local**. **Este command escribe en Jira** (transiciona estado + asigna responsable). Ver también `derive`, que escribe comentario + transición de estado.
+Asignar todos los tickets sin responsable repartiéndolos de forma **equitativa y sin estado local** entre el TEAM (un único shuffle por corrida, sin repetir; ver abajo). **Este command escribe en Jira** (transiciona estado + asigna responsable). Ver también `derive`, que escribe comentario + transición de estado.
 
-## Por qué aleatorio y sin estado persistente
+## Por qué un único shuffle por corrida y sin estado persistente
 
-La asignación **no persiste estado entre corridas**. Antes existía un `next_assignee_index` guardado localmente, pero como cada miembro del team corría el comando con su propio índice desfasado, la rotación terminaba siendo desigual entre todos. Ahora cada corrida baraja el TEAM al azar y reparte sin repetir, así que la equidad no depende de ningún archivo compartido ni del orden en que cada persona ejecute el comando.
+La asignación **no persiste estado entre corridas**. Antes existía un `next_assignee_index` guardado localmente, pero como cada miembro del team corría el comando con su propio índice desfasado, la rotación terminaba siendo desigual entre todos. Ahora cada corrida hace **un único barajado (shuffle) del TEAM al inicio** y reparte siguiendo ese orden, **sin repetir**; si hay más tickets que miembros, se vuelve a recorrer **el mismo orden barajado** (no se baraja de nuevo), de modo que nadie recibe un segundo ticket hasta que todos recibieron uno. Como cada ejecución arranca con un barajado nuevo, la equidad no depende de ningún archivo compartido ni del orden en que cada persona ejecute el comando.
 
-Durante la corrida se usa **un archivo scratch efímero** (creado con `mktemp`, fuera del repo) que guarda la cola barajada y la posición actual. Es un detalle de implementación para que el loop sea robusto a lo largo de muchas llamadas Bash; **se crea fresco en cada corrida y se elimina al terminar o abortar**, así que no es cache compartida ni sobrevive entre ejecuciones.
+Durante la corrida se usan **archivos scratch efímeros** (creados con `mktemp`, fuera del repo): uno guarda el orden barajado de la corrida y otro la cola de trabajo que se va consumiendo. Es un detalle de implementación para que el loop sea robusto a lo largo de muchas llamadas Bash; **se crean frescos en cada corrida y se eliminan al terminar o abortar**, así que no son cache compartida ni sobreviven entre ejecuciones.
 
 ## Pre-condición
 
@@ -25,26 +25,28 @@ Leer el `TEAM` desde `~/.claude/skills/groot-queue/SKILL.md`. Si está vacío, a
    ```
 2. Filtrar solo los que **no tienen assignee** (campo `assignee` vacío o null).
 3. Ordenar por urgencia descendente (score 5 primero — ver `classification.md`).
-4. **Crear el archivo scratch efímero y barajar el TEAM al azar** dentro de él. Generar un orden aleatorio real con entropía del sistema (no inventar el orden a mano). En una sola llamada Bash, crear el temp file con `mktemp` y escribir los emails del TEAM barajados, uno por línea, con este one-liner portable (macOS + Linux):
+4. **Barajar el TEAM una sola vez (shuffle aleatorio) y crear los archivos scratch.** El shuffle se ejecuta **una única vez por corrida**. Generar un orden aleatorio real con entropía del sistema (no inventar el orden a mano). En una sola llamada Bash, crear con `mktemp` el archivo de orden `$ORDER` (los emails del TEAM barajados, uno por línea) y copiarlo a la cola de trabajo `$QUEUE`, con este one-liner portable (macOS + Linux):
    ```bash
+   ORDER=$(mktemp -t groot-assign-order.XXXXXX 2>/dev/null || mktemp)
    QUEUE=$(mktemp -t groot-assign-queue.XXXXXX 2>/dev/null || mktemp)
-   awk 'BEGIN{srand()} {print rand()"\t"$0}' <<'EOF' | sort -n | cut -f2- > "$QUEUE"
+   awk 'BEGIN{srand()} {print rand()"\t"$0}' <<'EOF' | sort -n | cut -f2- > "$ORDER"
    <email del miembro 1>
    <email del miembro 2>
    ...
    <email del miembro N>
    EOF
-   echo "QUEUE=$QUEUE"   # recordar este path para el resto de la corrida
+   cp "$ORDER" "$QUEUE"
+   echo "ORDER=$ORDER QUEUE=$QUEUE"   # recordar estos paths para el resto de la corrida
    ```
-   El archivo `$QUEUE` es la **cola barajada** de esta corrida. La primera línea es siempre el próximo a asignar. Guardar el path para reutilizarlo en los pasos siguientes.
-5. Para cada ticket sin asignar, tomar el **primer email** de `$QUEUE` (`head -n1 "$QUEUE"`) — reparto **sin repetición**. Cuando `$QUEUE` quede vacío (más tickets que miembros), **volver a barajar** el TEAM con el mismo comando del paso 4 sobre el mismo `$QUEUE` y seguir. Así nadie recibe un segundo ticket hasta que todos hayan recibido uno en este batch.
+   `$ORDER` es el **orden barajado de esta corrida** y **no se vuelve a tocar** (el shuffle no se repite). `$QUEUE` es la **cola de trabajo**: su primera línea es siempre el próximo a asignar. Guardar ambos paths para reutilizarlos en los pasos siguientes.
+5. Para cada ticket sin asignar, tomar el **primer email** de `$QUEUE` (`head -n1 "$QUEUE"`) — reparto **sin repetición**. Cuando `$QUEUE` quede vacío (más tickets que miembros), **rellenarla con el mismo orden barajado** copiando `$ORDER` de nuevo (`cp "$ORDER" "$QUEUE"`) — **no se vuelve a barajar** — y seguir. Así nadie recibe un segundo ticket hasta que todos hayan recibido uno, y las rondas siguientes repiten el mismo orden del shuffle inicial.
 6. Para cada ticket sin asignar:
 
    a. `assignee` = primer email de `$QUEUE`:
       ```bash
       head -n1 "$QUEUE"
       ```
-      Si `$QUEUE` está vacío, rebarajar primero (paso 5) y volver a leer.
+      Si `$QUEUE` está vacío, rellenarla con `cp "$ORDER" "$QUEUE"` (paso 5) y volver a leer.
 
    b. **Transicionar a "In Progress" PRIMERO** — en una llamada Bash **separada**:
       ```bash
@@ -74,14 +76,14 @@ Leer el `TEAM` desde `~/.claude/skills/groot-queue/SKILL.md`. Si está vacío, a
         ```bash
         tail -n +2 "$QUEUE" > "$QUEUE.tmp" && mv "$QUEUE.tmp" "$QUEUE"
         ```
-        Así ese miembro no vuelve al pool hasta el próximo rebarajado.
+        Así ese miembro no vuelve al pool hasta la próxima ronda (cuando se rellena `$QUEUE` desde `$ORDER`).
       - Continuar al siguiente ticket.
 
-7. **Limpieza obligatoria.** Al terminar el loop —tanto si completó como si abortó por un error— eliminar el archivo scratch:
+7. **Limpieza obligatoria.** Al terminar el loop —tanto si completó como si abortó por un error— eliminar los archivos scratch:
    ```bash
-   rm -f "$QUEUE"
+   rm -f "$QUEUE" "$ORDER"
    ```
-   No persiste estado entre corridas: la próxima ejecución (de quien sea) creará un `$QUEUE` nuevo y barajará desde cero.
+   No persiste estado entre corridas: la próxima ejecución (de quien sea) creará `$ORDER` y `$QUEUE` nuevos y barajará desde cero.
 
 8. Mostrar tabla de resultados:
 
