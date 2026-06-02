@@ -5,7 +5,7 @@ argument-hint: SSHP-XXXXXX [SSHP-YYYYYY ...]
 
 # /groot-queue:derive
 
-Derivar uno o más tickets al equipo correcto. **Este subcomando escribe en Jira** (nota interna + transición de estado con campos de pantalla) y registra cada derivación en la knowledge base local.
+Derivar uno o más tickets al equipo correcto. **Este subcomando escribe en Jira** (nota interna + transición de estado con campos de pantalla), registra cada derivación en la knowledge base local y deja un evento en el log de auditoría append-only.
 
 Argumentos: una o más keys de tickets (`SSHP-XXXXXX`), separadas por **espacios o comas** (o combinación de ambos).
 
@@ -217,6 +217,21 @@ Derivado a **<equipo destino>** aplicando regla **R-DER-XX** — <nombre de la r
 ```
 
 - Si falla el Write: reportar (las acciones en Jira ya están hechas; el registro es secundario, no bloquea).
+
+**4e. Registrar en el log de auditoría** (append-only — una línea JSON por ticket sobre el que se intentó una acción de derivación, es decir que matcheó una regla R-DER):
+
+- **Determinar `source`**: si este subcomando fue invocado desde el flujo de `assign-unassigned` (paso 9e de `assign-unassigned.md`), usar `"auto-assign"`; si lo invocó el usuario directamente con `/groot-queue derive`, usar `"manual"`.
+- **Determinar `result`**:
+  - `"ok"` — nota interna + transición exitosas.
+  - `"partial-error"` — la nota interna salió pero la transición falló (o viceversa).
+  - `"failed"` — no se completó ninguna acción en Jira.
+  - `"manual"` — la regla requiere acción manual / redirección (no se escribió en Jira automáticamente).
+- **Appendear** (nunca sobrescribir) una línea JSON con el Bash tool al log de auditoría del **año en curso**: `~/.claude/skills/groot-queue/knowledge/audit-log-<YYYY>.jsonl` (un archivo por año para que no crezca indefinidamente). El año `<YYYY>` se resuelve en el mismo comando con `$(date -u +%Y)`:
+  ```bash
+  printf '%s\n' '{"ts":"<ISO8601 UTC>","action":"derive","key":"<KEY>","rule":"R-DER-XX","source":"<auto-assign|manual>","destination":"<equipo destino>","result":"<ok|partial-error|failed|manual>"}' >> ~/.claude/skills/groot-queue/knowledge/audit-log-$(date -u +%Y).jsonl
+  ```
+- No registrar los tickets `NO_DERIVA` (no matchearon ninguna regla): no hubo derivación que auditar.
+- Si el append falla: reportar; no bloquea (las acciones en Jira ya están hechas).
 
 ### 5. Mostrar tabla de resultados final
 

@@ -1,5 +1,5 @@
 ---
-description: Verifica e instala dependencias necesarias (ACLI, Atlassian MCP, Slack MCP, permisos, estado round-robin) para usar la skill groot-queue.
+description: Verifica e instala dependencias necesarias (ACLI, Atlassian MCP, Slack MCP, permisos) para usar la skill groot-queue.
 ---
 
 # /groot-queue:setup
@@ -66,13 +66,7 @@ El subcomando `derive` usa el MCP de Atlassian para ejecutar la transición "Der
   { "permissions": { "allow": ["Bash(acli jira *)"] } }
   ```
 
-## 5. Estado round-robin
-
-- Verificar si existe el archivo `roundrobin-state.json` en la knowledge base
-- Si no existe: crearlo con `{ "last_updated": "", "next_assignee_index": 0, "history": [] }`
-- Path esperado: `~/.claude/skills/groot-queue/knowledge/roundrobin-state.json`
-
-## 6. Verificación del TEAM
+## 5. Verificación del TEAM
 
 - Leer la sección TEAM del SKILL.md (`~/.claude/skills/groot-queue/SKILL.md`)
 - Si está vacía: advertir que `/groot-queue:assign-unassigned` no funcionará hasta configurarlo
@@ -85,7 +79,6 @@ El subcomando `derive` usa el MCP de Atlassian para ejecutar la transición "Der
 ✅ Atlassian MCP disponible, autenticado y con cloudId validado para mercadolibre.atlassian.net
 ✅ Slack MCP disponible y autenticado
 ✅ Permiso Bash(acli jira *) configurado
-✅ Estado round-robin inicializado
 ✅ Equipo configurado (8 miembros)
 
 Setup completo. Podés usar /groot-queue:list para empezar.

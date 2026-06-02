@@ -1,11 +1,11 @@
 ---
 name: groot-queue
-description: "Monitorea la cola de soporte [Core] - Groot (SSHP). Lista, clasifica, analiza urgencia, sugiere soluciones, alerta por Slack y asigna tickets sin responsable usando round-robin. Usar cuando el usuario invoque /groot-queue o pregunte por tickets de soporte de Groot."
+description: "Monitorea la cola de soporte [Core] - Groot (SSHP). Lista, clasifica, analiza urgencia, sugiere soluciones, alerta por Slack y asigna tickets sin responsable balanceando la carga abierta del equipo. Usar cuando el usuario invoque /groot-queue o pregunte por tickets de soporte de Groot."
 ---
 
 # Groot Queue Monitor
 
-**Propósito**: Monitorear y gestionar la cola de soporte "[Core] - Groot" del proyecto Jira SSHP. Read-only salvo los subcomandos `assign-unassigned`, que asigna tickets en Jira usando round-robin; `derive`, que postea nota interna y transiciona estado con MCP Atlassian; y `discard`, que postea comentario público y cierra tickets que no corresponden a Groot Soporte.
+**Propósito**: Monitorear y gestionar la cola de soporte "[Core] - Groot" del proyecto Jira SSHP. Read-only salvo los subcomandos `assign-unassigned`, que reparte tickets sin responsable balanceando la carga abierta del TEAM (menor backlog primero, azar como desempate; lee la carga desde Jira vía MCP Atlassian); `derive`, que postea nota interna y transiciona estado con MCP Atlassian; y `discard`, que postea comentario público y cierra tickets que no corresponden a Groot Soporte.
 
 Esta skill funciona como **índice + dispatcher** de subcomandos. La lógica concreta de cada acción vive en `subcommands/<nombre>.md` (single source of truth, compartido entre Claude Code y Codex).
 
@@ -37,14 +37,14 @@ Path absoluto (post-install): `~/.claude/skills/groot-queue/subcommands/<nombre>
 
 | Subcomando | Acción |
 |------------|--------|
-| `setup` | Verificar e instalar dependencias necesarias (ACLI, Atlassian MCP, Slack MCP, permisos, estado round-robin) |
+| `setup` | Verificar e instalar dependencias necesarias (ACLI, Atlassian MCP, Slack MCP, permisos) |
 | `list` | Listar todos los incidentes abiertos |
 | `classify` | Clasificar y agrupar por tipo de problema + urgencia |
 | `detail SSHP-XXXXXX` | Detalle completo de un ticket con clasificación y sugerencia |
 | `solve SSHP-XXXXXX` | Sugerir solución basada en runbooks + análisis |
 | `alerts` | Detectar tickets en riesgo de SLA y notificar por Slack DM |
 | `stats` | Estadísticas agregadas de la cola |
-| `assign-unassigned` | Asignar en Jira todos los tickets sin responsable usando round-robin |
+| `assign-unassigned` | Asignar en Jira todos los tickets sin responsable balanceando la carga abierta del TEAM (menor backlog primero, azar como desempate) |
 | `derive SSHP-XXXXXX` | Derivar un ticket al equipo correcto: detecta regla R-DER y, si hay MCP Atlassian compatible, postea nota interna y transiciona estado |
 | `discard SSHP-XXXXXX` | Descartar un ticket que no corresponde a Groot Soporte: detecta regla R-DESC y, si hay MCP Atlassian compatible, postea comentario público y cierra el ticket |
 | `save SSHP-XXXXXX <desc>` | Guardar la solución aplicada a un ticket en la knowledge base |
@@ -78,17 +78,16 @@ Toda la lógica de negocio (reglas de triage, runbooks procedurales, lógica de 
     ├── triage-rules.md     ← Reglas R-DESC / R-DER / R-FIX + algoritmo de triage
     ├── runbooks.md         ← Runbooks procedurales por categoría
     ├── solutions/          ← Casos concretos resueltos, por categoría
-    ├── apis/               ← Docs de endpoints (a futuro)
-    └── roundrobin-state.json   ← Estado persistente del round-robin (creado por setup)
+    └── apis/               ← Docs de endpoints (a futuro)
 ```
 
 Los subcomandos **deben leer estos archivos** cada vez que los necesiten (sin cachear). Si cualquiera de estos archivos no existe, avisar al usuario y seguir con los datos mínimos.
 
 ---
 
-## Equipo para Round-Robin
+## Equipo para asignación
 
-Lista de miembros para la rotación. Editá esta lista para cambiar el equipo. El campo `email` se usa directamente en `assign-unassigned` — no se deriva del username:
+Lista de miembros entre los que se reparten los tickets. Editá esta lista para cambiar el equipo. El campo `email` se usa directamente en `assign-unassigned` — no se deriva del username:
 
 ```
 TEAM:
@@ -118,8 +117,7 @@ TEAM:
     name: Guido Modarelli
 ```
 
-El orden define el turno. El índice actual se persiste en:
-`~/.claude/skills/groot-queue/knowledge/roundrobin-state.json`
+El orden de la lista **no** define el turno: `assign-unassigned` lee desde Jira (vía MCP Atlassian) cuántos incidentes no resueltos de SSHP/Groot —el mismo universo de tickets que reparte— tiene a su nombre cada miembro y usa ese conteo como **peso**, asignando cada ticket al de menor carga (azar solo para desempatar). La asignación **no persiste estado entre corridas** — usa un archivo scratch efímero (creado con `mktemp` y borrado al terminar) solo durante la ejecución. Como la carga se lee de Jira (fuente de verdad compartida), la equidad no depende del orden en que cada miembro ejecute el comando ni de ninguna cache local.
 
 ---
 

@@ -73,7 +73,7 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["R-DER", "Equipo destino", "Derivar a otro equipo", "acli jira workitem view", "Atlassian", "configuración", "setup", "autorización", "permiso", "acli", "⚠️"]
+          "values": ["R-DER", "Plan de derivación", "Equipo destino", "Derivar a otro equipo", "acli jira workitem view", "MCP", "Atlassian", "configuración", "setup", "autorización", "permiso", "acli", "⚠️"]
         }
       ]
     },
@@ -95,7 +95,7 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["Plan de derivación", "R-DER", "Atlassian"]
+          "values": ["Plan de derivación", "R-DER", "Equipo destino", "Derivar a otro equipo", "MCP", "Atlassian", "configuración", "setup", "⚠️"]
         }
       ]
     },
@@ -106,7 +106,7 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["Plan de derivación", "R-DER", "Atlassian"]
+          "values": ["Plan de derivación", "R-DER", "Equipo destino", "Derivar a otro equipo", "MCP", "Atlassian", "configuración", "setup", "⚠️"]
         }
       ]
     },
@@ -191,7 +191,7 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["Plan de descarte", "R-DESC", "Won't Do", "Atlassian"]
+          "values": ["Plan de descarte", "R-DESC", "Won't Do", "acli jira workitem view", "MCP", "Atlassian", "configuración", "setup", "autorización", "permiso", "acli", "⚠️"]
         }
       ]
     },
@@ -202,7 +202,7 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["Plan de descarte", "R-DESC", "Atlassian"]
+          "values": ["Plan de descarte", "R-DESC", "Won't Do", "MCP", "Atlassian", "configuración", "setup", "⚠️"]
         }
       ]
     },
@@ -218,21 +218,41 @@
       ]
     },
     {
+      "id": "assign-unassigned-load-balanced",
+      "description": "assign-unassigned balances each member's current open workload read from Jira (least-loaded first), without persisting any local index/cache (no round-robin state file)",
+      "input": "Explain how /groot-queue assign-unassigned decides which team member each unassigned ticket goes to. Do not execute Jira commands.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "selection balances current workload (least-loaded first) rather than a persisted index",
+          "values": ["carga", "balance", "equilibr", "backlog", "menor", "menos", "workload", "peso", "asignaciones"]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "must not rely on a persisted local index or round-robin state file",
+          "values": ["next_assignee_index", "roundrobin-state.json"]
+        }
+      ]
+    },
+    {
       "id": "r-desc-04-inactive-leader-exception",
       "description": "R-DESC-04 exception: ticket where requester states the current leader is inactive/offboarded must be classified as VALIDO_GROOT, not DESCARTAR",
       "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Cambio de supervisor directo - líder fue dado de baja'. Description='Necesitamos mover 5 reps al supervisor Y. El líder actual ya no trabaja más en la empresa, fue dado de baja la semana pasada y no tiene acceso a ninguna tool.' Apply triage rules.",
       "assertions": [
         {
           "type": "contains",
+          "description": "verdict is VALIDO_GROOT",
           "value": "VALIDO_GROOT"
         },
         {
           "type": "not_contains_any",
-          "values": ["⛔ DESCARTAR"]
+          "description": "final verdict line is not DESCARTAR (guards the rendered verdict, not rule-name/0-count-summary/reasoning mentions of DESCARTAR)",
+          "values": ["`⛔ DESCARTAR`", "Veredicto de Triage: `⛔", "Veredicto: `⛔", "Veredicto Final: `⛔"]
         },
         {
           "type": "contains_any",
-          "values": ["R-DESC-04", "líder", "inactivo", "dado de baja", "Excepción"]
+          "description": "the inactive/offboarded-leader exception is recognized",
+          "values": ["R-DESC-04", "inactivo", "dado de baja", "desvinculad", "fuera de la empresa", "sin acceso", "no aplica", "Excepción"]
         }
       ]
     }
