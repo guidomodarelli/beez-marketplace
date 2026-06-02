@@ -149,8 +149,8 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - Distinto de **R-DER-10** (el mensaje "no perteneces a envíos" lo ve el **usuario final** al crear/desbloquear su cuenta). Acá el bloqueo lo ve el **admin/gestor** al intentar habilitar la cuenta desde el ABM de Groot.
   - El usuario afectado puede ser `ext_*` (externo): eso **no** lo convierte en **R-DER-06**, que exige que el `ext_*` aparezca reconocido como **cuenta Meli** en Kioske/TOTEM. Si la señal es "no pertenece a remesas / cuenta desactivada en la tool de Groot", aplica R-DER-01.
 - **Acción**: Derivar a **IAM Soporte**.
-- **Comentario sugerido** (nota interna):
-  > "Hola derivamos este ticket para que nos ayuden marcando las cuentas como shipping asi los usuarios pueden gestionarla desde nuestro ABM"
+- **Comentario sugerido** (nota interna — la postea `/groot-queue:derive`):
+  > "Hola, les derivamos este ticket para que nos ayuden marcando la cuenta con el flag de shipping. Una vez marcada, el usuario queda habilitado y podemos gestionarla desde nuestro ABM (tools de Groot). ¡Gracias!"
 - **Fuente**: SSHP-1471443, 2026-06-02. Señal "no puedo habilitar / no pertenece a envíos/remesas" + comentario interno unificados en esta regla a partir de este ticket. Verificado contra el ticket real (PT: "usuario nao pertence as remessas", cuenta desactivada, usuario `ext_beatrnog`): ya resuelto y asignado a IAM Soporte (`sup_iamcommerce_01`), lo que confirma la derivación.
 
 ### R-DER-02 — Problemas de navegación App Nav → SMO (Randall + Process Dev Full)
