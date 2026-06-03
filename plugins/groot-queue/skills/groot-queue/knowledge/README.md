@@ -73,6 +73,19 @@ cat "$KB"/audit-log-*.jsonl | grep '"result":"partial-error"' | jq .   # los que
 jq -r '.rule' "$KB"/audit-log-*.jsonl | sort | uniq -c
 ```
 
+## Aliases de campos Jira
+
+Los subcomandos deben usar aliases descriptivos cuando referencian campos internos
+de Jira. El field id real se mantiene acá para que la lógica de la skill sea
+legible y haya un único lugar donde consultar qué representa cada campo.
+
+| Alias | Field id real | Representa | Uso |
+|-------|---------------|------------|-----|
+| `DERIVATION_DESTINATION_SQUAD_FIELD` | `customfield_13781` | Squad/equipo destino seleccionado en la transición "Derivar a otro equipo" de SSHP. | `/groot-queue derive`, al completar `fields` para la transición `121`. |
+
+Al construir el payload final para Jira/MCP, expandir el alias al field id real.
+No enviar el alias literal como nombre de campo.
+
 ## Cómo agregar una solución concreta
 
 1. Ejecutar `/groot-queue save SSHP-XXXXX` (la skill genera el archivo automáticamente), o

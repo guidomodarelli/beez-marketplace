@@ -76,20 +76,23 @@ Solo continuar al algoritmo si los tres puntos anteriores pasaron. El `cloudId` 
 
 ## Referencia de squads destino → IDs de Jira
 
-| Equipo destino | customfield_13781 id |
-|----------------|----------------------|
+Usar el alias `DERIVATION_DESTINATION_SQUAD_FIELD` para referirse al campo Jira que define el squad destino de la transición "Derivar a otro equipo". El mapeo del alias al field id real está documentado en `$SKILL_DIR/knowledge/README.md`. Antes de llamar al MCP/Jira, expandir el alias al field id real; no enviar el alias literal en el payload.
+
+| Equipo destino | `DERIVATION_DESTINATION_SQUAD_FIELD` option id |
+|----------------|-----------------------------------------------|
 | IAM Soporte | `57102` |
 | SMO (Randall) | `41817` (Resolution SMO) |
 | Helpdesk IA | `125821` |
 
-> `R-DER-03` deriva a IAM Commerce, pero todavía no tiene `customfield_13781` ni comentario validado en esta tabla. Marcar esos tickets como `MANUAL_DERIVATION` y no ejecutar acciones automáticas hasta completar esos datos.
+> `R-DER-03` deriva a IAM Commerce, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD` ni comentario validado en esta tabla. Marcar esos tickets como `MANUAL_DERIVATION` y no ejecutar acciones automáticas hasta completar esos datos.
 > `R-DER-05` no deriva a un squad de Jira: redirige al canal Slack `#help-authz-internal-admins`. Marcar esos tickets como `MANUAL_REDIRECT` y no ejecutar acciones automáticas.
+> `R-DER-12` deriva a LMS, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD` ni comentario validado contra un ticket real. Marcar esos tickets como `MANUAL_DERIVATION` y no ejecutar acciones automáticas hasta completar esos datos.
 
 ## Algoritmo
 
 ### 1. Cargar referencias
 
-Leer `$SKILL_DIR/knowledge/triage-rules.md` (reglas R-DER-01 a R-DER-10 + algoritmo de triage).
+Leer `$SKILL_DIR/knowledge/triage-rules.md` (reglas R-DER-01 a R-DER-12 + algoritmo de triage).
 
 ### 2. Fase de análisis — obtener y evaluar todos los tickets
 
@@ -109,10 +112,10 @@ acli jira workitem view SSHP-XXXXXX
 
 **2c. Evaluar reglas R-DER:**
 
-Aplicar **únicamente los pasos 4–13 del algoritmo de triage** definido en `triage-rules.md`, en orden:
-- R-DER-06, R-DER-07, R-DER-09, R-DER-10, R-DER-08, R-DER-04, R-DER-05, R-DER-01, R-DER-02, R-DER-03
+Aplicar **únicamente los pasos 4–15 del algoritmo de triage** definido en `triage-rules.md`, en orden:
+- R-DER-12, R-DER-06, R-DER-07, R-DER-09, R-DER-11, R-DER-10, R-DER-08, R-DER-04, R-DER-05, R-DER-01, R-DER-02, R-DER-03
 
-Tomar la **primera regla que matchee**. Si matchea `R-DER-03`, marcar el ticket como `MANUAL_DERIVATION` con destino `IAM Commerce` y no incluirlo en la ejecución automática. Si matchea `R-DER-05`, marcar el ticket como `MANUAL_REDIRECT` con destino `#help-authz-internal-admins` y no incluirlo en la ejecución automática. Si ninguna aplica, evaluar el veredicto completo y marcar como `NO_DERIVA` con el veredicto resultante (DESCARTAR / FIX_APLICADO / VALIDO_GROOT / REVISAR_MANUAL).
+Tomar la **primera regla que matchee**. Si matchea `R-DER-03`, marcar el ticket como `MANUAL_DERIVATION` con destino `IAM Commerce` y no incluirlo en la ejecución automática. Si matchea `R-DER-12`, marcar el ticket como `MANUAL_DERIVATION` con destino `LMS` y no incluirlo en la ejecución automática. Si matchea `R-DER-05`, marcar el ticket como `MANUAL_REDIRECT` con destino `#help-authz-internal-admins` y no incluirlo en la ejecución automática. Si ninguna aplica, evaluar el veredicto completo y marcar como `NO_DERIVA` con el veredicto resultante (DESCARTAR / FIX_APLICADO / VALIDO_GROOT / REVISAR_MANUAL).
 
 ### 3. Mostrar plan consolidado
 
@@ -131,6 +134,8 @@ Antes de ejecutar **cualquier** acción en Jira, mostrar el plan para todos los 
   SSHP-ZZZZZZ  ⚠️  NO_DERIVA — VALIDO_GROOT (sin acción)
 
   SSHP-WWWWWW  ⚠️  MANUAL_DERIVATION — IAM Commerce (R-DER-03 sin automatización)
+
+  SSHP-UUUUUU  ⚠️  MANUAL_DERIVATION — LMS (R-DER-12 sin automatización)
 
   SSHP-VVVVVV  ⚠️  MANUAL_REDIRECT — #help-authz-internal-admins (R-DER-05 sin transición Jira)
 
@@ -165,11 +170,12 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 - `fields`:
   ```json
   {
-    "customfield_13781": {"id": "<id-squad-destino>"},
+    "<DERIVATION_DESTINATION_SQUAD_FIELD>": {"id": "<id-squad-destino>"},
     "customfield_14924": {"id": "20884"}
   }
   ```
   _(20884 = "Solución parcial, otro Squad requerido")_
+  Antes de ejecutar la llamada real, reemplazar `<DERIVATION_DESTINATION_SQUAD_FIELD>` por el field id real documentado en `$SKILL_DIR/knowledge/README.md`.
 - `update`:
   ```json
   {

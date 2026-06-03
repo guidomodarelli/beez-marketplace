@@ -419,6 +419,28 @@
           "values": ["R-DESC-04", "inactivo", "dado de baja", "desvinculad", "fuera de la empresa", "sin acceso", "no aplica", "Excepción"]
         }
       ]
+    },
+    {
+      "id": "r-der-12-be-a-rep-hours-lms",
+      "description": "R-DER-12 classifies Be a Rep hours accounting issues as DERIVAR to LMS",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Errores en la contabilidad de horas en Be a Rep'. Description='Las horas de Be a Rep no coinciden en LMS y necesitamos que revisen la diferencia de horas contabilizadas para los reps afectados.' Apply triage rules.",
+      "assertions": [
+        {
+          "type": "contains",
+          "description": "the new LMS derivation rule is matched",
+          "value": "R-DER-12"
+        },
+        {
+          "type": "contains",
+          "description": "verdict is DERIVAR",
+          "value": "DERIVAR"
+        },
+        {
+          "type": "contains",
+          "description": "destination is LMS",
+          "value": "LMS"
+        }
+      ]
     }
   ]
 }
