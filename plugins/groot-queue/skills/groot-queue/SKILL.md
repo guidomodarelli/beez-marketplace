@@ -1,6 +1,6 @@
 ---
 name: groot-queue
-description: "Monitorea la cola de soporte [Core] - Groot (SSHP). Lista, clasifica, analiza urgencia, sugiere soluciones, alerta por Slack y asigna tickets sin responsable repartiéndolos de forma equitativa entre el equipo. Usar cuando el usuario invoque /groot-queue o pregunte por tickets de soporte de Groot."
+description: "Monitorea la cola de soporte [Core] - Groot (SSHP). Lista, clasifica, analiza urgencia, sugiere soluciones, alerta por Slack, asigna tickets sin responsable y analiza históricos con analyze-history. Usar cuando el usuario invoque /groot-queue o pregunte por tickets de soporte de Groot."
 ---
 
 # Groot Queue Monitor
@@ -16,6 +16,7 @@ Esta skill funciona como **índice + dispatcher** de subcomandos. La lógica con
 Al activarse la skill, parsear el primer token del input del usuario después de `/groot-queue` como subcomando:
 
 - Si el subcomando coincide con uno de la tabla → **leer `subcommands/<subcomando>.md` y seguir literalmente sus instrucciones**, pasando el resto del input como argumentos.
+- Si el input contiene `--help`, igual debe tratarse como una consulta del subcomando: **no ejecutar Jira ni shell**, pero sí responder desde las instrucciones del archivo `subcommands/<subcomando>.md`.
 - Si el subcomando no existe o no se provee → mostrar la tabla de subcomandos de abajo y la sección "Inicialización del entorno de desarrollo".
 
 Ejemplos:
@@ -25,6 +26,7 @@ Ejemplos:
 | `/groot-queue setup` | `subcommands/setup.md` | — |
 | `/groot-queue detail SSHP-1234567` | `subcommands/detail.md` | `SSHP-1234567` |
 | `/groot-queue save SSHP-1234567 cambio de lider corregido` | `subcommands/save.md` | `SSHP-1234567 cambio de lider corregido` |
+| `/groot-queue analyze-history --help` | `subcommands/analyze-history.md` | `--help` |
 | `/groot-queue` | (mostrar índice) | — |
 
 Path absoluto (post-install): `~/.claude/skills/groot-queue/subcommands/<nombre>.md`.
@@ -51,6 +53,24 @@ Path absoluto (post-install): `~/.claude/skills/groot-queue/subcommands/<nombre>
 | `add-rule` | Agregar una nueva regla de triage a la knowledge base |
 | `analyze-history [--limit N] [--since YYYY-MM-DD] [--force]` | Analizar tickets cerrados históricos y extraer patrones para la knowledge base |
 | _(sin argumento)_ | Mostrar esta ayuda + inicialización del entorno de desarrollo |
+
+---
+
+## Resumen Operativo De `analyze-history`
+
+Este resumen existe para consultas rápidas de ayuda. Para ejecutar o explicar detalles no cubiertos acá, leer `subcommands/analyze-history.md`.
+
+- Requiere MCP Atlassian para consultar tickets cerrados, leer changelog/comentarios y escribir labels. Si no está disponible, abortar con instrucciones para habilitar `https://mcp.atlassian.com/v1/mcp` y completar OAuth.
+- Por defecto procesa como máximo `20` tickets. `--limit N` cambia ese máximo.
+- Consulta tickets cerrados con JQL sobre `project = SSHP`, `Squad = Groot`, `type = Incident`, `statusCategory = Done`.
+- La idempotencia vive en Jira: el JQL base incluye tickets sin labels con `labels IS EMPTY` y excluye tickets con `groot-kb-analyzed` o `groot-kb-manual-review`.
+- `--force` permite re-analizar tickets con `groot-kb-analyzed`, pero los tickets con `groot-kb-manual-review` siguen excluidos.
+- `--since YYYY-MM-DD` agrega un filtro de fecha al JQL: `updated >= "YYYY-MM-DD"`.
+- Clasifica cada ticket cerrado como `DERIVADO`, `DESCARTADO` o `RESUELTO` usando la última transición de cierre del `changelog`, la resolución y el comentario clave previo a esa transición.
+- Si no puede extraer el comentario clave, no hay visibilidad suficiente de notas internas o el desenlace es ambiguo, marca el ticket con `groot-kb-manual-review` y continúa.
+- Las señales para reglas se derivan de `summary` y `description`; deben cubrir ES + PT + EN y partir del wording real del ticket.
+- Si el usuario confirma materialización: `DESCARTADO` y `DERIVADO` delegan en `add-rule` para escribir `triage-rules.md` (`R-DESC` / `R-DER`) con campos pre-poblados; `RESUELTO` delega en `save` para crear una solución.
+- El resumen final muestra conteos de procesados, materializados, descartados, saltados, manual review, reglas agregadas (`R-DESC` / `R-DER`) y soluciones guardadas.
 
 ---
 
