@@ -5,7 +5,7 @@ description: "Monitorea la cola de soporte [Core] - Groot (SSHP). Lista, clasifi
 
 # Groot Queue Monitor
 
-**Propósito**: Monitorear y gestionar la cola de soporte "[Core] - Groot" del proyecto Jira SSHP. Read-only salvo los subcomandos `assign-unassigned`, que reparte tickets sin responsable de forma equitativa entre el TEAM (stateless); `derive`, que postea nota interna y transiciona estado con MCP Atlassian; y `discard`, que postea comentario público y cierra tickets que no corresponden a Groot Soporte.
+**Propósito**: Monitorear y gestionar la cola de soporte "[Core] - Groot" del proyecto Jira SSHP. Read-only salvo los subcomandos `assign-unassigned`, que reparte tickets sin responsable de forma equitativa entre el TEAM (stateless); `derive`, que postea nota interna y transiciona estado con MCP Atlassian; `discard`, que postea comentario público y cierra tickets que no corresponden a Groot Soporte; `save` y `add-rule`, que escriben en la knowledge base local; y `analyze-history`, que analiza tickets cerrados históricos, escribe en la knowledge base y agrega labels de estado en Jira.
 
 Esta skill funciona como **índice + dispatcher** de subcomandos. La lógica concreta de cada acción vive en `subcommands/<nombre>.md` (single source of truth, compartido entre Claude Code y Codex).
 
@@ -49,6 +49,7 @@ Path absoluto (post-install): `~/.claude/skills/groot-queue/subcommands/<nombre>
 | `discard SSHP-XXXXXX` | Descartar un ticket que no corresponde a Groot Soporte: detecta regla R-DESC y, si hay MCP Atlassian compatible, postea comentario público y cierra el ticket |
 | `save SSHP-XXXXXX <desc>` | Guardar la solución aplicada a un ticket en la knowledge base |
 | `add-rule` | Agregar una nueva regla de triage a la knowledge base |
+| `analyze-history [--limit N] [--since YYYY-MM-DD] [--force]` | Analizar tickets cerrados históricos y extraer patrones para la knowledge base |
 | _(sin argumento)_ | Mostrar esta ayuda + inicialización del entorno de desarrollo |
 
 ---
@@ -72,7 +73,8 @@ Toda la lógica de negocio (reglas de triage, runbooks procedurales, lógica de 
 │   ├── derive.md
 │   ├── discard.md
 │   ├── save.md
-│   └── add-rule.md
+│   ├── add-rule.md
+│   └── analyze-history.md
 └── knowledge/
     ├── classification.md   ← JQL base + Dimensión 1 + Dimensión 2 + mapeo a solutions/
     ├── triage-rules.md     ← Reglas R-DESC / R-DER / R-FIX + algoritmo de triage
@@ -152,7 +154,7 @@ El orden de la lista **no** define el turno: en cada corrida, `assign-unassigned
 
 ## Reglas globales
 
-- **WRITE CONTROLADO**: los subcomandos `assign-unassigned`, `derive` y `discard` pueden escribir en Jira (`assign-unassigned`: transición + asignación; `derive`: nota interna + transición de estado; `discard`: comentario público + transición de cierre — los tres requieren MCP Atlassian compatible). `save` y `add-rule` escriben en la knowledge base local. Todos los demás subcomandos son read-only.
+- **WRITE CONTROLADO**: los subcomandos `assign-unassigned`, `derive` y `discard` pueden escribir en Jira (`assign-unassigned`: transición + asignación; `derive`: nota interna + transición de estado; `discard`: comentario público + transición de cierre — los tres requieren MCP Atlassian compatible). `save` y `add-rule` escriben en la knowledge base local. `analyze-history` escribe en la knowledge base local **y** agrega labels de estado (`groot-kb-analyzed` / `groot-kb-manual-review`) en los tickets de Jira (requiere MCP Atlassian). Todos los demás subcomandos son read-only.
 - **La base de conocimiento vive fuera de los subcomandos**. No duplicar runbooks ni reglas: siempre referenciar `classification.md` / `triage-rules.md` / `runbooks.md` / `solutions/` por path.
 - Siempre mostrar el link a Jira: `https://mercadolibre.atlassian.net/browse/SSHP-XXXXXX`.
 - Las respuestas deben ser en español.
