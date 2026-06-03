@@ -10,13 +10,13 @@ Analizar un ticket y sugerir una solución. Argumento: la key del ticket (`SSHP-
 ## Procedimiento
 
 1. Leer las referencias:
-   - `~/.claude/skills/groot-queue/knowledge/classification.md`
-   - `~/.claude/skills/groot-queue/knowledge/triage-rules.md`
-   - `~/.claude/skills/groot-queue/knowledge/runbooks.md`
+   - `$SKILL_DIR/knowledge/classification.md`
+   - `$SKILL_DIR/knowledge/triage-rules.md`
+   - `$SKILL_DIR/knowledge/runbooks.md`
 2. Obtener el ticket: `acli jira workitem view SSHP-XXXXXX`
 3. Identificar la categoría del problema (Dimensión 1).
 4. Buscar el runbook de esa categoría en `runbooks.md`.
-5. Leer `~/.claude/skills/groot-queue/knowledge/solutions/<categoria>/*.md` (ver mapeo de carpetas en `classification.md`) en busca de casos previos con señales similares.
+5. Leer `$SKILL_DIR/knowledge/solutions/<categoria>/*.md` (ver mapeo de carpetas en `classification.md`) en busca de casos previos con señales similares.
 6. Complementar con análisis propio basado en el contexto del ticket.
 
 ## Presentación

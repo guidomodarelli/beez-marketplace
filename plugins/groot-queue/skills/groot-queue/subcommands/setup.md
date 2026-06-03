@@ -68,7 +68,7 @@ El subcomando `derive` usa el MCP de Atlassian para ejecutar la transición "Der
 
 ## 5. Verificación del TEAM
 
-- Leer la sección TEAM del SKILL.md (`~/.claude/skills/groot-queue/SKILL.md`)
+- Leer la sección TEAM del SKILL.md (`$SKILL_DIR/SKILL.md`)
 - Si está vacía: advertir que `/groot-queue:assign-unassigned` no funcionará hasta configurarlo
 
 ## Output esperado

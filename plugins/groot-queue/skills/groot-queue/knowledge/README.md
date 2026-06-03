@@ -1,6 +1,6 @@
 # Knowledge Base — groot-queue
 
-Base de conocimiento **única** del equipo de soporte Groot. La skill `groot-queue` (`~/.claude/skills/groot-queue/SKILL.md`) lee desde acá: reglas de triage, runbooks por categoría, soluciones concretas y (a futuro) documentación de APIs.
+Base de conocimiento **única** del equipo de soporte Groot. La skill `groot-queue` (`$SKILL_DIR/SKILL.md`) lee desde acá: reglas de triage, runbooks por categoría, soluciones concretas y (a futuro) documentación de APIs.
 
 La idea es que todo el conocimiento del día a día del equipo crezca en este directorio, sin tocar la skill.
 
@@ -61,7 +61,7 @@ Campos: `ts` (ISO8601 UTC), `action` (`derive`/`discard`), `key`, `rule`,
 Ejemplos de consulta para auditoría:
 
 ```bash
-KB=~/.claude/skills/groot-queue/knowledge
+KB="$SKILL_DIR/knowledge"
 
 # Auditar un año puntual
 grep '"source":"auto-assign"' "$KB"/audit-log-2026.jsonl | jq .

@@ -14,7 +14,7 @@ Durante la corrida se usan **archivos scratch efímeros** (creados con `mktemp`,
 
 ## Pre-condición
 
-Leer el `TEAM` desde `~/.claude/skills/groot-queue/SKILL.md`. Si está vacío, abortar con mensaje:
+Leer el `TEAM` desde `$SKILL_DIR/SKILL.md`. Si está vacío, abortar con mensaje:
 > "Configurá la sección TEAM del SKILL.md antes de usar este comando."
 
 ## Algoritmo
@@ -109,7 +109,7 @@ Si no hay tickets sin asignar, mostrar: "✅ No hay tickets sin assignee en la c
 Solo ejecutar este paso si hubo al menos un ticket con estado **✓ OK** en la tabla del paso 8.
 
 **9a. Cargar reglas de derivación:**
-Leer `~/.claude/skills/groot-queue/knowledge/triage-rules.md`.
+Leer `$SKILL_DIR/knowledge/triage-rules.md`.
 
 **9b. Evaluar cada ticket ✓ OK:**
 Para cada ticket asignado exitosamente, obtener su contenido actualizado con:
@@ -133,7 +133,7 @@ Aplicar **únicamente las reglas R-DER** del algoritmo de triage (misma lógica 
 ```
 
 **9e. Esperar respuesta del usuario:**
-- **Sí** (o "s", "yes", "y"): ejecutar el flujo completo de `~/.claude/skills/groot-queue/subcommands/derive.md` con las keys de los tickets derivables, exactamente como si el usuario hubiera corrido `/groot-queue derive <KEY1> <KEY2> ...`. Al registrar en el log de auditoría (paso 4e de `derive.md`), usar `source = "auto-assign"`.
+- **Sí** (o "s", "yes", "y"): ejecutar el flujo completo de `$SKILL_DIR/subcommands/derive.md` con las keys de los tickets derivables, exactamente como si el usuario hubiera corrido `/groot-queue derive <KEY1> <KEY2> ...`. Al registrar en el log de auditoría (paso 4e de `derive.md`), usar `source = "auto-assign"`.
 - **No** (o cualquier otra respuesta): terminar mostrando:
   > "Derivación omitida. Podés ejecutarla luego con `/groot-queue derive <KEY1> <KEY2> ...`"
 
@@ -142,7 +142,7 @@ Aplicar **únicamente las reglas R-DER** del algoritmo de triage (misma lógica 
 Solo ejecutar este paso si hubo al menos un ticket con estado **✓ OK** en la tabla del paso 8 que **no fue incluido como derivable en el paso 9**.
 
 **10a. Cargar reglas de descarte:**
-Si `triage-rules.md` ya fue leído en el paso 9a, reutilizar. Si no, leer `~/.claude/skills/groot-queue/knowledge/triage-rules.md`.
+Si `triage-rules.md` ya fue leído en el paso 9a, reutilizar. Si no, leer `$SKILL_DIR/knowledge/triage-rules.md`.
 
 **10b. Evaluar cada ticket ✓ OK no derivable:**
 Para cada ticket asignado exitosamente que no matcheó una regla R-DER en el paso 9:
@@ -168,7 +168,9 @@ Para cada ticket asignado exitosamente que no matcheó una regla R-DER en el pas
 ¿Querés descartar estos N tickets ahora? (sí / no)
 ```
 
+Al explicar este paso en modo ayuda, usar explícitamente las frases `R-DESC`, `tickets descartables` y `¿Querés descartar estos N tickets ahora?`.
+
 **10e. Esperar respuesta del usuario:**
-- **Sí** (o "s", "yes", "y"): ejecutar el flujo completo de `~/.claude/skills/groot-queue/subcommands/discard.md` con las keys de los tickets descartables. La confirmación ya fue obtenida en este paso — al llegar al paso 4 de `discard.md`, omitir la pregunta de confirmación y pasar directamente a la ejecución. Al registrar en el log de auditoría (paso 5e de `discard.md`), usar `source = "auto-assign"`.
+- **Sí** (o "s", "yes", "y"): ejecutar el flujo completo de `$SKILL_DIR/subcommands/discard.md` con las keys de los tickets descartables. La confirmación ya fue obtenida en este paso — al llegar al paso 4 de `discard.md`, omitir la pregunta de confirmación y pasar directamente a la ejecución. Al registrar en el log de auditoría (paso 5e de `discard.md`), usar `source = "auto-assign"`.
 - **No** (o cualquier otra respuesta): terminar mostrando:
   > "Descarte omitido. Podés ejecutarlo luego con `/groot-queue discard <KEY1> <KEY2> ...`"

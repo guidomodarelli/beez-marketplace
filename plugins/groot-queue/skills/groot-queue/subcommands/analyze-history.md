@@ -12,6 +12,7 @@ Analizar tickets cerrados (DERIVADO / DESCARTADO / RESUELTO) de la cola Groot (S
 - `--limit N` (por defecto: 20) — máximo de tickets a procesar en esta corrida.
 - `--since YYYY-MM-DD` — analizar solo tickets cuya última actualización sea ≥ esa fecha.
 - `--force` — re-analizar tickets ya marcados con `groot-kb-analyzed`. Los marcados con `groot-kb-manual-review` siguen excluidos incluso con `--force` (requieren revisión manual explícita quitando la label).
+  - Al explicar `--force` en modo ayuda, decir explícitamente: `no incluye` tickets con `groot-kb-manual-review`; siguen excluidos incluso con `--force`.
 
 ## Pre-requisitos
 
@@ -43,6 +44,8 @@ project = SSHP AND Squad = Groot AND type = Incident AND statusCategory = Done A
 `statusCategory = Done` cubre todos los estados que Jira considera cerrados (Done, Cancelled, Won't Do, Derivado a otro equipo, Dismissed, etc.) sin depender de los nombres exactos de los estados, que varían según la configuración del proyecto.
 
 Usar siempre `labels IS EMPTY OR ...` al filtrar labels: los filtros negativos de Jira no matchean tickets sin labels, y esos tickets también deben entrar en el análisis histórico.
+
+Al explicar la idempotencia en modo ayuda, mencionar explícitamente `labels IS EMPTY` y que los tickets sin labels también se incluyen en la consulta.
 
 Modificaciones adicionales:
 - Si `--since YYYY-MM-DD`: agregar `AND updated >= "YYYY-MM-DD"` al JQL correspondiente.
@@ -107,6 +110,7 @@ Del `summary` + `description` del ticket, extraer 2–4 señales concretas en **
 - Usar frases literales del ticket que permitan reconocer casos similares.
 - Si el ticket está en un idioma, usar ese texto literal como señal para ese idioma y proponer equivalentes para los otros dos.
 - No inventar señales: derivarlas del wording real del ticket.
+- Al explicar este punto en modo ayuda, usar explícitamente la frase `señales trilingües (ES + PT + EN)` y responder en español.
 
 #### 2g. Mostrar propuesta al usuario
 

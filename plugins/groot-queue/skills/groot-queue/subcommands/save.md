@@ -9,7 +9,7 @@ Guardar la resolución real de un ticket en la knowledge base. Argumentos: la ke
 
 ## Algoritmo
 
-1. Leer la referencia de clasificación: `~/.claude/skills/groot-queue/knowledge/classification.md` (especialmente Dimensión 1 y mapeo de carpetas).
+1. Leer la referencia de clasificación: `$SKILL_DIR/knowledge/classification.md` (especialmente Dimensión 1 y mapeo de carpetas).
 2. Obtener info del ticket:
    ```bash
    acli jira workitem view SSHP-XXXXXX
@@ -17,11 +17,11 @@ Guardar la resolución real de un ticket en la knowledge base. Argumentos: la ke
 3. Detectar categoría usando la lógica de Dimensión 1.
 4. Generar slug del archivo: `<ticket-key>-<primeras-3-palabras-del-summary>.md` (minúsculas, guiones)
    - Ejemplo: `SSHP-1407882-referencia-circular-lider.md`
-5. Buscar si ya existe un archivo para ese ticket en `~/.claude/skills/groot-queue/knowledge/solutions/<categoria>/`:
+5. Buscar si ya existe un archivo para ese ticket en `$SKILL_DIR/knowledge/solutions/<categoria>/`:
    - Leer los frontmatter `ticket:` de cada archivo `.md` de esa carpeta.
    - Si ya existe: mostrar `⚠️ Ya existe una solución para SSHP-XXXXXX en <path>. ¿Querés sobrescribir? (sí/no)`.
    - Si el usuario dice no: abortar.
-6. Crear el archivo markdown en `~/.claude/skills/groot-queue/knowledge/solutions/<categoria>/`:
+6. Crear el archivo markdown en `$SKILL_DIR/knowledge/solutions/<categoria>/`:
 
 ```markdown
 ---
@@ -48,7 +48,7 @@ effectiveness: confirmed
 7. Mostrar confirmación:
 ```
 ✅ Solución guardada en:
-   ~/.claude/skills/groot-queue/knowledge/solutions/<categoria>/<slug>.md
+   $SKILL_DIR/knowledge/solutions/<categoria>/<slug>.md
 
 Categoría: <Nombre de categoría>
 Fecha: <YYYY-MM-DD>
