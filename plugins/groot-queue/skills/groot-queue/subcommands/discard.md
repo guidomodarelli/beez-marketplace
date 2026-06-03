@@ -28,7 +28,7 @@ Ejemplos válidos:
 
 ## Pre-condición: MCP Atlassian
 
-**Verificar antes de proceder con cualquier otra acción. Si alguno de los siguientes pasos falla, abortar y no continuar.**
+**Verificar después de validar argumentos.** Si no hay ninguna key `SSHP-XXXXXX` válida, abortar con el mensaje de uso de la sección anterior sin intentar usar MCP. Si hay keys válidas, verificar MCP antes de proceder con cualquier lectura o escritura en Jira. Si alguno de los siguientes pasos falla, abortar y no continuar.
 
 **A. Disponibilidad de herramientas:**
 Intentar llamar `mcp__Atlassian__getAccessibleAtlassianResources` (o herramienta equivalente si el proveedor usa un prefijo distinto).
@@ -67,7 +67,7 @@ Solo continuar al algoritmo si A y B pasaron. El `cloudId` obtenido en el punto 
 
 ### 1. Cargar reglas de triage
 
-Leer `~/.claude/skills/groot-queue/knowledge/triage-rules.md` (reglas R-DESC-01 a R-DESC-12 + algoritmo de triage completo).
+Leer `$SKILL_DIR/knowledge/triage-rules.md` (reglas R-DESC-01 a R-DESC-12 + algoritmo de triage completo).
 
 ### 2. Fase de análisis — obtener y evaluar todos los tickets
 
@@ -181,7 +181,7 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 **5d. Registrar en knowledge base** (Write tool):
 - Registrar en KB solo si comentario + transición terminaron exitosamente.
 - Si alguno falló, no crear un registro `effectiveness: confirmed`; reportar `KB —` en la tabla final.
-- Path: `~/.claude/skills/groot-queue/knowledge/solutions/queue-management/<ticket-key-lowercase>-descartado-<regla-slug>.md`
+- Path: `$SKILL_DIR/knowledge/solutions/queue-management/<ticket-key-lowercase>-descartado-<regla-slug>.md`
 - Slug regla: `r-desc-01`, `r-desc-02`, etc.
 
 ```markdown
@@ -218,9 +218,9 @@ Ticket cerrado como **Won't Do** aplicando regla **R-DESC-XX** — <nombre de la
   - `"partial-error"` — el comentario salió pero la transición falló (o viceversa).
   - `"failed"` — no se completó ninguna acción en Jira.
   - `"manual"` — la regla quedó marcada como `REVISAR_MANUAL` (no se cerró automáticamente).
-- **Appendear** (nunca sobrescribir) una línea JSON con el Bash tool al log de auditoría del **año en curso**: `~/.claude/skills/groot-queue/knowledge/audit-log-<YYYY>.jsonl` (un archivo por año para que no crezca indefinidamente). El año `<YYYY>` se resuelve en el mismo comando con `$(date -u +%Y)`:
+- **Appendear** (nunca sobrescribir) una línea JSON con el Bash tool al log de auditoría del **año en curso**: `$SKILL_DIR/knowledge/audit-log-<YYYY>.jsonl` (un archivo por año para que no crezca indefinidamente). El año `<YYYY>` se resuelve en el mismo comando con `$(date -u +%Y)`:
   ```bash
-  printf '%s\n' '{"ts":"<ISO8601 UTC>","action":"discard","key":"<KEY>","rule":"R-DESC-XX","source":"<auto-assign|manual>","result":"<ok|partial-error|failed|manual>"}' >> ~/.claude/skills/groot-queue/knowledge/audit-log-$(date -u +%Y).jsonl
+  printf '%s\n' '{"ts":"<ISO8601 UTC>","action":"discard","key":"<KEY>","rule":"R-DESC-XX","source":"<auto-assign|manual>","result":"<ok|partial-error|failed|manual>"}' >> "$SKILL_DIR/knowledge/audit-log-$(date -u +%Y).jsonl"
   ```
 - No registrar los tickets `NO_DESCARTA` (no matchearon ninguna regla): no hubo descarte que auditar.
 - Si el append falla: reportar; no bloquea (las acciones en Jira ya están hechas).

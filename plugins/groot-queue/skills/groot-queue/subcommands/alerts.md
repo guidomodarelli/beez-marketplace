@@ -9,8 +9,8 @@ Detectar tickets en riesgo de SLA y notificar por Slack DM.
 ## Procedimiento
 
 1. Leer las referencias:
-   - `~/.claude/skills/groot-queue/knowledge/classification.md`
-   - `~/.claude/skills/groot-queue/knowledge/triage-rules.md`
+   - `$SKILL_DIR/knowledge/classification.md`
+   - `$SKILL_DIR/knowledge/triage-rules.md`
 2. Obtener todos los tickets abiertos (JQL base).
 3. Clasificar cada uno (incluye triage de veredicto).
 4. Filtrar los que tienen **urgencia >= 4** O están en **"Esperando por Soporte" sin asignar hace >24h**.

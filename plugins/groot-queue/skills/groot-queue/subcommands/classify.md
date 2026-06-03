@@ -8,7 +8,7 @@ Clasificar tickets abiertos por categoría + urgencia y mostrar acciones de tria
 
 ## Procedimiento
 
-1. Leer la lógica de clasificación y triage desde `~/.claude/skills/groot-queue/knowledge/classification.md` y `~/.claude/skills/groot-queue/knowledge/triage-rules.md`.
+1. Leer la lógica de clasificación y triage desde `$SKILL_DIR/knowledge/classification.md` y `$SKILL_DIR/knowledge/triage-rules.md`.
 2. Ejecutar el JQL base (ver `classification.md`).
 3. Para cada ticket, aplicar el triage de veredicto y luego clasificar en las dos dimensiones (tipo de problema + urgencia).
 

@@ -11,6 +11,19 @@ Esta skill funciona como **índice + dispatcher** de subcomandos. La lógica con
 
 ---
 
+## Resolución De Paths
+
+Antes de leer o escribir archivos del skill, resolver una variable conceptual `SKILL_DIR`:
+
+1. Si existe la variable de entorno `GROOT_QUEUE_SKILL_DIR`, usar ese valor.
+2. Si no existe y está disponible `~/.codex/skills/groot-queue/SKILL.md`, usar `~/.codex/skills/groot-queue`.
+3. Si no existe y está disponible `~/.claude/skills/groot-queue/SKILL.md`, usar `~/.claude/skills/groot-queue`.
+4. Si se está trabajando dentro del repositorio marketplace, usar `plugins/groot-queue/skills/groot-queue`.
+
+En los subcomandos, `$SKILL_DIR` refiere a ese directorio resuelto. No asumir un path exclusivo de Claude o Codex. Si se usa `GROOT_QUEUE_SKILL_DIR` desde `.zshrc`, debe estar exportada en el entorno que inicia el agente; los shells `bash` invocados después solo heredan variables ya exportadas. Cuando un snippet Bash use `$SKILL_DIR` y la variable no esté en el entorno, definirla en la misma llamada Bash con el path resuelto.
+
+---
+
 ## Dispatcher (importante)
 
 Al activarse la skill, parsear el primer token del input del usuario después de `/groot-queue` como subcomando:
@@ -29,7 +42,7 @@ Ejemplos:
 | `/groot-queue analyze-history --help` | `subcommands/analyze-history.md` | `--help` |
 | `/groot-queue` | (mostrar índice) | — |
 
-Path absoluto (post-install): `~/.claude/skills/groot-queue/subcommands/<nombre>.md`.
+Path resuelto: `$SKILL_DIR/subcommands/<nombre>.md`.
 
 **Nota para Claude Code**: si el usuario invoca `/groot-queue:<nombre>` (sintaxis de slash command de plugin), Claude carga directamente `commands/<nombre>.md` del plugin — un wrapper que apunta al mismo `subcommands/<nombre>.md`. La fuente de verdad es la misma; el dispatcher de esta skill solo se ejecuta cuando se entra por la skill (Codex o Claude tipeando `/groot-queue` sin `:`).
 
@@ -79,7 +92,7 @@ Este resumen existe para consultas rápidas de ayuda. Para ejecutar o explicar d
 Toda la lógica de negocio (reglas de triage, runbooks procedurales, lógica de clasificación y casos concretos) vive en la **knowledge base** bundleada con la skill:
 
 ```
-~/.claude/skills/groot-queue/
+$SKILL_DIR/
 ├── SKILL.md             ← Este archivo (índice + dispatcher)
 ├── subcommands/         ← Lógica de cada subcomando (single source of truth)
 │   ├── setup.md

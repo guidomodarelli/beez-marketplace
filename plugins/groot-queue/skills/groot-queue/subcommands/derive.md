@@ -89,7 +89,7 @@ Solo continuar al algoritmo si los tres puntos anteriores pasaron. El `cloudId` 
 
 ### 1. Cargar referencias
 
-Leer `~/.claude/skills/groot-queue/knowledge/triage-rules.md` (reglas R-DER-01 a R-DER-10 + algoritmo de triage).
+Leer `$SKILL_DIR/knowledge/triage-rules.md` (reglas R-DER-01 a R-DER-10 + algoritmo de triage).
 
 ### 2. Fase de análisis — obtener y evaluar todos los tickets
 
@@ -189,7 +189,7 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 **4d. Registrar en knowledge base** (Write tool):
 - Registrar en KB solo si la nota interna y la transición terminaron exitosamente.
 - Si la nota interna o la transición fallan, no crear un registro `effectiveness: confirmed`; reportar `KB —` en la tabla final para ese ticket.
-- Path: `~/.claude/skills/groot-queue/knowledge/solutions/queue-management/<ticket-key-lowercase>-derivar-<destino-slug>.md`
+- Path: `$SKILL_DIR/knowledge/solutions/queue-management/<ticket-key-lowercase>-derivar-<destino-slug>.md`
 - Slug destino: `iam-soporte`, `smo`, `helpdesk-ia`, etc.
 
 ```markdown
@@ -226,9 +226,9 @@ Derivado a **<equipo destino>** aplicando regla **R-DER-XX** — <nombre de la r
   - `"partial-error"` — la nota interna salió pero la transición falló (o viceversa).
   - `"failed"` — no se completó ninguna acción en Jira.
   - `"manual"` — la regla requiere acción manual / redirección (no se escribió en Jira automáticamente).
-- **Appendear** (nunca sobrescribir) una línea JSON con el Bash tool al log de auditoría del **año en curso**: `~/.claude/skills/groot-queue/knowledge/audit-log-<YYYY>.jsonl` (un archivo por año para que no crezca indefinidamente). El año `<YYYY>` se resuelve en el mismo comando con `$(date -u +%Y)`:
+- **Appendear** (nunca sobrescribir) una línea JSON con el Bash tool al log de auditoría del **año en curso**: `$SKILL_DIR/knowledge/audit-log-<YYYY>.jsonl` (un archivo por año para que no crezca indefinidamente). El año `<YYYY>` se resuelve en el mismo comando con `$(date -u +%Y)`:
   ```bash
-  printf '%s\n' '{"ts":"<ISO8601 UTC>","action":"derive","key":"<KEY>","rule":"R-DER-XX","source":"<auto-assign|manual>","destination":"<equipo destino>","result":"<ok|partial-error|failed|manual>"}' >> ~/.claude/skills/groot-queue/knowledge/audit-log-$(date -u +%Y).jsonl
+  printf '%s\n' '{"ts":"<ISO8601 UTC>","action":"derive","key":"<KEY>","rule":"R-DER-XX","source":"<auto-assign|manual>","destination":"<equipo destino>","result":"<ok|partial-error|failed|manual>"}' >> "$SKILL_DIR/knowledge/audit-log-$(date -u +%Y).jsonl"
   ```
 - No registrar los tickets `NO_DERIVA` (no matchearon ninguna regla): no hubo derivación que auditar.
 - Si el append falla: reportar; no bloquea (las acciones en Jira ya están hechas).
