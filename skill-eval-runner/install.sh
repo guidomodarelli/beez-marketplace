@@ -62,7 +62,9 @@ if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
 fi
 
 echo -e "${BLUE}Usage:${NC}"
-echo -e "  ${GREEN}run-evals${NC}                  Run evals for skill in current dir"
-echo -e "  ${GREEN}run-evals path/to/skill${NC}    Run evals for a specific skill"
-echo -e "  ${GREEN}run-evals --all${NC}            Run evals for all skills"
+echo -e "  ${GREEN}run-evals${NC}                  Run evals for skill in current dir (JSONL by default)"
+echo -e "  ${GREEN}run-evals path/to/skill${NC}    Run evals for a specific skill (JSONL by default)"
+echo -e "  ${GREEN}run-evals --all${NC}            Run evals for all skills (JSONL by default)"
+echo -e "  ${GREEN}run-evals --pretty${NC}         Use the human-readable colored report"
+echo -e "  ${GREEN}run-evals --provider codex${NC} Override provider auto-detection"
 echo ""
