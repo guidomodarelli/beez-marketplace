@@ -173,15 +173,20 @@ SKILL_SRC="$PWD/plugins/<plugin-name>/skills/<skill-name>"
 ln -sfn "$SKILL_SRC" ~/.claude/skills/<skill-name>   # Claude Code
 ln -sfn "$SKILL_SRC" ~/.codex/skills/<skill-name>    # Codex
 
-# Run evals for a specific skill
+# Run evals for a specific skill (JSONL by default)
 run-evals plugins/<plugin-name>/skills/<skill-name>
 
-# Run evals for all skills
+# Run evals for all skills (JSONL by default)
 run-evals --all
 
-# Emit machine-readable JSONL instead of the colored report
-# (one {"event":"case",...} object per case + a {"event":"summary",...} object)
-run-evals plugins/<plugin-name>/skills/<skill-name> --jsonl
+# Optional human-readable colored report
+run-evals plugins/<plugin-name>/skills/<skill-name> --pretty
+
+# Optional provider override (default: auto-detect Codex or Claude)
+run-evals plugins/<plugin-name>/skills/<skill-name> --provider codex
+
+# Optional persistent provider override
+export GROOT_MARKETPLACE_EVAL_PROVIDER=codex
 ```
 
 ## Bumping a plugin version

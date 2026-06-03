@@ -220,7 +220,7 @@
     {
       "id": "assign-unassigned-random-stateless",
       "description": "assign-unassigned distributes tickets randomly across the team without persisting any local index/cache (no round-robin state file)",
-      "input": "Explain how /groot-queue assign-unassigned decides which team member each unassigned ticket goes to. Do not execute Jira commands.",
+      "input": "/groot-queue assign-unassigned --help. Explain how this subcommand decides which team member each unassigned ticket goes to. Do not execute Jira commands.",
       "assertions": [
         {
           "type": "contains_any",
@@ -231,6 +231,170 @@
           "type": "not_contains_any",
           "description": "must not rely on a persisted local index or round-robin state file",
           "values": ["next_assignee_index", "roundrobin-state.json"]
+        }
+      ]
+    },
+    {
+      "id": "analyze-history-listed-in-help",
+      "description": "invoking /groot-queue without args shows analyze-history in the subcommands table",
+      "input": "/groot-queue",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "analyze-history"
+        }
+      ]
+    },
+    {
+      "id": "analyze-history-requires-mcp",
+      "description": "analyze-history explains that MCP Atlassian is required and provides enablement instructions",
+      "input": "/groot-queue analyze-history --help. The groot-queue skill documentation is already available in context; answer from its analyze-history section. Explain what this subcommand needs before it can query closed SSHP tickets. Do not execute Jira commands or query live tickets.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["MCP", "Atlassian", "mcp.atlassian.com"]
+        },
+        {
+          "type": "contains_any",
+          "values": ["habilitar", "enable", "oauth", "OAuth", "autenticación", "mcp add", "claude mcp"]
+        }
+      ]
+    },
+    {
+      "id": "analyze-history-idempotency-label",
+      "description": "analyze-history uses JQL label filters that skip processed tickets while still including unlabeled tickets",
+      "input": "/groot-queue analyze-history --help. The groot-queue skill documentation is already available in context; answer from its analyze-history section. Explain how this subcommand avoids re-analyzing tickets that were already processed. Do not execute Jira commands or query live tickets.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["groot-kb-analyzed", "label", "JQL"]
+        },
+        {
+          "type": "contains_any",
+          "values": ["labels IS EMPTY", "sin labels", "unlabeled", "sem labels"]
+        }
+      ]
+    },
+    {
+      "id": "analyze-history-force-flag",
+      "description": "analyze-history --force re-analyzes groot-kb-analyzed tickets but keeps groot-kb-manual-review excluded",
+      "input": "/groot-queue analyze-history --force --help. The groot-queue skill documentation is already available in context; answer from its analyze-history section. Explain what --force does differently from the default run. Do not execute Jira commands or query live tickets.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["groot-kb-analyzed", "fuerza", "force", "re-analiz", "ya marcad"]
+        }
+      ]
+    },
+    {
+      "id": "analyze-history-force-excludes-manual-review",
+      "description": "analyze-history --force still excludes tickets labeled groot-kb-manual-review",
+      "input": "/groot-queue analyze-history --force --help. The groot-queue skill documentation is already available in context; answer from its analyze-history section. If a ticket has the label groot-kb-manual-review, will this subcommand include it in the analysis? Explain why. Do not execute Jira commands or query live tickets.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["excluido", "sigue excluido", "not included", "omite", "omit", "No incluye", "no incluye", "no lo incluye", "excluded"]
+        },
+        {
+          "type": "contains_any",
+          "values": ["groot-kb-manual-review", "manual-review", "revisión manual", "manual review"]
+        }
+      ]
+    },
+    {
+      "id": "analyze-history-limit-default",
+      "description": "analyze-history defaults to a maximum of 20 tickets per run",
+      "input": "/groot-queue analyze-history --help. The groot-queue skill documentation is already available in context; answer from its analyze-history section. What is the default maximum number of tickets processed per run if no --limit argument is provided? Do not execute Jira commands or query live tickets.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "20"
+        }
+      ]
+    },
+    {
+      "id": "analyze-history-outcome-detection",
+      "description": "analyze-history classifies ticket outcomes as DERIVADO, DESCARTADO, or RESUELTO based on changelog and comments",
+      "input": "/groot-queue analyze-history --help. The groot-queue skill documentation is already available in context; answer from its analyze-history section. Explain how it determines whether a closed ticket was DERIVADO, DESCARTADO, or RESUELTO. Do not execute Jira commands or query live tickets.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["DERIVADO", "DESCARTADO", "RESUELTO"]
+        },
+        {
+          "type": "contains_any",
+          "values": ["changelog", "comentario", "transición", "resolución", "Won't Do"]
+        }
+      ]
+    },
+    {
+      "id": "analyze-history-trilingual-signals",
+      "description": "analyze-history generates signals in three languages: ES, PT, and EN",
+      "input": "/groot-queue analyze-history --help. The groot-queue skill documentation is already available in context; answer from its analyze-history section. Explain how it generates matcher signals for proposed triage rules. Do not execute Jira commands or query live tickets.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["ES + PT + EN", "tres idiomas", "trilingü", "español, portugués", "español y portugués"]
+        },
+        {
+          "type": "contains_any",
+          "values": ["summary", "description", "título", "descripción", "wording", "texto literal", "literal"]
+        }
+      ]
+    },
+    {
+      "id": "analyze-history-manual-review-fallback",
+      "description": "analyze-history marks tickets as groot-kb-manual-review when comments are inaccessible or outcome is ambiguous",
+      "input": "/groot-queue analyze-history --help. The groot-queue skill documentation is already available in context; answer from its analyze-history section. What does it do when it cannot extract the key comment from a closed ticket (e.g., internal note not accessible)? Do not execute Jira commands or query live tickets.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["groot-kb-manual-review", "manual-review", "revisión manual"]
+        }
+      ]
+    },
+    {
+      "id": "analyze-history-since-filter",
+      "description": "analyze-history --since adds a date filter to the JQL query",
+      "input": "/groot-queue analyze-history --since 2026-01-01 --help. The groot-queue skill documentation is already available in context; answer from its analyze-history section. Explain how --since changes the JQL used to query tickets. Do not execute Jira commands or query live tickets.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["updated >= \"2026-01-01\"", "updated >= 2026-01-01", "2026-01-01", "fecha"]
+        },
+        {
+          "type": "contains_any",
+          "values": ["JQL", "filtro", "filter", "query"]
+        }
+      ]
+    },
+    {
+      "id": "analyze-history-materialization-delegates",
+      "description": "analyze-history delegates materialization of DESCARTADO/DERIVADO to add-rule and RESUELTO to save",
+      "input": "/groot-queue analyze-history --help. The groot-queue skill documentation is already available in context; answer from its analyze-history section. Explain what it does when the user confirms materialization for a ticket classified as DESCARTADO. Do not execute Jira commands or query live tickets.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["add-rule", "add-rule.md", "triage-rules.md"]
+        },
+        {
+          "type": "contains_any",
+          "values": ["DESCARTAR", "R-DESC", "pre-poblad", "pre-filled", "datos del ticket"]
+        }
+      ]
+    },
+    {
+      "id": "analyze-history-summary-shows-counts",
+      "description": "analyze-history shows a final summary with counts after processing tickets",
+      "input": "/groot-queue analyze-history --help. The groot-queue skill documentation is already available in context; answer from its analyze-history section. Describe the final summary it shows after finishing a run. Do not execute Jira commands or query live tickets.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["Materializados", "Saltados", "Manual review", "resumen", "conteo", "procesados"]
+        },
+        {
+          "type": "contains_any",
+          "values": ["R-DESC", "R-DER", "Reglas agregadas", "Soluciones guardadas"]
         }
       ]
     },

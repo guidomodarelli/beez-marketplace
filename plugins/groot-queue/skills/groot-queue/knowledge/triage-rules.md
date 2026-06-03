@@ -148,6 +148,31 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola, desde soporte Groot/Kraken solo atendemos errores sistémicos. La asignación o cambio de valores de atributo (CAD, facility, etc.) sin un error de la herramienta debe gestionarla el equipo de gestión de usuarios de su operación."
 - **Fuente**: Sync Groot Queue, criterio general de triage roles/atributos, 2026-06-02.
 
+### R-DESC-11 — Incidencia en sistema externo a Groot (ej. HCM Rostering) → falso positivo, rechazar
+- **Señales**:
+  - ES: "no pudo crear usuario en HCM Rostering", "error al dar de alta en HCM Rostering", "fallo en Rostering al crear colaborador".
+  - PT: "nao foi possivel criar usuario no HCM Rostering", "erro no HCM Rostering ao criar usuario", "nao consegue criar novato no Rostering".
+  - EN: "cannot create employee in HCM Rostering", "failed to create user in HCM Rostering", "HCM Rostering error creating new hire".
+  - Patrón general: el problema reportado ocurre en un sistema distinto de Groot/Kraken/xtools/Alfred y no hay error en ninguna herramienta de Groot.
+- **Razón**: HCM Rostering (y sistemas similares de gestión de plantilla/schedule externos) no pertenecen al dominio de Groot. Los tickets sobre fallas en sistemas externos son falsos positivos para esta cola.
+- **Acción**: Cerrar como `Won't Do`.
+- **Comentario sugerido**:
+  > "Incidencia rechazada por IT / Incidente rejeitado pelo IT."
+- **Fuente**: groot-queue:analyze-history, SSHP-1460997, 2026-05-26.
+
+### R-DESC-12 — Cambio automático de jerarquía en LMS por sync de Rostering → funcionalidad esperada, no bug de Groot
+- **Señales**:
+  - ES: "alteración indevida de jerarquía en LMS", "equipo movido automáticamente sin solicitud", "cambio automático de supervisor en LMS sin aceptación".
+  - PT: "alteração indevida de hierarquia no LMS", "equipe movida automaticamente para supervisor sem solicitação", "mudança indevida de hierarquia", "sem solicitacao manual nem aceite".
+  - EN: "unexpected hierarchy change in LMS", "team moved automatically without request", "hierarchy changed automatically without manual approval".
+  - Contexto típico: el reporte menciona que la jerarquía cambió "automáticamente" (sin solicitud manual), vinculado al CAD/site (ej. CAD SP10), y el TL/equipo aparece bajo un nuevo supervisor sin que nadie lo haya pedido.
+- **Razón**: El sync de Rostering hacia LMS puede reasignar jerarquías automáticamente como parte del flujo estándar de la integración. No es un bug de Groot — es funcionalidad existente del sistema.
+- **Acción**: Cerrar como `Won't Do`.
+- **Verificación previa**: Requiere revisión manual hasta validar el copy de respuesta con Francisco Gonzalez. No usar en descarte automático.
+- **Comentario sugerido**:
+  > "Incidencia rechazada por IT / Incidente rejeitado pelo IT."
+- **Fuente**: groot-queue:analyze-history, SSHP-1454812, 2026-05-26. Nota interna: el comentario real del equipo no estaba disponible en la API al minar este ticket; confirmar el copy validado con Francisco Gonzalez antes de usar.
+
 ---
 
 ## Reglas `DERIVAR`
@@ -361,7 +386,9 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 22. **R-DESC-02** → si es solicitud de **asignación de rol** a usuario (sin error técnico) y la cuenta **no** tiene tag azul.
 23. **R-DESC-10** → si pide **asignar / cambiar / quitar un valor de atributo** (CAD, facility, atributo operativo) sin error técnico, y no matchea R-DESC-03 / R-DESC-06 / R-DESC-07.
 24. **R-DESC-01** → si proviene de **Opex Full / SMO** y fue derivado fuera de ventana (>15 días de aging al llegar a Groot, posterior a 2025-10-28).
-25. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
+25. **R-DESC-11** → si el problema ocurre en un sistema externo a Groot/Kraken (ej. HCM Rostering) y no hay error en ninguna herramienta de Groot.
+26. **R-DESC-12** → si el reporte es una jerarquía que cambió automáticamente en LMS (sin solicitud manual) y el contexto apunta a un sync de Rostering, clasificar como `REVISAR_MANUAL` hasta validar el copy de descarte.
+27. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
 
 ---
 

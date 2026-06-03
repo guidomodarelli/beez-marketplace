@@ -67,7 +67,7 @@ Solo continuar al algoritmo si A y B pasaron. El `cloudId` obtenido en el punto 
 
 ### 1. Cargar reglas de triage
 
-Leer `~/.claude/skills/groot-queue/knowledge/triage-rules.md` (reglas R-DESC-01 a R-DESC-09 + algoritmo de triage completo).
+Leer `~/.claude/skills/groot-queue/knowledge/triage-rules.md` (reglas R-DESC-01 a R-DESC-12 + algoritmo de triage completo).
 
 ### 2. Fase de análisis — obtener y evaluar todos los tickets
 
@@ -87,14 +87,16 @@ acli jira workitem view SSHP-XXXXXX
 
 **2c. Evaluar reglas R-DESC:**
 
-Aplicar **únicamente los pasos 14–22 del algoritmo de triage** definido en `triage-rules.md`, en orden:
-- R-DESC-03, R-DESC-06, R-DESC-07, R-DESC-08, R-DESC-04, R-DESC-09, R-DESC-05, R-DESC-02, R-DESC-01
+Aplicar **únicamente los pasos R-DESC del algoritmo de triage** definido en `triage-rules.md`, en orden:
+- R-DESC-03, R-DESC-06, R-DESC-07, R-DESC-08, R-DESC-04, R-DESC-09, R-DESC-05, R-DESC-02, R-DESC-10, R-DESC-01, R-DESC-11, R-DESC-12
 
 Tomar la **primera regla que matchee**.
 
 Si ninguna aplica, evaluar el veredicto completo y marcar como `NO_DESCARTA` con el veredicto resultante (DERIVAR / FIX_APLICADO / VALIDO_GROOT / REVISAR_MANUAL).
 
 > ⚠️ **Verificaciones previas**: Las reglas R-DESC-03, R-DESC-04, R-DESC-05, R-DESC-06, R-DESC-07 y R-DESC-08 requieren confirmar condiciones en Groot admin que **no** son deducibles del texto del ticket (R-DESC-08: confirmar que la tool de Groot **no** falla al asignar el rol; si falla, el veredicto correcto es `VALIDO_GROOT`, no descarte). Si la verificación no es posible desde el contenido disponible, marcar el ticket como `REVISAR_MANUAL` y no incluirlo en la ejecución automática.
+>
+> ⚠️ **R-DESC-12 no se descarta automáticamente**: el copy validado todavía está pendiente de confirmación. Si un ticket matchea R-DESC-12, marcarlo como `REVISAR_MANUAL` y no postear comentario ni cerrar el ticket desde este subcomando.
 
 ### 3. Descubrir transición de cierre (una vez por ejecución)
 

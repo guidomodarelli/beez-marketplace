@@ -28,7 +28,7 @@ Ejemplos válidos:
 
 ## Pre-condición: MCP Atlassian
 
-**Verificar antes de proceder con cualquier otra acción. Si alguno de los siguientes pasos falla, abortar y no continuar.**
+**Verificar después de validar que existe al menos una key `SSHP-XXXXXX` válida y antes de consultar o modificar Jira. Si alguno de los siguientes pasos falla, abortar y no continuar.**
 
 **A. Disponibilidad de herramientas:**
 Intentar llamar `mcp__Atlassian__getAccessibleAtlassianResources` (o herramienta equivalente si el proveedor usa un prefijo distinto).

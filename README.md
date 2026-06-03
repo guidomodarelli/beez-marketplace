@@ -176,6 +176,15 @@ If any check fails, the PR is blocked until the issue is fixed.
 # One-time setup
 cd skill-eval-runner && ./install.sh
 
-# Run evals for a specific skill
+# Run evals for a specific skill (JSONL by default)
 run-evals plugins/<plugin-name>/skills/<skill-name>
+
+# Optional human-readable colored report
+run-evals plugins/<plugin-name>/skills/<skill-name> --pretty
+
+# Optional provider override (default: auto-detect Codex or Claude)
+run-evals plugins/<plugin-name>/skills/<skill-name> --provider codex
+
+# Optional persistent provider override
+export GROOT_MARKETPLACE_EVAL_PROVIDER=codex
 ```

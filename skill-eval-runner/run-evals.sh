@@ -8,6 +8,7 @@
 #   run-evals                         Run evals for skill in current directory
 #   run-evals --all                   Run evals for all skills with eval-config.json
 #   run-evals --jobs N [...]          Run N cases in parallel (default: 4, env: EVAL_JOBS)
+#   run-evals --provider codex [...]  Run evals with Codex instead of auto-detecting
 #
 # Each skill only needs evals/eval-config.json — this script handles the rest.
 
@@ -22,13 +23,15 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 # ── Defaults ────────────────────────────────────────────
-# Each job fires 2 concurrent claude -p calls (with-skill + baseline in parallel).
+# Each job fires 2 concurrent agent calls (with-skill + baseline in parallel).
 # Total concurrent API calls = EVAL_JOBS * 2. Lower EVAL_JOBS if rate-limited.
 EVAL_JOBS="${EVAL_JOBS:-4}"
-EVAL_MODEL="${EVAL_MODEL:-haiku}"
-# When 1, emit machine-readable JSONL on stdout (one object per case + a summary
-# object) instead of the human-readable colored report. See --jsonl.
-EVAL_JSONL="${EVAL_JSONL:-0}"
+GROOT_MARKETPLACE_EVAL_MODEL="${GROOT_MARKETPLACE_EVAL_MODEL:-${EVAL_MODEL:-}}"
+# Machine-readable JSONL is the default so CI, tests, and real eval runs are
+# reproducible and easy to parse. Use --pretty for the human-readable report.
+EVAL_JSONL="${EVAL_JSONL:-1}"
+GROOT_MARKETPLACE_EVAL_PROVIDER="${GROOT_MARKETPLACE_EVAL_PROVIDER:-auto}"
+RESOLVED_EVAL_PROVIDER=""
 
 # ── Resolve paths ──────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -48,22 +51,28 @@ usage() {
     echo ""
     echo "Options:"
     echo "  --jobs N, -j N               Run N cases in parallel (default: 4)"
-    echo "                               Each case runs 2 claude calls concurrently,"
+    echo "                               Each case runs 2 agent calls concurrently,"
     echo "                               so total API calls = N*2. Lower if rate-limited."
-    echo "  --model M, -m M              Claude model to use (default: haiku)"
+    echo "  --model M, -m M              Agent model to use (defaults: haiku for Claude,"
+    echo "                               gpt-5.4-mini for Codex)"
     echo "                               Accepts aliases (haiku, sonnet, opus) or full model IDs."
-    echo "                               Also configurable via EVAL_MODEL env var."
-    echo "  --jsonl, -J                  Emit machine-readable JSONL on stdout instead of"
-    echo "                               the colored report: one {\"event\":\"case\",...} object"
-    echo "                               per case (with failed_assertions) and a final"
-    echo "                               {\"event\":\"summary\",...} object. Also via EVAL_JSONL=1."
+    echo "                               Also configurable via GROOT_MARKETPLACE_EVAL_MODEL env var."
+    echo "  --provider P                 Agent provider: auto, codex, or claude (default: auto)."
+    echo "                               Also configurable via GROOT_MARKETPLACE_EVAL_PROVIDER env var."
+    echo "  --jsonl, -J                  Emit machine-readable JSONL on stdout. This is"
+    echo "                               the default and can also be set with EVAL_JSONL=1."
+    echo "  --pretty, -P                 Emit the human-readable colored report instead"
+    echo "                               of JSONL. Equivalent to EVAL_JSONL=0."
     echo ""
 }
 
 check_dependencies() {
     local missing=0
-    if ! command -v claude &> /dev/null; then
-        echo -e "${RED}ERROR: claude CLI not found.${NC}"
+
+    resolve_eval_provider
+
+    if ! command -v "$RESOLVED_EVAL_PROVIDER" &> /dev/null; then
+        echo -e "${RED}ERROR: $RESOLVED_EVAL_PROVIDER CLI not found.${NC}"
         missing=1
     fi
     if ! command -v jq &> /dev/null; then
@@ -73,6 +82,176 @@ check_dependencies() {
     if [ "$missing" -eq 1 ]; then
         exit 1
     fi
+}
+
+resolve_eval_provider() {
+    case "$GROOT_MARKETPLACE_EVAL_PROVIDER" in
+        claude|codex)
+            RESOLVED_EVAL_PROVIDER="$GROOT_MARKETPLACE_EVAL_PROVIDER"
+            ;;
+        auto)
+            if [ -n "${CODEX_THREAD_ID:-}" ] || [ -n "${CODEX_CI:-}" ] || [ -n "${CODEX_HOME:-}" ]; then
+                if command -v codex &> /dev/null; then
+                    RESOLVED_EVAL_PROVIDER="codex"
+                fi
+            fi
+            if [ -z "$RESOLVED_EVAL_PROVIDER" ] && { [ -n "${CLAUDECODE:-}" ] || [ -n "${CLAUDE_CODE_SSE_PORT:-}" ]; }; then
+                if command -v claude &> /dev/null; then
+                    RESOLVED_EVAL_PROVIDER="claude"
+                fi
+            fi
+            if [ -z "$RESOLVED_EVAL_PROVIDER" ] && command -v claude &> /dev/null; then
+                RESOLVED_EVAL_PROVIDER="claude"
+            fi
+            if [ -z "$RESOLVED_EVAL_PROVIDER" ] && command -v codex &> /dev/null; then
+                RESOLVED_EVAL_PROVIDER="codex"
+            fi
+            [ -n "$RESOLVED_EVAL_PROVIDER" ] || RESOLVED_EVAL_PROVIDER="claude"
+            ;;
+        *)
+            echo -e "${RED}ERROR: Invalid provider '$GROOT_MARKETPLACE_EVAL_PROVIDER'. Use auto, codex, or claude.${NC}" >&2
+            exit 1
+            ;;
+    esac
+
+    if [ -z "$GROOT_MARKETPLACE_EVAL_MODEL" ]; then
+        case "$RESOLVED_EVAL_PROVIDER" in
+            codex) GROOT_MARKETPLACE_EVAL_MODEL="gpt-5.4-mini" ;;
+            *) GROOT_MARKETPLACE_EVAL_MODEL="haiku" ;;
+        esac
+    fi
+}
+
+run_agent_prompt() {
+    local cwd="$1"
+    local input="$2"
+    local output_file="$3"
+    local codex_home="${4:-}"
+
+    case "$RESOLVED_EVAL_PROVIDER" in
+        claude)
+            (cd "$cwd" && env -u CLAUDECODE claude -p "$input" \
+                --model "$GROOT_MARKETPLACE_EVAL_MODEL" \
+                --setting-sources project \
+                --allowedTools "Bash(read_only:true),Read,Glob,Grep") \
+                > "$output_file" 2>&1
+            ;;
+        codex)
+            local event_stream_file
+            event_stream_file=$(mktemp)
+
+            CODEX_HOME="$codex_home" codex exec \
+                --model "$GROOT_MARKETPLACE_EVAL_MODEL" \
+                --cd "$cwd" \
+                --skip-git-repo-check \
+                --ephemeral \
+                --ignore-rules \
+                --sandbox read-only \
+                --color never \
+                --json \
+                "$input" \
+                < /dev/null \
+                > "$event_stream_file" 2>&1
+
+            jq -Rsr '
+                split("\n")
+                | map(
+                    fromjson?
+                    | select(.type == "item.completed" and .item.type == "agent_message")
+                    | .item.text
+                )
+                | last // ""
+            ' "$event_stream_file" > "$output_file"
+
+            if [ ! -s "$output_file" ] || ! grep -q '[^[:space:]]' "$output_file"; then
+                cp "$event_stream_file" "$output_file"
+            fi
+
+            rm -f "$event_stream_file"
+            ;;
+    esac
+}
+
+create_codex_eval_home() {
+    local target_home="$1"
+    local source_config="${CODEX_HOME:-$HOME/.codex}/config.toml"
+    local source_home
+    source_home="$(cd "$(dirname "$source_config")" 2>/dev/null && pwd || dirname "$source_config")"
+
+    mkdir -p "$target_home/skills" "$target_home/plugins" "$target_home/marketplaces"
+
+    if [ -f "$source_config" ]; then
+        awk '
+            BEGIN { keep = 0 }
+            /^model[[:space:]]*=/ || /^model_provider[[:space:]]*=/ || /^model_reasoning_effort[[:space:]]*=/ {
+                print
+                next
+            }
+            /^\[model_providers\./ {
+                keep = 1
+                print
+                next
+            }
+            /^\[/ {
+                keep = 0
+            }
+            keep {
+                print
+            }
+        ' "$source_config" > "$target_home/config.toml"
+    fi
+
+    local auth_file
+    for auth_file in \
+        "$source_home"/auth.json \
+        "$source_home"/credentials.json \
+        "$source_home"/.codex-auth.json \
+        "$source_home"/state_*.sqlite \
+        "$source_home"/state_*.sqlite-shm \
+        "$source_home"/state_*.sqlite-wal; do
+        if [ -e "$auth_file" ]; then
+            cp -p "$auth_file" "$target_home/" 2>/dev/null || true
+        fi
+    done
+}
+
+preflight_eval_provider() {
+    local check_cwd
+    local output_file
+    check_cwd=$(mktemp -d)
+    output_file=$(mktemp)
+
+    local codex_home=""
+    if [ "$RESOLVED_EVAL_PROVIDER" = "codex" ]; then
+        codex_home=$(mktemp -d)
+        create_codex_eval_home "$codex_home"
+    fi
+
+    if ! run_agent_prompt "$check_cwd" "Reply exactly: eval-provider-ready" "$output_file" "$codex_home"; then
+        echo -e "${RED}ERROR: $RESOLVED_EVAL_PROVIDER provider preflight failed.${NC}" >&2
+        echo "The selected provider did not complete a minimal eval prompt." >&2
+        echo "Check authentication and provider configuration before running evals." >&2
+        if [ "$RESOLVED_EVAL_PROVIDER" = "codex" ]; then
+            echo "For Codex, verify $HOME/.codex/config.toml, auth, and proxy settings." >&2
+        fi
+        echo "No fallback provider was used; set --provider claude or GROOT_MARKETPLACE_EVAL_PROVIDER=claude explicitly if that is intended." >&2
+        echo "Preflight output:" >&2
+        sed -n '1,40p' "$output_file" >&2
+        rm -rf "$check_cwd" "$output_file" "$codex_home"
+        return 1
+    fi
+
+    if ! grep -qi 'eval-provider-ready' "$output_file"; then
+        echo -e "${RED}ERROR: $RESOLVED_EVAL_PROVIDER provider preflight returned an unexpected response.${NC}" >&2
+        echo "No eval cases were run. Check provider configuration and model availability." >&2
+        echo "Preflight output:" >&2
+        sed -n '1,40p' "$output_file" >&2
+        rm -rf "$check_cwd" "$output_file" "$codex_home"
+        return 1
+    fi
+
+    rm -rf "$check_cwd" "$output_file" "$codex_home"
+    return 0
 }
 
 find_eval_config() {
@@ -245,6 +424,8 @@ run_single_case() {
     local result_dir="$6"
     local skill_cwd="$7"
     local baseline_cwd="$8"
+    local skill_codex_home="$9"
+    local baseline_codex_home="${10}"
 
     local id input description skill_name
     id=$(jq -r ".test_cases[$i].id" "$config_file")
@@ -264,23 +445,13 @@ run_single_case() {
         echo "INPUT: $input"
         echo ""
 
-        # Fire both claude calls in parallel; responses land in workspace files.
-        # --setting-sources project loads only from the cwd's .claude/, not ~/.claude/,
-        # so global skills don't interfere with the skill under test.
-        # skill_cwd has .claude/skills/<name>/ — only the tested skill is loaded.
+        # Fire both agent calls in parallel; responses land in workspace files.
+        # skill_cwd has provider-specific project skills; baseline_cwd has none.
         # baseline_cwd is empty — no skills at all.
-        (cd "$skill_cwd" && env -u CLAUDECODE claude -p "$input" \
-            --model "$EVAL_MODEL" \
-            --setting-sources project \
-            --allowedTools "Bash(read_only:true),Read,Glob,Grep") \
-            > "$workspace/with-skill/$id.txt" 2>&1 &
+        run_agent_prompt "$skill_cwd" "$input" "$workspace/with-skill/$id.txt" "$skill_codex_home" &
         local pid_with=$!
 
-        (cd "$baseline_cwd" && env -u CLAUDECODE claude -p "$input" \
-            --model "$EVAL_MODEL" \
-            --setting-sources project \
-            --allowedTools "Bash(read_only:true),Read,Glob,Grep") \
-            > "$workspace/without-skill/$id.txt" 2>&1 &
+        run_agent_prompt "$baseline_cwd" "$input" "$workspace/without-skill/$id.txt" "$baseline_codex_home" &
         local pid_base=$!
 
         wait $pid_with || true
@@ -339,13 +510,18 @@ run_single_case() {
     [ -s "$failures_file" ] && failed_json=$(jq -cs '.' "$failures_file")
     jq -nc \
         --arg skill "$skill_name" \
+        --arg provider "$RESOLVED_EVAL_PROVIDER" \
         --arg id "$id" \
+        --arg description "$description" \
+        --arg input "$input" \
         --argjson index "$((i + 1))" \
         --argjson total "$total" \
         --arg status "$status_str" \
         --argjson duration "$elapsed" \
         --argjson failed "$failed_json" \
-        '{event: "case", skill: $skill, id: $id, index: $index, total: $total, status: $status, duration_seconds: $duration, failed_assertions: $failed}' \
+        --arg with_skill "$workspace/with-skill/$id.txt" \
+        --arg baseline "$workspace/without-skill/$id.txt" \
+        '{event: "case", provider: $provider, skill: $skill, id: $id, description: $description, input: $input, index: $index, total: $total, status: $status, duration_seconds: $duration, failed_assertions: $failed, artifacts: {with_skill: $with_skill, baseline: $baseline}}' \
         > "$result_dir/$i.jsonl"
 
     if [ "$result" -eq 0 ]; then
@@ -380,14 +556,25 @@ run_skill_evals() {
     rm -rf "$workspace"/case-output-* "$workspace"/case-results-*
     mkdir -p "$output_dir" "$result_dir"
 
-    # Shared temp dirs for claude -p cwd: with-skill has the skill symlinked,
-    # baseline is a plain empty dir (no .claude/skills — no skill loaded)
-    local skill_cwd baseline_cwd
+    # Shared temp dirs: with-skill has the skill symlinked for both supported
+    # providers; baseline is a plain empty dir with no project-local skills.
+    local skill_cwd baseline_cwd skill_codex_home baseline_codex_home
     skill_cwd=$(mktemp -d)
     baseline_cwd=$(mktemp -d)
     mkdir -p "$skill_cwd/.claude/skills"
     ln -s "$(cd "$skill_path" && pwd)" "$skill_cwd/.claude/skills/$skill_name"
-    trap "rm -rf '$skill_cwd' '$baseline_cwd'" RETURN
+    mkdir -p "$skill_cwd/.codex/skills"
+    ln -s "$(cd "$skill_path" && pwd)" "$skill_cwd/.codex/skills/$skill_name"
+    skill_codex_home=""
+    baseline_codex_home=""
+    if [ "$RESOLVED_EVAL_PROVIDER" = "codex" ]; then
+        skill_codex_home=$(mktemp -d)
+        baseline_codex_home=$(mktemp -d)
+        create_codex_eval_home "$skill_codex_home"
+        create_codex_eval_home "$baseline_codex_home"
+        ln -s "$(cd "$skill_path" && pwd)" "$skill_codex_home/skills/$skill_name"
+    fi
+    trap "rm -rf '$skill_cwd' '$baseline_cwd' '$skill_codex_home' '$baseline_codex_home'" RETURN
 
     local suite_start=$SECONDS
 
@@ -403,7 +590,8 @@ run_skill_evals() {
         echo -e "  Skill:     $skill_path"
         echo -e "  Cases:     $total"
         echo -e "  Jobs:      $EVAL_JOBS (parallel)"
-        echo -e "  Model:     $EVAL_MODEL"
+        echo -e "  Model:     $GROOT_MARKETPLACE_EVAL_MODEL"
+        echo -e "  Provider:  $RESOLVED_EVAL_PROVIDER"
         echo -e "  Results:   $workspace"
         echo ""
     } >&"$header_fd"
@@ -421,7 +609,7 @@ run_skill_evals() {
             [ ${#pids[@]} -ge "$EVAL_JOBS" ] && sleep 0.2
         done
 
-        run_single_case "$i" "$config_file" "$workspace" "$total" "$output_dir" "$result_dir" "$skill_cwd" "$baseline_cwd" &
+        run_single_case "$i" "$config_file" "$workspace" "$total" "$output_dir" "$result_dir" "$skill_cwd" "$baseline_cwd" "$skill_codex_home" "$baseline_codex_home" &
         pids+=($!)
     done
 
@@ -464,11 +652,12 @@ run_skill_evals() {
     if [ "$EVAL_JSONL" = "1" ]; then
         jq -nc \
             --arg skill "$skill_name" \
+            --arg provider "$RESOLVED_EVAL_PROVIDER" \
             --argjson total "$total" \
             --argjson passed "$passed" \
             --argjson failed "$failed" \
             --argjson duration "$suite_elapsed" \
-            '{event: "summary", skill: $skill, total: $total, passed: $passed, failed: $failed, duration_seconds: $duration}'
+            '{event: "summary", provider: $provider, skill: $skill, total: $total, passed: $passed, failed: $failed, duration_seconds: $duration}'
     else
         echo -e "${BLUE}════════════════════════════════════════${NC}"
         echo -e "${BLUE}  Summary: ${BOLD}$skill_name${NC}"
@@ -551,6 +740,39 @@ run_all_evals() {
     return 0
 }
 
+has_eval_targets() {
+    local dir
+    for dir in "$REPO_ROOT"/skills/*/evals "$REPO_ROOT"/plugins/*/skills/*/evals; do
+        [ -d "$dir" ] || continue
+        [ -f "$dir/eval-config.json" ] || continue
+        return 0
+    done
+    return 1
+}
+
+target_requires_provider() {
+    case "${1:-}" in
+        --all)
+            has_eval_targets
+            ;;
+        "")
+            if [ -f "SKILL.md" ] || [ -f "../SKILL.md" ]; then
+                return 0
+            fi
+            echo -e "${RED}ERROR: No SKILL.md found in current directory.${NC}"
+            echo "Run from a skill directory or pass the path: run-evals path/to/skill"
+            exit 1
+            ;;
+        *)
+            if [ -d "$1" ]; then
+                return 0
+            fi
+            echo -e "${RED}ERROR: Directory not found: $1${NC}"
+            exit 1
+            ;;
+    esac
+}
+
 # ── Main ───────────────────────────────────────────────
 
 # Help doesn't need dependencies
@@ -570,11 +792,19 @@ while [ $# -gt 0 ]; do
             shift 2
             ;;
         --model|-m)
-            EVAL_MODEL="$2"
+            GROOT_MARKETPLACE_EVAL_MODEL="$2"
+            shift 2
+            ;;
+        --provider)
+            GROOT_MARKETPLACE_EVAL_PROVIDER="$2"
             shift 2
             ;;
         --jsonl|-J)
             EVAL_JSONL=1
+            shift
+            ;;
+        --pretty|-P)
+            EVAL_JSONL=0
             shift
             ;;
         *)
@@ -585,7 +815,10 @@ while [ $# -gt 0 ]; do
 done
 set -- "${args[@]+"${args[@]}"}"
 
-check_dependencies
+if target_requires_provider "$@"; then
+    check_dependencies
+    preflight_eval_provider
+fi
 
 case "${1:-}" in
     --all)
