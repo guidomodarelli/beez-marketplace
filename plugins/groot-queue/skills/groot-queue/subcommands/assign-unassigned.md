@@ -150,7 +150,7 @@ Para cada ticket asignado exitosamente que no matcheó una regla R-DER en el pas
   ```bash
   acli jira workitem view <KEY>
   ```
-- Aplicar **únicamente los pasos 14–22 del algoritmo de triage** de `triage-rules.md` (reglas R-DESC), en orden: R-DESC-03, R-DESC-06, R-DESC-07, R-DESC-08, R-DESC-04, R-DESC-09, R-DESC-05, R-DESC-02, R-DESC-01.
+- Aplicar **únicamente las reglas R-DESC del algoritmo de triage** de `triage-rules.md`, en orden: R-DESC-03, R-DESC-06, R-DESC-07, R-DESC-08, R-DESC-04, R-DESC-09, R-DESC-05, R-DESC-02, R-DESC-10, R-DESC-01, R-DESC-11, R-DESC-12.
 - Tomar la primera regla que matchee.
 - Las verificaciones previas (R-DESC-03, R-DESC-04, R-DESC-05, R-DESC-06, R-DESC-07, R-DESC-08) que requieren inspección en Groot admin: si no es posible confirmarlas desde el contenido del ticket, marcar como `REVISAR_MANUAL` y no incluirlo en la lista de descartables.
 

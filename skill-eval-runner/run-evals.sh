@@ -26,7 +26,7 @@ NC='\033[0m'
 # Each job fires 2 concurrent agent calls (with-skill + baseline in parallel).
 # Total concurrent API calls = EVAL_JOBS * 2. Lower EVAL_JOBS if rate-limited.
 EVAL_JOBS="${EVAL_JOBS:-4}"
-GROOT_MARKETPLACE_EVAL_MODEL="${GROOT_MARKETPLACE_EVAL_MODEL:-${EVAL_MODEL:-}}"
+GROOT_MARKETPLACE_EVAL_MODEL="${GROOT_MARKETPLACE_EVAL_MODEL:-}"
 # Machine-readable JSONL is the default so CI, tests, and real eval runs are
 # reproducible and easy to parse. Use --pretty for the human-readable report.
 EVAL_JSONL="${EVAL_JSONL:-1}"

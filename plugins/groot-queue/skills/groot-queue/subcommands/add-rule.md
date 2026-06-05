@@ -27,7 +27,7 @@ Sumar una nueva regla de triage a `triage-rules.md` mediante un flujo interactiv
    i. **Fuente** (texto): formato `<autor>, <ticket o contexto>, <fecha YYYY-MM-DD>`. Si el usuario no provee fecha, usar la fecha actual.
    j. **Posición en el algoritmo** (single-select): mostrar la lista numerada actual del bloque "Algoritmo de triage" y preguntar después de qué número insertar. Sugerir default según el tipo (FIX_APLICADO al inicio, DERIVAR con señal específica antes que genérica, DESCARTAR al final).
 
-3. **Calcular nuevo ID**: incrementar el contador del tipo elegido. Ej: si la última `R-DER-XX` es `R-DER-10` → la nueva es `R-DER-11`.
+3. **Calcular nuevo ID**: incrementar el contador del tipo elegido. Ej: si la última `R-DER-XX` es `R-DER-12` → la nueva es `R-DER-13`.
 
 4. **Construir bloque de la regla** con el siguiente formato exacto (mismo que las reglas existentes):
 
