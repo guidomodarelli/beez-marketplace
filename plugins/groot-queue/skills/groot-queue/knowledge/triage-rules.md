@@ -79,6 +79,8 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 ### R-DESC-05 — Error "no autorizado" en módulo específico → Groot no mapea rol↔funcionalidad
 - **Señales**:
   - Error "no autorizado" / "nao autorizado" / "not authorized" al entrar a una URL/módulo puntual.
+  - Usuario "sin permisos" / "sem permissao" / "without permissions" para acceder a módulos operativos específicos.
+  - Solicitud de "revisión de permisos" / "revisao de permissoes" / "permissions review" para funciones puntuales como Stage in, Movimiento de stock, labeling, seguimiento de unidades o reimpresión de shipping label.
   - El usuario **sí** logra loguearse (auth OK).
   - Afecta a uno o pocos usuarios; el requester pregunta "qué rol necesita" o "qué permiso falta".
 - **Razón**: Groot/Kraken Soporte no es dueño del mapeo "funcionalidad ↔ rol requerido". Esa correspondencia la define el gestor de usuarios de la operación del site.
@@ -311,6 +313,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - PT: "erros na contabilização de horas no Be a Rep", "horas contabilizadas incorretamente no Be a Rep", "divergência de horas no Be a Rep", "horas do Be a Rep não batem no LMS".
   - EN: "Be a Rep hours accounting error", "hours incorrectly accounted in Be a Rep", "Be a Rep hours mismatch", "Be a Rep hours do not match in LMS".
   - Contexto típico: el requester reporta diferencias, errores de cálculo o inconsistencias en las horas asociadas al flujo Be a Rep y el impacto esperado está en LMS / Labour Management System, no en roles, atributos ni permisos de Groot.
+- **Prioridad de triage**: Esta regla debe matchear antes de clasificar el ticket como `Labour Share` genérico o `VALIDO_GROOT`. Si el texto combina `Be a Rep` + diferencias/errores de horas + `LMS`, el veredicto es `DERIVAR` a LMS.
 - **Razón**: La contabilización y conciliación de horas en LMS queda fuera del dominio de Groot/Kraken. Groot puede exponer o consumir datos del flujo Be a Rep, pero los desvíos de horas deben ser revisados por el equipo dueño de LMS.
 - **Verificación previa**: Si el síntoma es devolución de roles en Be a Rep / Labour Share, aplicar primero `R-FIX-01`. Si el problema es una falla técnica de agendado, snapshot, permisos, CAD o rol dentro de Groot, no aplica esta regla y debe seguir el runbook correspondiente.
 - **Acción**: Derivar a **LMS**.
@@ -397,7 +400,7 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 19. **R-DESC-08** → si el requester menciona "learning completado", "training hub", "learning hub" y pide asignación de rol post-capacitación.
 20. **R-DESC-04** → si es pedido de **cambio de líder / supervisor directo** sin error técnico (lista de usuarios a mover + nuevo líder).
 21. **R-DESC-09** → si pide **remover** un rol a un operario y no hay error técnico reportado.
-22. **R-DESC-05** → si hay error "no autorizado" / "not authorized" en un módulo/URL específico y el usuario **sí** logra loguearse.
+22. **R-DESC-05** → si hay error "no autorizado" / "not authorized" o solicitud de permisos para un módulo/URL específico y el usuario **sí** logra loguearse.
 23. **R-DESC-02** → si es solicitud de **asignación de rol** a usuario (sin error técnico) y la cuenta **no** tiene tag azul.
 24. **R-DESC-10** → si pide **asignar / cambiar / quitar un valor de atributo** (CAD, facility, atributo operativo) sin error técnico, y no matchea R-DESC-03 / R-DESC-06 / R-DESC-07.
 25. **R-DESC-01** → si proviene de **Opex Full / SMO** y fue derivado fuera de ventana (>15 días de aging al llegar a Groot, posterior a 2025-10-28).
