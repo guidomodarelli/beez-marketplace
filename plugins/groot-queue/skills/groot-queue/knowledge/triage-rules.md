@@ -79,8 +79,8 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 ### R-DESC-05 — Error "no autorizado" en módulo específico → Groot no mapea rol↔funcionalidad
 - **Señales**:
   - Error "no autorizado" / "nao autorizado" / "not authorized" al entrar a una URL/módulo puntual.
-  - Usuario "sin permisos" / "sem permissao" / "without permissions" para acceder a módulos operativos específicos.
-  - Solicitud de "revisión de permisos" / "revisao de permissoes" / "permissions review" para funciones puntuales como Stage in, Movimiento de stock, labeling, seguimiento de unidades o reimpresión de shipping label.
+  - Usuario "sin permisos" / "sem permissao" / "sem permissão" / "without permissions" para acceder a módulos operativos específicos.
+  - Solicitud de "revisión de permisos" / "revisao de permissoes" / "revisão de permissões" / "permissions review" para funciones puntuales como "Stage in", "Movimiento de stock" / "Movimento de estoque" / "Stock movement", "labeling", "seguimiento de unidades" / "acompanhamento de unidades" / "unit tracking" o "reimpresión de shipping label" / "reimpressao de shipping label" / "reimpressão de shipping label" / "shipping label reprint".
   - El usuario **sí** logra loguearse (auth OK).
   - Afecta a uno o pocos usuarios; el requester pregunta "qué rol necesita" o "qué permiso falta".
 - **Razón**: Groot/Kraken Soporte no es dueño del mapeo "funcionalidad ↔ rol requerido". Esa correspondencia la define el gestor de usuarios de la operación del site.

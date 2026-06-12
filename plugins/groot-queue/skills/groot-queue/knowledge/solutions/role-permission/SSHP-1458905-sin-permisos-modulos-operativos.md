@@ -28,10 +28,10 @@ No se identifico una falla tecnica de Groot/Kraken. El caso correspondia a asign
 
 ## Senales para identificar este patron
 
-- Usuario sin permisos para acceder a modulos operativos INB/OUT.
-- Solicitud de revision de permisos para Stage in, Movimiento de stock, labeling, seguimiento de unidades o reimpresion de shipping label.
-- Caso asociado a un rol operativo especifico, por ejemplo problem solver.
-- El pedido apunta a asignar o corregir roles de operacion, no a un error tecnico de autenticacion o UI.
+- ES: "usuario sin permisos para acceder a modulos operativos INB/OUT", "sin permisos para Stage in", "sin permisos para Movimiento de stock", "sin permisos para labeling", "sin permisos para seguimiento de unidades", "sin permisos para reimpresion de shipping label".
+- PT: "usuario sem permissao para acessar modulos operacionais INB/OUT", "usuário sem permissão para acessar módulos operacionais INB/OUT", "sem permissao para Stage in", "sem permissão para Stage in", "sem permissao para Movimento de estoque", "sem permissão para Movimento de estoque", "sem permissao para labeling", "sem permissão para labeling", "sem permissao para acompanhamento de unidades", "sem permissão para acompanhamento de unidades", "sem permissao para reimpressao de shipping label", "sem permissão para reimpressão de shipping label".
+- EN: "user without permissions to access INB/OUT operational modules", "no permissions for Stage in", "no permissions for Stock movement", "no permissions for labeling", "no permissions for unit tracking", "no permissions for shipping label reprint".
+- Contexto tipico: caso asociado a un rol operativo especifico, por ejemplo problem solver; el pedido apunta a asignar o corregir roles de operacion, no a un error tecnico de autenticacion o UI.
 
 ## Verificacion previa antes de descartar
 
