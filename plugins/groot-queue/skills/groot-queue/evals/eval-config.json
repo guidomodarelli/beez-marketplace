@@ -152,6 +152,44 @@
       ]
     },
     {
+      "id": "rdesc05-operational-modules-permissions",
+      "description": "triage rules discard operational module permission requests as operation user-management ownership",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Usuario sin permisos para acceder a modulos operativos INB/OUT'. Description='Problem solver puede loguearse correctamente, pero no puede operar Stage in, Movimiento de stock, labeling, seguimiento de unidades ni reimpresion de shipping label en ARBA01. Solicita revision de permisos y roles.'. Apply triage rules.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "R-DESC-05"
+        },
+        {
+          "type": "contains_any",
+          "values": ["gestion de usuarios", "gestión de usuarios", "operacion", "operación"]
+        },
+        {
+          "type": "contains_any",
+          "values": ["DESCARTAR", "descartar", "Won't Do"]
+        }
+      ]
+    },
+    {
+      "id": "rdesc05-operational-modules-permissions-pt",
+      "description": "triage rules discard operational module permission requests reported in Portuguese",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Usuario sem permissão para acessar módulos operacionais INB/OUT'. Description='Operador consegue fazer login corretamente, mas não consegue acessar Stage in, Movimento de estoque, labeling, acompanhamento de unidades nem reimpressão de shipping label. Solicita revisão de permissões e funções.'. Apply triage rules.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "R-DESC-05"
+        },
+        {
+          "type": "contains_any",
+          "values": ["gestao de usuarios", "gestão de usuários", "operacao", "operação", "gestion de usuarios", "gestión de usuarios"]
+        },
+        {
+          "type": "contains_any",
+          "values": ["DESCARTAR", "descartar", "Won't Do"]
+        }
+      ]
+    },
+    {
       "id": "discard-listed-in-help",
       "description": "invoking /groot-queue without args shows discard in the subcommands table",
       "input": "/groot-queue",
@@ -293,7 +331,7 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["excluido", "sigue excluido", "not included", "omite", "omit", "No incluye", "no incluye", "no lo incluye", "excluded"]
+          "values": ["excluido", "excluye", "sigue excluido", "not included", "omite", "omit", "No incluye", "no incluye", "no lo incluye", "excluded"]
         },
         {
           "type": "contains_any",
