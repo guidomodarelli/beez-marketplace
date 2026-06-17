@@ -175,6 +175,40 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Incidencia rechazada por IT / Incidente rejeitado pelo IT."
 - **Fuente**: groot-queue:analyze-history, SSHP-1454812, 2026-05-26. Nota interna: el comentario real del equipo no estaba disponible en la API al minar este ticket; confirmar el copy validado con Francisco Gonzalez antes de usar.
 
+### R-DESC-13 — Solicitud de liberar bolha/permisos o roles sin error técnico → gestor de aplicación
+- **Señales**:
+  - ES: "liberar acceso a bolha", "habilitar Put Away", "ajuste de permisos", "agregar función", "asignar rol para función operativa".
+  - PT: "liberar acesso a bolha", "habilitar Put Away", "ajuste de permissoes", "adicionar funcao", "atribuir role para funcao operacional".
+  - EN: "grant bubble access", "enable Put Away", "permissions adjustment", "add function", "assign role for operational function".
+- **Razón**: Groot Soporte no modifica atributos ni roles por pedido operativo. Si no hay error sistémico de la herramienta, la gestión debe hacerla el gestor de la aplicación u operación.
+- **Verificación previa**: Si el requester reporta que intentó asignar el rol/función y la herramienta da error o no guarda, reclasificar como `VALIDO_GROOT`. Si el caso menciona Training Hub / Learning Hub pero no indica entrenamiento completado ni asistencia validada, mantener esta regla antes que `R-DESC-08`.
+- **Acción**: Cerrar como `Won't Do`.
+- **Comentario sugerido**:
+  > "Desde groot no hacemos modificacion de atributos/roles, para eso debe ponerse en contacto con el gestor de su aplicacion."
+- **Fuente**: groot-queue:analyze-history, SSHP-1470912, 2026-06-08.
+
+### R-DESC-14 — Usuario interno dado de baja en SSFF no puede reactivarse manualmente
+- **Señales**:
+  - ES: "usuario interno dado de baja en SSFF", "usuario inactivo en Groot no puede ser reactivado", "opción de activar deshabilitada".
+  - PT: "usuario interno desligado no SSFF", "usuario inativo em Groot nao pode ser reativado", "opcao de ativar desabilitada".
+  - EN: "internal user deactivated in SSFF", "inactive user in Groot cannot be reactivated", "activate option disabled".
+- **Razón**: Los usuarios internos dados de baja en SSFF no se reactivan manualmente desde Groot. Cuando SSFF vuelve a activar al usuario, la cuenta se reactiva automáticamente.
+- **Acción**: Cerrar como `Won't Do`.
+- **Comentario sugerido**:
+  > "Hola los usuarios internos que son dados de baja en SSFF no se pueden volver a reactivar. Cuando el usuario sea nuevamente activado se reactivara la cuenta automaticamente."
+- **Fuente**: groot-queue:analyze-history, SSHP-1488491, 2026-06-14.
+
+### R-DESC-15 — Roles temporales no restauran roles incompatibles por regla de auditoría
+- **Señales**:
+  - ES: "roles previos no se restauran", "permiso temporal expiró y no volvieron los roles", "roles incompatibles previamente asignados".
+  - PT: "roles anteriores nao retornam", "permissao temporaria expirou e os roles nao voltaram", "roles incompatíveis previamente atribuídos".
+  - EN: "previous roles are not restored", "temporary permission expired and roles did not return", "previously assigned incompatible roles".
+- **Razón**: Desde el 14 de marzo no se exceptúan incompatibilidades de roles por pedido del equipo de auditoría. Usuarios con roles incompatibles asignados previamente pueden perder progresivamente esa concurrencia cuando pasan por flujos de roles temporales.
+- **Acción**: Cerrar como `Won't Do`.
+- **Comentario sugerido** (nota interna):
+  > "Usuarios con roles incompatibles previamente asignados desde el 14 de marzo esto se dejo de exceptuar incompatibilidades por pedido del equipo de auditoria esto hace que usuario con roles asignados previamente cuando entren en estos procesos empiecen a perder paultatinamente la concurrencia de roles incompatibles"
+- **Fuente**: groot-queue:analyze-history, SSHP-1482125, 2026-06-14.
+
 ---
 
 ## Reglas `DERIVAR`
@@ -397,16 +431,19 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 16. **R-DESC-03** → si el usuario reporta que en xtools / autogestión "no aparece CAD" / "não aparece CAD" / "no puedo seleccionar facility" + contexto de visitar otro site.
 17. **R-DESC-06** → si el usuario afectado es **rep** y el reporte es previo al clock-in físico del día en el site objetivo.
 18. **R-DESC-07** → si reps no ven una bolha/función y la verificación confirma que **están** en el facility correcto.
-19. **R-DESC-08** → si el requester menciona "learning completado", "training hub", "learning hub" y pide asignación de rol post-capacitación.
-20. **R-DESC-04** → si es pedido de **cambio de líder / supervisor directo** sin error técnico (lista de usuarios a mover + nuevo líder).
-21. **R-DESC-09** → si pide **remover** un rol a un operario y no hay error técnico reportado.
-22. **R-DESC-05** → si hay error "no autorizado" / "not authorized" o solicitud de permisos para un módulo/URL específico y el usuario **sí** logra loguearse.
-23. **R-DESC-02** → si es solicitud de **asignación de rol** a usuario (sin error técnico) y la cuenta **no** tiene tag azul.
-24. **R-DESC-10** → si pide **asignar / cambiar / quitar un valor de atributo** (CAD, facility, atributo operativo) sin error técnico, y no matchea R-DESC-03 / R-DESC-06 / R-DESC-07.
-25. **R-DESC-01** → si proviene de **Opex Full / SMO** y fue derivado fuera de ventana (>15 días de aging al llegar a Groot, posterior a 2025-10-28).
-26. **R-DESC-11** → si el problema ocurre en un sistema externo a Groot/Kraken (ej. HCM Rostering) y no hay error en ninguna herramienta de Groot.
-27. **R-DESC-12** → si el reporte es una jerarquía que cambió automáticamente en LMS (sin solicitud manual) y el contexto apunta a un sync de Rostering, clasificar como `REVISAR_MANUAL` hasta validar el copy de descarte.
-28. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
+19. **R-DESC-13** → si pide liberar bolha/permisos/roles para una función operativa sin error técnico de Groot, y la acción corresponde al gestor de aplicación u operación.
+20. **R-DESC-08** → si el requester menciona "learning completado", "training hub", "learning hub" y pide asignación de rol post-capacitación.
+21. **R-DESC-04** → si es pedido de **cambio de líder / supervisor directo** sin error técnico (lista de usuarios a mover + nuevo líder).
+22. **R-DESC-09** → si pide **remover** un rol a un operario y no hay error técnico reportado.
+23. **R-DESC-05** → si hay error "no autorizado" / "not authorized" o solicitud de permisos para un módulo/URL específico y el usuario **sí** logra loguearse.
+24. **R-DESC-02** → si es solicitud de **asignación de rol** a usuario (sin error técnico) y la cuenta **no** tiene tag azul.
+25. **R-DESC-10** → si pide **asignar / cambiar / quitar un valor de atributo** (CAD, facility, atributo operativo) sin error técnico, y no matchea R-DESC-03 / R-DESC-06 / R-DESC-07.
+26. **R-DESC-01** → si proviene de **Opex Full / SMO** y fue derivado fuera de ventana (>15 días de aging al llegar a Groot, posterior a 2025-10-28).
+27. **R-DESC-11** → si el problema ocurre en un sistema externo a Groot/Kraken (ej. HCM Rostering) y no hay error en ninguna herramienta de Groot.
+28. **R-DESC-12** → si el reporte es una jerarquía que cambió automáticamente en LMS (sin solicitud manual) y el contexto apunta a un sync de Rostering, clasificar como `REVISAR_MANUAL` hasta validar el copy de descarte.
+29. **R-DESC-14** → si un usuario interno dado de baja en SSFF aparece inactivo en Groot y no puede reactivarse manualmente.
+30. **R-DESC-15** → si roles previos no se restauran tras expirar un rol temporal por incompatibilidades de roles que ya no se exceptúan.
+31. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
 
 ---
 

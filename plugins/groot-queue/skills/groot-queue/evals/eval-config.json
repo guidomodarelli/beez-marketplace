@@ -479,6 +479,72 @@
           "value": "LMS"
         }
       ]
+    },
+    {
+      "id": "r-desc-13-bubble-permissions-operational-owner",
+      "description": "R-DESC-13 discards requests to grant bubble/function permissions when there is no Groot system error",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Liberar permissao Put Away para usuario no BRSP24'. Description='Usuario precisa liberar acesso a bolha de Put Away. Tentaram liberar via Training Hub mas nao aparece erro. Solicita ajuste de permissao/role para habilitar Put Away.'. Apply triage rules.",
+      "assertions": [
+        {
+          "type": "contains",
+          "description": "the bubble/permission operational ownership rule is matched",
+          "value": "R-DESC-13"
+        },
+        {
+          "type": "contains_any",
+          "description": "verdict is discard",
+          "values": ["DESCARTAR", "descartar", "Won't Do"]
+        },
+        {
+          "type": "contains_any",
+          "description": "ownership is routed to application or operation user management",
+          "values": ["gestor de aplicación", "gestor de aplicacion", "gestión de usuarios", "gestion de usuarios", "operación", "operacion"]
+        }
+      ]
+    },
+    {
+      "id": "r-desc-14-ssff-inactive-internal-user",
+      "description": "R-DESC-14 discards manual reactivation requests for internal users deactivated in SSFF",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Usuario interno inativo em Groot nao pode ser reativado'. Description='LDAP interno esta inativo apos desvinculacion en SSFF. La opcion de activar esta deshabilitada y solicitan reactivar manualmente para WMS.'. Apply triage rules.",
+      "assertions": [
+        {
+          "type": "contains",
+          "description": "the SSFF inactive user rule is matched",
+          "value": "R-DESC-14"
+        },
+        {
+          "type": "contains_any",
+          "description": "verdict is discard",
+          "values": ["DESCARTAR", "descartar", "Won't Do"]
+        },
+        {
+          "type": "contains_any",
+          "description": "reactivation depends on SSFF",
+          "values": ["SSFF", "automáticamente", "automaticamente", "reactiva"]
+        }
+      ]
+    },
+    {
+      "id": "r-desc-15-temporary-role-incompatibilities",
+      "description": "R-DESC-15 discards temporary-role restoration cases caused by role incompatibilities no longer excepted by audit",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Roles previos no se restauran tras expirar rol temporal'. Description='Al expirar permiso temporal de 1 hora no volvieron los roles previos. El usuario tenia roles incompatibles previamente asignados y ahora se pierde la concurrencia de roles incompatibles.'. Apply triage rules.",
+      "assertions": [
+        {
+          "type": "contains",
+          "description": "the temporary-role incompatibility rule is matched",
+          "value": "R-DESC-15"
+        },
+        {
+          "type": "contains_any",
+          "description": "verdict is discard",
+          "values": ["DESCARTAR", "descartar", "Won't Do"]
+        },
+        {
+          "type": "contains_any",
+          "description": "reason mentions role incompatibilities or audit rule",
+          "values": ["incompatibilidades", "roles incompatibles", "auditoría", "auditoria"]
+        }
+      ]
     }
   ]
 }
