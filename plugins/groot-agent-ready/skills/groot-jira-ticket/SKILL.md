@@ -45,7 +45,7 @@ SUMMARY_PREFIX="[${repo#*-}]"
 
 **`{{LABEL}}`** defaults to `kraken-user-role` — only override via `.env.local` if the project uses a different label.
 
-**`{{PROJECT_KEY}}`** — try to auto-detect before loading from config:
+**`{{PROJECT_KEY}}`** — try to auto-detect in this order:
 
 ```bash
 # 1. From current branch name (e.g. feature/SGP1-7575-something → SGP1)
@@ -55,7 +55,21 @@ git rev-parse --abbrev-ref HEAD | grep -oE '[A-Z]+-[0-9]+' | head -1 | grep -oE 
 git log --oneline -20 | grep -oE '[A-Z]+-[0-9]+' | head -1 | grep -oE '^[A-Z]+'
 ```
 
-If found, persist to `.env.local` immediately and skip the config load for this key.
+```
+# 3. From the most recently updated issue assigned to the user
+searchJiraIssuesUsingJql(
+  cloudId:    "{{CLOUD_ID}}",
+  jql:        "assignee = currentUser() ORDER BY updated DESC",
+  maxResults: 1,
+  fields:     ["project"]
+)  →  use issues[0].fields.project.key
+```
+
+If a key is found via any of the above, **ask the user to confirm before using it**:
+
+> "Detected project key: `<KEY>`. Is this correct? (yes / enter the correct key)"
+
+If confirmed, persist to `.env.local` and continue. If the user provides a different key, persist that instead.
 
 **Load any remaining config variables.** Try each source in order; stop at the first that yields all required values:
 

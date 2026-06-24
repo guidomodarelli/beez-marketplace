@@ -39,4 +39,4 @@ JIRA_FIELD_START_DATE=customfield_12410
 | `{{CLOUD_ID}}` | `getAccessibleAtlassianResources` → campo `id` |
 | `{{ASSIGNEE_ID}}` | `atlassianUserInfo` → campo `account_id` |
 | `{{SUMMARY_PREFIX}}` | `repo=$(basename $(git rev-parse --show-toplevel)); echo "[${repo#*-}]"` |
-| `{{PROJECT_KEY}}` | Branch: `git rev-parse --abbrev-ref HEAD \| grep -oE '[A-Z]+-[0-9]+' \| head -1 \| grep -oE '^[A-Z]+'` — si no, commits recientes con el mismo patrón |
+| `{{PROJECT_KEY}}` | Branch → commits → `searchJiraIssuesUsingJql(assignee = currentUser() ORDER BY updated DESC, maxResults=1)` → confirmar con el usuario |
