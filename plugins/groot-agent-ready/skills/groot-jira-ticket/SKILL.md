@@ -43,7 +43,9 @@ repo=$(basename $(git rev-parse --show-toplevel))
 SUMMARY_PREFIX="[${repo#*-}]"
 ```
 
-**Load the remaining project config variables.** Try each source in order; stop at the first that yields all required values:
+**`{{LABEL}}`** defaults to `kraken-user-role` — only override via `.env.local` if the project uses a different label.
+
+**Load the remaining project config variables (`PROJECT_KEY`, and optionally `LABEL`).** Try each source in order; stop at the first that yields all required values:
 
 1. **`.env.local`** in the project root:
    ```bash
@@ -53,7 +55,7 @@ SUMMARY_PREFIX="[${repo#*-}]"
 
 2. **Memory**: `search_episodic_memories(query="jira config <repo-name>")`
 
-3. **Ask the user** for each missing field (ver tabla en `references/constants.md`).
+3. **Ask the user** only for `PROJECT_KEY` if still missing.
 
 After resolving all values, persist any new or updated values to `.env.local`. Repeat for each `JIRA_*` key:
 
