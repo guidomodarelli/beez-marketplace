@@ -1,5 +1,5 @@
 ---
-name: kraken-jira-ticket
+name: groot-jira-ticket
 type: skill
 description: Crea o actualiza un ticket Jira (parent + subtasks) para trabajo en un repo de Kraken. Sin valores hardcodeados — lee la config del proyecto desde memoria, archivo o usuario.
 tags: [jira, kraken, sgp1, ticket, subtask]

@@ -1,4 +1,4 @@
-# Constants — kraken-jira-ticket
+# Constants — groot-jira-ticket
 
 Variables requeridas por la skill. Se leen desde `.env.local` en la raíz del proyecto (fuente primaria), memoria o preguntando al usuario.
 
