@@ -20,7 +20,7 @@ JIRA_FIELD_START_DATE=customfield_12410
 |---|---|---|---|
 | `JIRA_CLOUD_ID` | `{{CLOUD_ID}}` | Atlassian cloud UUID | `getAccessibleAtlassianResources` → campo `id` |
 | `JIRA_PROJECT_KEY` | `{{PROJECT_KEY}}` | Jira project key | Prefijo de los tickets, e.g. `SGP1` |
-| `JIRA_LABEL` | `{{LABEL}}` | Label aplicado a todos los tickets | Acordado por el equipo, e.g. `groot-user-role` |
+| `JIRA_LABEL` | `{{LABEL}}` | Label aplicado a todos los tickets | Acordado por el equipo, e.g. `kraken-user-role` |
 | `JIRA_ASSIGNEE_ID` | `{{ASSIGNEE_ID}}` | Atlassian account ID del assignee por defecto | Perfil de Jira del usuario |
 | `JIRA_SUMMARY_PREFIX` | `{{SUMMARY_PREFIX}}` | Prefijo de los títulos de tickets | Derivado del nombre del repo: `fury_groot-auth-admin-fe` → `[auth-admin-fe]` |
 
