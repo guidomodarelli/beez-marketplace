@@ -1,5 +1,5 @@
 {
-  "name": "groot-agent-ready",
+  "name": "groot-toolkit",
   "description": "Colección de skills del equipo Groot para agentes AI: configuración de Jira, rules de plataforma, y otros artefactos reutilizables de meli, nordic y andes.",
   "version": "1.0.0",
   "author": {

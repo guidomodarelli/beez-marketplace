@@ -23,8 +23,8 @@
       "category": "operations"
     },
     {
-      "name": "groot-agent-ready",
-      "source": "./plugins/groot-agent-ready",
+      "name": "groot-toolkit",
+      "source": "./plugins/groot-toolkit",
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
