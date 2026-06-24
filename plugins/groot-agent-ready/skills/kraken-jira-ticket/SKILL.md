@@ -22,20 +22,39 @@ Create or update a ticket in a Jira project for work done in a Kraken repository
 
 Variables y custom fields definidos en `references/constants.md` — leer ese archivo antes de continuar.
 
-**Auto-detect `{{BASE_BRANCH}}`** — no requiere config, se resuelve automáticamente.
+**Auto-detect `{{BASE_BRANCH}}`:**
 
-**Load project config variables.** Try each source in order and stop at the first that yields values:
+```bash
+for b in develop master main; do git show-ref --verify --quiet "refs/heads/$b" && { BASE_BRANCH=$b; break; }; done
+```
 
-1. **Memory**: `search_episodic_memories(query="jira config <repo-name>")`
-2. **Config file** in the project root:
+**Load project config variables.** Try each source in order; stop at the first that yields all required values:
+
+1. **`.env.local`** in the project root:
    ```bash
-   cat .jira-config.json 2>/dev/null
+   cat .env.local 2>/dev/null
    ```
+   Parse `KEY=value` lines — see `references/constants.md` for the expected variable names.
+
+2. **Memory**: `search_episodic_memories(query="jira config <repo-name>")`
+
 3. **Ask the user** for each missing field (ver tabla en `references/constants.md`).
 
-After loading, save to memory so future sessions skip this step:
+After resolving all values, persist any new or updated values to `.env.local`. Repeat for each `JIRA_*` key:
+
+```bash
+# Example for JIRA_CLOUD_ID — repeat for every key:
+grep -q "^JIRA_CLOUD_ID=" .env.local 2>/dev/null \
+  && sed -i.bak "s|^JIRA_CLOUD_ID=.*|JIRA_CLOUD_ID=<value>|" .env.local && rm -f .env.local.bak \
+  || echo "JIRA_CLOUD_ID=<value>" >> .env.local
 ```
-store_note(title="jira config <repo-name>", result="CLOUD_ID=... PROJECT_KEY=... LABEL=... ASSIGNEE_ID=... SUMMARY_PREFIX=... FIELD_QUARTERS=... FIELD_START_DATE=...", project="<repo-name>", tags=["jira", "config"])
+
+Keys to persist: `JIRA_CLOUD_ID`, `JIRA_PROJECT_KEY`, `JIRA_LABEL`, `JIRA_ASSIGNEE_ID`, `JIRA_SUMMARY_PREFIX`, `JIRA_FIELD_QUARTERS`, `JIRA_FIELD_START_DATE`.
+
+Ensure `.env.local` is gitignored:
+
+```bash
+grep -qxF ".env.local" .gitignore 2>/dev/null || echo ".env.local" >> .gitignore
 ```
 
 **Derive the quarter from the system date:**
