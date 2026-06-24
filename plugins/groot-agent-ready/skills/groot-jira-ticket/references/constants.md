@@ -19,7 +19,7 @@ JIRA_FIELD_START_DATE=customfield_12410
 | `.env.local` key | Skill variable | Description | How to find it |
 |---|---|---|---|
 | `JIRA_CLOUD_ID` | `{{CLOUD_ID}}` | Atlassian cloud UUID | `getAccessibleAtlassianResources` → campo `id` |
-| `JIRA_PROJECT_KEY` | `{{PROJECT_KEY}}` | Jira project key | Prefijo de los tickets, e.g. `SGP1` |
+| `JIRA_PROJECT_KEY` | `{{PROJECT_KEY}}` | Jira project key | Auto-detectable desde branch/commits — ver sección abajo. Fallback: preguntar al usuario. |
 | `JIRA_LABEL` | `{{LABEL}}` | Label aplicado a todos los tickets | Default: `kraken-user-role`. Sobreescribir en `.env.local` si el proyecto usa otro. |
 | `JIRA_ASSIGNEE_ID` | `{{ASSIGNEE_ID}}` | Atlassian account ID del assignee por defecto | Auto-detectable — ver sección abajo |
 | `JIRA_SUMMARY_PREFIX` | `{{SUMMARY_PREFIX}}` | Prefijo de los títulos de tickets | Auto-detectable — ver sección abajo |
@@ -39,3 +39,4 @@ JIRA_FIELD_START_DATE=customfield_12410
 | `{{CLOUD_ID}}` | `getAccessibleAtlassianResources` → campo `id` |
 | `{{ASSIGNEE_ID}}` | `atlassianUserInfo` → campo `account_id` |
 | `{{SUMMARY_PREFIX}}` | `repo=$(basename $(git rev-parse --show-toplevel)); echo "[${repo#*-}]"` |
+| `{{PROJECT_KEY}}` | Branch: `git rev-parse --abbrev-ref HEAD \| grep -oE '[A-Z]+-[0-9]+' \| head -1 \| grep -oE '^[A-Z]+'` — si no, commits recientes con el mismo patrón |

@@ -45,7 +45,19 @@ SUMMARY_PREFIX="[${repo#*-}]"
 
 **`{{LABEL}}`** defaults to `kraken-user-role` — only override via `.env.local` if the project uses a different label.
 
-**Load the remaining project config variables (`PROJECT_KEY`, and optionally `LABEL`).** Try each source in order; stop at the first that yields all required values:
+**`{{PROJECT_KEY}}`** — try to auto-detect before loading from config:
+
+```bash
+# 1. From current branch name (e.g. feature/SGP1-7575-something → SGP1)
+git rev-parse --abbrev-ref HEAD | grep -oE '[A-Z]+-[0-9]+' | head -1 | grep -oE '^[A-Z]+'
+
+# 2. From recent commit messages if branch yields nothing
+git log --oneline -20 | grep -oE '[A-Z]+-[0-9]+' | head -1 | grep -oE '^[A-Z]+'
+```
+
+If found, persist to `.env.local` immediately and skip the config load for this key.
+
+**Load any remaining config variables.** Try each source in order; stop at the first that yields all required values:
 
 1. **`.env.local`** in the project root:
    ```bash
@@ -55,7 +67,7 @@ SUMMARY_PREFIX="[${repo#*-}]"
 
 2. **Memory**: `search_episodic_memories(query="jira config <repo-name>")`
 
-3. **Ask the user** only for `PROJECT_KEY` if still missing.
+3. **Ask the user** only for `PROJECT_KEY` if still missing after all sources.
 
 After resolving all values, persist any new or updated values to `.env.local`. Repeat for each `JIRA_*` key:
 
