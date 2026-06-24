@@ -22,13 +22,22 @@ Create or update a ticket in a Jira project for work done in a Groot repository.
 
 Variables y custom fields definidos en `references/constants.md` — leer ese archivo antes de continuar.
 
-**Auto-detect `{{BASE_BRANCH}}`:**
+**Auto-detect these values first — no config needed:**
 
 ```bash
+# BASE_BRANCH
 for b in develop master main; do git show-ref --verify --quiet "refs/heads/$b" && { BASE_BRANCH=$b; break; }; done
 ```
 
-**Load project config variables.** Try each source in order; stop at the first that yields all required values:
+```
+# CLOUD_ID
+getAccessibleAtlassianResources  →  use field `id`
+
+# ASSIGNEE_ID
+atlassianUserInfo  →  use field `account_id`
+```
+
+**Load the remaining project config variables.** Try each source in order; stop at the first that yields all required values:
 
 1. **`.env.local`** in the project root:
    ```bash
