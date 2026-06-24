@@ -1,15 +1,15 @@
 ---
 name: groot-jira-ticket
 type: skill
-description: Crea o actualiza un ticket Jira (parent + subtasks) para trabajo en un repo de Kraken. Sin valores hardcodeados — lee la config del proyecto desde memoria, archivo o usuario.
+description: Crea o actualiza un ticket Jira (parent + subtasks) para trabajo en un repo de Groot. Sin valores hardcodeados — lee la config del proyecto desde memoria, archivo o usuario.
 tags: [jira, groot, ticket, subtask]
 saved-by: gmodarelli
 saved-at: 2026-06-23
 ---
 
-# Kraken JIRA Ticket
+# Groot JIRA Ticket
 
-Create or update a ticket in a Jira project for work done in a Kraken repository.
+Create or update a ticket in a Jira project for work done in a Groot repository.
 
 > **Prerequisite:** This skill requires the [Atlassian MCP server](https://github.com/sooperset/mcp-atlassian) installed and authenticated with your Atlassian account. It uses `createJiraIssue`, `editJiraIssue`, `getJiraIssue`, `getTransitionsForJiraIssue`, and `transitionJiraIssue` tools from that server.
 
@@ -92,7 +92,7 @@ Do not use `[{ "name": "<quarter>" }]`; JIRA ignores that shape for this field.
 Search memory for a recent ticket on the same branch or feature:
 
 ```
-search_episodic_memories(query="jira ticket <branch-or-feature-name> <PROJECT_KEY> kraken")
+search_episodic_memories(query="jira ticket <branch-or-feature-name> <PROJECT_KEY> groot")
 ```
 
 - If a ticket already exists and its description is **incomplete or outdated**, update it with
@@ -185,7 +185,7 @@ Go directly to **Step 7** — do not edit the ticket here.
 ## Step 6 — Create subtasks (new tickets only)
 
 After creating the parent ticket, identify the natural work units from the diff and create
-one subtask per area. Typical split for Kraken repos:
+one subtask per area. Typical split for Groot repos:
 
 - One subtask per major UI surface or feature area.
 - One subtask for dependency bumps if any.
