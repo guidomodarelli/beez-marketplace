@@ -37,6 +37,12 @@ getAccessibleAtlassianResources  →  use field `id`
 atlassianUserInfo  →  use field `account_id`
 ```
 
+```bash
+# SUMMARY_PREFIX — derived from repo name: fury_groot-auth-admin-fe → [auth-admin-fe]
+repo=$(basename $(git rev-parse --show-toplevel))
+SUMMARY_PREFIX="[${repo#*-}]"
+```
+
 **Load the remaining project config variables.** Try each source in order; stop at the first that yields all required values:
 
 1. **`.env.local`** in the project root:

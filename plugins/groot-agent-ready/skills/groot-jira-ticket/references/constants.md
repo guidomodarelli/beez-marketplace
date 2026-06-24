@@ -22,7 +22,7 @@ JIRA_FIELD_START_DATE=customfield_12410
 | `JIRA_PROJECT_KEY` | `{{PROJECT_KEY}}` | Jira project key | Prefijo de los tickets, e.g. `SGP1` |
 | `JIRA_LABEL` | `{{LABEL}}` | Label aplicado a todos los tickets | Acordado por el equipo, e.g. `kraken-user-role` |
 | `JIRA_ASSIGNEE_ID` | `{{ASSIGNEE_ID}}` | Atlassian account ID del assignee por defecto | Auto-detectable — ver sección abajo |
-| `JIRA_SUMMARY_PREFIX` | `{{SUMMARY_PREFIX}}` | Prefijo de los títulos de tickets | Derivado del nombre del repo: `fury_groot-auth-admin-fe` → `[auth-admin-fe]` |
+| `JIRA_SUMMARY_PREFIX` | `{{SUMMARY_PREFIX}}` | Prefijo de los títulos de tickets | Auto-detectable — ver sección abajo |
 
 ## Custom fields
 
@@ -38,3 +38,4 @@ JIRA_FIELD_START_DATE=customfield_12410
 | `{{BASE_BRANCH}}` | `for b in develop master main; do git show-ref --verify --quiet "refs/heads/$b" && { BASE_BRANCH=$b; break; }; done` |
 | `{{CLOUD_ID}}` | `getAccessibleAtlassianResources` → campo `id` |
 | `{{ASSIGNEE_ID}}` | `atlassianUserInfo` → campo `account_id` |
+| `{{SUMMARY_PREFIX}}` | `repo=$(basename $(git rev-parse --show-toplevel)); echo "[${repo#*-}]"` |
