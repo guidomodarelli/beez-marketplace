@@ -11,6 +11,8 @@ saved-at: 2026-06-23
 
 Create or update a ticket in a Jira project for work done in a Kraken repository.
 
+> **Prerequisite:** This skill requires the [Atlassian MCP server](https://github.com/sooperset/mcp-atlassian) installed and authenticated with your Atlassian account. It uses `createJiraIssue`, `editJiraIssue`, `getJiraIssue`, `getTransitionsForJiraIssue`, and `transitionJiraIssue` tools from that server.
+
 > **NEVER run `git push` or any git upload command during this skill.**
 > Ticket management is independent of repository state.
 
