@@ -1,0 +1,20 @@
+{
+  "name": "groot-kit",
+  "description": "Colección de skills del equipo Groot para agentes AI: configuración de Jira, rules de plataforma, y otros artefactos reutilizables de meli, nordic y andes.",
+  "version": "1.0.0",
+  "author": {
+    "name": "gmodarelli"
+  },
+  "repository": "https://github.com/melisource/fury_groot-marketplace",
+  "license": "MIT",
+  "category": "productivity",
+  "keywords": [
+    "groot",
+    "skills",
+    "jira",
+    "groot",
+    "nordic",
+    "andes",
+    "mercado-libre"
+  ]
+}
