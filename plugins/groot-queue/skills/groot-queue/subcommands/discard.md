@@ -178,7 +178,21 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 
 - Si falla: registrar `✗ Transición` en el resultado. **No abortar** — el comentario ya fue posteado. Continuar al siguiente ticket.
 
-**5d. Registrar en knowledge base** (Write tool):
+**5d. Escribir labels en Jira** (después de transición exitosa):
+
+Usar `editJiraIssue` (MCP Atlassian) para agregar labels de trazabilidad al ticket. **Merge de labels** (no reemplazar las existentes):
+- Leer las labels actuales del ticket (ya disponibles del paso 2a; no requiere llamada extra).
+- Agregar las siguientes labels a la lista existente:
+  1. `groot-descartado` — label de acción (común a todos los descartes)
+  2. `groot-r-desc-XX` — label de regla aplicada (e.g. `groot-r-desc-02`, `groot-r-desc-04`)
+- Actualizar el campo `labels` con la lista combinada.
+- Si `editJiraIssue` retorna error de conflicto (el ticket fue modificado entre 2a y ahora), releer las labels actuales y reintentar una vez antes de reportar el error.
+
+> ⚠️ Las labels son kebab-case, todo en minúsculas, sin espacios. El slug de la regla es la regla matcheada en lowercase: `r-desc-01`, `r-desc-02`, etc.
+
+- Si falla: registrar `✗ Labels` en el resultado. **No abortar** — las acciones principales en Jira (comentario + transición) ya fueron completadas. Continuar al siguiente ticket.
+
+**5e. Registrar en knowledge base** (Write tool):
 - Registrar en KB solo si comentario + transición terminaron exitosamente.
 - Si alguno falló, no crear un registro `effectiveness: confirmed`; reportar `KB —` en la tabla final.
 - Path: `$SKILL_DIR/knowledge/solutions/queue-management/<ticket-key-lowercase>-descartado-<regla-slug>.md`
@@ -210,7 +224,7 @@ Ticket cerrado como **Won't Do** aplicando regla **R-DESC-XX** — <nombre de la
 
 - Si falla el Write: reportar (las acciones en Jira ya están hechas; el registro es secundario, no bloquea).
 
-**5e. Registrar en el log de auditoría** (append-only — una línea JSON por ticket sobre el que se intentó una acción de descarte, es decir que matcheó una regla R-DESC):
+**5f. Registrar en el log de auditoría** (append-only — una línea JSON por ticket sobre el que se intentó una acción de descarte, es decir que matcheó una regla R-DESC):
 
 - **Determinar `source`**: si este subcomando fue invocado desde el flujo de `assign-unassigned` (paso 10e de `assign-unassigned.md`), usar `"auto-assign"`; si lo invocó el usuario directamente con `/groot-queue discard`, usar `"manual"`.
 - **Determinar `result`**:
@@ -230,13 +244,13 @@ Ticket cerrado como **Won't Do** aplicando regla **R-DESC-XX** — <nombre de la
 ```
 Resultados de descarte (N tickets procesados):
 
-| Key           | Regla      | Comentario | Transición | KB  |
-|---------------|------------|------------|------------|-----|
-| SSHP-XXXXXX   | R-DESC-02  | ✓          | ✓          | ✓   |
-| SSHP-YYYYYY   | R-DESC-04  | ✓          | ✓          | ✓   |
-| SSHP-ZZZZZZ   | —          | NO_DESCARTA| —          | —   |
-| SSHP-WWWWWW   | —          | REVISAR    | Manual     | —   |
-| SSHP-VVVVVV   | R-DESC-01  | ✓          | ✗ Error    | —   |
+| Key           | Regla      | Comentario | Transición | Labels | KB  |
+|---------------|------------|------------|------------|--------|-----|
+| SSHP-XXXXXX   | R-DESC-02  | ✓          | ✓          | ✓      | ✓   |
+| SSHP-YYYYYY   | R-DESC-04  | ✓          | ✓          | ✓      | ✓   |
+| SSHP-ZZZZZZ   | —          | NO_DESCARTA| —          | —      | —   |
+| SSHP-WWWWWW   | —          | REVISAR    | Manual     | —      | —   |
+| SSHP-VVVVVV   | R-DESC-01  | ✓          | ✗ Error    | —      | —   |
 
 Resumen: N descartados ✓  |  M sin acción  |  K revisión manual  |  E con errores parciales
 ```
