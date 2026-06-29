@@ -49,6 +49,17 @@
         "slack",
         "round-robin"
       ]
+    },
+    {
+      "name": "groot-kit",
+      "source": "./plugins/groot-kit",
+      "description": "Colección de skills del equipo Groot para agentes AI: configuración de Jira, rules de plataforma, y otros artefactos reutilizables de meli, nordic y andes.",
+      "author": {
+        "name": "gmodarelli"
+      },
+      "repository": "https://github.com/melisource/fury_groot-marketplace",
+      "category": "productivity",
+      "keywords": ["groot", "skills", "jira", "kraken", "nordic", "andes", "mercado-libre"]
     }
   ]
 }
