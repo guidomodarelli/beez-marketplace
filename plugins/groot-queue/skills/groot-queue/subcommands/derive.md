@@ -192,7 +192,30 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 
 - Si falla: registrar `✗ Transición` en el resultado. **No abortar** — la nota interna ya fue posteada. Continuar al siguiente ticket.
 
-**4d. Registrar en knowledge base** (Write tool):
+**4d. Escribir labels en Jira** (después de transición exitosa):
+
+Usar `editJiraIssue` (MCP Atlassian) para agregar labels de trazabilidad al ticket. **Merge de labels** (no reemplazar las existentes):
+- Leer las labels actuales del ticket (ya disponibles del paso 2a; no requiere llamada extra).
+- Agregar las siguientes labels a la lista existente:
+  1. `groot-derivado` — label de acción (común a todas las derivaciones)
+  2. `groot-r-der-XX` — label de regla aplicada (e.g. `groot-r-der-09`, `groot-r-der-10`)
+  3. `groot-derive-to-<destino-slug>` — label de destino (e.g. `groot-derive-to-iam-soporte`, `groot-derive-to-smo`, `groot-derive-to-helpdesk-ia`)
+- Actualizar el campo `labels` con la lista combinada.
+- Si `editJiraIssue` retorna error de conflicto (el ticket fue modificado entre 2a y ahora), releer las labels actuales y reintentar una vez antes de reportar el error.
+
+Mapeo de destino → slug de label:
+
+| Equipo destino | Label destino |
+|----------------|---------------|
+| IAM Soporte | `groot-derive-to-iam-soporte` |
+| SMO (Randall) | `groot-derive-to-smo` |
+| Helpdesk IA | `groot-derive-to-helpdesk-ia` |
+
+> ⚠️ Las labels son kebab-case, todo en minúsculas, sin espacios. El slug de la regla es la regla matcheada en lowercase: `r-der-01`, `r-der-09`, etc.
+
+- Si falla: registrar `✗ Labels` en el resultado. **No abortar** — las acciones principales en Jira (nota interna + transición) ya fueron completadas. Continuar al siguiente ticket.
+
+**4e. Registrar en knowledge base** (Write tool):
 - Registrar en KB solo si la nota interna y la transición terminaron exitosamente.
 - Si la nota interna o la transición fallan, no crear un registro `effectiveness: confirmed`; reportar `KB —` en la tabla final para ese ticket.
 - Path: `$SKILL_DIR/knowledge/solutions/queue-management/<ticket-key-lowercase>-derivar-<destino-slug>.md`
@@ -224,7 +247,7 @@ Derivado a **<equipo destino>** aplicando regla **R-DER-XX** — <nombre de la r
 
 - Si falla el Write: reportar (las acciones en Jira ya están hechas; el registro es secundario, no bloquea).
 
-**4e. Registrar en el log de auditoría** (append-only — una línea JSON por ticket sobre el que se intentó una acción de derivación, es decir que matcheó una regla R-DER):
+**4f. Registrar en el log de auditoría** (append-only — una línea JSON por ticket sobre el que se intentó una acción de derivación, es decir que matcheó una regla R-DER):
 
 - **Determinar `source`**: si este subcomando fue invocado desde el flujo de `assign-unassigned` (paso 9e de `assign-unassigned.md`), usar `"auto-assign"`; si lo invocó el usuario directamente con `/groot-queue derive`, usar `"manual"`.
 - **Determinar `result`**:
@@ -244,14 +267,14 @@ Derivado a **<equipo destino>** aplicando regla **R-DER-XX** — <nombre de la r
 ```
 Resultados de derivación (N tickets procesados):
 
-| Key           | Regla     | Destino      | Nota interna | Transición | KB  |
-|---------------|-----------|--------------|--------------|------------|-----|
-| SSHP-XXXXXX   | R-DER-10  | IAM Soporte  | ✓            | ✓          | ✓   |
-| SSHP-YYYYYY   | R-DER-09  | IAM Soporte  | ✓            | ✓          | ✓   |
-| SSHP-ZZZZZZ   | —         | NO_DERIVA    | —            | —          | —   |
-| SSHP-WWWWWW   | R-DER-03  | IAM Commerce | Manual       | Manual     | —   |
-| SSHP-VVVVVV   | R-DER-05  | Slack channel | Manual       | Manual     | —   |
-| SSHP-WWWWWW   | R-DER-07  | IAM Soporte  | ✓            | ✗ Bad Req  | —   |
+| Key           | Regla     | Destino      | Nota interna | Transición | Labels | KB  |
+|---------------|-----------|--------------|--------------|------------|--------|-----|
+| SSHP-XXXXXX   | R-DER-10  | IAM Soporte  | ✓            | ✓          | ✓      | ✓   |
+| SSHP-YYYYYY   | R-DER-09  | IAM Soporte  | ✓            | ✓          | ✓      | ✓   |
+| SSHP-ZZZZZZ   | —         | NO_DERIVA    | —            | —          | —      | —   |
+| SSHP-WWWWWW   | R-DER-03  | IAM Commerce | Manual       | Manual     | —      | —   |
+| SSHP-VVVVVV   | R-DER-05  | Slack channel | Manual       | Manual     | —      | —   |
+| SSHP-WWWWWW   | R-DER-07  | IAM Soporte  | ✓            | ✗ Bad Req  | —      | —   |
 
 Resumen: N derivados ✓  |  M sin acción  |  K manuales/redirecciones pendiente  |  E con errores parciales
 ```

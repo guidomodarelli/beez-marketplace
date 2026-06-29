@@ -187,7 +187,7 @@ El orden de la lista **no** define el turno: en cada corrida, `assign-unassigned
 
 ## Reglas globales
 
-- **WRITE CONTROLADO**: los subcomandos `assign-unassigned`, `derive` y `discard` pueden escribir en Jira (`assign-unassigned`: transición + asignación; `derive`: nota interna + transición de estado; `discard`: comentario público + transición de cierre — los tres requieren MCP Atlassian compatible). `save` y `add-rule` escriben en la knowledge base local. `analyze-history` escribe en la knowledge base local **y** agrega labels de estado (`groot-kb-analyzed` / `groot-kb-manual-review`) en los tickets de Jira (requiere MCP Atlassian). Todos los demás subcomandos son read-only.
+- **WRITE CONTROLADO**: los subcomandos `assign-unassigned`, `derive` y `discard` pueden escribir en Jira (`assign-unassigned`: transición + asignación; `derive`: nota interna + transición de estado + labels de trazabilidad; `discard`: comentario público + transición de cierre + labels de trazabilidad — los tres requieren MCP Atlassian compatible). `save` y `add-rule` escriben en la knowledge base local. `analyze-history` escribe en la knowledge base local **y** agrega labels de estado (`groot-kb-analyzed` / `groot-kb-manual-review`) en los tickets de Jira (requiere MCP Atlassian). Todos los demás subcomandos son read-only.
 - **La base de conocimiento vive fuera de los subcomandos**. No duplicar runbooks ni reglas: siempre referenciar `classification.md` / `triage-rules.md` / `runbooks.md` / `solutions/` por path.
 - Siempre mostrar el link a Jira: `https://mercadolibre.atlassian.net/browse/SSHP-XXXXXX`.
 - Las respuestas deben ser en español.
