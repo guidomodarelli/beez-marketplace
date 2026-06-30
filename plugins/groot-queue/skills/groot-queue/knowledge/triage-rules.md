@@ -209,6 +209,17 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Usuarios con roles incompatibles previamente asignados desde el 14 de marzo esto se dejo de exceptuar incompatibilidades por pedido del equipo de auditoria esto hace que usuario con roles asignados previamente cuando entren en estos procesos empiecen a perder paultatinamente la concurrencia de roles incompatibles"
 - **Fuente**: groot-queue:analyze-history, SSHP-1482125, 2026-06-14.
 
+### R-DESC-16 — Jerarquía/gestor reportado como incorrecto en Groot pero coincide con SSFF → cambio debe gestionarse en SSFF
+- **Señales**:
+  - ES: "jerarquía incorrecta", "gestor/supervisor incorrecto en Groot", "no cambió el líder en Groot", "superior no corresponde".
+  - PT: "hierarquia incorreta", "gestor incorreto no Groot", "superior hierárquico errado", "problema de hierarquia e gestão".
+  - EN: "incorrect hierarchy", "wrong manager in Groot", "supervisor not updated", "hierarchy and management problem".
+- **Razón**: El valor en Groot es un reflejo fiel de SSFF (SuccessFactors). Si la jerarquía es incorrecta, el cambio debe hacerse en SSFF y Groot lo sincronizará automáticamente.
+- **Acción**: Cerrar como `Won't Do`.
+- **Comentario sugerido**:
+  > "El superior asignado que figura es el mismo que el que tiene asignado en SSFF. El cambio de gestor debe realizarse en SuccessFactors para que se refleje automáticamente en Groot."
+- **Fuente**: groot-queue:analyze-history, SSHP-1502400, 2026-06-29.
+
 ---
 
 ## Reglas `DERIVAR`
@@ -443,7 +454,8 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 28. **R-DESC-12** → si el reporte es una jerarquía que cambió automáticamente en LMS (sin solicitud manual) y el contexto apunta a un sync de Rostering, clasificar como `REVISAR_MANUAL` hasta validar el copy de descarte.
 29. **R-DESC-14** → si un usuario interno dado de baja en SSFF aparece inactivo en Groot y no puede reactivarse manualmente.
 30. **R-DESC-15** → si roles previos no se restauran tras expirar un rol temporal por incompatibilidades de roles que ya no se exceptúan.
-31. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
+31. **R-DESC-16** → si el usuario reporta jerarquía/gestor incorrecto en Groot pero la verificación confirma que el valor coincide con SSFF (SuccessFactors).
+32. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
 
 ---
 
