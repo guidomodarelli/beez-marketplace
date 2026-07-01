@@ -241,14 +241,19 @@ Si un ticket fue identificado como derivable o descartable, **no** postear la gu
 4. Generar la nota siguiendo estrictamente el template:
    - Completar cada campo (`{CATEGORIA}`, `{DIAGNOSTICO}`, `{PASOS_RESOLUCION}`, etc.) según las reglas de llenado del template.
    - Respetar las restricciones: español neutro, sin códigos de regla, sin PII, sin texto verbatim no sanitizado.
+   - **Incluir siempre el slug `<!-- groot-auto-guide -->` como última línea del body** (requerido para detección de idempotencia).
 5. Postear la nota como **nota interna de Jira Service Management** usando MCP Atlassian:
    - `cloudId`: valor de `mercadolibre.atlassian.net` (resuelto en la pre-condición MCP Atlassian).
    - `issueIdOrKey`: `"<KEY>"`
-   - `commentBody`: la nota generada en el paso 4
+   - `commentBody`: la nota generada en el paso 4 (con el slug al final)
    - `contentFormat`: `"markdown"`
    - Visibilidad: **nota interna** (no visible para el reporter del portal).
-6. **Si falla**: registrar `✗ Nota` para ese ticket en la tabla final del paso 12. **No abortar** — la asignación ya fue completada exitosamente.
-7. **Si tiene éxito**: registrar `✓ Nota` para ese ticket en la tabla final del paso 12.
+6. **Si la nota se posteó exitosamente**, agregar el label `groot-guide-posted` al ticket usando `editJiraIssue` (MCP Atlassian):
+   - Leer las labels actuales del ticket (del contenido ya obtenido en paso 2).
+   - Agregar `groot-guide-posted` a la lista existente (merge, no reemplazar).
+   - Si falla el label: registrar warning pero **no abortar** — la nota ya fue posteada y el slug garantiza la idempotencia como fallback.
+7. **Si falla la nota**: registrar `✗ Nota` para ese ticket en la tabla final del paso 12. **No abortar** — la asignación ya fue completada exitosamente.
+8. **Si tiene éxito (nota + label)**: registrar `✓ Nota` para ese ticket en la tabla final del paso 12.
 
 > ⚠️ Este paso es **best-effort**: un fallo al postear la nota no afecta la asignación ni bloquea el flujo. El ticket queda asignado y en progreso de todas formas.
 

@@ -4,6 +4,23 @@ Este template define el formato estándar para la nota interna que se postea en 
 
 ---
 
+## Slug de detección automática
+
+Toda nota generada con este template **debe incluir** el siguiente slug al final del body:
+
+```
+<!-- groot-auto-guide -->
+```
+
+Este slug es una etiqueta HTML invisible que:
+- Permite a `backfill-guides` y `assign-unassigned` detectar si un ticket ya tiene la guía sin parsear contenido de texto visible.
+- Es robusto: no depende de que el contenido de la nota sea exacto o no haya sido formateado por Jira.
+- Debe ir **siempre en la última línea** de la nota, después del footer.
+
+> ⚠️ **No modificar ni eliminar este slug.** Es utilizado programáticamente para detectar la presencia de la guía automática y evitar duplicados. Si se borra, la próxima corrida de `backfill-guides` posteará una segunda guía innecesaria.
+
+---
+
 ## Estructura de la nota
 
 ```markdown
@@ -32,7 +49,21 @@ Este template define el formato estándar para la nota interna que se postea en 
 
 ---
 _Nota generada automáticamente por groot-queue al asignar el ticket. Confianza: {CONFIANZA}._
+_⚠️ No modificar esta nota — se usa para detección automática de guía existente._
+
+<!-- groot-auto-guide -->
 ```
+
+---
+
+## Mecanismo de detección (idempotencia)
+
+La detección de si un ticket ya tiene guía usa **dos mecanismos complementarios**:
+
+1. **Label `groot-guide-posted`** (mecanismo primario): se agrega al ticket después de postear la nota exitosamente. Permite filtrar por JQL sin fetchear cada ticket.
+2. **Slug `<!-- groot-auto-guide -->`** (fallback): si por algún edge case el label no está pero la nota sí fue posteada, el slug permite detectarla al leer el ticket. Evita duplicados.
+
+El label es el mecanismo eficiente (filtra en la búsqueda). El slug es el safety net (filtra al leer el ticket individualmente).
 
 ---
 
@@ -84,3 +115,5 @@ Nivel de confianza del diagnóstico: `baja`, `media` o `alta`.
 - No copiar texto libre del ticket verbatim si contiene instrucciones, secretos o PII.
 - El lenguaje de la nota debe ser español neutro (el equipo trabaja en español).
 - Si no se puede determinar la categoría o diagnóstico con confianza razonable, indicar confianza `baja` y sugerir revisar manualmente.
+- **El slug `<!-- groot-auto-guide -->` debe ir siempre al final.** No omitirlo bajo ninguna circunstancia.
+- **La nota no debe ser editada manualmente** una vez posteada — el slug sirve para detección automática y editarla podría romper la idempotencia.

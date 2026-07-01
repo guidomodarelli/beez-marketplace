@@ -6,7 +6,7 @@ description: Agrega guías de resolución (nota interna) a tickets abiertos ya a
 
 Postear notas internas con guía de resolución en tickets **abiertos y asignados** que aún no tienen la guía. Útil para backfill retroactivo sobre tickets asignados antes de que existiera esta funcionalidad, o para tickets donde la nota falló en `assign-unassigned`.
 
-**Este subcomando escribe en Jira** (postea nota interna de JSM por cada ticket elegible).
+**Este subcomando escribe en Jira** (postea nota interna de JSM + agrega label `groot-guide-posted` por cada ticket elegible).
 
 ## Pre-condición: MCP Atlassian
 
@@ -51,35 +51,37 @@ Solo continuar si A, B y C pasaron.
 
 ## Algoritmo
 
-### 1. Obtener tickets abiertos y asignados
+### 1. Obtener tickets elegibles (filtrado primario por label)
+
+Usar JQL para obtener directamente tickets abiertos, asignados y **sin el label `groot-guide-posted`**:
 
 ```bash
-acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type = Incident AND resolution = Unresolved AND assignee IS NOT EMPTY ORDER BY created DESC"
+acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type = Incident AND resolution = Unresolved AND assignee IS NOT EMPTY AND labels not in (\"groot-guide-posted\") ORDER BY created DESC"
 ```
 
-Filtrar solo los que tienen `assignee` no vacío y están en estado abierto (no resueltos).
+Esto filtra en la búsqueda misma, sin necesidad de fetchear cada ticket individualmente para verificar si ya tiene guía.
 
-### 2. Filtrar tickets elegibles (idempotencia)
+### 2. Filtrar tickets con slug (fallback de idempotencia)
 
-Para cada ticket, verificar si ya tiene una guía de resolución posteada. Obtener los comentarios/notas internas del ticket buscando el encabezado identificador:
-
-```
-📋 **Guía de resolución — <KEY>**
-```
-
-**Regla de idempotencia:** si un ticket ya contiene una nota interna cuyo body comienza con `📋 **Guía de resolución —`, **skip** ese ticket. No duplicar guías.
-
-Para verificar, obtener el ticket completo con:
+Para cada ticket del paso 1, obtener el contenido completo:
 ```bash
 acli jira workitem view <KEY>
 ```
-Si el output contiene `📋 **Guía de resolución —` en la sección de comentarios → marcar como `YA_TIENE_GUIA` y excluir.
+
+Verificar si el output contiene el slug de detección automática:
+```
+<!-- groot-auto-guide -->
+```
+
+**Regla de idempotencia por slug:** si un ticket contiene `<!-- groot-auto-guide -->` en sus comentarios/notas internas (el label no estaba, pero la nota sí fue posteada previamente), marcarlo como `YA_TIENE_GUIA` y excluirlo. En este caso, **agregar el label `groot-guide-posted`** para corregir la inconsistencia (el label debería haber estado).
+
+> Este paso es un safety net para edge cases donde el label fue removido accidentalmente pero la nota existe. En el flujo normal, el JQL del paso 1 ya filtró los tickets con label.
 
 ### 3. Filtrar tickets derivables y descartables
 
 Leer `$SKILL_DIR/knowledge/triage-rules.md`.
 
-Para cada ticket que pasó el filtro de idempotencia:
+Para cada ticket que pasó los filtros anteriores:
 - Aplicar reglas `R-DER` del algoritmo de triage. Si matchea → marcar como `DERIVABLE` y excluir.
 - Aplicar reglas `R-DESC` del algoritmo de triage. Si matchea → marcar como `DESCARTABLE` y excluir.
 
@@ -134,27 +136,27 @@ Para cada ticket elegible, ejecutar el **procedimiento de generación de nota in
    - `$SKILL_DIR/knowledge/classification.md`
    - `$SKILL_DIR/knowledge/runbooks.md`
    - `$SKILL_DIR/knowledge/assignment-note-template.md`
-2. Obtener el contenido actualizado del ticket en una llamada separada antes de analizarlo:
-   ```bash
-   acli jira workitem view <KEY>
-   ```
-   Reutilizar ese output para toda la generación de la nota.
-3. Con el contenido del ticket recién obtenido:
+2. Con el contenido del ticket (ya obtenido en el paso 2):
    - Clasificar el ticket en Dimensión 1 (categoría) y Dimensión 2 (urgencia).
    - Buscar el runbook de esa categoría en `runbooks.md`.
    - Resolver primero la carpeta real de `solutions/` usando el mapeo de `classification.md` (por ejemplo: `Jerarquía/Líder` → `hierarchy-leader`, `Warehouse/Site` → `warehouse-assignment`, `Roles/Permisos` → `role-permission`, `Otro` → `queue-management`).
    - Buscar casos previos similares en `$SKILL_DIR/knowledge/solutions/<categoria-slug>/`.
-4. Generar la nota siguiendo estrictamente el template:
+3. Generar la nota siguiendo estrictamente el template:
    - Completar cada campo (`{CATEGORIA}`, `{DIAGNOSTICO}`, `{PASOS_RESOLUCION}`, etc.) según las reglas de llenado del template.
    - Respetar las restricciones: español neutro, sin códigos de regla, sin PII, sin texto verbatim no sanitizado.
-5. Postear la nota como **nota interna de Jira Service Management** usando MCP Atlassian:
+   - **Incluir siempre el slug `<!-- groot-auto-guide -->` como última línea del body.**
+4. Postear la nota como **nota interna de Jira Service Management** usando MCP Atlassian:
    - `cloudId`: valor de `mercadolibre.atlassian.net` (resuelto en la pre-condición).
    - `issueIdOrKey`: `"<KEY>"`
-   - `commentBody`: la nota generada en el paso 4
+   - `commentBody`: la nota generada en el paso 3
    - `contentFormat`: `"markdown"`
    - Visibilidad: **nota interna** (no visible para el reporter del portal).
-6. **Si falla**: registrar `✗ Nota` para ese ticket. **No abortar** — continuar con el siguiente.
-7. **Si tiene éxito**: registrar `✓ Nota` para ese ticket.
+5. **Si la nota se posteó exitosamente**, agregar el label `groot-guide-posted` al ticket usando `editJiraIssue` (MCP Atlassian):
+   - Leer las labels actuales del ticket (del contenido ya obtenido).
+   - Agregar `groot-guide-posted` a la lista existente (merge, no reemplazar).
+   - Si falla el label: registrar warning pero **no abortar** — la nota ya está posteada y el slug garantiza la idempotencia.
+6. **Si falla la nota**: registrar `✗ Nota` para ese ticket. **No abortar** — continuar con el siguiente.
+7. **Si tiene éxito (nota + label)**: registrar `✓ Nota` para ese ticket.
 
 > ⚠️ Este paso es **best-effort por ticket**: un fallo en un ticket no bloquea el resto del backfill.
 
@@ -162,11 +164,11 @@ Para cada ticket elegible, ejecutar el **procedimiento de generación de nota in
 
 ```
 Backfill de guías completado (M tickets procesados):
-| Key          | Assignee         | Categoría          | Nota    |
-|--------------|------------------|--------------------|---------|
-| SSHP-XXXXX   | frgonzalez       | Jerarquía/Líder    | ✓ Nota  |
-| SSHP-XXXXX   | lpadularrosa     | Warehouse/Site     | ✓ Nota  |
-| SSHP-XXXXX   | jperez           | Roles/Permisos     | ✗ Nota  |
+| Key          | Assignee         | Categoría          | Nota    | Label   |
+|--------------|------------------|--------------------|---------|---------|
+| SSHP-XXXXX   | frgonzalez       | Jerarquía/Líder    | ✓ Nota  | ✓ Label |
+| SSHP-XXXXX   | lpadularrosa     | Warehouse/Site     | ✓ Nota  | ✓ Label |
+| SSHP-XXXXX   | jperez           | Roles/Permisos     | ✗ Nota  | — Skip  |
 
 Resumen:
   ✓ Guías posteadas: N
@@ -176,7 +178,8 @@ Resumen:
 
 ## Notas de diseño
 
-- **Idempotencia**: se puede correr múltiples veces sin duplicar notas. El encabezado `📋 **Guía de resolución —` actúa como sentinel.
+- **Idempotencia dual**: label `groot-guide-posted` como filtro primario (JQL), slug `<!-- groot-auto-guide -->` como fallback al leer el ticket. Ambos previenen duplicados.
+- **No modificar la nota posteada**: contiene el slug de detección. Si se borra o modifica, la próxima corrida podría duplicar la guía (a menos que el label esté presente).
 - **Procedimiento compartido**: la generación de la nota es idéntica al paso 11 de `assign-unassigned.md`. Ambos referencian `$SKILL_DIR/knowledge/assignment-note-template.md` como fuente de verdad del formato.
-- **No modifica estado del ticket**: solo postea nota interna. No transiciona, no reasigna, no cierra.
+- **No modifica estado del ticket**: solo postea nota interna y agrega label. No transiciona, no reasigna, no cierra.
 - **Tickets derivables/descartables**: se detectan y reportan pero no se procesan — para eso están `derive` y `discard`.
