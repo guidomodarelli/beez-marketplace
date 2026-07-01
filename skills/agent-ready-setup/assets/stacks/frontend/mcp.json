@@ -6,6 +6,14 @@
     },
     "meli_appsec_codeguard": {
       "url": "https://codeguard-mcp.melioffice.com/mcp/"
+    },
+    "kraken-mcp-integration": {
+      "command": "mcp-remote-proxy",
+      "args": [
+        "https://kraken-integration-mcp.melioffice.com/mcp/",
+        "--transport",
+        "http"
+      ]
     }
   }
 }
