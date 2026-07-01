@@ -1,0 +1,42 @@
+{
+  "skill_name": "agent-ready-setup",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Quiero configurar agent ready en este proyecto. Es una app React con Nordic.",
+      "expected_output": "Detects 'frontend' stack from package.json, runs bootstrap.sh, creates all .claude/ dimension files from the frontend template. Reports what was created.",
+      "assertions": [
+        { "name": "claude_dir_created",        "type": "dir_exists",     "path": ".claude" },
+        { "name": "settings_json_created",     "type": "file_exists",    "path": ".claude/settings.json" },
+        { "name": "claude_md_created",         "type": "file_exists",    "path": ".claude/CLAUDE.md" },
+        { "name": "rules_security_created",    "type": "file_exists",    "path": ".claude/rules/security.md" },
+        { "name": "agents_a11y_created",       "type": "file_exists",    "path": ".claude/agents/a11y-reviewer.md" },
+        { "name": "skills_component_created",  "type": "file_exists",    "path": ".claude/skills/component-creation.md" },
+        { "name": "hooks_pre_tool_created",    "type": "file_exists",    "path": ".claude/hooks/pre-tool-use.md" },
+        { "name": "commands_review_created",   "type": "file_exists",    "path": ".claude/commands/review-pr.md" }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Setup agent ready. El proyecto ya tiene .claude/CLAUDE.md y .claude/rules/security.md.",
+      "expected_output": "Detects stack, runs bootstrap.sh. CLAUDE.md and rules/security.md are skipped (already exist). All other missing files are created. Report shows 'Already existed (skipped)' for the two existing files.",
+      "assertions": [
+        { "name": "existing_claude_md_not_overwritten",      "type": "file_contains", "path": ".claude/CLAUDE.md",          "value": "existing content" },
+        { "name": "existing_security_not_overwritten",       "type": "file_contains", "path": ".claude/rules/security.md",  "value": "existing content" },
+        { "name": "missing_testing_rule_created",            "type": "file_exists",   "path": ".claude/rules/testing.md" },
+        { "name": "skipped_files_reported",                  "type": "output_contains", "value": "skipped" }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Make this repo agent ready. It's a Go microservice.",
+      "expected_output": "Detects 'go' stack from go.mod, copies go templates to .claude/. Creates coding-style.md, security.md, testing.md under rules/, go-specific agents and skills.",
+      "assertions": [
+        { "name": "go_stack_detected",          "type": "output_contains", "value": "go" },
+        { "name": "settings_json_created",      "type": "file_exists",     "path": ".claude/settings.json" },
+        { "name": "go_coding_style_created",    "type": "file_exists",     "path": ".claude/rules/coding-style.md" },
+        { "name": "go_security_created",        "type": "file_exists",     "path": ".claude/rules/security.md" }
+      ]
+    }
+  ]
+}
