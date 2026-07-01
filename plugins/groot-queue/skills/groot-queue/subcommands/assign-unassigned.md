@@ -241,11 +241,10 @@ Si un ticket fue identificado como derivable o descartable, **no** postear la gu
 4. Generar la nota siguiendo estrictamente el template:
    - Completar cada campo (`{CATEGORIA}`, `{DIAGNOSTICO}`, `{PASOS_RESOLUCION}`, etc.) según las reglas de llenado del template.
    - Respetar las restricciones: español neutro, sin códigos de regla, sin PII, sin texto verbatim no sanitizado.
-   - **Incluir siempre el slug `<!-- groot-auto-guide -->` como última línea del body** (requerido para detección de idempotencia).
 5. Postear la nota como **nota interna de Jira Service Management** usando MCP Atlassian:
    - `cloudId`: valor de `mercadolibre.atlassian.net` (resuelto en la pre-condición MCP Atlassian).
    - `issueIdOrKey`: `"<KEY>"`
-   - `commentBody`: la nota generada en el paso 4 (con el slug al final)
+   - `commentBody`: la nota generada en el paso 4
    - `contentFormat`: `"markdown"`
    - `commentVisibility`: `{"type": "role", "value": "Service Desk Team"}`
 
