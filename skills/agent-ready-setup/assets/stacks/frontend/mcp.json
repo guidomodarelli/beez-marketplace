@@ -1,5 +1,11 @@
 {
   "mcpServers": {
-    <!-- Add MCP server connections for this stack -->
+    "frontender-web-mcp": {
+      "type": "streamable-http",
+      "url": "https://frontender-web-mcp.melioffice.com/mcp"
+    },
+    "meli_appsec_codeguard": {
+      "url": "https://codeguard-mcp.melioffice.com/mcp/"
+    }
   }
 }
