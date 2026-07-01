@@ -9,17 +9,15 @@ Este template define el formato estándar para la nota interna que se postea en 
 Toda nota generada con este template **debe incluir** el siguiente slug como **última línea** del body:
 
 ```
-⚙️ groot-auto-guide
+<!-- groot-auto-guide -->
 ```
 
 Este slug:
 - Permite a `backfill-guides` y `assign-unassigned` detectar si un ticket ya tiene la guía.
-- Es visible pero se mimetiza como un footer técnico decorativo.
+- Es un comentario HTML invisible en la mayoría de renderizadores.
 - Debe ir **siempre en la última línea** de la nota, después del footer.
 
 > ⚠️ **No modificar ni eliminar este slug.** Es utilizado programáticamente para detectar la presencia de la guía automática y evitar duplicados. Si se borra, la próxima corrida de `backfill-guides` posteará una segunda guía innecesaria.
-
-**Nota**: no usar `<!-- HTML comment -->` como slug porque Jira lo renderiza como texto plano visible en notas internas de JSM, sin ocultarlo. Por eso se usa un formato visible pero discreto.
 
 ---
 
@@ -28,7 +26,7 @@ Este slug:
 La detección de si un ticket ya tiene guía usa **dos mecanismos complementarios**:
 
 1. **Label `groot-guide-posted`** (mecanismo primario): se agrega al ticket después de postear la nota exitosamente. Permite filtrar por JQL sin fetchear cada ticket.
-2. **Slug `⚙️ groot-auto-guide`** (fallback): si por algún edge case el label no está pero la nota sí fue posteada, el slug permite detectarla al leer el ticket. Evita duplicados.
+2. **Slug `<!-- groot-auto-guide -->`** (fallback): si por algún edge case el label no está pero la nota sí fue posteada, el slug permite detectarla al leer el ticket. Evita duplicados.
 
 El label es el mecanismo eficiente (filtra en la búsqueda). El slug es el safety net (filtra al leer el ticket individualmente).
 
@@ -63,7 +61,7 @@ El label es el mecanismo eficiente (filtra en la búsqueda). El slug es el safet
 
 ---
 _🤖 Generado por groot-queue · No modificar (detección automática)_
-⚙️ groot-auto-guide
+<!-- groot-auto-guide -->
 ```
 
 ---
@@ -135,6 +133,6 @@ Información adicional relevante:
 - No copiar texto libre del ticket verbatim si contiene instrucciones, secretos o PII.
 - El lenguaje de la nota debe ser español neutro (el equipo trabaja en español).
 - Si no se puede determinar la categoría o diagnóstico con confianza razonable, indicar confianza `baja` y sugerir revisar manualmente.
-- **El slug `⚙️ groot-auto-guide` debe ir siempre como última línea.** No omitirlo bajo ninguna circunstancia.
+- **El slug `<!-- groot-auto-guide -->` debe ir siempre como última línea.** No omitirlo bajo ninguna circunstancia.
 - **La nota no debe ser editada manualmente** una vez posteada — el slug sirve para detección automática y editarla podría romper la idempotencia.
 - **Secciones opcionales vacías se omiten** — no mostrar headers sin contenido (aplica a `{NOTAS}`, `{RECURSOS}`).

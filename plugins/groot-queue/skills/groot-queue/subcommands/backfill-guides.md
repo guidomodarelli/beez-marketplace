@@ -70,10 +70,10 @@ acli jira workitem view <KEY>
 
 Verificar si el output contiene el slug de detección automática:
 ```
-⚙️ groot-auto-guide
+<!-- groot-auto-guide -->
 ```
 
-**Regla de idempotencia por slug:** si un ticket contiene `⚙️ groot-auto-guide` en sus comentarios/notas internas (el label no estaba, pero la nota sí fue posteada previamente), marcarlo como `YA_TIENE_GUIA` y excluirlo. En este caso, **agregar el label `groot-guide-posted`** para corregir la inconsistencia (el label debería haber estado).
+**Regla de idempotencia por slug:** si un ticket contiene `<!-- groot-auto-guide -->` en sus comentarios/notas internas (el label no estaba, pero la nota sí fue posteada previamente), marcarlo como `YA_TIENE_GUIA` y excluirlo. En este caso, **agregar el label `groot-guide-posted`** para corregir la inconsistencia (el label debería haber estado).
 
 > Este paso es un safety net para edge cases donde el label fue removido accidentalmente pero la nota existe. En el flujo normal, el JQL del paso 1 ya filtró los tickets con label.
 
@@ -144,7 +144,7 @@ Para cada ticket elegible, ejecutar el **procedimiento de generación de nota in
 3. Generar la nota siguiendo estrictamente el template:
    - Completar cada campo (`{CATEGORIA}`, `{DIAGNOSTICO}`, `{PASOS_RESOLUCION}`, etc.) según las reglas de llenado del template.
    - Respetar las restricciones: español neutro, sin códigos de regla, sin PII, sin texto verbatim no sanitizado.
-   - **Incluir siempre el slug `⚙️ groot-auto-guide` como última línea del body.**
+   - **Incluir siempre el slug `<!-- groot-auto-guide -->` como última línea del body.**
 4. Postear la nota como **nota interna de Jira Service Management** usando MCP Atlassian:
    - `cloudId`: valor de `mercadolibre.atlassian.net` (resuelto en la pre-condición).
    - `issueIdOrKey`: `"<KEY>"`
@@ -180,7 +180,7 @@ Resumen:
 
 ## Notas de diseño
 
-- **Idempotencia dual**: label `groot-guide-posted` como filtro primario (JQL), slug `⚙️ groot-auto-guide` como fallback al leer el ticket. Ambos previenen duplicados.
+- **Idempotencia dual**: label `groot-guide-posted` como filtro primario (JQL), slug `<!-- groot-auto-guide -->` como fallback al leer el ticket. Ambos previenen duplicados.
 - **No modificar la nota posteada**: contiene el slug de detección. Si se borra o modifica, la próxima corrida podría duplicar la guía (a menos que el label esté presente).
 - **Procedimiento compartido**: la generación de la nota es idéntica al paso 11 de `assign-unassigned.md`. Ambos referencian `$SKILL_DIR/knowledge/assignment-note-template.md` como fuente de verdad del formato.
 - **No modifica estado del ticket**: solo postea nota interna y agrega label. No transiciona, no reasigna, no cierra.
