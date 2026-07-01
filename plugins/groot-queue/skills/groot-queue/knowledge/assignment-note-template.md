@@ -80,18 +80,32 @@ Resumen en 1-3 oraciones de qué está pasando, basado en el summary y descripti
 
 ### `{PASOS_RESOLUCION}`
 Lista numerada de pasos concretos para resolver. Fuentes (en orden de prioridad):
-1. Runbook de la categoría en `runbooks.md`
-2. Casos similares en `solutions/<categoria>/`
+1. Runbook de la categoría (`runbooks.md`)
+2. Casos similares en `solutions/<categoria-slug>/`
 3. Análisis propio si no hay cobertura en los anteriores
 
 Máximo 5-7 pasos. Si el runbook tiene más, priorizar los más relevantes para este ticket específico.
 
+Los pasos se extraen de los archivos de knowledge base pero **no deben incluir paths relativos** en la nota generada — esos van como links completos de GitHub en la sección `{RECURSOS}`.
+
 ### `{RECURSOS}`
-Links y referencias útiles, por ejemplo:
-- Link al runbook de la categoría: "Ver runbook: Jerarquía/Líder"
-- Links a soluciones previas similares: "Caso similar: SSHP-XXXXXX"
-- URLs de herramientas: Groot admin, WMS, Kraken, etc. según aplique
-- Incluir siempre el link al ticket: `https://mercadolibre.atlassian.net/browse/{TICKET_KEY}`
+Links y referencias útiles. **Todas las referencias a archivos de groot-queue deben ser links completos de GitHub** para que sean clickeables desde Jira.
+
+Base URL de la knowledge base:
+```
+https://github.com/melisource/fury_groot-marketplace/blob/main/plugins/groot-queue/skills/groot-queue/knowledge/
+```
+
+Ejemplos concretos de cómo formatear cada tipo de recurso:
+
+- **Runbook**: link completo al archivo + anchor si existe sección específica:
+  `Ver runbook: [Jerarquía/Líder](https://github.com/melisource/fury_groot-marketplace/blob/main/plugins/groot-queue/skills/groot-queue/knowledge/runbooks.md#runbook-jerarqu%C3%ADal%C3%ADder)`
+- **Caso similar**: link completo al archivo de solución:
+  `Caso similar: [SSHP-XXXXXX](https://github.com/melisource/fury_groot-marketplace/blob/main/plugins/groot-queue/skills/groot-queue/knowledge/solutions/<categoria-slug>/<archivo>.md)`
+- **Herramientas**: URLs directas a las herramientas relevantes (Groot admin, WMS, Kraken, etc.)
+- **Ticket Jira**: siempre incluir `https://mercadolibre.atlassian.net/browse/{TICKET_KEY}`
+
+> ⚠️ No usar paths relativos como `solutions/cad-profile/archivo.md` ni referencias textuales sin link como "Ver runbook: CAD/Perfil". Siempre la URL completa de GitHub clickeable.
 
 ### `{NOTAS}`
 Información adicional relevante:
