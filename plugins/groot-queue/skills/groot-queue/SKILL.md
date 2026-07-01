@@ -5,7 +5,7 @@ description: "Monitorea la cola de soporte [Core] - Groot (SSHP). Lista, clasifi
 
 # Groot Queue Monitor
 
-**Propósito**: Monitorear y gestionar la cola de soporte "[Core] - Groot" del proyecto Jira SSHP. Read-only salvo los subcomandos `assign-unassigned`, que reparte tickets sin responsable de forma equitativa entre el TEAM (stateless); `derive`, que postea nota interna y transiciona estado con MCP Atlassian; `discard`, que postea comentario público y cierra tickets que no corresponden a Groot Soporte; `save` y `add-rule`, que escriben en la knowledge base local; y `analyze-history`, que analiza tickets cerrados históricos, escribe en la knowledge base y agrega labels de estado en Jira.
+**Propósito**: Monitorear y gestionar la cola de soporte "[Core] - Groot" del proyecto Jira SSHP. Read-only salvo los subcomandos `assign-unassigned`, que reparte tickets sin responsable de forma equitativa entre el TEAM (stateless); `derive`, que postea nota interna y transiciona estado con MCP Atlassian; `discard`, que postea comentario público y cierra tickets que no corresponden a Groot Soporte; `save` y `add-rule`, que escriben en la knowledge base local; `backfill-guides`, que postea guías de resolución en tickets abiertos ya asignados sin guía; y `analyze-history`, que analiza tickets cerrados históricos, escribe en la knowledge base y agrega labels de estado en Jira.
 
 Esta skill funciona como **índice + dispatcher** de subcomandos. La lógica concreta de cada acción vive en `subcommands/<nombre>.md` (single source of truth, compartido entre Claude Code y Codex).
 
@@ -64,6 +64,7 @@ Path resuelto: `$SKILL_DIR/subcommands/<nombre>.md`.
 | `discard SSHP-XXXXXX` | Descartar un ticket que no corresponde a Groot Soporte: detecta regla R-DESC y, si hay MCP Atlassian compatible, postea comentario público y cierra el ticket |
 | `save SSHP-XXXXXX <desc>` | Guardar la solución aplicada a un ticket en la knowledge base |
 | `add-rule` | Agregar una nueva regla de triage a la knowledge base |
+| `backfill-guides` | Postear guías de resolución (nota interna) en tickets abiertos y asignados que aún no tienen guía — backfill retroactivo idempotente |
 | `analyze-history [--limit N] [--since YYYY-MM-DD] [--force]` | Analizar tickets cerrados históricos y extraer patrones para la knowledge base |
 | _(sin argumento)_ | Mostrar esta ayuda + inicialización del entorno de desarrollo |
 
