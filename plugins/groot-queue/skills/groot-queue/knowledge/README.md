@@ -16,6 +16,12 @@ runbooks.md          Runbook procedural por categoría de problema
                      (Jerarquía, Warehouse, Roles, Atributos, CAD/Perfil, etc.)
                      Se consulta en /groot-queue solve.
 
+assignment-note-template.md
+                     Template estándar para la nota interna de resolución que
+                     se postea en cada ticket al asignarlo con
+                     /groot-queue assign-unassigned. Define estructura,
+                     reglas de llenado y restricciones.
+
 solutions/           Casos concretos resueltos, agrupados por categoría:
   hierarchy-leader/
   warehouse-assignment/

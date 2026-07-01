@@ -4,7 +4,7 @@ description: Asigna en Jira todos los tickets sin responsable repartiéndolos de
 
 # /groot-queue:assign-unassigned
 
-Asignar todos los tickets sin responsable repartiéndolos de forma **equitativa y sin estado local** entre el TEAM (un único shuffle por corrida, sin repetir; ver abajo). **Este command escribe en Jira** (transiciona estado + asigna responsable). Ver también `derive`, que escribe comentario + transición de estado.
+Asignar todos los tickets sin responsable repartiéndolos de forma **equitativa y sin estado local** entre el TEAM (un único shuffle por corrida, sin repetir; ver abajo). **Este command escribe en Jira** (transiciona estado + asigna responsable + postea nota interna con guía de resolución). Ver también `derive`, que escribe comentario + transición de estado.
 
 ## Por qué un único shuffle por corrida y sin estado persistente
 
@@ -16,6 +16,32 @@ Durante la corrida se usan **archivos scratch efímeros** (creados con `mktemp`,
 
 Leer el `TEAM` desde `$SKILL_DIR/SKILL.md`. Si está vacío, abortar con mensaje:
 > "Configurá la sección TEAM del SKILL.md antes de usar este comando."
+
+## Pre-condición: MCP Atlassian (para nota interna de resolución)
+
+El paso 6f postea una nota interna en cada ticket asignado. Si el MCP de Atlassian no está disponible, la asignación (pasos 6a-6e) se ejecuta igual, pero el paso 6f se salta con un warning al inicio:
+
+**A. Disponibilidad de herramientas:**
+Intentar llamar `mcp__Atlassian__getAccessibleAtlassianResources` (o herramienta equivalente).
+
+- Si la herramienta **no existe** en el contexto → mostrar warning y marcar `MCP_AVAILABLE = false`:
+  ```
+  ⚠️ MCP Atlassian no disponible — las notas internas de resolución no se postearán.
+  Las asignaciones se realizarán normalmente. Para habilitar notas, instalá el MCP:
+    claude mcp add --transport http "Atlassian" https://mcp.atlassian.com/v1/mcp
+  ```
+- Si existe → continuar con B.
+
+**B. Autenticación y `cloudId`:**
+- Si retorna error de autenticación → marcar `MCP_AVAILABLE = false` y mostrar:
+  ```
+  ⚠️ MCP Atlassian no autenticado — las notas internas de resolución no se postearán.
+  Ejecutá /mcp para completar el flujo OAuth.
+  ```
+- Si retorna recursos: elegir el que represente `mercadolibre.atlassian.net` y guardar su `cloudId`. Marcar `MCP_AVAILABLE = true`.
+- Si `mercadolibre.atlassian.net` no aparece → marcar `MCP_AVAILABLE = false` con warning similar.
+
+**C. Si `MCP_AVAILABLE = false`:** el paso 6f se salta automáticamente para todos los tickets (no se intenta postear la nota). La tabla de resultados del paso 8 muestra `— Skip` en la columna Nota para todos los tickets.
 
 ## Algoritmo
 
@@ -77,7 +103,36 @@ Leer el `TEAM` desde `$SKILL_DIR/SKILL.md`. Si está vacío, abortar con mensaje
         tail -n +2 "$QUEUE" > "$QUEUE.tmp" && mv "$QUEUE.tmp" "$QUEUE"
         ```
         Así ese miembro no vuelve al pool hasta la próxima ronda (cuando se rellena `$QUEUE` desde `$ORDER`).
-      - Continuar al siguiente ticket.
+
+   f. **Postear nota interna con guía de resolución** (solo si el paso e fue exitoso):
+
+      Analizar el ticket y generar una nota interna que ayude al responsable asignado a resolverlo. La nota sigue el template definido en `$SKILL_DIR/knowledge/assignment-note-template.md`.
+
+      **Procedimiento:**
+
+      1. Leer las referencias (reutilizar si ya fueron cargadas en pasos anteriores):
+         - `$SKILL_DIR/knowledge/classification.md`
+         - `$SKILL_DIR/knowledge/runbooks.md`
+         - `$SKILL_DIR/knowledge/assignment-note-template.md`
+      2. Con el contenido del ticket (ya obtenido en pasos previos o en el paso 9b si se ejecuta la detección post-asignación):
+         - Clasificar el ticket en Dimensión 1 (categoría) y Dimensión 2 (urgencia).
+         - Buscar el runbook de esa categoría en `runbooks.md`.
+         - Buscar casos previos similares en `$SKILL_DIR/knowledge/solutions/<categoria>/`.
+      3. Generar la nota siguiendo estrictamente el template:
+         - Completar cada campo (`{CATEGORIA}`, `{DIAGNOSTICO}`, `{PASOS_RESOLUCION}`, etc.) según las reglas de llenado del template.
+         - Respetar las restricciones: español neutro, sin códigos de regla, sin PII, sin texto verbatim no sanitizado.
+      4. Postear la nota como **nota interna de Jira Service Management** usando MCP Atlassian:
+         - `cloudId`: valor de `mercadolibre.atlassian.net` (resuelto en la pre-condición MCP Atlassian).
+         - `issueIdOrKey`: `"<KEY>"`
+         - `commentBody`: la nota generada en el paso 3
+         - `contentFormat`: `"markdown"`
+         - Visibilidad: **nota interna** (no visible para el reporter del portal).
+      5. **Si falla**: registrar `✗ Nota` en la tabla de resultados del paso 8 para ese ticket. **No abortar** — la asignación ya fue completada exitosamente. Continuar al siguiente ticket.
+      6. **Si tiene éxito**: registrar `✓ Nota` en la tabla de resultados.
+
+      > ⚠️ Este paso es **best-effort**: un fallo al postear la nota no afecta la asignación ni bloquea el flujo. El ticket queda asignado y en progreso de todas formas.
+
+      Continuar al siguiente ticket.
 
 7. **Limpieza obligatoria.** Al terminar el loop —tanto si completó como si abortó por un error— eliminar los archivos scratch:
    ```bash
@@ -89,11 +144,12 @@ Leer el `TEAM` desde `$SKILL_DIR/SKILL.md`. Si está vacío, abortar con mensaje
 
 ```
 Asignaciones realizadas (N tickets):
-| Key          | Summary                  | Transición  | Asignado a   | Estado  |
-|--------------|--------------------------|-------------|--------------|---------|
-| SSHP-XXXXX   | ...                      | ✓ En curso  | frgonzalez   | ✓ OK    |
-| SSHP-XXXXX   | ...                      | ✓ En curso  | lpadularrosa | ✓ OK    |
-| SSHP-XXXXX   | ...                      | ✗ Error     | —            | ✗ Skip  |
+| Key          | Summary                  | Transición  | Asignado a   | Nota    | Estado  |
+|--------------|--------------------------|-------------|--------------|---------|---------|
+| SSHP-XXXXX   | ...                      | ✓ En curso  | frgonzalez   | ✓ Nota  | ✓ OK    |
+| SSHP-XXXXX   | ...                      | ✓ En curso  | lpadularrosa | ✓ Nota  | ✓ OK    |
+| SSHP-XXXXX   | ...                      | ✓ En curso  | jperez       | ✗ Nota  | ✓ OK    |
+| SSHP-XXXXX   | ...                      | ✗ Error     | —            | — Skip  | ✗ Skip  |
 
 Reparto de esta corrida:
   | Miembro      | Tickets |
@@ -101,6 +157,9 @@ Reparto de esta corrida:
   | frgonzalez   | 1       |
   | lpadularrosa | 1       |
 ```
+
+- La columna **Nota** muestra `✓ Nota` si la nota interna se posteó con éxito, `✗ Nota` si falló, o `— Skip` si MCP no estaba disponible o el ticket no fue asignado exitosamente.
+- Un ticket se considera **✓ OK** en la columna Estado si transición + asignación + verificación fueron exitosas, **independientemente del resultado de la nota** (la nota es best-effort).
 
 Si no hay tickets sin asignar, mostrar: "✅ No hay tickets sin assignee en la cola."
 
