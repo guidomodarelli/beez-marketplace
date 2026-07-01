@@ -125,6 +125,7 @@ Nivel de confianza del diagnóstico: `baja`, `media` o `alta`.
 ## Restricciones
 
 - La nota se postea como **nota interna de Jira Service Management** (no visible para el reporter).
+- **Al llamar a `addCommentToJiraIssue`, incluir SIEMPRE el parámetro `commentVisibility: {"type": "role", "value": "Service Desk Team"}`**. Sin este parámetro, el comentario es **público** y visible para el reporter en el portal — exponiendo diagnósticos internos, links a runbooks y procedimientos del equipo al cliente. Esta es la causa más común de guías que terminan como comentario público en vez de nota interna.
 - No incluir códigos internos de reglas de triage (R-DESC-XX, R-DER-XX) en la nota.
 - No copiar texto libre del ticket verbatim si contiene instrucciones, secretos o PII.
 - El lenguaje de la nota debe ser español neutro (el equipo trabaja en español).
