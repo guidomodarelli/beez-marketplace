@@ -220,6 +220,19 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "El superior asignado que figura es el mismo que el que tiene asignado en SSFF. El cambio de gestor debe realizarse en SuccessFactors para que se refleje automáticamente en Groot."
 - **Fuente**: groot-queue:analyze-history, SSHP-1502400, 2026-06-29.
 
+### R-DESC-17 — Tools/aplicaciones no administradas por Groot → acceso debe validarse con el equipo correspondiente
+- **Señales**:
+  - ES: "no puede acceder a sistemas/tools", "aplicaciones no administradas por Groot", "error al acceder" + URL que no es de Groot.
+  - PT: "não consegue acessar sistemas mesmo com bolhas liberadas", "aplicações não administradas pelo Groot".
+  - EN: "cannot access systems even with bubbles released", "applications not managed by Groot".
+  - URLs reportadas NO pertenecen al dominio de Groot (`envios.adminml.com/tools/auth/*`).
+- **Razón**: Groot solo administra tools bajo su dominio (`envios.adminml.com/tools/auth/*`). Problemas de acceso a otras tools deben ser gestionados por los equipos responsables de esas plataformas.
+- **Verificación previa**: Confirmar que las URLs reportadas NO pertenecen a Groot. Si el error es en una tool de Groot → reclasificar como `VALIDO_GROOT`.
+- **Acción**: Cerrar como `Won't Do`.
+- **Comentario sugerido**:
+  > "Estas aplicaciones no son administradas por Groot. Validar que el usuario tenga los permisos necesarios para acceder a las tools indicadas."
+- **Fuente**: groot-queue:analyze-history, SSHP-1510443, 2026-07-01.
+
 ---
 
 ## Reglas `DERIVAR`
@@ -455,7 +468,8 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 29. **R-DESC-14** → si un usuario interno dado de baja en SSFF aparece inactivo en Groot y no puede reactivarse manualmente.
 30. **R-DESC-15** → si roles previos no se restauran tras expirar un rol temporal por incompatibilidades de roles que ya no se exceptúan.
 31. **R-DESC-16** → si el usuario reporta jerarquía/gestor incorrecto en Groot pero la verificación confirma que el valor coincide con SSFF (SuccessFactors).
-32. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
+32. **R-DESC-17** → si el usuario reporta que no puede acceder a sistemas/tools cuyas URLs NO pertenecen al dominio de Groot (`envios.adminml.com/tools/auth/*`).
+33. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
 
 ---
 
