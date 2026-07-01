@@ -61,7 +61,23 @@ acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type = Inc
 
 Esto filtra en la búsqueda misma, sin necesidad de fetchear cada ticket individualmente para verificar si ya tiene guía.
 
-### 2. Filtrar tickets derivables y descartables
+### 2. Filtrar tickets con slug (fallback de idempotencia)
+
+Para cada ticket del paso 1, obtener el contenido completo:
+```bash
+acli jira workitem view <KEY>
+```
+
+Verificar si el output contiene el slug de detección automática:
+```
+<!-- groot-auto-guide -->
+```
+
+**Regla de idempotencia por slug:** si un ticket contiene `<!-- groot-auto-guide -->` en sus comentarios/notas internas (el label no estaba, pero la nota sí fue posteada previamente), marcarlo como `YA_TIENE_GUIA` y excluirlo. En este caso, **agregar el label `groot-guide-posted`** para corregir la inconsistencia (el label debería haber estado).
+
+> Este paso es un safety net para edge cases donde el label fue removido accidentalmente pero la nota existe. En el flujo normal, el JQL del paso 1 ya filtró los tickets con label.
+
+### 3. Filtrar tickets derivables y descartables
 
 Leer `$SKILL_DIR/knowledge/triage-rules.md`.
 
@@ -71,7 +87,7 @@ Para cada ticket que pasó los filtros anteriores:
 
 Los tickets derivables y descartables no reciben guía de resolución de Groot (la guía no tendría sentido para un equipo externo o un ticket que debería cerrarse).
 
-### 3. Mostrar plan
+### 4. Mostrar plan
 
 Antes de ejecutar, mostrar resumen:
 
@@ -110,9 +126,9 @@ Si hay tickets elegibles → pedir confirmación:
 ```
 
 - **No** → terminar con: "Backfill cancelado."
-- **Sí** → continuar al paso 4.
+- **Sí** → continuar al paso 5.
 
-### 4. Generar y postear notas (procedimiento compartido con assign-unassigned paso 11)
+### 5. Generar y postear notas (procedimiento compartido con assign-unassigned paso 11)
 
 Para cada ticket elegible, ejecutar el **procedimiento de generación de nota interna de resolución** definido en `$SKILL_DIR/knowledge/assignment-note-template.md`:
 
@@ -128,6 +144,7 @@ Para cada ticket elegible, ejecutar el **procedimiento de generación de nota in
 3. Generar la nota siguiendo estrictamente el template:
    - Completar cada campo (`{CATEGORIA}`, `{DIAGNOSTICO}`, `{PASOS_RESOLUCION}`, etc.) según las reglas de llenado del template.
    - Respetar las restricciones: español neutro, sin códigos de regla, sin PII, sin texto verbatim no sanitizado.
+   - **Incluir siempre el slug `<!-- groot-auto-guide -->` como última línea del body.**
 4. Postear la nota como **nota interna de Jira Service Management** usando MCP Atlassian:
    - `cloudId`: valor de `mercadolibre.atlassian.net` (resuelto en la pre-condición).
    - `issueIdOrKey`: `"<KEY>"`
@@ -145,7 +162,7 @@ Para cada ticket elegible, ejecutar el **procedimiento de generación de nota in
 
 > ⚠️ Este paso es **best-effort por ticket**: un fallo en un ticket no bloquea el resto del backfill.
 
-### 5. Mostrar tabla de resultados
+### 6. Mostrar tabla de resultados
 
 ```
 Backfill de guías completado (M tickets procesados):
@@ -163,7 +180,8 @@ Resumen:
 
 ## Notas de diseño
 
-- **Idempotencia por label**: `groot-guide-posted` se agrega al ticket después de postear la nota. El JQL lo usa como filtro primario para evitar duplicados.
+- **Idempotencia dual**: label `groot-guide-posted` como filtro primario (JQL), slug `<!-- groot-auto-guide -->` como fallback al leer el ticket. Ambos previenen duplicados.
+- **No modificar la nota posteada**: contiene el slug de detección. Si se borra o modifica, la próxima corrida podría duplicar la guía (a menos que el label esté presente).
 - **Procedimiento compartido**: la generación de la nota es idéntica al paso 11 de `assign-unassigned.md`. Ambos referencian `$SKILL_DIR/knowledge/assignment-note-template.md` como fuente de verdad del formato.
 - **No modifica estado del ticket**: solo postea nota interna y agrega label. No transiciona, no reasigna, no cierra.
 - **Tickets derivables/descartables**: se detectan y reportan pero no se procesan — para eso están `derive` y `discard`.
