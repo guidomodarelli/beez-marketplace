@@ -48,9 +48,9 @@ Leer el `TEAM` desde `$SKILL_DIR/SKILL.md`. Si está vacío, abortar con mensaje
       ```
       Si `$QUEUE` está vacío, rellenarla con `cp "$ORDER" "$QUEUE"` (paso 5) y volver a leer.
 
-   b. **Transicionar a "In Progress" PRIMERO** — en una llamada Bash **separada**:
+   b. **Transicionar a "En curso" PRIMERO** — en una llamada Bash **separada**:
       ```bash
-      acli jira workitem transition --key <KEY> --status "In Progress" --yes
+      acli jira workitem transition --key <KEY> --status "En curso" --yes
       ```
       - Si falla: reportar el error, **NO eliminar la línea de `$QUEUE`** (el email queda al frente para que ese miembro no pierda su turno) y continuar con el siguiente ticket.
       - ⚠️ **CRÍTICO**: la transición auto-asigna al usuario autenticado de ACLI, pisando cualquier asignación previa. Por eso la asignación debe ir en una llamada Bash **separada e independiente** — nunca encadenar ambos comandos con `&&` en un solo Bash call, ya que la transición puede completarse de forma asíncrona en Jira y terminar pisando el assign.
@@ -91,8 +91,8 @@ Leer el `TEAM` desde `$SKILL_DIR/SKILL.md`. Si está vacío, abortar con mensaje
 Asignaciones realizadas (N tickets):
 | Key          | Summary                  | Transición  | Asignado a   | Estado  |
 |--------------|--------------------------|-------------|--------------|---------|
-| SSHP-XXXXX   | ...                      | ✓ En curso  | frgonzalez   | ✓ OK    |
-| SSHP-XXXXX   | ...                      | ✓ En curso  | lpadularrosa | ✓ OK    |
+| SSHP-XXXXX   | ...                      | ✓ En curso   | frgonzalez   | ✓ OK    |
+| SSHP-XXXXX   | ...                      | ✓ En curso   | lpadularrosa | ✓ OK    |
 | SSHP-XXXXX   | ...                      | ✗ Error     | —            | ✗ Skip  |
 
 Reparto de esta corrida:
