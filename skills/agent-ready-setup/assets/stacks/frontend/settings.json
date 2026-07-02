@@ -1,6 +1,15 @@
 {
   "permissions": {
-    "allow": []
+    "allow": [
+      "Bash(.claude/hooks/sync-marketplace.sh)"
+    ]
   },
-  "hooks": {}
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "bash .claude/hooks/sync-marketplace.sh"
+      }
+    ]
+  }
 }
