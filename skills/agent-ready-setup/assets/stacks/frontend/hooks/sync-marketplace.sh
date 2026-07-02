@@ -2,49 +2,51 @@
 # sync-marketplace.sh
 # Downloads the latest Claude Code configs from the central marketplace.
 # Runs automatically on every Claude Code session start (SessionStart hook).
+# Requires: gh CLI authenticated (gh auth status).
 # Never overwrites settings.json — it owns the hook definition.
 
 set -e
 
-BASE="https://raw.githubusercontent.com/meli/claude-marketplace/main"
+REPO="melisource/fury_groot-marketplace"
+BRANCH="main"
 STACK="frontend"
 CLAUDE_DIR=".claude"
 
-echo "[claude-sync] Syncing configs from marketplace (stack: $STACK)..."
+fetch() {
+  local remote_path="$1"
+  local local_path="$2"
+  mkdir -p "$(dirname "$local_path")"
+  if gh api "repos/$REPO/contents/$remote_path?ref=$BRANCH" --jq '.content' 2>/dev/null | base64 -d > "$local_path"; then
+    echo "[claude-sync] OK $local_path"
+  else
+    echo "[claude-sync] WARN $remote_path not available"
+    rm -f "$local_path"
+  fi
+}
 
-mkdir -p "$CLAUDE_DIR/rules" "$CLAUDE_DIR/skills" "$CLAUDE_DIR/agents" "$CLAUDE_DIR/commands" "$CLAUDE_DIR/hooks"
+echo "[claude-sync] Syncing configs from $REPO (stack: $STACK)..."
 
 # mcp.json — rebuilt each session, gitignored
-curl -sf "$BASE/stacks/$STACK/mcp.json" -o "$CLAUDE_DIR/mcp.json" && \
-  echo "[claude-sync] OK mcp.json" || \
-  echo "[claude-sync] WARN mcp.json not available"
+fetch "stacks/$STACK/mcp.json" "$CLAUDE_DIR/mcp.json"
 
 # Rules
 for file in security frontend-style testing; do
-  curl -sf "$BASE/stacks/$STACK/rules/$file.md" -o "$CLAUDE_DIR/rules/$file.md" && \
-    echo "[claude-sync] OK rules/$file.md" || \
-    echo "[claude-sync] WARN rules/$file.md not available"
+  fetch "stacks/$STACK/rules/$file.md" "$CLAUDE_DIR/rules/$file.md"
 done
 
 # Agents
 for file in security-scanner a11y-reviewer perf-analyzer test-reviewer lint-reviewer; do
-  curl -sf "$BASE/stacks/$STACK/agents/$file.md" -o "$CLAUDE_DIR/agents/$file.md" && \
-    echo "[claude-sync] OK agents/$file.md" || \
-    echo "[claude-sync] WARN agents/$file.md not available"
+  fetch "stacks/$STACK/agents/$file.md" "$CLAUDE_DIR/agents/$file.md"
 done
 
 # Skills
 for file in component-creation api-endpoint service; do
-  curl -sf "$BASE/stacks/$STACK/skills/$file.md" -o "$CLAUDE_DIR/skills/$file.md" && \
-    echo "[claude-sync] OK skills/$file.md" || \
-    echo "[claude-sync] WARN skills/$file.md not available"
+  fetch "stacks/$STACK/skills/$file.md" "$CLAUDE_DIR/skills/$file.md"
 done
 
 # Commands
 for file in review-pr; do
-  curl -sf "$BASE/stacks/$STACK/commands/$file.md" -o "$CLAUDE_DIR/commands/$file.md" && \
-    echo "[claude-sync] OK commands/$file.md" || \
-    echo "[claude-sync] WARN commands/$file.md not available"
+  fetch "stacks/$STACK/commands/$file.md" "$CLAUDE_DIR/commands/$file.md"
 done
 
 echo "[claude-sync] Sync complete."
