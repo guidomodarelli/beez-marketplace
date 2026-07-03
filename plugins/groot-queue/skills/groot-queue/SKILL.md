@@ -36,6 +36,7 @@ Ejemplos:
 
 | Input del usuario | Archivo a leer | Argumentos |
 |-------------------|----------------|------------|
+| `/groot-queue start` | `subcommands/start.md` | — |
 | `/groot-queue setup` | `subcommands/setup.md` | — |
 | `/groot-queue detail SSHP-1234567` | `subcommands/detail.md` | `SSHP-1234567` |
 | `/groot-queue save SSHP-1234567 cambio de lider corregido` | `subcommands/save.md` | `SSHP-1234567 cambio de lider corregido` |
@@ -52,6 +53,7 @@ Path resuelto: `$SKILL_DIR/subcommands/<nombre>.md`.
 
 | Subcomando | Acción |
 |------------|--------|
+| `start` | Mostrar banner de bienvenida, versión y catálogo de comandos con hints de uso |
 | `setup` | Verificar e instalar dependencias necesarias (ACLI, Atlassian MCP, Slack MCP, permisos) |
 | `list` | Listar todos los incidentes abiertos |
 | `classify` | Clasificar y agrupar por tipo de problema + urgencia |
@@ -96,6 +98,7 @@ Toda la lógica de negocio (reglas de triage, runbooks procedurales, lógica de 
 $SKILL_DIR/
 ├── SKILL.md             ← Este archivo (índice + dispatcher)
 ├── subcommands/         ← Lógica de cada subcomando (single source of truth)
+│   ├── start.md
 │   ├── setup.md
 │   ├── list.md
 │   ├── classify.md
