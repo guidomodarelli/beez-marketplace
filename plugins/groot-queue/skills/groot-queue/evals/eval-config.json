@@ -545,6 +545,37 @@
           "values": ["incompatibilidades", "roles incompatibles", "auditoría", "auditoria"]
         }
       ]
+    },
+    {
+      "id": "start-command",
+      "description": "start subcommand shows the welcome banner with version and command catalog",
+      "input": "/groot-queue start",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "GROOT"
+        },
+        {
+          "type": "contains",
+          "value": "QUEUE"
+        },
+        {
+          "type": "contains_any",
+          "values": ["v1.", "version", "VERSION"]
+        },
+        {
+          "type": "contains",
+          "value": "Hola"
+        },
+        {
+          "type": "contains_any",
+          "values": ["EMPEZAR", "INVESTIGAR", "ACTUAR"]
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue setup"
+        }
+      ]
     }
   ]
 }

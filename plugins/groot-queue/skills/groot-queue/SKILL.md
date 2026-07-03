@@ -30,17 +30,18 @@ Al activarse la skill, parsear el primer token del input del usuario después de
 
 - Si el subcomando coincide con uno de la tabla → **leer `subcommands/<subcomando>.md` y seguir literalmente sus instrucciones**, pasando el resto del input como argumentos.
 - Si el input contiene `--help`, igual debe tratarse como una consulta del subcomando: **no ejecutar Jira ni shell**, pero sí responder desde las instrucciones del archivo `subcommands/<subcomando>.md`.
-- Si el subcomando no existe o no se provee → mostrar la tabla de subcomandos de abajo y la sección "Inicialización del entorno de desarrollo".
+- Si el subcomando no existe o no se provee → **ejecutar `subcommands/start.md`** (equivalente a `/groot-queue start`).
 
 Ejemplos:
 
 | Input del usuario | Archivo a leer | Argumentos |
 |-------------------|----------------|------------|
+| `/groot-queue start` | `subcommands/start.md` | — |
 | `/groot-queue setup` | `subcommands/setup.md` | — |
 | `/groot-queue detail SSHP-1234567` | `subcommands/detail.md` | `SSHP-1234567` |
 | `/groot-queue save SSHP-1234567 cambio de lider corregido` | `subcommands/save.md` | `SSHP-1234567 cambio de lider corregido` |
 | `/groot-queue analyze-history --help` | `subcommands/analyze-history.md` | `--help` |
-| `/groot-queue` | (mostrar índice) | — |
+| `/groot-queue` | `subcommands/start.md` | — |
 
 Path resuelto: `$SKILL_DIR/subcommands/<nombre>.md`.
 
@@ -52,6 +53,7 @@ Path resuelto: `$SKILL_DIR/subcommands/<nombre>.md`.
 
 | Subcomando | Acción |
 |------------|--------|
+| `start` | Mostrar banner de bienvenida, versión y catálogo de comandos con hints de uso |
 | `setup` | Verificar e instalar dependencias necesarias (ACLI, Atlassian MCP, Slack MCP, permisos) |
 | `list` | Listar todos los incidentes abiertos |
 | `classify` | Clasificar y agrupar por tipo de problema + urgencia |
@@ -66,7 +68,7 @@ Path resuelto: `$SKILL_DIR/subcommands/<nombre>.md`.
 | `add-rule` | Agregar una nueva regla de triage a la knowledge base |
 | `backfill-guides` | Postear guías de resolución (nota interna) en tickets abiertos y asignados que aún no tienen guía — backfill retroactivo idempotente |
 | `analyze-history [--limit N] [--since YYYY-MM-DD] [--force]` | Analizar tickets cerrados históricos y extraer patrones para la knowledge base |
-| _(sin argumento)_ | Mostrar esta ayuda + inicialización del entorno de desarrollo |
+| _(sin argumento)_ | Ejecutar `start` (banner + catálogo de comandos) |
 
 ---
 
@@ -96,6 +98,7 @@ Toda la lógica de negocio (reglas de triage, runbooks procedurales, lógica de 
 $SKILL_DIR/
 ├── SKILL.md             ← Este archivo (índice + dispatcher)
 ├── subcommands/         ← Lógica de cada subcomando (single source of truth)
+│   ├── start.md
 │   ├── setup.md
 │   ├── list.md
 │   ├── classify.md
