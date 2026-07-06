@@ -23,20 +23,16 @@ assignment-note-template.md
                      reglas de llenado y restricciones.
 
 solutions/           Casos concretos resueltos, agrupados por categoría:
-  hierarchy-leader/
-  warehouse-assignment/
-  role-permission/
-  user-visibility/
-  attribute-modification/
-  labor-share/
-  cad-profile/
-  groot-ui-error/
-  link-unlink-account/
-  queue-management/   Casos de derivación incorrecta, descartes y gestión de cola.
-
-apis/                Documentación de endpoints del ecosistema Groot.
-                     (Todavía vacío — completar con specs cuando aparezca
-                     necesidad.)
+  hierarchy-leader/        ← Jerarquía/Líder
+  warehouse-assignment/    ← Warehouse/Site
+  role-permission/         ← Roles/Permisos
+  user-visibility/         ← Visibilidad Usuario
+  attribute-modification/  ← Atributos
+  labor-share/             ← Labour Share
+  cad-profile/             ← CAD/Perfil
+  groot-ui-error/          ← Error UI Groot
+  link-unlink-account/     ← Vincular/Desvincular
+  queue-management/        ← Descartes, derivaciones incorrectas y gestión de cola.
 
 audit-log-<YYYY>.jsonl  Log de auditoría append-only (una línea JSON por evento),
                      **un archivo por año** (audit-log-2026.jsonl,

@@ -136,7 +136,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "Esta solicitud debe ser enviada al equipo de gestión de usuario de su operación. Desde soporte Groot/Kraken no hacemos este tipo de asignaciones o remociones."
-- **Fuente**: Francisco Gonzalez, ticket SSHP-1418490 (2026-04-21). Ver `solutions/queue-management/remover-rol-gestion-usuarios-operacion.md`.
+- **Fuente**: Francisco Gonzalez, ticket SSHP-1418490 (2026-04-21). Patrón absorbido por la regla; el archivo de ejemplo fue eliminado por redundancia (la regla es suficiente).
 
 ### R-DESC-10 — Solicitud de asignación/cambio de valor de atributo sin error sistémico → gestor de usuarios de la operación
 - **Señales**:
@@ -162,7 +162,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Incidencia rechazada por IT / Incidente rejeitado pelo IT."
 - **Fuente**: groot-queue:analyze-history, SSHP-1460997, 2026-05-26.
 
-### R-DESC-12 — Cambio automático de jerarquía en LMS por sync de Rostering → funcionalidad esperada, no bug de Groot
+### R-DESC-12 — Cambio automático de jerarquía en LMS por sync de Rostering → funcionalidad esperada, no bug de Groot ⚠️ PENDIENTE VALIDACIÓN
 - **Señales**:
   - ES: "alteración indevida de jerarquía en LMS", "equipo movido automáticamente sin solicitud", "cambio automático de supervisor en LMS sin aceptación".
   - PT: "alteração indevida de hierarquia no LMS", "equipe movida automaticamente para supervisor sem solicitação", "mudança indevida de hierarquia", "sem solicitacao manual nem aceite".
@@ -365,7 +365,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola chicos, derivamos este caso para su analisis, no podemos resolver este ticket desde Groot"
 - **Fuente**: SSHP-1457833, 2026-06-02. Verificado contra el ticket real (summary PT "Nao consegue criar novo colaborador no Groot; erro tax_id already used", description EN con error literal "Tax_id has already been used", alta de un new hire): status `Resolved` y assignee `sup_iamcommerce_01` (IAM Soporte), lo que confirma la derivación.
 
-### R-DER-12 — Errores en la contabilidad de horas en Be a Rep → LMS
+### R-DER-12 — Errores en la contabilidad de horas en Be a Rep → LMS ⚠️ PENDIENTE VALIDACIÓN (option id LMS faltante)
 - **Señales**:
   - ES: "errores en la contabilidad de horas en Be a Rep", "horas mal contabilizadas en Be a Rep", "diferencia de horas en Be a Rep", "las horas de Be a Rep no coinciden en LMS".
   - PT: "erros na contabilização de horas no Be a Rep", "horas contabilizadas incorretamente no Be a Rep", "divergência de horas no Be a Rep", "horas do Be a Rep não batem no LMS".
@@ -440,7 +440,7 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 1. **R-FIX-01** → si summary/description cita "Be a Rep" o "Labour Share" + "devolución de roles" / "no devuelve" / "no impacta".
 2. **R-FIX-02** → si summary/description cita "líder NULL" / "sin líder" / "manager vacío" + reporta que no puede editar usuario.
 3. **R-FIX-03** → si menciona "alta masiva Alfred", "bulk Alfred", "alta en Alfred no completa", "usuarios sin alta tras ejecución masiva" y la fecha del reporte es cercana o posterior al 2026-04-21.
-4. **R-DER-12** → si el reporte menciona errores, diferencias o inconsistencias en la contabilidad de horas de Be a Rep con impacto en LMS / Labour Management System.
+4. **R-DER-12** ⚠️ _[pendiente validación — no ejecutar automáticamente]_ → si el reporte menciona errores, diferencias o inconsistencias en la contabilidad de horas de Be a Rep con impacto en LMS / Labour Management System.
 5. **R-DER-06** → si LDAP `ext_*` aparece como **cuenta Meli** en Kioske/TOTEM y no puede cambiar contraseña.
 6. **R-DER-07** → si la herramienta afectada es **Shield** y el flujo es cambio de líder para colaboradores externos.
 7. **R-DER-09** → si el reporte menciona "tax id inválido", "CUIT inválido", "CPF inválido", "documento inválido" (frontend o bulk).
@@ -464,7 +464,7 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 25. **R-DESC-10** → si pide **asignar / cambiar / quitar un valor de atributo** (CAD, facility, atributo operativo) sin error técnico, y no matchea R-DESC-03 / R-DESC-06 / R-DESC-07.
 26. **R-DESC-01** → si proviene de **Opex Full / SMO** y fue derivado fuera de ventana (>15 días de aging al llegar a Groot, posterior a 2025-10-28).
 27. **R-DESC-11** → si el problema ocurre en un sistema externo a Groot/Kraken (ej. HCM Rostering) y no hay error en ninguna herramienta de Groot.
-28. **R-DESC-12** → si el reporte es una jerarquía que cambió automáticamente en LMS (sin solicitud manual) y el contexto apunta a un sync de Rostering, clasificar como `REVISAR_MANUAL` hasta validar el copy de descarte.
+28. **R-DESC-12** ⚠️ _[pendiente validación — clasificar como `REVISAR_MANUAL` hasta confirmar copy con Francisco Gonzalez]_ → si el reporte es una jerarquía que cambió automáticamente en LMS (sin solicitud manual) y el contexto apunta a un sync de Rostering, clasificar como `REVISAR_MANUAL` hasta validar el copy de descarte.
 29. **R-DESC-14** → si un usuario interno dado de baja en SSFF aparece inactivo en Groot y no puede reactivarse manualmente.
 30. **R-DESC-15** → si roles previos no se restauran tras expirar un rol temporal por incompatibilidades de roles que ya no se exceptúan.
 31. **R-DESC-16** → si el usuario reporta jerarquía/gestor incorrecto en Groot pero la verificación confirma que el valor coincide con SSFF (SuccessFactors).
