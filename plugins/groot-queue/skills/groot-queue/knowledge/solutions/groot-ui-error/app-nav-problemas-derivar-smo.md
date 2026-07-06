@@ -5,6 +5,9 @@ summary: Problemas de navegación en App Nav. No corresponde a Groot. Derivar a 
 date: 2025-11-03
 effectiveness: confirmed
 derived_to: SMO (squad Randall)
+rule: R-DER-02
+destination: SMO (squad Randall)
+verdict: DERIVAR
 ---
 
 ## Problema

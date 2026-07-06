@@ -4,6 +4,7 @@ category: hierarchy-leader
 summary: 8 usuarios del WMS en el site MXCD09 quedaron con ellos mismos como líder directo. Se corrigieron sus líderes alineándolos con SSFF.
 date: 2026-04-04
 effectiveness: confirmed
+verdict: VALIDO_GROOT
 ---
 
 ## Problema

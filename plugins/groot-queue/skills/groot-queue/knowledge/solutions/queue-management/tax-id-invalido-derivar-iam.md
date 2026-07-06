@@ -6,6 +6,9 @@ date: 2026-05-27
 rule: R-DER-09
 destination: IAM Soporte
 effectiveness: confirmed
+rule: R-DER-09
+destination: IAM Soporte
+verdict: DERIVAR
 ---
 
 ## Problema

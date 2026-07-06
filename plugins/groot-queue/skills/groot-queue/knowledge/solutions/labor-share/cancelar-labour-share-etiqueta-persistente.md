@@ -4,6 +4,7 @@ category: labor-share
 summary: No se podía cancelar un Labour Share activo. Se resolvió eliminando manualmente la etiqueta de labour share del perfil del usuario.
 date: 2026-04-10
 effectiveness: confirmed
+verdict: VALIDO_GROOT
 ---
 
 ## Problema

@@ -4,6 +4,7 @@ category: role-permission
 summary: Roles configurados en Groot no aparecían disponibles en Alfred (template FBM). Se agregaron los roles faltantes, incluyendo FBM_DISPOSAL_PICKING_FORKLIFT_OPERATOR.
 date: 2026-04-15
 effectiveness: confirmed
+verdict: VALIDO_GROOT
 ---
 
 ## Problema

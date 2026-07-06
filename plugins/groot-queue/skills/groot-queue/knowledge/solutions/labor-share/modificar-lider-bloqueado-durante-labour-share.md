@@ -4,6 +4,7 @@ category: labor-share
 summary: No se puede modificar superior directo mientras usuario está en labour share — esperar a que finalice el LS
 date: 2026-07-01
 effectiveness: confirmed
+verdict: VALIDO_GROOT
 ---
 
 ## Problema

@@ -4,6 +4,8 @@ category: labor-share
 summary: Las horas configuradas en Labour Share no persistían y volvían a su valor original al día siguiente debido a un bug en el proceso de snapshot.
 date: 2026-04-14
 effectiveness: confirmed
+rule: R-FIX-01
+verdict: FIX_APLICADO
 ---
 
 ## Problema

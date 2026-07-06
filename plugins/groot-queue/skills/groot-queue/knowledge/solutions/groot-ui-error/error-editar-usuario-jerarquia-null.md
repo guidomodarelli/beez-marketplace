@@ -4,6 +4,7 @@ category: groot-ui-error
 summary: Error "Opss...ocorreu um erro ao editar usuario" al intentar editar ext_jopsilva. Causa: jerarquía en null bloqueaba la edición. Se corrigió la inconsistencia.
 date: 2026-04-14
 effectiveness: confirmed
+verdict: VALIDO_GROOT
 ---
 
 ## Problema

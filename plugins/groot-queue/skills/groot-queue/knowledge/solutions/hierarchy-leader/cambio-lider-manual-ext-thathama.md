@@ -4,6 +4,7 @@ category: hierarchy-leader
 summary: Error al intentar solicitar cambio de líder para el usuario ext_thathama. Se resolvió adecuando el líder manualmente sin identificar causa raíz.
 date: 2026-04-16
 effectiveness: confirmed
+verdict: VALIDO_GROOT
 ---
 
 ## Problema

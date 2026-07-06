@@ -4,6 +4,9 @@ category: link-unlink-account
 summary: Derivado a IAM Soporte (R-DER-01) — cuenta ext_beatrnog desactivada y "no pertenece a remesas" al accederla en el ABM de Groot; la cuenta no está marcada como shipping a nivel IAM y solo IAM puede setear el flag para habilitarla/reactivarla.
 date: 2026-06-02
 effectiveness: confirmed
+rule: R-DER-01
+destination: IAM Soporte
+verdict: DERIVAR
 ---
 
 ## Problema

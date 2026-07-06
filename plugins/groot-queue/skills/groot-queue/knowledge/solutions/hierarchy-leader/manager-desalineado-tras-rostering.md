@@ -5,6 +5,7 @@ summary: Usuarios ext_edwmuner y ext_paoamado quedaron con el manager incorrecto
 date: 2026-04-16
 effectiveness: confirmed
 derived_to: Rostering
+verdict: VALIDO_GROOT
 ---
 
 ## Problema

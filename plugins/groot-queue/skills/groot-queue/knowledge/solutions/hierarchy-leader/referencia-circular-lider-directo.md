@@ -4,6 +4,7 @@ category: hierarchy-leader
 summary: Usuario ext_kapascho aparecía como subordinado de sí mismo debido a una referencia circular en su lider directo configurado en Groot.
 date: 2026-04-14
 effectiveness: confirmed
+verdict: VALIDO_GROOT
 ---
 
 ## Problema

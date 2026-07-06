@@ -5,6 +5,8 @@ summary: Usuario sin acceso a la sección de notificaciones de chat interno en x
 date: 2026-04-18
 effectiveness: confirmed
 derived_to: Equipo Chat Interno (Pidgey)
+destination: Equipo Chat Interno (Pidgey)
+verdict: DERIVAR
 ---
 
 ## Problema

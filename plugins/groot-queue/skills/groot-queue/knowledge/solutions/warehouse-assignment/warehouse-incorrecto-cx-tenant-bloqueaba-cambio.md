@@ -4,6 +4,7 @@ category: warehouse-assignment
 summary: Warehouse default incorrecto tras migración de site — ajustar atributo CX Tenant para poder guardar cambios
 date: 2026-07-01
 effectiveness: confirmed
+verdict: VALIDO_GROOT
 ---
 
 ## Problema

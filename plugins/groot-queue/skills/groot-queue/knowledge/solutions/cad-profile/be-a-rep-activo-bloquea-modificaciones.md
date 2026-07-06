@@ -4,6 +4,7 @@ category: cad-profile
 summary: Be a Rep activo bloquea modificaciones de accesos/warehouse — remover tag de Be a Rep y restaurar configuración original
 date: 2026-07-01
 effectiveness: confirmed
+verdict: VALIDO_GROOT
 ---
 
 ## Problema
