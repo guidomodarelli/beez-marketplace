@@ -43,7 +43,20 @@ Analizar el summary y description del ticket y asignar UNA de estas categorías:
 | **Vincular/Desvincular** | Vincular/desvincular cuenta | vincular, desvincular, conta meli, cuenta meli, trocar senha |
 | **Otro** | No encaja en ninguna categoría | — |
 
-Las categorías se mapean 1:1 con los runbooks de `runbooks.md` y con las subcarpetas de `solutions/` (ver `README.md` para el mapeo de nombres).
+Las categorías se mapean 1:1 con los runbooks de `runbooks.md` y con las subcarpetas de `solutions/`:
+
+| Categoría | Carpeta en `solutions/` |
+|-----------|-------------------------|
+| Jerarquía/Líder | `hierarchy-leader` |
+| Warehouse/Site | `warehouse-assignment` |
+| Roles/Permisos | `role-permission` |
+| Visibilidad Usuario | `user-visibility` |
+| Atributos | `attribute-modification` |
+| Labour Share | `labor-share` |
+| CAD/Perfil | `cad-profile` |
+| Error UI Groot | `groot-ui-error` |
+| Vincular/Desvincular | `link-unlink-account` |
+| Otro | `queue-management` |
 
 ---
 
