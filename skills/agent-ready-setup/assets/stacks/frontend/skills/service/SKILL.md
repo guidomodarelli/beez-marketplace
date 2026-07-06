@@ -1,3 +1,7 @@
+---
+description: Create a service layer for external API calls in Nordic. Use when adding a new service, API client, or data-fetching layer.
+---
+
 # Service Creation — Frontend (Nordic)
 
 Guide for creating a service — the layer that encapsulates all external API calls and business logic. Server hooks and components delegate to services; they never call APIs directly.
@@ -40,7 +44,6 @@ Rules:
 ## Step 3 — Implement the service functions
 
 ```ts
-import { logger } from 'nordic/logger';
 import { client } from './client'; // restclient instance
 
 export async function getResource(id: string): Promise<Resource> {
@@ -59,6 +62,7 @@ Rules:
 - Services do not validate inputs — that is the responsibility of the server hook or handler.
 - Services let errors propagate — no try/catch here unless translating error types.
 - Never expose internal error details — catch at the handler level.
+- Never log inside a service — logging happens in the handler via `logError`/`logWarning` from `api/logger.ts` (see skill `/logger`).
 - Never use sequential or predictable identifiers when generating IDs — use `getRandomUUID()` from `websec-crypto-js`.
 - Parallelize independent calls with `Promise.all()`.
 
