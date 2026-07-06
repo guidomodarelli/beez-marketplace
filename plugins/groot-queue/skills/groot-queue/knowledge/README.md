@@ -7,9 +7,9 @@ La idea es que todo el conocimiento del día a día del equipo crezca en este di
 ## Estructura
 
 ```
-triage-rules.md      Reglas transversales R-DESC-XX / R-DER-XX / R-FIX-XX.
+triage-rules.md      Reglas transversales R-DESC-XX / R-DER-XX.
                      Algoritmo de triage para los veredictos (DESCARTAR,
-                     DERIVAR, FIX_APLICADO, VALIDO_GROOT, REVISAR_MANUAL).
+                     DERIVAR, VALIDO_GROOT, REVISAR_MANUAL).
                      Se consulta en /groot-queue list y /groot-queue classify.
 
 runbooks.md          Runbook procedural por categoría de problema
@@ -115,7 +115,6 @@ effectiveness: confirmed | unconfirmed
 Editar `triage-rules.md`. Nueva numeración según corresponda:
 - `R-DESC-XX` para descartes
 - `R-DER-XX` para derivaciones a otro equipo
-- `R-FIX-XX` para casos con fix ya aplicado en producción
 
 Incluir siempre: señales, razón, acción, comentario sugerido y **fuente** (autor + ticket + fecha + link a `solutions/`).
 

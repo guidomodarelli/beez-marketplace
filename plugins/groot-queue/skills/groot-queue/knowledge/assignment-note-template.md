@@ -118,7 +118,6 @@ Reglas:
 
 ### `{NOTAS}`
 Información adicional relevante:
-- Si matchea alguna regla R-FIX (fix ya aplicado), indicarlo
 - Si hay señales de posible derivación (pero no matcheó), mencionarlo
 - Si el ticket lleva mucho tiempo abierto o está cerca de SLA breach, alertar
 - **Si no hay notas adicionales relevantes, omitir esta sección completa** (no mostrar el header vacío)

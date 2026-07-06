@@ -22,7 +22,7 @@ acli jira workitem view SSHP-XXXXXX
 
 ## Triage de veredicto
 
-> Antes de clasificar por categoría/urgencia, aplicar el algoritmo de triage definido en `triage-rules.md`. Ese archivo tiene las reglas `R-DESC-XX`, `R-DER-XX` y `R-FIX-XX` con el orden de evaluación y los veredictos posibles.
+> Antes de clasificar por categoría/urgencia, aplicar el algoritmo de triage definido en `triage-rules.md`. Ese archivo tiene las reglas `R-DESC-XX` y `R-DER-XX` con el orden de evaluación y los veredictos posibles.
 
 ---
 
