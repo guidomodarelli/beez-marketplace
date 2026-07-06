@@ -5,7 +5,7 @@ description: "Monitorea la cola de soporte [Core] - Groot (SSHP). Lista, clasifi
 
 # Groot Queue Monitor
 
-**Propósito**: Monitorear y gestionar la cola de soporte "[Core] - Groot" del proyecto Jira SSHP. Read-only salvo los subcomandos `assign-unassigned`, que reparte tickets sin responsable de forma equitativa entre el TEAM (stateless); `derive`, que postea nota interna y transiciona estado con MCP Atlassian; `discard`, que postea comentario público y cierra tickets que no corresponden a Groot Soporte; `save` y `add-rule`, que escriben en la knowledge base local; y `analyze-history`, que analiza tickets cerrados históricos, escribe en la knowledge base y agrega labels de estado en Jira.
+**Propósito**: Monitorear y gestionar la cola de soporte "[Core] - Groot" del proyecto Jira SSHP. Read-only salvo los subcomandos `assign-unassigned`, que reparte tickets sin responsable de forma equitativa entre el TEAM (stateless); `derive`, que postea nota interna y transiciona estado con MCP Atlassian; `discard`, que postea comentario público y cierra tickets que no corresponden a Groot Soporte; `save` y `add-rule`, que escriben en la knowledge base local; `backfill-guides`, que postea guías de resolución en tickets abiertos ya asignados sin guía; y `analyze-history`, que analiza tickets cerrados históricos, escribe en la knowledge base y agrega labels de estado en Jira.
 
 Esta skill funciona como **índice + dispatcher** de subcomandos. La lógica concreta de cada acción vive en `subcommands/<nombre>.md` (single source of truth, compartido entre Claude Code y Codex).
 
@@ -30,17 +30,18 @@ Al activarse la skill, parsear el primer token del input del usuario después de
 
 - Si el subcomando coincide con uno de la tabla → **leer `subcommands/<subcomando>.md` y seguir literalmente sus instrucciones**, pasando el resto del input como argumentos.
 - Si el input contiene `--help`, igual debe tratarse como una consulta del subcomando: **no ejecutar Jira ni shell**, pero sí responder desde las instrucciones del archivo `subcommands/<subcomando>.md`.
-- Si el subcomando no existe o no se provee → mostrar la tabla de subcomandos de abajo y la sección "Inicialización del entorno de desarrollo".
+- Si el subcomando no existe o no se provee → **ejecutar `subcommands/start.md`** (equivalente a `/groot-queue start`).
 
 Ejemplos:
 
 | Input del usuario | Archivo a leer | Argumentos |
 |-------------------|----------------|------------|
+| `/groot-queue start` | `subcommands/start.md` | — |
 | `/groot-queue setup` | `subcommands/setup.md` | — |
 | `/groot-queue detail SSHP-1234567` | `subcommands/detail.md` | `SSHP-1234567` |
 | `/groot-queue save SSHP-1234567 cambio de lider corregido` | `subcommands/save.md` | `SSHP-1234567 cambio de lider corregido` |
 | `/groot-queue analyze-history --help` | `subcommands/analyze-history.md` | `--help` |
-| `/groot-queue` | (mostrar índice) | — |
+| `/groot-queue` | `subcommands/start.md` | — |
 
 Path resuelto: `$SKILL_DIR/subcommands/<nombre>.md`.
 
@@ -52,20 +53,22 @@ Path resuelto: `$SKILL_DIR/subcommands/<nombre>.md`.
 
 | Subcomando | Acción |
 |------------|--------|
+| `start` | Mostrar banner de bienvenida, versión y catálogo de comandos con hints de uso |
 | `setup` | Verificar e instalar dependencias necesarias (ACLI, Atlassian MCP, Slack MCP, permisos) |
 | `list` | Listar todos los incidentes abiertos |
 | `classify` | Clasificar y agrupar por tipo de problema + urgencia |
 | `detail SSHP-XXXXXX` | Detalle completo de un ticket con clasificación y sugerencia |
 | `solve SSHP-XXXXXX` | Sugerir solución basada en runbooks + análisis |
-| `alerts` | Detectar tickets en riesgo de SLA y notificar por Slack DM |
+| `alerts [--dry-run]` | Detectar tickets vencidos y por vencer, agrupar por responsable del TEAM y enviar un resumen por Slack DM a cada uno |
 | `stats` | Estadísticas agregadas de la cola |
 | `assign-unassigned` | Asignar en Jira todos los tickets sin responsable repartiéndolos de forma equitativa entre el TEAM (stateless) |
 | `derive SSHP-XXXXXX` | Derivar un ticket al equipo correcto: detecta regla R-DER y, si hay MCP Atlassian compatible, postea nota interna y transiciona estado |
 | `discard SSHP-XXXXXX` | Descartar un ticket que no corresponde a Groot Soporte: detecta regla R-DESC y, si hay MCP Atlassian compatible, postea comentario público y cierra el ticket |
 | `save SSHP-XXXXXX <desc>` | Guardar la solución aplicada a un ticket en la knowledge base |
 | `add-rule` | Agregar una nueva regla de triage a la knowledge base |
+| `backfill-guides` | Postear guías de resolución (nota interna) en tickets abiertos y asignados que aún no tienen guía — backfill retroactivo idempotente |
 | `analyze-history [--limit N] [--since YYYY-MM-DD] [--force]` | Analizar tickets cerrados históricos y extraer patrones para la knowledge base |
-| _(sin argumento)_ | Mostrar esta ayuda + inicialización del entorno de desarrollo |
+| _(sin argumento)_ | Ejecutar `start` (banner + catálogo de comandos) |
 
 ---
 
@@ -95,6 +98,7 @@ Toda la lógica de negocio (reglas de triage, runbooks procedurales, lógica de 
 $SKILL_DIR/
 ├── SKILL.md             ← Este archivo (índice + dispatcher)
 ├── subcommands/         ← Lógica de cada subcomando (single source of truth)
+│   ├── start.md
 │   ├── setup.md
 │   ├── list.md
 │   ├── classify.md
@@ -187,7 +191,7 @@ El orden de la lista **no** define el turno: en cada corrida, `assign-unassigned
 
 ## Reglas globales
 
-- **WRITE CONTROLADO**: los subcomandos `assign-unassigned`, `derive` y `discard` pueden escribir en Jira (`assign-unassigned`: transición + asignación; `derive`: nota interna + transición de estado; `discard`: comentario público + transición de cierre — los tres requieren MCP Atlassian compatible). `save` y `add-rule` escriben en la knowledge base local. `analyze-history` escribe en la knowledge base local **y** agrega labels de estado (`groot-kb-analyzed` / `groot-kb-manual-review`) en los tickets de Jira (requiere MCP Atlassian). Todos los demás subcomandos son read-only.
+- **WRITE CONTROLADO**: los subcomandos `assign-unassigned`, `derive` y `discard` pueden escribir en Jira (`assign-unassigned`: transición + asignación; `derive`: nota interna + transición de estado + labels de trazabilidad; `discard`: comentario público + transición de cierre + labels de trazabilidad — los tres requieren MCP Atlassian compatible). `save` y `add-rule` escriben en la knowledge base local. `analyze-history` escribe en la knowledge base local **y** agrega labels de estado (`groot-kb-analyzed` / `groot-kb-manual-review`) en los tickets de Jira (requiere MCP Atlassian). Todos los demás subcomandos son read-only.
 - **La base de conocimiento vive fuera de los subcomandos**. No duplicar runbooks ni reglas: siempre referenciar `classification.md` / `triage-rules.md` / `runbooks.md` / `solutions/` por path.
 - Siempre mostrar el link a Jira: `https://mercadolibre.atlassian.net/browse/SSHP-XXXXXX`.
 - Las respuestas deben ser en español.

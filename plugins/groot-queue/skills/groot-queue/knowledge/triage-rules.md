@@ -17,7 +17,6 @@ description: Reglas de triage para determinar si un ticket de la cola Groot (SSH
 |-----------|-----------|-------------|
 | `DESCARTAR` | `⛔` | No corresponde a Groot Soporte. Cerrar con comentario plantilla. |
 | `DERIVAR` | `➡️` | Corresponde a otro equipo. Reasignar con comentario. |
-| `FIX_APLICADO` | `✅` | Causa raíz ya corregida por dev Groot. Cerrar confirmando al reporter. |
 | `VALIDO_GROOT` | `🟢` | Pertenece al alcance de Groot Soporte. Seguir runbook normal. |
 | `REVISAR_MANUAL` | `❓` | No matchea ninguna regla. Requiere lectura humana. |
 
@@ -136,7 +135,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "Esta solicitud debe ser enviada al equipo de gestión de usuario de su operación. Desde soporte Groot/Kraken no hacemos este tipo de asignaciones o remociones."
-- **Fuente**: Francisco Gonzalez, ticket SSHP-1418490 (2026-04-21). Ver `solutions/queue-management/remover-rol-gestion-usuarios-operacion.md`.
+- **Fuente**: Francisco Gonzalez, ticket SSHP-1418490 (2026-04-21). Patrón absorbido por la regla; el archivo de ejemplo fue eliminado por redundancia (la regla es suficiente).
 
 ### R-DESC-10 — Solicitud de asignación/cambio de valor de atributo sin error sistémico → gestor de usuarios de la operación
 - **Señales**:
@@ -162,7 +161,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Incidencia rechazada por IT / Incidente rejeitado pelo IT."
 - **Fuente**: groot-queue:analyze-history, SSHP-1460997, 2026-05-26.
 
-### R-DESC-12 — Cambio automático de jerarquía en LMS por sync de Rostering → funcionalidad esperada, no bug de Groot
+### R-DESC-12 — Cambio automático de jerarquía en LMS por sync de Rostering → funcionalidad esperada, no bug de Groot ⚠️ PENDIENTE VALIDACIÓN
 - **Señales**:
   - ES: "alteración indevida de jerarquía en LMS", "equipo movido automáticamente sin solicitud", "cambio automático de supervisor en LMS sin aceptación".
   - PT: "alteração indevida de hierarquia no LMS", "equipe movida automaticamente para supervisor sem solicitação", "mudança indevida de hierarquia", "sem solicitacao manual nem aceite".
@@ -208,6 +207,45 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Comentario sugerido** (nota interna):
   > "Usuarios con roles incompatibles previamente asignados desde el 14 de marzo esto se dejo de exceptuar incompatibilidades por pedido del equipo de auditoria esto hace que usuario con roles asignados previamente cuando entren en estos procesos empiecen a perder paultatinamente la concurrencia de roles incompatibles"
 - **Fuente**: groot-queue:analyze-history, SSHP-1482125, 2026-06-14.
+
+### R-DESC-16 — Jerarquía/gestor reportado como incorrecto en Groot pero coincide con SSFF → cambio debe gestionarse en SSFF
+- **Señales**:
+  - ES: "jerarquía incorrecta", "gestor/supervisor incorrecto en Groot", "no cambió el líder en Groot", "superior no corresponde".
+  - PT: "hierarquia incorreta", "gestor incorreto no Groot", "superior hierárquico errado", "problema de hierarquia e gestão".
+  - EN: "incorrect hierarchy", "wrong manager in Groot", "supervisor not updated", "hierarchy and management problem".
+- **Razón**: El valor en Groot es un reflejo fiel de SSFF (SuccessFactors). Si la jerarquía es incorrecta, el cambio debe hacerse en SSFF y Groot lo sincronizará automáticamente.
+- **Acción**: Cerrar como `Won't Do`.
+- **Comentario sugerido**:
+  > "El superior asignado que figura es el mismo que el que tiene asignado en SSFF. El cambio de gestor debe realizarse en SuccessFactors para que se refleje automáticamente en Groot."
+- **Fuente**: groot-queue:analyze-history, SSHP-1502400, 2026-06-29.
+
+### R-DESC-17 — Tools/aplicaciones no administradas por Groot → acceso debe validarse con el equipo correspondiente
+- **Señales**:
+  - ES: "no puede acceder a sistemas/tools", "aplicaciones no administradas por Groot", "error al acceder" + URL que no es de Groot.
+  - PT: "não consegue acessar sistemas mesmo com bolhas liberadas", "aplicações não administradas pelo Groot".
+  - EN: "cannot access systems even with bubbles released", "applications not managed by Groot".
+  - URLs reportadas NO pertenecen al dominio de Groot (`envios.adminml.com/tools/auth/*`).
+- **Razón**: Groot solo administra tools bajo su dominio (`envios.adminml.com/tools/auth/*`). Problemas de acceso a otras tools deben ser gestionados por los equipos responsables de esas plataformas.
+- **Verificación previa**: Confirmar que las URLs reportadas NO pertenecen a Groot. Si el error es en una tool de Groot → reclasificar como `VALIDO_GROOT`.
+- **Acción**: Cerrar como `Won't Do`.
+- **Comentario sugerido**:
+  > "Estas aplicaciones no son administradas por Groot. Validar que el usuario tenga los permisos necesarios para acceder a las tools indicadas."
+- **Fuente**: groot-queue:analyze-history, SSHP-1510443, 2026-07-01.
+
+### R-DESC-18 — Error al crear Labour Share por posición "analyst" → funcionalidad by design, no bug
+- **Señales**:
+  - Usuario reporta que no puede crear Labour Share para ninguno de sus colaboradores.
+  - ES: "no puedo crear labour share", "error al crear labour share", "no me permite crear LS", "la herramienta no me deja crear Labour Share".
+  - PT: "nao consigo criar labour share", "erro ao criar labour share", "nao permite criar LS".
+  - EN: "cannot create labour share", "error creating labour share", "not allowed to create LS".
+  - El error afecta a **todos** los HCs del usuario, no a uno solo.
+  - Al verificar en Groot, el usuario tiene posición `analyst` (no `team_lead` ni `supervisor`).
+- **Razón**: Solo los usuarios con posición `team_lead` o `supervisor` tienen permiso para crear Labour Share. La posición `analyst` no habilita esta funcionalidad — es restricción by design del sistema, no un bug.
+- **Verificación previa**: Confirmar en Groot admin que el usuario tiene posición `analyst`. Si la posición es `team_lead` o `supervisor` y aun así falla → reclasificar como `VALIDO_GROOT` (error sistémico real).
+- **Acción**: Cerrar como `Won't Do`.
+- **Comentario sugerido**:
+  > "Hola, el error al crear Labour Share se debe a que la posición del usuario es 'analyst'. Solo los usuarios con posición team_lead o supervisor tienen habilitada la funcionalidad de crear Labour Share. Esto es por diseño del sistema."
+- **Fuente**: ticket SSHP-1417376 (2026-04-17). Ver `solutions/labor-share/error-labour-share-posicion-analyst.md`.
 
 ---
 
@@ -341,7 +379,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola chicos, derivamos este caso para su analisis, no podemos resolver este ticket desde Groot"
 - **Fuente**: SSHP-1457833, 2026-06-02. Verificado contra el ticket real (summary PT "Nao consegue criar novo colaborador no Groot; erro tax_id already used", description EN con error literal "Tax_id has already been used", alta de un new hire): status `Resolved` y assignee `sup_iamcommerce_01` (IAM Soporte), lo que confirma la derivación.
 
-### R-DER-12 — Errores en la contabilidad de horas en Be a Rep → LMS
+### R-DER-12 — Errores en la contabilidad de horas en Be a Rep → LMS ⚠️ PENDIENTE VALIDACIÓN (option id LMS faltante)
 - **Señales**:
   - ES: "errores en la contabilidad de horas en Be a Rep", "horas mal contabilizadas en Be a Rep", "diferencia de horas en Be a Rep", "las horas de Be a Rep no coinciden en LMS".
   - PT: "erros na contabilização de horas no Be a Rep", "horas contabilizadas incorretamente no Be a Rep", "divergência de horas no Be a Rep", "horas do Be a Rep não batem no LMS".
@@ -349,63 +387,27 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - Contexto típico: el requester reporta diferencias, errores de cálculo o inconsistencias en las horas asociadas al flujo Be a Rep y el impacto esperado está en LMS / Labour Management System, no en roles, atributos ni permisos de Groot.
 - **Prioridad de triage**: Esta regla debe matchear antes de clasificar el ticket como `Labour Share` genérico o `VALIDO_GROOT`. Si el texto combina `Be a Rep` + diferencias/errores de horas + `LMS`, el veredicto es `DERIVAR` a LMS.
 - **Razón**: La contabilización y conciliación de horas en LMS queda fuera del dominio de Groot/Kraken. Groot puede exponer o consumir datos del flujo Be a Rep, pero los desvíos de horas deben ser revisados por el equipo dueño de LMS.
-- **Verificación previa**: Si el síntoma es devolución de roles en Be a Rep / Labour Share, aplicar primero `R-FIX-01`. Si el problema es una falla técnica de agendado, snapshot, permisos, CAD o rol dentro de Groot, no aplica esta regla y debe seguir el runbook correspondiente.
+- **Verificación previa**: Si el síntoma es devolución de roles en Be a Rep / Labour Share, verificar primero que el problema no sea una inconsistencia de snapshot resuelta por el equipo dev. Si el problema es una falla técnica de agendado, snapshot, permisos, CAD o rol dentro de Groot, no aplica esta regla y debe seguir el runbook correspondiente.
 - **Acción**: Derivar a **LMS**.
 - **Automatización**: No ejecutar derivación automática hasta completar el option id de LMS para `DERIVATION_DESTINATION_SQUAD_FIELD` y validar el copy de nota interna con un ticket real.
 - **Comentario sugerido provisional**:
   > "Hola, derivamos este caso al equipo de LMS porque el problema reportado corresponde a la contabilidad de horas de Be a Rep en LMS, fuera del alcance de soporte Groot/Kraken."
 - **Fuente**: Pedido directo del usuario, 2026-06-03. Regla agregada sin ticket real por instrucción explícita; pendiente de validar wording y copy contra un caso SSHP concreto.
 
----
-
-## Reglas `FIX_APLICADO`
-
-> Estos casos ya tienen un fix en producción. Si aparece un ticket que matchea la señal, se debe **verificar con una query** y si el síntoma ya no reproduce → cerrar confirmando.
-
-### R-FIX-01 — Be a Rep / Labour Share — Devolución de roles
+### R-DER-13 — Acceso denegado a xtools/Pidgey (chat interno / notificaciones outbound) → Equipo Chat Interno
 - **Señales**:
-  - Problema con devolución de roles en Be a Rep y/o Labour Share.
-  - Usuarios con muchos valores asignados.
-- **Causa raíz (histórica)**: El componente de **snapshot de usuario** fallaba para usuarios con muchos valores asignados.
-- **Fix**: Aplicado (fix al componente de snapshot de usuario, fines de oct 2025).
-- **Verificación**:
-  ```sql
-  select *
-  from user_scheduled_snapshot
-  where groot_id = '<groot_id>'
-  order by created_at desc;
-  ```
-  Revisar que el último snapshot esté OK (sin error, posterior a fecha del fix).
-- **Acción si el snapshot está OK**: Cerrar como `Done`.
+  - La URL afectada pertenece a `xtools.adminml.com/tools/pidgey/*`.
+  - ES: "no autorizado en xtools", "no puede acceder a notificaciones de chat", "error en pidgey", "sin acceso a sección de notificaciones en xtools".
+  - PT: "nao autorizado no xtools", "sem acesso às notificações de chat", "erro no pidgey", "nao consegue acessar notificações no xtools".
+  - EN: "not authorized in xtools", "cannot access chat notifications", "pidgey error", "no access to notifications section in xtools".
+  - El problema afecta específicamente a funcionalidades de chat interno / burbuja outbound en xtools, no a configuración de usuario en Groot.
+  - El ticket puede llegar mal asignado a Groot o a WoWChat.
+- **Razón**: xtools/Pidgey (chat interno y notificaciones outbound) no pertenece al dominio de Groot ni de WoWChat. El equipo dueño es el de Chat Interno (Pidgey), que gestiona los permisos de acceso a esa sección.
+- **Verificación previa**: Confirmar que la URL reportada es `xtools.adminml.com/tools/pidgey/*`. Si el error es en otra sección de xtools que sí involucre configuración de usuario Groot (ej. perfil, facility, CAD) → no aplica, reclasificar a la categoría correspondiente.
+- **Acción**: Derivar a **Equipo Chat Interno (Pidgey)**.
 - **Comentario sugerido**:
-  > "Hola, nos disculpamos por las dificultades ocurridas con la herramienta de Be a Rep / Labour Share. Desde el 28 de octubre hicimos ajustes a la tool para mejorar la performance de la devolución de roles. El problema ya debería estar resuelto; si persiste, por favor reabrí el ticket con evidencia reciente."
-
-### R-FIX-02 — Usuarios con Líder en NULL
-- **Señales**:
-  - Usuario no puede editarse.
-  - Al inspeccionar en Groot admin, el líder aparece vacío / NULL.
-- **Causa raíz (histórica)**: Inconsistencia en el campo líder (heredada de SSFF).
-- **Fix**: Workaround — agregar el líder de SSFF para desbloquear; investigación de causa raíz en curso.
-- **Acción**: Si el líder ya está seteado por el fix → confirmar al reporter que ya puede editar.
-- **Comentario sugerido**:
-  > "Se resolvió la inconsistencia en el líder y grupo del usuario. Ya deberías poder editar la cuenta normalmente."
-
-### R-FIX-03 — Alta masiva Alfred: proceso de envío de resultados trabado
-- **Señales**:
-  - Alta masiva ejecutada desde **Alfred** que "no completa" o "deja usuarios sin alta".
-  - La ejecución parece haber corrido pero Alfred no marca el resultado como completado.
-  - Afecta lotes grandes de usuarios (decenas).
-  - Fecha del reporte: cercano o posterior a 2026-04-21.
-- **Causa raíz (histórica)**: El proceso interno que enviaba los **resultados** de la ejecución masiva a Alfred estaba trabado — por eso el mensaje de completitud nunca llegaba y la alta aparentaba no haber impactado.
-- **Fix**: Aplicado el 2026-04-21 (equipo dev Groot desbloqueó el proceso de envío de resultados).
-- **Verificación**:
-  - Confirmar que la alta masiva reportada es **posterior** al 2026-04-21.
-  - Revisar que los usuarios afectados estén correctamente dados de alta en Groot tras el desbloqueo.
-  - Si la falla ocurrió **antes** del fix → puede requerir reenvío manual de los resultados; coordinar con dev Groot antes de cerrar.
-- **Acción si está confirmado**: Cerrar como `Done` con comentario explicativo.
-- **Comentario sugerido**:
-  > "Se detectó que un proceso que envía los resultados a Alfred estaba trabado y era la razón por la que el mensaje no llegaba. Ya fue desbloqueado; si persiste, por favor reabrí con evidencia reciente."
-- **Fuente**: Francisco Gonzalez, tickets SSHP-1415407 y SSHP-1423184 (2026-04-21). Ver `solutions/queue-management/alfred-bulk-proceso-envio-resultados-trabado.md`.
+  > "Hola, este inconveniente corresponde al equipo de Chat Interno (Pidgey), que es el responsable de los permisos de acceso a las notificaciones en xtools. Derivamos para que continúen con la atención del caso."
+- **Fuente**: ticket SSHP-1413000 (2026-04-18). Ver `solutions/role-permission/no-autorizado-xtools-pidgey-derivado.md`.
 
 ---
 
@@ -413,37 +415,38 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 
 Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredicto que matchee:
 
-1. **R-FIX-01** → si summary/description cita "Be a Rep" o "Labour Share" + "devolución de roles" / "no devuelve" / "no impacta".
-2. **R-FIX-02** → si summary/description cita "líder NULL" / "sin líder" / "manager vacío" + reporta que no puede editar usuario.
-3. **R-FIX-03** → si menciona "alta masiva Alfred", "bulk Alfred", "alta en Alfred no completa", "usuarios sin alta tras ejecución masiva" y la fecha del reporte es cercana o posterior al 2026-04-21.
-4. **R-DER-12** → si el reporte menciona errores, diferencias o inconsistencias en la contabilidad de horas de Be a Rep con impacto en LMS / Labour Management System.
-5. **R-DER-06** → si LDAP `ext_*` aparece como **cuenta Meli** en Kioske/TOTEM y no puede cambiar contraseña.
-6. **R-DER-07** → si la herramienta afectada es **Shield** y el flujo es cambio de líder para colaboradores externos.
-7. **R-DER-09** → si el reporte menciona "tax id inválido", "CUIT inválido", "CPF inválido", "documento inválido" (frontend o bulk).
-8. **R-DER-11** → si al crear/dar de alta un colaborador el error es "Tax_id has already been used" / ES "tax id ya utilizado" / PT "tax_id já utilizado" (documento **válido** pero ya en uso; distinto de R-DER-09 que es tax id *inválido*).
-9. **R-DER-10** → si el usuario final ve un mensaje tipo "no perteneces a envíos" / "no pertence a envios" al intentar crear cuenta o desbloquearla (y por eso no puede conocer su LDAP).
-10. **R-DER-08** → si el pedido es **cambio de nombre** del usuario (first/last name), sin error técnico de Groot.
-11. **R-DER-04** → si la URL afectada es `envios.adminml.com/logistics/...` / **package-management** / app nav / componente externo y el usuario está correctamente configurado en Groot/Kraken.
-12. **R-DER-05** → si el tema es de **clasificación/taxonomía** de proceso madre en la tool Groot o issues de **app nav** (no un error real de Groot).
-13. **R-DER-01** → si menciona "tag azul", "no es cuenta de envíos", "conta não é de envios", "sin opción de deshabilitar", o el admin (accediendo al perfil en la tool de Groot) ve que "no puede habilitar al usuario" porque "no pertenece a envíos / no pertenece a Mercado Envío" / PT "não pertence às remessas" / "nao pertence as remessas" / EN "does not belong to shipping" / "not a shipping account" (cuenta desactivada que piden reactivar; IAM debe ajustar el flag de shipping).
-14. **R-DER-02** → si menciona "app nav", "navegación del app", "navegação" sin señal de R-DER-05.
-15. **R-DER-03** → si menciona "vincular cuenta", "desvincular", "cuenta Meli vs ext_", "cambio de contraseña" (sin señal de Kioske/TOTEM que apunte a R-DER-06).
-16. **R-DESC-03** → si el usuario reporta que en xtools / autogestión "no aparece CAD" / "não aparece CAD" / "no puedo seleccionar facility" + contexto de visitar otro site.
-17. **R-DESC-06** → si el usuario afectado es **rep** y el reporte es previo al clock-in físico del día en el site objetivo.
-18. **R-DESC-07** → si reps no ven una bolha/función y la verificación confirma que **están** en el facility correcto.
-19. **R-DESC-13** → si pide liberar bolha/permisos/roles para una función operativa sin error técnico de Groot, y la acción corresponde al gestor de aplicación u operación.
-20. **R-DESC-08** → si el requester menciona "learning completado", "training hub", "learning hub" y pide asignación de rol post-capacitación.
-21. **R-DESC-04** → si es pedido de **cambio de líder / supervisor directo** sin error técnico (lista de usuarios a mover + nuevo líder).
-22. **R-DESC-09** → si pide **remover** un rol a un operario y no hay error técnico reportado.
-23. **R-DESC-05** → si hay error "no autorizado" / "not authorized" o solicitud de permisos para un módulo/URL específico y el usuario **sí** logra loguearse.
-24. **R-DESC-02** → si es solicitud de **asignación de rol** a usuario (sin error técnico) y la cuenta **no** tiene tag azul.
-25. **R-DESC-10** → si pide **asignar / cambiar / quitar un valor de atributo** (CAD, facility, atributo operativo) sin error técnico, y no matchea R-DESC-03 / R-DESC-06 / R-DESC-07.
-26. **R-DESC-01** → si proviene de **Opex Full / SMO** y fue derivado fuera de ventana (>15 días de aging al llegar a Groot, posterior a 2025-10-28).
-27. **R-DESC-11** → si el problema ocurre en un sistema externo a Groot/Kraken (ej. HCM Rostering) y no hay error en ninguna herramienta de Groot.
-28. **R-DESC-12** → si el reporte es una jerarquía que cambió automáticamente en LMS (sin solicitud manual) y el contexto apunta a un sync de Rostering, clasificar como `REVISAR_MANUAL` hasta validar el copy de descarte.
-29. **R-DESC-14** → si un usuario interno dado de baja en SSFF aparece inactivo en Groot y no puede reactivarse manualmente.
-30. **R-DESC-15** → si roles previos no se restauran tras expirar un rol temporal por incompatibilidades de roles que ya no se exceptúan.
-31. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
+1. **R-DER-12** ⚠️ _[pendiente validación — no ejecutar automáticamente]_ → si el reporte menciona errores, diferencias o inconsistencias en la contabilidad de horas de Be a Rep con impacto en LMS / Labour Management System.
+2. **R-DER-06** → si LDAP `ext_*` aparece como **cuenta Meli** en Kioske/TOTEM y no puede cambiar contraseña.
+3. **R-DER-07** → si la herramienta afectada es **Shield** y el flujo es cambio de líder para colaboradores externos.
+4. **R-DER-09** → si el reporte menciona "tax id inválido", "CUIT inválido", "CPF inválido", "documento inválido" (frontend o bulk).
+5. **R-DER-11** → si al crear/dar de alta un colaborador el error es "Tax_id has already been used" / ES "tax id ya utilizado" / PT "tax_id já utilizado" (documento **válido** pero ya en uso; distinto de R-DER-09 que es tax id *inválido*).
+6. **R-DER-10** → si el usuario final ve un mensaje tipo "no perteneces a envíos" / "no pertence a envios" al intentar crear cuenta o desbloquearla (y por eso no puede conocer su LDAP).
+7. **R-DER-08** → si el pedido es **cambio de nombre** del usuario (first/last name), sin error técnico de Groot.
+8. **R-DER-13** → si la URL afectada es `xtools.adminml.com/tools/pidgey/*` (chat interno / notificaciones outbound) y el problema no involucra configuración de usuario en Groot.
+9. **R-DER-04** → si la URL afectada es `envios.adminml.com/logistics/...` / **package-management** / app nav / componente externo y el usuario está correctamente configurado en Groot/Kraken.
+10. **R-DER-05** → si el tema es de **clasificación/taxonomía** de proceso madre en la tool Groot o issues de **app nav** (no un error real de Groot).
+11. **R-DER-01** → si menciona "tag azul", "no es cuenta de envíos", "conta não é de envios", "sin opción de deshabilitar", o el admin (accediendo al perfil en la tool de Groot) ve que "no puede habilitar al usuario" porque "no pertenece a envíos / no pertenece a Mercado Envío" / PT "não pertence às remessas" / "nao pertence as remessas" / EN "does not belong to shipping" / "not a shipping account" (cuenta desactivada que piden reactivar; IAM debe ajustar el flag de shipping).
+12. **R-DER-02** → si menciona "app nav", "navegación del app", "navegação" sin señal de R-DER-05.
+13. **R-DER-03** → si menciona "vincular cuenta", "desvincular", "cuenta Meli vs ext_", "cambio de contraseña" (sin señal de Kioske/TOTEM que apunte a R-DER-06).
+14. **R-DESC-03** → si el usuario reporta que en xtools / autogestión "no aparece CAD" / "não aparece CAD" / "no puedo seleccionar facility" + contexto de visitar otro site.
+15. **R-DESC-06** → si el usuario afectado es **rep** y el reporte es previo al clock-in físico del día en el site objetivo.
+16. **R-DESC-07** → si reps no ven una bolha/función y la verificación confirma que **están** en el facility correcto.
+17. **R-DESC-13** → si pide liberar bolha/permisos/roles para una función operativa sin error técnico de Groot, y la acción corresponde al gestor de aplicación u operación.
+18. **R-DESC-08** → si el requester menciona "learning completado", "training hub", "learning hub" y pide asignación de rol post-capacitación.
+19. **R-DESC-04** → si es pedido de **cambio de líder / supervisor directo** sin error técnico (lista de usuarios a mover + nuevo líder).
+20. **R-DESC-09** → si pide **remover** un rol a un operario y no hay error técnico reportado.
+21. **R-DESC-05** → si hay error "no autorizado" / "not authorized" o solicitud de permisos para un módulo/URL específico y el usuario **sí** logra loguearse.
+22. **R-DESC-02** → si es solicitud de **asignación de rol** a usuario (sin error técnico) y la cuenta **no** tiene tag azul.
+23. **R-DESC-10** → si pide **asignar / cambiar / quitar un valor de atributo** (CAD, facility, atributo operativo) sin error técnico, y no matchea R-DESC-03 / R-DESC-06 / R-DESC-07.
+24. **R-DESC-18** → si el usuario no puede crear Labour Share para ninguno de sus HCs y la verificación confirma que tiene posición `analyst` (no `team_lead` ni `supervisor`).
+25. **R-DESC-01** → si proviene de **Opex Full / SMO** y fue derivado fuera de ventana (>15 días de aging al llegar a Groot, posterior a 2025-10-28).
+26. **R-DESC-11** → si el problema ocurre en un sistema externo a Groot/Kraken (ej. HCM Rostering) y no hay error en ninguna herramienta de Groot.
+27. **R-DESC-12** ⚠️ _[pendiente validación — clasificar como `REVISAR_MANUAL` hasta confirmar copy con Francisco Gonzalez]_ → si el reporte es una jerarquía que cambió automáticamente en LMS (sin solicitud manual) y el contexto apunta a un sync de Rostering, clasificar como `REVISAR_MANUAL` hasta validar el copy de descarte.
+28. **R-DESC-14** → si un usuario interno dado de baja en SSFF aparece inactivo en Groot y no puede reactivarse manualmente.
+29. **R-DESC-15** → si roles previos no se restauran tras expirar un rol temporal por incompatibilidades de roles que ya no se exceptúan.
+30. **R-DESC-16** → si el usuario reporta jerarquía/gestor incorrecto en Groot pero la verificación confirma que el valor coincide con SSFF (SuccessFactors).
+31. **R-DESC-17** → si el usuario reporta que no puede acceder a sistemas/tools cuyas URLs NO pertenecen al dominio de Groot (`envios.adminml.com/tools/auth/*`).
+32. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
 
 ---
 
@@ -455,7 +458,7 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 | # | Key | Summary | Status | Priority | Assignee | Edad | Triage |
 ```
 
-Donde `Triage` es el indicador (`⛔ DESCARTAR`, `➡️ DERIVAR→<Equipo>`, `✅ FIX_APLICADO`, `🟢 VALIDO_GROOT`, `❓ REVISAR_MANUAL`).
+Donde `Triage` es el indicador (`⛔ DESCARTAR`, `➡️ DERIVAR→<Equipo>`, `🟢 VALIDO_GROOT`, `❓ REVISAR_MANUAL`).
 
 ### `classify` — sección extra al principio
 
@@ -478,7 +481,7 @@ Luego continuar con la clasificación por categoría habitual.
 
 ## Mantenimiento
 
-- Cada vez que el equipo (Francisco, Julián, etc.) deje en los threads de Slack una acción sobre un ticket (`Descartar`, `Derivar a otro equipo`, `Fix aplicado`), **actualizar este archivo** agregando una nueva regla `R-DESC-XX`, `R-DER-XX` o `R-FIX-XX`.
+- Cada vez que el equipo (Francisco, Julián, etc.) deje en los threads de Slack una acción sobre un ticket (`Descartar`, `Derivar a otro equipo`), **actualizar este archivo** agregando una nueva regla `R-DESC-XX` o `R-DER-XX`.
 - Paralelamente, archivar el caso concreto en `solutions/<categoria>/` con el formato de la knowledge base (ver `README.md`).
 - Mantener el **comentario sugerido** tal cual lo escribió el equipo (es copy validado para responder al usuario). Si es necesario normalizar tildes o puntuación, hacerlo mínimamente y sin alterar el sentido.
 - Siempre incluir el campo **Fuente** con autor + ticket + fecha + link al archivo `solutions/` correspondiente.

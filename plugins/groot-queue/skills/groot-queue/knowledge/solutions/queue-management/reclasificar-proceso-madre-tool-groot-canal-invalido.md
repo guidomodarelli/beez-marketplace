@@ -5,7 +5,6 @@ summary: Reclasificar proceso madre bulky_sorting en tool Groot — tema llevado
 date: 2026-04-21
 effectiveness: confirmed
 verdict: DESCARTAR
-subverdict: Rechazado — canal inválido
 rule: R-DER-05
 source: Francisco Gonzalez (Slack group DM 2026-04-21)
 ---

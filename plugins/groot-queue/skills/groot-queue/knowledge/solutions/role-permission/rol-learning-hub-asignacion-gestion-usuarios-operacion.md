@@ -11,7 +11,7 @@ source: Francisco Gonzalez (Slack group DM 2026-04-21)
 
 ## Problema
 
-Miriam Arely Lucano Fuentes (LDAP `mlucano`, groot_id 100800, warehouse MCJC02) reporta que completó el learning "IO Performance" pero **no** tiene el rol **Problem Solver Inbound**, sólo **Outbound**. Pide corrección de rol/permisos en Groot.
+Un usuario de la operación reporta que completó el learning requerido pero **no** ve el rol esperado. Pide corrección de rol/permisos en Groot.
 
 ## Causa Raíz
 

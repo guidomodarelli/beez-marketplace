@@ -4,7 +4,7 @@ description: Asigna en Jira todos los tickets sin responsable repartiéndolos de
 
 # /groot-queue:assign-unassigned
 
-Asignar todos los tickets sin responsable repartiéndolos de forma **equitativa y sin estado local** entre el TEAM (un único shuffle por corrida, sin repetir; ver abajo). **Este command escribe en Jira** (transiciona estado + asigna responsable). Ver también `derive`, que escribe comentario + transición de estado.
+Asignar todos los tickets sin responsable repartiéndolos de forma **equitativa y sin estado local** entre el TEAM (un único shuffle por corrida, sin repetir; ver abajo). **Este command escribe en Jira** (transiciona estado + asigna responsable + postea nota interna con guía de resolución). Ver también `derive`, que escribe comentario + transición de estado.
 
 ## Por qué un único shuffle por corrida y sin estado persistente
 
@@ -16,6 +16,42 @@ Durante la corrida se usan **archivos scratch efímeros** (creados con `mktemp`,
 
 Leer el `TEAM` desde `$SKILL_DIR/SKILL.md`. Si está vacío, abortar con mensaje:
 > "Configurá la sección TEAM del SKILL.md antes de usar este comando."
+
+## Pre-condición: MCP Atlassian (para nota interna de resolución)
+
+El paso 11 postea una nota interna en cada ticket elegible después de filtrar derivables y descartables. Si el MCP de Atlassian no está disponible, la asignación (pasos 6a-6e) se ejecuta igual, pero el paso 11 se salta con un warning al inicio:
+
+**A. Disponibilidad de herramientas:**
+Intentar llamar `mcp__Atlassian__getAccessibleAtlassianResources` (o herramienta equivalente).
+
+- Si la herramienta **no existe** en el contexto → mostrar warning y marcar `MCP_AVAILABLE = false`:
+  ```
+  ⚠️ MCP Atlassian no disponible — las notas internas de resolución no se postearán.
+  Las asignaciones se realizarán normalmente. Para habilitar notas, instalá el MCP:
+    claude mcp add --transport http "Atlassian" https://mcp.atlassian.com/v1/mcp
+  ```
+- Si existe → continuar con B.
+
+**B. Autenticación y `cloudId`:**
+- Si retorna error de autenticación → marcar `MCP_AVAILABLE = false` y mostrar:
+  ```
+  ⚠️ MCP Atlassian no autenticado — las notas internas de resolución no se postearán.
+  Ejecutá /mcp para completar el flujo OAuth.
+  ```
+- Si retorna recursos: elegir el que represente `mercadolibre.atlassian.net` y guardar su `cloudId`. Marcar `MCP_AVAILABLE = true`.
+- Si `mercadolibre.atlassian.net` no aparece → marcar `MCP_AVAILABLE = false` con warning similar.
+
+**C. Capacidad de nota interna JSM:**
+Confirmar que el proveedor expone capacidad de crear **nota interna de Jira Service Management** (no solo comentario público). `addCommentToJiraIssue` por sí sola no alcanza si solo crea comentarios públicos.
+
+- Si solo hay capacidad de comentario público y no nota interna → marcar `MCP_AVAILABLE = false` y mostrar:
+  ```
+  ⚠️ El MCP de Atlassian disponible no expone capacidad de nota interna JSM — las notas internas de resolución no se postearán.
+  Las asignaciones se realizarán normalmente para evitar publicar información interna al reporter.
+  ```
+- Solo marcar `MCP_AVAILABLE = true` cuando pasaron A, B y esta verificación de capacidad de nota interna.
+
+**D. Si `MCP_AVAILABLE = false`:** el paso 11 se salta automáticamente para todos los tickets (no se intenta postear la nota). La tabla final del paso 12 muestra `— Skip` en la columna Nota para todos los tickets.
 
 ## Algoritmo
 
@@ -48,9 +84,9 @@ Leer el `TEAM` desde `$SKILL_DIR/SKILL.md`. Si está vacío, abortar con mensaje
       ```
       Si `$QUEUE` está vacío, rellenarla con `cp "$ORDER" "$QUEUE"` (paso 5) y volver a leer.
 
-   b. **Transicionar a "In Progress" PRIMERO** — en una llamada Bash **separada**:
+   b. **Transicionar a "En curso" PRIMERO** — en una llamada Bash **separada**:
       ```bash
-      acli jira workitem transition --key <KEY> --status "In Progress" --yes
+      acli jira workitem transition --key <KEY> --status "En curso" --yes
       ```
       - Si falla: reportar el error, **NO eliminar la línea de `$QUEUE`** (el email queda al frente para que ese miembro no pierda su turno) y continuar con el siguiente ticket.
       - ⚠️ **CRÍTICO**: la transición auto-asigna al usuario autenticado de ACLI, pisando cualquier asignación previa. Por eso la asignación debe ir en una llamada Bash **separada e independiente** — nunca encadenar ambos comandos con `&&` en un solo Bash call, ya que la transición puede completarse de forma asíncrona en Jira y terminar pisando el assign.
@@ -77,7 +113,6 @@ Leer el `TEAM` desde `$SKILL_DIR/SKILL.md`. Si está vacío, abortar con mensaje
         tail -n +2 "$QUEUE" > "$QUEUE.tmp" && mv "$QUEUE.tmp" "$QUEUE"
         ```
         Así ese miembro no vuelve al pool hasta la próxima ronda (cuando se rellena `$QUEUE` desde `$ORDER`).
-      - Continuar al siguiente ticket.
 
 7. **Limpieza obligatoria.** Al terminar el loop —tanto si completó como si abortó por un error— eliminar los archivos scratch:
    ```bash
@@ -85,14 +120,14 @@ Leer el `TEAM` desde `$SKILL_DIR/SKILL.md`. Si está vacío, abortar con mensaje
    ```
    No persiste estado entre corridas: la próxima ejecución (de quien sea) creará `$ORDER` y `$QUEUE` nuevos y barajará desde cero.
 
-8. Mostrar tabla de resultados:
+8. Mostrar tabla preliminar de asignación:
 
 ```
 Asignaciones realizadas (N tickets):
 | Key          | Summary                  | Transición  | Asignado a   | Estado  |
 |--------------|--------------------------|-------------|--------------|---------|
-| SSHP-XXXXX   | ...                      | ✓ En curso  | frgonzalez   | ✓ OK    |
-| SSHP-XXXXX   | ...                      | ✓ En curso  | lpadularrosa | ✓ OK    |
+| SSHP-XXXXX   | ...                      | ✓ En curso   | frgonzalez   | ✓ OK    |
+| SSHP-XXXXX   | ...                      | ✓ En curso   | lpadularrosa | ✓ OK    |
 | SSHP-XXXXX   | ...                      | ✗ Error     | —            | ✗ Skip  |
 
 Reparto de esta corrida:
@@ -101,6 +136,8 @@ Reparto de esta corrida:
   | frgonzalez   | 1       |
   | lpadularrosa | 1       |
 ```
+
+- La nota interna de resolución **todavía no se postea en este punto**. Primero hay que detectar si el ticket será derivado o descartado en los pasos 9 y 10.
 
 Si no hay tickets sin asignar, mostrar: "✅ No hay tickets sin assignee en la cola."
 
@@ -118,7 +155,7 @@ acli jira workitem view <KEY>
 ```
 Aplicar **únicamente las reglas R-DER** del algoritmo de triage (misma lógica que el paso 2b de `derive.md`). Tomar la primera regla que matchee.
 
-**9c. Si ningún ticket matchea una regla R-DER:** no mostrar nada adicional, terminar.
+**9c. Si ningún ticket matchea una regla R-DER:** no mostrar nada adicional y continuar al paso 10.
 
 **9d. Si uno o más tickets matchean**, mostrar la tabla y la pregunta de confirmación:
 
@@ -134,8 +171,9 @@ Aplicar **únicamente las reglas R-DER** del algoritmo de triage (misma lógica 
 
 **9e. Esperar respuesta del usuario:**
 - **Sí** (o "s", "yes", "y"): ejecutar el flujo completo de `$SKILL_DIR/subcommands/derive.md` con las keys de los tickets derivables, exactamente como si el usuario hubiera corrido `/groot-queue derive <KEY1> <KEY2> ...`. Al registrar en el log de auditoría (paso 4e de `derive.md`), usar `source = "auto-assign"`.
-- **No** (o cualquier otra respuesta): terminar mostrando:
+- **No** (o cualquier otra respuesta): mostrar:
   > "Derivación omitida. Podés ejecutarla luego con `/groot-queue derive <KEY1> <KEY2> ...`"
+  y continuar al paso 10.
 
 ## 10. Detección post-asignación de tickets descartables
 
@@ -154,7 +192,7 @@ Para cada ticket asignado exitosamente que no matcheó una regla R-DER en el pas
 - Tomar la primera regla que matchee.
 - Las verificaciones previas (R-DESC-03, R-DESC-04, R-DESC-05, R-DESC-06, R-DESC-07, R-DESC-08) que requieren inspección en Groot admin: si no es posible confirmarlas desde el contenido del ticket, marcar como `REVISAR_MANUAL` y no incluirlo en la lista de descartables.
 
-**10c. Si ningún ticket matchea una regla R-DESC:** no mostrar nada adicional, terminar.
+**10c. Si ningún ticket matchea una regla R-DESC:** no mostrar nada adicional y continuar al paso 11.
 
 **10d. Si uno o más tickets matchean**, mostrar la tabla y la pregunta de confirmación:
 
@@ -172,5 +210,66 @@ Al explicar este paso en modo ayuda, usar explícitamente las frases `R-DESC`, `
 
 **10e. Esperar respuesta del usuario:**
 - **Sí** (o "s", "yes", "y"): ejecutar el flujo completo de `$SKILL_DIR/subcommands/discard.md` con las keys de los tickets descartables. La confirmación ya fue obtenida en este paso — al llegar al paso 4 de `discard.md`, omitir la pregunta de confirmación y pasar directamente a la ejecución. Al registrar en el log de auditoría (paso 5e de `discard.md`), usar `source = "auto-assign"`.
-- **No** (o cualquier otra respuesta): terminar mostrando:
+- **No** (o cualquier otra respuesta): mostrar:
   > "Descarte omitido. Podés ejecutarlo luego con `/groot-queue discard <KEY1> <KEY2> ...`"
+  y continuar al paso 11.
+
+## 11. Postear notas internas solo para tickets asignados que siguen siendo Groot
+
+Ejecutar este paso **después** de las detecciones de derivación y descarte. La nota se postea únicamente para tickets con estado **✓ OK** que:
+- **no** matchearon una regla `R-DER` en el paso 9, y
+- **no** matchearon una regla `R-DESC` en el paso 10.
+
+Si un ticket fue identificado como derivable o descartable, **no** postear la guía de resolución de Groot aunque el usuario haya decidido no ejecutar la derivación o el descarte todavía. En esos casos la nota sería ruido o podría orientar mal al siguiente equipo.
+
+**Procedimiento por ticket elegible:**
+
+1. Leer las referencias (reutilizar si ya fueron cargadas en pasos anteriores):
+   - `$SKILL_DIR/knowledge/classification.md`
+   - `$SKILL_DIR/knowledge/runbooks.md`
+   - `$SKILL_DIR/knowledge/assignment-note-template.md`
+2. Obtener el contenido actualizado del ticket en una llamada separada antes de analizarlo:
+   ```bash
+   acli jira workitem view <KEY>
+   ```
+   Reutilizar ese output para toda la generación de la nota en este paso.
+3. Con el contenido del ticket recién obtenido:
+   - Clasificar el ticket en Dimensión 1 (categoría) y Dimensión 2 (urgencia).
+   - Buscar el runbook de esa categoría en `runbooks.md`.
+   - Resolver primero la carpeta real de `solutions/` usando el mapeo de `classification.md` (por ejemplo: `Jerarquía/Líder` → `hierarchy-leader`, `Warehouse/Site` → `warehouse-assignment`, `Roles/Permisos` → `role-permission`, `Otro` → `queue-management`).
+   - Buscar casos previos similares en `$SKILL_DIR/knowledge/solutions/<categoria-slug>/`.
+4. Generar la nota siguiendo estrictamente el template:
+   - Completar cada campo (`{CATEGORIA}`, `{DIAGNOSTICO}`, `{PASOS_RESOLUCION}`, etc.) según las reglas de llenado del template.
+   - Respetar las restricciones: español neutro, sin códigos de regla, sin PII, sin texto verbatim no sanitizado.
+   - **Incluir siempre el slug `<!-- groot-auto-guide -->` como última línea del body** (requerido para detección de idempotencia).
+5. Postear la nota como **nota interna de Jira Service Management** usando MCP Atlassian:
+   - `cloudId`: valor de `mercadolibre.atlassian.net` (resuelto en la pre-condición MCP Atlassian).
+   - `issueIdOrKey`: `"<KEY>"`
+   - `commentBody`: la nota generada en el paso 4 (con el slug al final)
+   - `contentFormat`: `"markdown"`
+   - `commentVisibility`: `{"type": "role", "value": "Service Desk Team"}`
+
+   > ⚠️ **OBLIGATORIO**: el parámetro `commentVisibility` con valor `{"type": "role", "value": "Service Desk Team"}` es lo que hace que el comentario sea una **nota interna** (solo visible para agentes, no para el reporter en el portal). Sin este parámetro, `addCommentToJiraIssue` crea un comentario **público** que el reporter puede ver — esto expone información interna de diagnóstico y runbooks al cliente. Nunca omitir `commentVisibility`.
+6. **Si la nota se posteó exitosamente**, agregar el label `groot-guide-posted` al ticket usando `editJiraIssue` (MCP Atlassian):
+   - Leer las labels actuales del ticket (del contenido ya obtenido en paso 2).
+   - Agregar `groot-guide-posted` a la lista existente (merge, no reemplazar).
+   - Si falla el label: registrar warning pero **no abortar** — la nota ya fue posteada y el slug garantiza la idempotencia como fallback.
+7. **Si falla la nota**: registrar `✗ Nota` para ese ticket en la tabla final del paso 12. **No abortar** — la asignación ya fue completada exitosamente.
+8. **Si tiene éxito (nota + label)**: registrar `✓ Nota` para ese ticket en la tabla final del paso 12.
+
+> ⚠️ Este paso es **best-effort**: un fallo al postear la nota no afecta la asignación ni bloquea el flujo. El ticket queda asignado y en progreso de todas formas.
+
+## 12. Mostrar tabla final consolidada
+
+```
+Resultado final (N tickets):
+| Key          | Summary                  | Transición  | Asignado a   | Nota    | Estado  |
+|--------------|--------------------------|-------------|--------------|---------|---------|
+| SSHP-XXXXX   | ...                      | ✓ En curso  | frgonzalez   | ✓ Nota  | ✓ OK    |
+| SSHP-XXXXX   | ...                      | ✓ En curso  | lpadularrosa | — Skip  | ➡️ DERIVABLE |
+| SSHP-XXXXX   | ...                      | ✓ En curso  | jperez       | — Skip  | ⛔ DESCARTABLE |
+| SSHP-XXXXX   | ...                      | ✗ Error     | —            | — Skip  | ✗ Skip  |
+```
+
+- La columna **Nota** muestra `✓ Nota` si la nota interna se posteó con éxito, `✗ Nota` si falló, o `— Skip` si MCP no estaba disponible, el ticket no fue asignado exitosamente, o el ticket fue identificado como derivable/descartable.
+- Los tickets identificados como `R-DER` o `R-DESC` deben quedar claramente marcados como `➡️ DERIVABLE` o `⛔ DESCARTABLE` en la columna Estado hasta que el flujo automático correspondiente los procese o el usuario decida resolverlos manualmente.

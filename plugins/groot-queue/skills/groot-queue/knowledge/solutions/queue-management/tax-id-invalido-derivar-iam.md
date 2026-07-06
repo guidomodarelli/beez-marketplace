@@ -3,9 +3,10 @@ ticket: SSHP-1466772
 category: queue-management
 summary: Derivado a IAM Soporte — R-DER-09
 date: 2026-05-27
+effectiveness: confirmed
+verdict: DERIVAR
 rule: R-DER-09
 destination: IAM Soporte
-effectiveness: confirmed
 ---
 
 ## Problema
