@@ -4,8 +4,8 @@ category: queue-management
 summary: Tickets derivados a destiempo desde Opex Full / SMO con más de 15 días de aging al llegar a la cola Groot (post 28-oct-2025). Se descartan porque llegaron fuera de la ventana de soporte.
 date: 2025-11-03
 effectiveness: confirmed
-rule: R-DESC-01
 verdict: DESCARTAR
+rule: R-DESC-01
 ---
 
 ## Problema

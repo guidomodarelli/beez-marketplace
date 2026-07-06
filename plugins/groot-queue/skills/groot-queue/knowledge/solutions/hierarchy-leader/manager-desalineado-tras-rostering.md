@@ -4,8 +4,8 @@ category: hierarchy-leader
 summary: Usuarios externos quedaron con el manager incorrecto luego de ser creados por Rostering, que envió un groot_leader erróneo.
 date: 2026-04-16
 effectiveness: confirmed
-derived_to: Rostering
 verdict: VALIDO_GROOT
+destination: Rostering
 ---
 
 ## Problema

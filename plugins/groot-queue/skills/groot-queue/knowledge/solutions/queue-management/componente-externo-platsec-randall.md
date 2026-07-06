@@ -5,8 +5,8 @@ summary: No se puede cambiar SVC en Logistics Package Management — el componen
 date: 2026-04-21
 effectiveness: confirmed
 verdict: DERIVAR
-destination: Helpdesk IA
 rule: R-DER-04
+destination: Helpdesk IA
 source: Francisco Gonzalez (Slack group DM 2026-04-21)
 ---
 

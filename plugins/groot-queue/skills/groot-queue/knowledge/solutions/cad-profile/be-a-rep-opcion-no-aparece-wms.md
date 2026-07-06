@@ -1,10 +1,10 @@
 ---
 ticket: SSHP-1451920
 category: cad-profile
-verdict: VALIDO_GROOT
 summary: Usuario no ve la opción para solicitar Be a Rep en WMS — validación de shipping position bloqueaba la opción; fix de dev requerido
 date: 2026-06-02
 effectiveness: confirmed
+verdict: VALIDO_GROOT
 ---
 
 ## Diferenciación importante con el cluster "Be a Rep funcionalidad existente"

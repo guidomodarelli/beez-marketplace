@@ -4,9 +4,9 @@ category: link-unlink-account
 summary: Error "Tax_id has already been used" al crear un nuevo colaborador en Groot — el documento ya está asociado a otra identidad/LDAP. Groot no puede resolver duplicados de identidad; se deriva a IAM Soporte.
 date: 2026-06-02
 effectiveness: confirmed
+verdict: DERIVAR
 rule: R-DER-11
 destination: IAM Soporte
-verdict: DERIVAR
 ---
 
 ## Problema

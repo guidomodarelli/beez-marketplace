@@ -5,8 +5,8 @@ summary: Usuario externo (ext_) reconocido como cuenta Meli en Kioske y no puede
 date: 2026-04-21
 effectiveness: confirmed
 verdict: DERIVAR
-destination: IAM Soporte
 rule: R-DER-06
+destination: IAM Soporte
 source: Francisco Gonzalez (Slack group DM 2026-04-21)
 ---
 

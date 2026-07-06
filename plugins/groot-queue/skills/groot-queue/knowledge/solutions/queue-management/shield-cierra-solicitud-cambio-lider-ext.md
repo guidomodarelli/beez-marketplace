@@ -5,8 +5,8 @@ summary: Shield cierra automáticamente las solicitudes de cambio de líder para
 date: 2026-04-21
 effectiveness: confirmed
 verdict: DERIVAR
-destination: IAM Soporte
 rule: R-DER-07
+destination: IAM Soporte
 source: Francisco Gonzalez (Slack group DM 2026-04-21)
 ---
 

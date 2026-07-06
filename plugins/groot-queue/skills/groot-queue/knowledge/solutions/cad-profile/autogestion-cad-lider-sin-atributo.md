@@ -4,8 +4,8 @@ category: cad-profile
 summary: No aparece CAD/atributo para seleccionar en autogestión (xtools profile) porque el líder directo no tiene el valor asignado. Comportamiento esperado — se descarta.
 date: 2026-04-21
 effectiveness: confirmed
-rule: R-DESC-03
 verdict: DESCARTAR
+rule: R-DESC-03
 ---
 
 ## Problema
