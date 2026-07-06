@@ -33,10 +33,11 @@ Avoid snapshot tests as the primary assertion strategy — they detect change, n
 
 ## Mocking
 
-- Mock all external dependencies: APIs, `nordic/restclient`, third-party SDKs, `nordic/logger`.
-- Place `jest.mock()` / `vi.mock()` after imports.
+- **Component tests**: mock internal services with `jest.spyOn`. No real HTTP calls.
+- **Service tests**: do not mock `nordic/restclient` — use `nordic-dev/mocks` interceptors; HTTP calls are captured as fixtures.
+- Place `jest.mock()` / `vi.mock()` calls after imports.
 - Reset mocks between tests using `beforeEach` / `afterEach`.
-- No real HTTP calls in unit tests.
+- See `no-unnecessary-mocks.md` for the full strategy and setup.
 
 ## Async
 
