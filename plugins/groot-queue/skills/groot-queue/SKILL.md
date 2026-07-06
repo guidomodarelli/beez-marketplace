@@ -59,7 +59,7 @@ Path resuelto: `$SKILL_DIR/subcommands/<nombre>.md`.
 | `classify` | Clasificar y agrupar por tipo de problema + urgencia |
 | `detail SSHP-XXXXXX` | Detalle completo de un ticket con clasificación y sugerencia |
 | `solve SSHP-XXXXXX` | Sugerir solución basada en runbooks + análisis |
-| `alerts` | Detectar tickets en riesgo de SLA y notificar por Slack DM |
+| `alerts [--dry-run]` | Detectar tickets vencidos y por vencer, agrupar por responsable del TEAM y enviar un resumen por Slack DM a cada uno |
 | `stats` | Estadísticas agregadas de la cola |
 | `assign-unassigned` | Asignar en Jira todos los tickets sin responsable repartiéndolos de forma equitativa entre el TEAM (stateless) |
 | `derive SSHP-XXXXXX` | Derivar un ticket al equipo correcto: detecta regla R-DER y, si hay MCP Atlassian compatible, postea nota interna y transiciona estado |
