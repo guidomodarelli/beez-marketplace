@@ -4,6 +4,7 @@ category: groot-ui-error
 summary: Error al acceder a grupo de usuarios en Groot para editar administradores — se removieron usuarios no-MELI del listado de admins
 date: 2026-07-01
 effectiveness: confirmed
+verdict: VALIDO_GROOT
 ---
 
 ## Problema

@@ -4,6 +4,8 @@ category: labor-share
 summary: Error al crear Labour Share en MXTR10 para todos los usuarios del TL vespinosa. La causa fue que el usuario tiene posición "analyst", que no tiene permiso para crear Labour Share.
 date: 2026-04-17
 effectiveness: confirmed
+verdict: DESCARTAR
+rule: R-DESC-18
 ---
 
 ## Problema

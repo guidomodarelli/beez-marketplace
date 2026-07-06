@@ -22,9 +22,7 @@ acli jira workitem view SSHP-XXXXXX
 
 ## Triage de veredicto
 
-Antes de clasificar por categoría/urgencia, aplicar el **triage de veredicto** definido en `triage-rules.md` (mismo directorio). Ese archivo contiene reglas extraídas del seguimiento histórico de la ticketera para identificar tickets que deben **descartarse**, **derivarse a otro equipo** o que ya tienen un **fix aplicado**. Leerlo siempre al inicio y aplicar su algoritmo a cada ticket para asignar un veredicto: `DESCARTAR`, `DERIVAR`, `FIX_APLICADO`, `VALIDO_GROOT` o `REVISAR_MANUAL`.
-
-Indicadores: `⛔ DESCARTAR`, `➡️ DERIVAR→<Equipo>`, `✅ FIX_APLICADO`, `🟢 VALIDO_GROOT`, `❓ REVISAR_MANUAL`.
+> Antes de clasificar por categoría/urgencia, aplicar el algoritmo de triage definido en `triage-rules.md`. Ese archivo tiene las reglas `R-DESC-XX` y `R-DER-XX` con el orden de evaluación y los veredictos posibles.
 
 ---
 
@@ -45,7 +43,20 @@ Analizar el summary y description del ticket y asignar UNA de estas categorías:
 | **Vincular/Desvincular** | Vincular/desvincular cuenta | vincular, desvincular, conta meli, cuenta meli, trocar senha |
 | **Otro** | No encaja en ninguna categoría | — |
 
-Las categorías se mapean 1:1 con los runbooks de `runbooks.md` y con las subcarpetas de `solutions/`.
+Las categorías se mapean 1:1 con los runbooks de `runbooks.md` y con las subcarpetas de `solutions/`:
+
+| Categoría | Carpeta en `solutions/` |
+|-----------|-------------------------|
+| Jerarquía/Líder | `hierarchy-leader` |
+| Warehouse/Site | `warehouse-assignment` |
+| Roles/Permisos | `role-permission` |
+| Visibilidad Usuario | `user-visibility` |
+| Atributos | `attribute-modification` |
+| Labour Share | `labor-share` |
+| CAD/Perfil | `cad-profile` |
+| Error UI Groot | `groot-ui-error` |
+| Vincular/Desvincular | `link-unlink-account` |
+| Otro | `queue-management` |
 
 ---
 
@@ -67,20 +78,3 @@ Indicadores visuales de urgencia:
 - 1-2: `🟢`
 - 3: `🟡`
 - 4-5: `🔴`
-
----
-
-## Mapeo de categorías a carpetas de `solutions/`
-
-| Categoría detectada | Carpeta |
-|---------------------|---------|
-| Jerarquía/Líder | `hierarchy-leader` |
-| Warehouse/Site | `warehouse-assignment` |
-| Roles/Permisos | `role-permission` |
-| Visibilidad Usuario | `user-visibility` |
-| Atributos | `attribute-modification` |
-| Labour Share | `labor-share` |
-| CAD/Perfil | `cad-profile` |
-| Error UI Groot | `groot-ui-error` |
-| Vincular/Desvincular | `link-unlink-account` |
-| Otro | `queue-management` |

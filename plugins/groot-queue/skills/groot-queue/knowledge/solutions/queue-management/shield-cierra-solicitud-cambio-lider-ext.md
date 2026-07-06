@@ -5,14 +5,14 @@ summary: Shield cierra automáticamente las solicitudes de cambio de líder para
 date: 2026-04-21
 effectiveness: confirmed
 verdict: DERIVAR
-destination: IAM Soporte
 rule: R-DER-07
+destination: IAM Soporte
 source: Francisco Gonzalez (Slack group DM 2026-04-21)
 ---
 
 ## Problema
 
-Al solicitar cambio de líder para colaboradores externos (`ext_*`) en **Shield**, el chamado se cierra automáticamente. Sucede de forma consistente. Usuarios afectados: `ext_giovevan`, `ext_kelvidan`, `ext_oljmaria`, `ext_macedped`, `ext_thjacint`, `ext_raquegon`, `ext_daianfag`. Nuevo líder deseado: `ext_vinquint`.
+Al solicitar cambio de líder para colaboradores externos (`ext_*`) en **Shield**, el chamado se cierra automáticamente. Sucede de forma consistente para múltiples usuarios afectados.
 
 ## Causa Raíz
 

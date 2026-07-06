@@ -4,6 +4,7 @@ category: cad-profile
 summary: Accesos de líder no retornaron tras abortar Be a Rep — re-ejecutar cancelación de Be a Rep
 date: 2026-07-01
 effectiveness: confirmed
+verdict: VALIDO_GROOT
 ---
 
 ## Problema

@@ -5,14 +5,14 @@ summary: No se puede cambiar SVC en Logistics Package Management — el componen
 date: 2026-04-21
 effectiveness: confirmed
 verdict: DERIVAR
-destination: Helpdesk IA
 rule: R-DER-04
+destination: Helpdesk IA
 source: Francisco Gonzalez (Slack group DM 2026-04-21)
 ---
 
 ## Problema
 
-User reporta que en `https://envios.adminml.com/logistics/package-management` el selector de SVC aparece pero no guarda el cambio (de SHP2 a SHP1). Afecta sólo a algunos usuarios. LDAP afectado: `yaarroyo`.
+User reporta que en `https://envios.adminml.com/logistics/package-management` el selector de SVC aparece pero no guarda el cambio. Afecta sólo a algunos usuarios; el usuario afectado está correctamente configurado en Groot/Kraken.
 
 ## Causa Raíz
 
@@ -20,7 +20,7 @@ El componente de package-management (SVC selector) **no pertenece a Groot/Kraken
 
 ## Solución Aplicada
 
-1. Se verificó en Groot/Kraken que el usuario `yaarroyo` tiene la configuración correcta.
+1. Se verificó en Groot/Kraken que el usuario reportado tiene la configuración correcta.
 2. Se confirmó que la falla está en el componente de package-management, fuera del alcance de Groot.
 3. Se derivó el ticket a **Helpdesk IA** para que lo ruteen al owner correcto (Platsec/Randall).
 

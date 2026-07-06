@@ -5,14 +5,14 @@ summary: Usuario externo (ext_) reconocido como cuenta Meli en Kioske y no puede
 date: 2026-04-21
 effectiveness: confirmed
 verdict: DERIVAR
-destination: IAM Soporte
 rule: R-DER-06
+destination: IAM Soporte
 source: Francisco Gonzalez (Slack group DM 2026-04-21)
 ---
 
 ## Problema
 
-Colaborador Deivid Everton Colociuc Maciel (groot_id `2451141`, LDAP `ext_decoloci`) aparece como **cuenta Meli** en el Kioske (no como EXT) y no consigue cambiar contraseña porque el sistema lo interpreta como usuario interno. Ocurre en el site SP06/SSP6.
+Un colaborador externo (`ext_*`) aparece como **cuenta Meli** en el Kioske (no como EXT) y no consigue cambiar contraseña porque el sistema lo interpreta como usuario interno.
 
 ## Causa Raíz
 

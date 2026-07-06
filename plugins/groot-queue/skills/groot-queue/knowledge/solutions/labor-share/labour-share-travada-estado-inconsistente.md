@@ -4,6 +4,7 @@ category: labor-share
 summary: Labour Share trabada/bloqueada para usuario — corregir estado del usuario manualmente
 date: 2026-07-01
 effectiveness: confirmed
+verdict: VALIDO_GROOT
 ---
 
 ## Problema

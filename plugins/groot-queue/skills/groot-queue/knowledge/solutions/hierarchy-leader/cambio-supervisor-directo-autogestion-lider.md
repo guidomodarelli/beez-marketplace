@@ -11,7 +11,7 @@ source: Francisco Gonzalez (Slack group DM 2026-04-21)
 
 ## Problema
 
-User pide cambio de supervisor directo en Groot para reps de SRM2. Nuevo supervisor directo: LDAP `NRETAMALES`. Reps a mover: `iolguinyanez`, `jllanquechoq`, `ldiazmunoz`, `prodriguezlo`, `ext_tivergar`, `ext_accamilo`, `ext_isfabres`, `ext_jemmoral`. **No reporta error técnico, es una solicitud operativa.**
+User pide cambio de supervisor directo en Groot para un grupo de reps. No reporta error técnico, es una solicitud operativa.
 
 ## Causa Raíz
 

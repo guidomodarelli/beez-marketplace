@@ -4,6 +4,7 @@ category: labor-share
 summary: El rep juvelazquez quedó asignado permanentemente a ARBA02 sin poder volver a ARBA01 debido a una etiqueta de labour share activa que no se eliminó al finalizar el periodo.
 date: 2026-04-13
 effectiveness: confirmed
+verdict: VALIDO_GROOT
 ---
 
 ## Problema

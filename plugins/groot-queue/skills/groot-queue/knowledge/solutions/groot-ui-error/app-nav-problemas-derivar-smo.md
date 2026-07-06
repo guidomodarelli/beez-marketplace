@@ -4,7 +4,9 @@ category: groot-ui-error
 summary: Problemas de navegación en App Nav. No corresponde a Groot. Derivar a SMO (squad Randall), que trabaja con Process Dev Full en un walk-around.
 date: 2025-11-03
 effectiveness: confirmed
-derived_to: SMO (squad Randall)
+verdict: DERIVAR
+rule: R-DER-02
+destination: SMO (squad Randall)
 ---
 
 ## Problema

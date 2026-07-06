@@ -1,10 +1,10 @@
 ---
 ticket: SSHP-1450847
 category: attribute-modification
-verdict: VALIDO_GROOT
 summary: Atributo logistic carrier aparece deshabilitado en herramienta auth users — ni el usuario ni su líder pueden editarlo; fix asignando el carrier desde la vista de admin
 date: 2026-06-02
 effectiveness: confirmed
+verdict: VALIDO_GROOT
 ---
 
 ## Problema

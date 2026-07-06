@@ -7,9 +7,9 @@ La idea es que todo el conocimiento del día a día del equipo crezca en este di
 ## Estructura
 
 ```
-triage-rules.md      Reglas transversales R-DESC-XX / R-DER-XX / R-FIX-XX.
+triage-rules.md      Reglas transversales R-DESC-XX / R-DER-XX.
                      Algoritmo de triage para los veredictos (DESCARTAR,
-                     DERIVAR, FIX_APLICADO, VALIDO_GROOT, REVISAR_MANUAL).
+                     DERIVAR, VALIDO_GROOT, REVISAR_MANUAL).
                      Se consulta en /groot-queue list y /groot-queue classify.
 
 runbooks.md          Runbook procedural por categoría de problema
@@ -23,20 +23,16 @@ assignment-note-template.md
                      reglas de llenado y restricciones.
 
 solutions/           Casos concretos resueltos, agrupados por categoría:
-  hierarchy-leader/
-  warehouse-assignment/
-  role-permission/
-  user-visibility/
-  attribute-modification/
-  labor-share/
-  cad-profile/
-  groot-ui-error/
-  link-unlink-account/
-  queue-management/   Casos de derivación incorrecta, descartes y gestión de cola.
-
-apis/                Documentación de endpoints del ecosistema Groot.
-                     (Todavía vacío — completar con specs cuando aparezca
-                     necesidad.)
+  hierarchy-leader/        ← Jerarquía/Líder
+  warehouse-assignment/    ← Warehouse/Site
+  role-permission/         ← Roles/Permisos
+  user-visibility/         ← Visibilidad Usuario
+  attribute-modification/  ← Atributos
+  labor-share/             ← Labour Share
+  cad-profile/             ← CAD/Perfil
+  groot-ui-error/          ← Error UI Groot
+  link-unlink-account/     ← Vincular/Desvincular
+  queue-management/        ← Descartes, derivaciones incorrectas y gestión de cola.
 
 audit-log-<YYYY>.jsonl  Log de auditoría append-only (una línea JSON por evento),
                      **un archivo por año** (audit-log-2026.jsonl,
@@ -119,7 +115,6 @@ effectiveness: confirmed | unconfirmed
 Editar `triage-rules.md`. Nueva numeración según corresponda:
 - `R-DESC-XX` para descartes
 - `R-DER-XX` para derivaciones a otro equipo
-- `R-FIX-XX` para casos con fix ya aplicado en producción
 
 Incluir siempre: señales, razón, acción, comentario sugerido y **fuente** (autor + ticket + fecha + link a `solutions/`).
 

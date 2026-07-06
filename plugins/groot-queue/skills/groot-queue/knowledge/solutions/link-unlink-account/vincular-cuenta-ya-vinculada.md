@@ -4,6 +4,7 @@ category: link-unlink-account
 summary: No se podía vincular la cuenta de dbautistadel (se quedaba cargando). El usuario ya tenía una cuenta vinculada con Groot ID 2067001. Ticket rechazado.
 date: 2026-04-14
 effectiveness: confirmed
+verdict: DESCARTAR
 ---
 
 ## Problema
