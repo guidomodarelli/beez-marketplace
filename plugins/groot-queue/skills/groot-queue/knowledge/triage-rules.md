@@ -247,6 +247,21 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola, el error al crear Labour Share se debe a que la posición del usuario es 'analyst'. Solo los usuarios con posición team_lead o supervisor tienen habilitada la funcionalidad de crear Labour Share. Esto es por diseño del sistema."
 - **Fuente**: ticket SSHP-1417376 (2026-04-17). Ver `solutions/labor-share/error-labour-share-posicion-analyst.md`.
 
+### R-DESC-19 — Solicitud de operación que ya es funcionalidad existente en la tool de autogestión (catch-all)
+- **Señales**:
+  - ES: "cambiar líder", "cambio de TL", "alteración de TL", "mover usuario a otro supervisor", "cambiar atributo", "asignar CAD", "modificar facility", "quiero cambiar X a Y".
+  - PT: "alteração de TL", "trocar líder", "mover usuário para outro supervisor", "modificar atributo", "trocar facility", "quero alterar X para Y".
+  - EN: "change TL", "change leader", "move user to another supervisor", "modify attribute", "change facility", "I want to change X to Y".
+  - La solicitud pide ejecutar una **operación estándar** que la herramienta de Groot ya provee por autogestión (cambio de líder, asignación de atributos, cambio de facility, etc.).
+  - **No** hay error técnico / sistémico reportado: la tool funciona, el requester simplemente pide que Groot ejecute la operación en su lugar.
+  - No matchea una regla más específica (R-DESC-02, R-DESC-04, R-DESC-09, R-DESC-10, R-DESC-13).
+- **Razón**: Groot Soporte atiende **solo errores sistémicos**. Si la funcionalidad ya existe en la tool y está disponible para ser ejecutada por el líder/gestor de la operación, no hay intervención requerida por parte de soporte.
+- **Verificación previa**: Si el requester reporta que intentó realizar la operación y la herramienta **da error / no guarda / falla** → reclasificar como `VALIDO_GROOT` (error sistémico). Si ya tiene asignado exactamente lo que pide (estado actual = estado deseado) → descartar sin más.
+- **Acción**: Cerrar como `Won't Do` con razón `[R] Funcionalidad existente`.
+- **Comentario sugerido**:
+  > "Hola, la operación solicitada es una funcionalidad que ya existe en la tool de autogestión. Los líderes/gestores actuales pueden realizar esta acción directamente desde https://envios.adminml.com/tools/auth/users/shared?active=true. Desde soporte Groot solo atendemos errores sistémicos de la herramienta."
+- **Fuente**: Francisco Gonzalez, ticket SSHP-1494206 (2026-07-06). Regla catch-all para resolución `[R] Funcionalidad existente`.
+
 ---
 
 ## Reglas `DERIVAR`
