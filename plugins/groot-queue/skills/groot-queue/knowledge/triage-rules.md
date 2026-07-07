@@ -247,6 +247,21 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola, el error al crear Labour Share se debe a que la posición del usuario es 'analyst'. Solo los usuarios con posición team_lead o supervisor tienen habilitada la funcionalidad de crear Labour Share. Esto es por diseño del sistema."
 - **Fuente**: ticket SSHP-1417376 (2026-04-17). Ver `solutions/labor-share/error-labour-share-posicion-analyst.md`.
 
+### R-DESC-19 — Solicitud de operación que ya es funcionalidad existente en la tool de autogestión (catch-all)
+- **Señales**:
+  - ES: "cambiar líder", "cambio de TL", "alteración de TL", "mover usuario a otro supervisor", "cambiar atributo", "asignar CAD", "modificar facility", "quiero cambiar X a Y".
+  - PT: "alteração de TL", "trocar líder", "mover usuário para outro supervisor", "modificar atributo", "trocar facility", "quero alterar X para Y".
+  - EN: "change TL", "change leader", "move user to another supervisor", "modify attribute", "change facility", "I want to change X to Y".
+  - La solicitud pide ejecutar una **operación estándar** que la herramienta de Groot ya provee por autogestión (cambio de líder, asignación de atributos, cambio de facility, etc.).
+  - **No** hay error técnico / sistémico reportado: la tool funciona, el requester simplemente pide que Groot ejecute la operación en su lugar.
+  - No matchea una regla más específica (R-DESC-02, R-DESC-04, R-DESC-09, R-DESC-10, R-DESC-13).
+- **Razón**: Groot Soporte atiende **solo errores sistémicos**. Si la funcionalidad ya existe en la tool y está disponible para ser ejecutada por el líder/gestor de la operación, no hay intervención requerida por parte de soporte.
+- **Verificación previa**: Si el requester reporta que intentó realizar la operación y la herramienta **da error / no guarda / falla** → reclasificar como `VALIDO_GROOT` (error sistémico). Si ya tiene asignado exactamente lo que pide (estado actual = estado deseado) → descartar sin más.
+- **Acción**: Cerrar como `Won't Do` con razón `[R] Funcionalidad existente`.
+- **Comentario sugerido**:
+  > "Hola, la operación solicitada es una funcionalidad que ya existe en la tool de autogestión. Los líderes/gestores actuales pueden realizar esta acción directamente desde https://envios.adminml.com/tools/auth/users/shared?active=true. Desde soporte Groot solo atendemos errores sistémicos de la herramienta."
+- **Fuente**: Francisco Gonzalez, ticket SSHP-1494206 (2026-07-06). Regla catch-all para resolución `[R] Funcionalidad existente`.
+
 ---
 
 ## Reglas `DERIVAR`
@@ -409,6 +424,98 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola, este inconveniente corresponde al equipo de Chat Interno (Pidgey), que es el responsable de los permisos de acceso a las notificaciones en xtools. Derivamos para que continúen con la atención del caso."
 - **Fuente**: ticket SSHP-1413000 (2026-04-18). Ver `solutions/role-permission/no-autorizado-xtools-pidgey-derivado.md`.
 
+### R-DER-14 — Alta/regularización de nodo o valor nuevo en Kraken → Helpdesk IA (platsec/randall o integradores)
+- **Señales**:
+  - ES: "alta de nodo", "regularización de nodo", "crear nodo nuevo en Kraken", "dar de alta valor", "agregar nodo", "asociar nodo a SC", "no existe el nodo", "valor nuevo en Kraken".
+  - PT: "cadastro de nó", "regularização de nó", "criar nó novo no Kraken", "cadastrar valor", "adicionar nó", "associar nó ao SC", "nó não existe", "valor novo no Kraken".
+  - EN: "register node", "create new node in Kraken", "add new value", "add node", "associate node to SC", "node does not exist", "new value in Kraken".
+  - La solicitud pide **dar de alta / crear / registrar** un nodo o valor que **no existe** actualmente en Kraken.
+  - Contexto típico: quieren asociar un nodo (ej. NEX, XD, SC) a otro nodo padre (ej. SC, warehouse) pero el nodo hijo no existe en el sistema.
+- **Razón**: Groot/Kraken Soporte no tiene herramientas para dar de alta valores nuevos en Kraken. El alta de nodos/valores nuevos debe llegar por los integradores o solicitarse al equipo de platsec/randall.
+- **Verificación previa**: Confirmar que el nodo/valor efectivamente no existe en Kraken. Si el nodo existe pero hay un error al intentar asociarlo → reclasificar como `VALIDO_GROOT` (error sistémico).
+- **Acción**: Derivar a **Helpdesk IA** (ruteo a platsec/randall o integradores).
+- **Comentario sugerido**:
+  > "Hola, desde soporte Groot/Kraken no tenemos opción para dar de alta valores nuevos. Estos deben llegar por los integradores o pedir ayuda al equipo de platsec/randall."
+- **Fuente**: Francisco Gonzalez, ticket SSHP-1469338 (2026-07-07).
+
+### R-DER-15 — Reactivación de usuario desactivado/expirado que Groot no puede resolver → IAM Commerce
+- **Señales**:
+  - ES: "reactivar usuario desactivado", "cuenta desactivada", "expirada", "no se puede reactivar", "error al reactivar", "cuenta expirada", "usuario desactivado no puede ser reactivado".
+  - PT: "reativar usuário desativado", "conta desativada", "expirada", "não pode ser reativado", "erro ao reativar", "conta expirada", "usuário desativado não pode ser reativado".
+  - EN: "reactivate disabled user", "account disabled", "expired", "cannot reactivate", "error reactivating", "account expired", "disabled user cannot be reactivated".
+  - El líder o el usuario reporta que una cuenta aparece como desactivada/expirada en Groot o MeliHelp y no hay opción para reactivarla desde la autogestión.
+- **Razón**: Cuando la desactivación involucra bloqueos de SuccessFactors, IAM o sincronización de HR, Groot Soporte no tiene herramientas para desbloquear. El equipo de IAM Commerce tiene acceso directo para resolver estos casos.
+- **Verificación previa**: Confirmar que el usuario realmente aparece como desativado/expirado en Groot. Si el usuario está activo pero con permisos faltantes → reclasificar como `VALIDO_GROOT`.
+- **Acción**: Derivar a **IAM Commerce** (sup_iamcommerce_01).
+- **Comentario sugerido**:
+  > "Hola, la reactivación de cuentas desactivadas/expiradas que no se resuelve por autogestión requiere intervención del equipo de IAM. Derivamos para que puedan ayudarte."
+- **Fuente**: Análisis histórico (5 tickets: SSHP-1508978, SSHP-1497366, SSHP-1498407, SSHP-1499951, SSHP-1458962).
+
+### R-DER-16 — Error de creación de usuario por fallo de SuccessFactors / datos inválidos → IAM Commerce
+- **Señales**:
+  - ES: "error al crear usuario", "datos no válidos", "no genera Groot ID", "error de identificador", "SuccessFactors no permite continuar", "error de datos en creación masiva".
+  - PT: "erro ao criar usuário", "dados inválidos", "não gera Groot ID", "erro de identificador", "SuccessFactors não permite continuar", "erro de dados na criação", "falha no SuccessFactors".
+  - EN: "error creating user", "invalid data", "does not generate Groot ID", "identifier error", "SuccessFactors does not allow to continue", "data error in creation".
+  - El líder intenta crear uno o varios usuarios (internos o externos) desde Groot y recibe error del sistema que menciona SuccessFactors, datos inválidos, o identificador tributario (pero **no** es un documento duplicado — para eso ver R-DER-11).
+- **Razón**: Los errores sistémicos de integración con SuccessFactors requieren investigación del equipo IAM Commerce, que tiene acceso a los logs de integración y puede corregir datos en la fuente.
+- **Verificación previa**: Confirmar que no es un caso de documento duplicado (R-DER-11). Si el error menciona "tax_id has already been used" o "CPF já utilizado" → aplicar R-DER-11 en su lugar.
+- **Acción**: Derivar a **IAM Commerce** (sup_iamcommerce_01).
+- **Comentario sugerido**:
+  > "Hola, el error de creación está relacionado con la integración de SuccessFactors y requiere investigación del equipo de IAM. Derivamos para que puedan resolver el problema de datos."
+- **Fuente**: Análisis histórico (8+ tickets: SSHP-1482522, SSHP-1483624, SSHP-1483830, SSHP-1483831, SSHP-1483993, SSHP-1482546, SSHP-1482691, SSHP-1480290, SSHP-1482672).
+
+### R-DER-17 — Error funcional de WMS/Logistics con permisos correctos en Groot → Equipo WMS
+- **Señales**:
+  - ES: "tiene permisos pero no puede acceder a WMS", "monitores WMS inbound sin acceso", "pantalla en blanco WMS", "error 403 WMS", "no puede tomar proceso", "WMS se recarga", "botón aplicar deshabilitado", "sin visibilidad del warehouse", "cambio automático de warehouse".
+  - PT: "tem permissões mas não consegue acessar WMS", "monitores WMS inbound sem acesso", "tela em branco WMS", "erro 403 WMS", "não consegue pegar processo", "WMS recarregando", "botão aplicar desabilitado", "sem visibilidade do warehouse", "mudança automática de warehouse".
+  - EN: "has permissions but cannot access WMS", "WMS inbound monitors no access", "blank screen WMS", "403 error WMS", "cannot take process", "WMS reloading", "apply button disabled", "no warehouse visibility", "automatic warehouse change".
+  - El usuario tiene roles y bolhas correctamente asignados en Groot/Kraken, pero **WMS/Logistics no refleja esos permisos** o presenta errores funcionales (pantalla en blanco, error 403, page reloading, botones deshabilitados, procesos inaccesibles).
+- **Razón**: Si el usuario está correctamente configurado en Groot (bolhas asignadas, warehouse correcto, roles vigentes) pero WMS/Logistics falla o no muestra las funciones esperadas, el problema es del **sistema WMS** (frontend o backend), no de la configuración de permisos. Groot Soporte no tiene visibilidad ni herramientas para resolver bugs de WMS.
+- **Verificación previa**: Confirmar que el usuario **efectivamente tiene** los roles/bolhas/warehouse en Groot. Si la configuración en Groot es incorrecta o faltante → reclasificar como `VALIDO_GROOT` (ajustar permisos en Groot).
+- **Acción**: Derivar a **Equipo WMS**.
+- **Comentario sugerido**:
+  > "Hola, verificamos la configuración del usuario en Groot y los permisos están correctos. El problema parece ser funcional de WMS/Logistics. Derivamos al equipo de WMS para que puedan investigar."
+- **Fuente**: Análisis histórico (9 tickets: SSHP-1508621, SSHP-1500233, SSHP-1495880, SSHP-1492695, SSHP-1486490, SSHP-1485607, SSHP-1484713, SSHP-1465825, SSHP-1486341).
+
+### R-DER-18 — Solicitud operativa de WMS (gestión de paquetes/envíos, no de usuarios) → Equipo WMS/Operaciones
+- **Señales**:
+  - ES: "actualizar status de orders", "destrabar pedidos", "liberar shipments", "paquetes en espera", "cambiar estado de envío", "shipment_id bloqueado".
+  - PT: "atualizar status de orders", "destravar pedidos", "liberar shipments", "pacotes em espera", "mudar estado de envio", "shipment_id bloqueado".
+  - EN: "update order status", "unlock shipments", "release packages", "packages on hold", "change shipment state", "blocked shipment_id".
+  - La solicitud **no involucra usuarios, permisos ni roles** — pide una acción operativa sobre paquetes, envíos o estados en WMS.
+- **Razón**: Groot Soporte gestiona usuarios y permisos. Las operaciones sobre paquetes/envíos/orders en WMS corresponden al equipo de WMS/Operaciones.
+- **Verificación previa**: Confirmar que el pedido es puramente operativo y no un error derivado de permisos faltantes del usuario.
+- **Acción**: Derivar a **Equipo WMS/Operaciones**.
+- **Comentario sugerido**:
+  > "Hola, desde Groot Soporte gestionamos usuarios y permisos. Tu solicitud es operativa (gestión de paquetes/envíos en WMS) y corresponde al equipo de WMS/Operaciones. Derivamos para que puedan ayudarte."
+- **Fuente**: Análisis histórico (2 tickets: SSHP-1489984, SSHP-1489350).
+
+### R-DER-20 — Pérdida de acceso o desincronización IAM↔WMS/LMS (usuario activo pierde permisos sin causa visible en Groot) → IAM Commerce
+- **Señales**:
+  - ES: "perdió acceso después de login", "sin acceso al warehouse por defecto", "troca de gestión en LMS", "acceso desapareció", "permisos se desasignaron solos".
+  - PT: "perdeu acesso após login", "sem acesso ao warehouse padrão", "troca de gestão no LMS", "acesso sumiu", "permissões se desatribuíram sozinhas".
+  - EN: "lost access after login", "no access to default warehouse", "management swap in LMS", "access disappeared", "permissions unassigned by themselves".
+  - El usuario estaba activo y funcionando, pero **perdió acceso a WMS/LMS sin que nadie modificara su configuración en Groot**. La cuenta sigue activa, los roles parecen estar, pero el sistema downstream (WMS/LMS) dejó de reconocer sus permisos.
+- **Razón**: La sincronización entre IAM y los sistemas downstream (WMS, LMS) a veces falla o se corrompe sin intervención manual. El equipo IAM Commerce tiene acceso a los logs de sincronización y puede forzar re-sync o corregir inconsistencias.
+- **Verificación previa**: Confirmar que el usuario está activo en Groot, tiene roles asignados, y el problema NO es configuración faltante en Groot (si le faltan roles → `VALIDO_GROOT`).
+- **Acción**: Derivar a **IAM Commerce** (sup_iamcommerce_01).
+- **Comentario sugerido**:
+  > "Hola, verificamos que tu configuración en Groot está correcta pero detectamos un problema de sincronización con el sistema. Derivamos al equipo de IAM para que puedan investigar y restaurar el acceso."
+- **Fuente**: Análisis histórico (3 tickets: SSHP-1493771, SSHP-1491358, SSHP-1482519).
+
+### R-DER-22 — Errores funcionales o pantalla en blanco en LMS (no involucra configuración de usuario) → LMS
+- **Señales**:
+  - ES: "LMS pantalla en blanco", "LMS no carga", "LMS muestra CAD incorrecto", "reps aparecen en site incorrecto en LMS", "LMS cargando indefinidamente", "pérdida de bolhas en LMS sin cambio en Groot".
+  - PT: "LMS tela em branco", "LMS não carrega", "LMS mostra CAD incorreto", "reps aparecem no site incorreto no LMS", "LMS carregando indefinidamente", "perda de bolhas no LMS sem mudança no Groot".
+  - EN: "LMS blank screen", "LMS not loading", "LMS shows incorrect CAD", "reps appear in wrong site in LMS", "LMS loading indefinitely", "loss of bubbles in LMS without change in Groot".
+  - El reporte es sobre **LMS** (Labour Management System): pantalla en blanco, CAD/site incorrecto, bolhas que desaparecen — y la configuración en Groot/Kraken está correcta.
+- **Razón**: Si el usuario está correctamente configurado en Groot pero LMS muestra datos incorrectos o no carga, el problema es del sistema LMS. Groot Soporte no tiene herramientas para corregir inconsistencias internas de LMS.
+- **Verificación previa**: Confirmar que no es un problema de R-DER-12 (horas Be a Rep) ni de configuración faltante en Groot. Si al usuario le faltan roles en Groot → `VALIDO_GROOT`.
+- **Acción**: Derivar a **LMS** (equipo Labour Management).
+- **Comentario sugerido**:
+  > "Hola, verificamos tu configuración en Groot y está correcta. El problema parece ser funcional de LMS. Derivamos al equipo de LMS para que puedan investigar."
+- **Fuente**: Análisis histórico (2 tickets: SSHP-1475187, SSHP-1470659).
+
 ---
 
 ## Algoritmo de triage (para `list` y `classify`)
@@ -416,37 +523,45 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredicto que matchee:
 
 1. **R-DER-12** ⚠️ _[pendiente validación — no ejecutar automáticamente]_ → si el reporte menciona errores, diferencias o inconsistencias en la contabilidad de horas de Be a Rep con impacto en LMS / Labour Management System.
-2. **R-DER-06** → si LDAP `ext_*` aparece como **cuenta Meli** en Kioske/TOTEM y no puede cambiar contraseña.
-3. **R-DER-07** → si la herramienta afectada es **Shield** y el flujo es cambio de líder para colaboradores externos.
-4. **R-DER-09** → si el reporte menciona "tax id inválido", "CUIT inválido", "CPF inválido", "documento inválido" (frontend o bulk).
-5. **R-DER-11** → si al crear/dar de alta un colaborador el error es "Tax_id has already been used" / ES "tax id ya utilizado" / PT "tax_id já utilizado" (documento **válido** pero ya en uso; distinto de R-DER-09 que es tax id *inválido*).
-6. **R-DER-10** → si el usuario final ve un mensaje tipo "no perteneces a envíos" / "no pertence a envios" al intentar crear cuenta o desbloquearla (y por eso no puede conocer su LDAP).
-7. **R-DER-08** → si el pedido es **cambio de nombre** del usuario (first/last name), sin error técnico de Groot.
-8. **R-DER-13** → si la URL afectada es `xtools.adminml.com/tools/pidgey/*` (chat interno / notificaciones outbound) y el problema no involucra configuración de usuario en Groot.
-9. **R-DER-04** → si la URL afectada es `envios.adminml.com/logistics/...` / **package-management** / app nav / componente externo y el usuario está correctamente configurado en Groot/Kraken.
-10. **R-DER-05** → si el tema es de **clasificación/taxonomía** de proceso madre en la tool Groot o issues de **app nav** (no un error real de Groot).
-11. **R-DER-01** → si menciona "tag azul", "no es cuenta de envíos", "conta não é de envios", "sin opción de deshabilitar", o el admin (accediendo al perfil en la tool de Groot) ve que "no puede habilitar al usuario" porque "no pertenece a envíos / no pertenece a Mercado Envío" / PT "não pertence às remessas" / "nao pertence as remessas" / EN "does not belong to shipping" / "not a shipping account" (cuenta desactivada que piden reactivar; IAM debe ajustar el flag de shipping).
-12. **R-DER-02** → si menciona "app nav", "navegación del app", "navegação" sin señal de R-DER-05.
-13. **R-DER-03** → si menciona "vincular cuenta", "desvincular", "cuenta Meli vs ext_", "cambio de contraseña" (sin señal de Kioske/TOTEM que apunte a R-DER-06).
-14. **R-DESC-03** → si el usuario reporta que en xtools / autogestión "no aparece CAD" / "não aparece CAD" / "no puedo seleccionar facility" + contexto de visitar otro site.
-15. **R-DESC-06** → si el usuario afectado es **rep** y el reporte es previo al clock-in físico del día en el site objetivo.
-16. **R-DESC-07** → si reps no ven una bolha/función y la verificación confirma que **están** en el facility correcto.
-17. **R-DESC-13** → si pide liberar bolha/permisos/roles para una función operativa sin error técnico de Groot, y la acción corresponde al gestor de aplicación u operación.
-18. **R-DESC-08** → si el requester menciona "learning completado", "training hub", "learning hub" y pide asignación de rol post-capacitación.
-19. **R-DESC-04** → si es pedido de **cambio de líder / supervisor directo** sin error técnico (lista de usuarios a mover + nuevo líder).
-20. **R-DESC-09** → si pide **remover** un rol a un operario y no hay error técnico reportado.
-21. **R-DESC-05** → si hay error "no autorizado" / "not authorized" o solicitud de permisos para un módulo/URL específico y el usuario **sí** logra loguearse.
-22. **R-DESC-02** → si es solicitud de **asignación de rol** a usuario (sin error técnico) y la cuenta **no** tiene tag azul.
-23. **R-DESC-10** → si pide **asignar / cambiar / quitar un valor de atributo** (CAD, facility, atributo operativo) sin error técnico, y no matchea R-DESC-03 / R-DESC-06 / R-DESC-07.
-24. **R-DESC-18** → si el usuario no puede crear Labour Share para ninguno de sus HCs y la verificación confirma que tiene posición `analyst` (no `team_lead` ni `supervisor`).
-25. **R-DESC-01** → si proviene de **Opex Full / SMO** y fue derivado fuera de ventana (>15 días de aging al llegar a Groot, posterior a 2025-10-28).
-26. **R-DESC-11** → si el problema ocurre en un sistema externo a Groot/Kraken (ej. HCM Rostering) y no hay error en ninguna herramienta de Groot.
-27. **R-DESC-12** ⚠️ _[pendiente validación — clasificar como `REVISAR_MANUAL` hasta confirmar copy con Francisco Gonzalez]_ → si el reporte es una jerarquía que cambió automáticamente en LMS (sin solicitud manual) y el contexto apunta a un sync de Rostering, clasificar como `REVISAR_MANUAL` hasta validar el copy de descarte.
-28. **R-DESC-14** → si un usuario interno dado de baja en SSFF aparece inactivo en Groot y no puede reactivarse manualmente.
-29. **R-DESC-15** → si roles previos no se restauran tras expirar un rol temporal por incompatibilidades de roles que ya no se exceptúan.
-30. **R-DESC-16** → si el usuario reporta jerarquía/gestor incorrecto en Groot pero la verificación confirma que el valor coincide con SSFF (SuccessFactors).
-31. **R-DESC-17** → si el usuario reporta que no puede acceder a sistemas/tools cuyas URLs NO pertenecen al dominio de Groot (`envios.adminml.com/tools/auth/*`).
-32. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
+2. **R-DER-22** → si LMS muestra pantalla en blanco, CAD/site incorrecto o bolhas que desaparecen, y la configuración en Groot/Kraken está correcta (no es R-DER-12 ni configuración faltante).
+3. **R-DER-06** → si LDAP `ext_*` aparece como **cuenta Meli** en Kioske/TOTEM y no puede cambiar contraseña.
+4. **R-DER-07** → si la herramienta afectada es **Shield** y el flujo es cambio de líder para colaboradores externos.
+5. **R-DER-09** → si el reporte menciona "tax id inválido", "CUIT inválido", "CPF inválido", "documento inválido" (frontend o bulk).
+6. **R-DER-11** → si al crear/dar de alta un colaborador el error es "Tax_id has already been used" / ES "tax id ya utilizado" / PT "tax_id já utilizado" (documento **válido** pero ya en uso; distinto de R-DER-09 que es tax id *inválido*).
+7. **R-DER-10** → si el usuario final ve un mensaje tipo "no perteneces a envíos" / "no pertence a envios" al intentar crear cuenta o desbloquearla (y por eso no puede conocer su LDAP).
+8. **R-DER-08** → si el pedido es **cambio de nombre** del usuario (first/last name), sin error técnico de Groot.
+9. **R-DER-13** → si la URL afectada es `xtools.adminml.com/tools/pidgey/*` (chat interno / notificaciones outbound) y el problema no involucra configuración de usuario en Groot.
+10. **R-DER-14** → si la solicitud pide dar de **alta / crear / registrar** un nodo o valor nuevo que no existe en Kraken (ej. "alta de nodo NEX", "registrar nodo", "crear valor nuevo").
+11. **R-DER-15** → si un usuario está desactivado/expirado en Groot y no puede ser reactivado por autogestión (error al reactivar, cuenta expirada sin opción de recovery).
+12. **R-DER-16** → si la creación de usuario(s) falla con error de SuccessFactors / "datos inválidos" / "identificador tributario" (pero **no** es documento duplicado — para eso R-DER-11).
+13. **R-DER-20** → si el usuario estaba activo y perdió acceso a WMS/LMS sin que nadie modificara su configuración en Groot (desincronización IAM↔downstream).
+14. **R-DER-17** → si el usuario tiene roles/bolhas/warehouse correctos en Groot pero **WMS/Logistics no refleja esos permisos** o presenta errores funcionales (pantalla en blanco, error 403, reloading, botones deshabilitados).
+15. **R-DER-18** → si la solicitud es puramente **operativa de WMS** (gestión de paquetes, envíos, shipments) y no involucra usuarios, permisos ni roles.
+16. **R-DER-04** → si la URL afectada es `envios.adminml.com/logistics/...` / **package-management** / app nav / componente externo y el usuario está correctamente configurado en Groot/Kraken.
+17. **R-DER-05** → si el tema es de **clasificación/taxonomía** de proceso madre en la tool Groot o issues de **app nav** (no un error real de Groot).
+18. **R-DER-01** → si menciona "tag azul", "no es cuenta de envíos", "conta não é de envios", "sin opción de deshabilitar", o el admin (accediendo al perfil en la tool de Groot) ve que "no puede habilitar al usuario" porque "no pertenece a envíos / no pertenece a Mercado Envío" / PT "não pertence às remessas" / "nao pertence as remessas" / EN "does not belong to shipping" / "not a shipping account" (cuenta desactivada que piden reactivar; IAM debe ajustar el flag de shipping).
+19. **R-DER-02** → si menciona "app nav", "navegación del app", "navegação" sin señal de R-DER-05.
+20. **R-DER-03** → si menciona "vincular cuenta", "desvincular", "cuenta Meli vs ext_", "cambio de contraseña" (sin señal de Kioske/TOTEM que apunte a R-DER-06).
+21. **R-DESC-03** → si el usuario reporta que en xtools / autogestión "no aparece CAD" / "não aparece CAD" / "no puedo seleccionar facility" + contexto de visitar otro site.
+22. **R-DESC-06** → si el usuario afectado es **rep** y el reporte es previo al clock-in físico del día en el site objetivo.
+23. **R-DESC-07** → si reps no ven una bolha/función y la verificación confirma que **están** en el facility correcto.
+24. **R-DESC-13** → si pide liberar bolha/permisos/roles para una función operativa sin error técnico de Groot, y la acción corresponde al gestor de aplicación u operación.
+25. **R-DESC-08** → si el requester menciona "learning completado", "training hub", "learning hub" y pide asignación de rol post-capacitación.
+26. **R-DESC-04** → si es pedido de **cambio de líder / supervisor directo** sin error técnico (lista de usuarios a mover + nuevo líder).
+27. **R-DESC-09** → si pide **remover** un rol a un operario y no hay error técnico reportado.
+28. **R-DESC-05** → si hay error "no autorizado" / "not authorized" o solicitud de permisos para un módulo/URL específico y el usuario **sí** logra loguearse.
+29. **R-DESC-02** → si es solicitud de **asignación de rol** a usuario (sin error técnico) y la cuenta **no** tiene tag azul.
+30. **R-DESC-10** → si pide **asignar / cambiar / quitar un valor de atributo** (CAD, facility, atributo operativo) sin error técnico, y no matchea R-DESC-03 / R-DESC-06 / R-DESC-07.
+31. **R-DESC-18** → si el usuario no puede crear Labour Share para ninguno de sus HCs y la verificación confirma que tiene posición `analyst` (no `team_lead` ni `supervisor`).
+32. **R-DESC-01** → si proviene de **Opex Full / SMO** y fue derivado fuera de ventana (>15 días de aging al llegar a Groot, posterior a 2025-10-28).
+33. **R-DESC-11** → si el problema ocurre en un sistema externo a Groot/Kraken (ej. HCM Rostering) y no hay error en ninguna herramienta de Groot.
+34. **R-DESC-12** ⚠️ _[pendiente validación — clasificar como `REVISAR_MANUAL` hasta confirmar copy con Francisco Gonzalez]_ → si el reporte es una jerarquía que cambió automáticamente en LMS (sin solicitud manual) y el contexto apunta a un sync de Rostering, clasificar como `REVISAR_MANUAL` hasta validar el copy de descarte.
+35. **R-DESC-14** → si un usuario interno dado de baja en SSFF aparece inactivo en Groot y no puede reactivarse manualmente.
+36. **R-DESC-15** → si roles previos no se restauran tras expirar un rol temporal por incompatibilidades de roles que ya no se exceptúan.
+37. **R-DESC-16** → si el usuario reporta jerarquía/gestor incorrecto en Groot pero la verificación confirma que el valor coincide con SSFF (SuccessFactors).
+38. **R-DESC-17** → si el usuario reporta que no puede acceder a sistemas/tools cuyas URLs NO pertenecen al dominio de Groot (`envios.adminml.com/tools/auth/*`).
+39. **R-DESC-19** → si la solicitud pide ejecutar una operación estándar que la tool ya provee por autogestión, sin error técnico, y no matchea ninguna regla más específica anterior.
+40. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
 
 ---
 

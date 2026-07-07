@@ -1,6 +1,6 @@
 ---
 description: Analiza tickets cerrados de la cola SSHP para extraer patrones y alimentar la knowledge base (reglas de triage y soluciones).
-argument-hint: [--limit N] [--since YYYY-MM-DD] [--force]
+argument-hint: [--limit N] [--since YYYY-MM-DD] [--force] [--only derivados|descartados|resueltos]
 ---
 
 # /groot-queue:analyze-history
@@ -13,6 +13,10 @@ Analizar tickets cerrados (DERIVADO / DESCARTADO / RESUELTO) de la cola Groot (S
 - `--since YYYY-MM-DD` — analizar solo tickets cuya última actualización sea ≥ esa fecha.
 - `--force` — re-analizar tickets ya marcados con `groot-kb-analyzed`. Los marcados con `groot-kb-manual-review` siguen excluidos incluso con `--force` (requieren revisión manual explícita quitando la label).
   - Al explicar `--force` en modo ayuda, decir explícitamente: `no incluye` tickets con `groot-kb-manual-review`; siguen excluidos incluso con `--force`.
+- `--only <tipo>[,<tipo>...]` — filtrar por tipo de desenlace. Valores posibles: `derivados`, `descartados`, `resueltos`. Se pueden combinar con coma: `--only derivados,descartados`. Si se omite, se analizan los tres tipos (por defecto).
+  - `derivados` → tickets que fueron derivados a otro equipo (el assignee actual ya no pertenece al equipo Groot, o el comentario de cierre menciona derivación).
+  - `descartados` → resolución `Won't Do`, `Cancelled`, `Withdrawn` sin derivación a equipo externo.
+  - `resueltos` → resolución `Done`, `Fixed`, `Fix aplicado`, `Functionality`, `Cannot Reproduce` (atendido por Groot directamente).
 
 ## Pre-requisitos
 
@@ -29,16 +33,46 @@ Luego ejecutar /mcp y completar el flujo OAuth para mercadolibre.atlassian.net.
 
 ### 1. Construir el JQL
 
-**JQL base** (por defecto, sin flags):
+#### Equipo Groot — identificación por assignee
+
+Los tickets se identifican como "de Groot" mediante `assignee WAS IN (...)` con los accountIds del equipo. Esto captura tickets que fueron asignados a cualquier miembro del equipo en algún momento — incluso si luego fueron derivados y reasignados a otro equipo.
+
+**AccountIds del equipo Groot (actualizar si hay rotación):**
 
 ```
-project = SSHP AND Squad = Groot AND type = Incident AND statusCategory = Done AND (labels IS EMPTY OR (labels NOT IN (groot-kb-analyzed) AND labels NOT IN (groot-kb-manual-review))) ORDER BY updated DESC
+GROOT_TEAM_IDS = (
+  5cd4929cc9167e0d6ea2312d,
+  5ea6e12306a3eb0b7ec96e32,
+  "712020:43d9d55a-f958-4256-b2b7-9a0485c717ff",
+  600061b51051d10075eac0b8,
+  "712020:13bb4a44-bc51-4ee3-b443-8d8cc17acc7b",
+  609eebec2614ec006877ad99,
+  62cf1c0f10fcc6f7ae3ea200,
+  "712020:8300527c-0cb7-4412-8303-0306dac20649"
+)
 ```
 
-**JQL con `--force`** (re-analiza `groot-kb-analyzed`; excluye solo `groot-kb-manual-review`):
+| Username | Nombre | AccountId |
+|----------|--------|-----------|
+| frgonzalez | Francisco Gonzalez | `5cd4929cc9167e0d6ea2312d` |
+| hfurs | Hector Furs | `5ea6e12306a3eb0b7ec96e32` |
+| jgibelli | Julian Nicolas Gibelli | `712020:43d9d55a-f958-4256-b2b7-9a0485c717ff` |
+| maescobar | Matias Joel Escobar | `600061b51051d10075eac0b8` |
+| nicogutierre | Julio Nicolas Gutierrez | `712020:13bb4a44-bc51-4ee3-b443-8d8cc17acc7b` |
+| gsosa | Gustavo Gabriel Sosa Sotelo | `609eebec2614ec006877ad99` |
+| levillanueva | Leonardo Manuel Villanueva | `62cf1c0f10fcc6f7ae3ea200` |
+| gmodarelli | Guido Modarelli | `712020:8300527c-0cb7-4412-8303-0306dac20649` |
+
+#### JQL base (por defecto, sin flags):
 
 ```
-project = SSHP AND Squad = Groot AND type = Incident AND statusCategory = Done AND (labels IS EMPTY OR labels NOT IN (groot-kb-manual-review)) ORDER BY updated DESC
+project = SSHP AND assignee WAS IN (<GROOT_TEAM_IDS>) AND type = Incident AND statusCategory = Done AND (labels IS EMPTY OR (labels NOT IN (groot-kb-analyzed) AND labels NOT IN (groot-kb-manual-review))) ORDER BY updated DESC
+```
+
+#### JQL con `--force` (re-analiza `groot-kb-analyzed`; excluye solo `groot-kb-manual-review`):
+
+```
+project = SSHP AND assignee WAS IN (<GROOT_TEAM_IDS>) AND type = Incident AND statusCategory = Done AND (labels IS EMPTY OR labels NOT IN (groot-kb-manual-review)) ORDER BY updated DESC
 ```
 
 `statusCategory = Done` cubre todos los estados que Jira considera cerrados (Done, Cancelled, Won't Do, Derivado a otro equipo, Dismissed, etc.) sin depender de los nombres exactos de los estados, que varían según la configuración del proyecto.
@@ -47,9 +81,21 @@ Usar siempre `labels IS EMPTY OR ...` al filtrar labels: los filtros negativos d
 
 Al explicar la idempotencia en modo ayuda, mencionar explícitamente `labels IS EMPTY` y que los tickets sin labels también se incluyen en la consulta.
 
-Modificaciones adicionales:
-- Si `--since YYYY-MM-DD`: agregar `AND updated >= "YYYY-MM-DD"` al JQL correspondiente.
+#### Modificaciones adicionales:
+- Si `--since YYYY-MM-DD`: agregar `AND updated >= "YYYY-MM-DD"` al JQL.
 - Siempre aplicar el `--limit` tomando los primeros N resultados.
+
+#### Filtro `--only` (post-query)
+
+El flag `--only` **no modifica el JQL** — se aplica como filtro en memoria después de obtener los resultados y clasificar el desenlace de cada ticket (paso 2b). Esto es necesario porque la clasificación DERIVADO/DESCARTADO/RESUELTO depende del análisis del changelog + comentarios, no solo del campo `resolution`.
+
+Lógica del filtro:
+1. Ejecutar el JQL sin restricción de resolución.
+2. Para cada ticket, clasificar el desenlace (paso 2b).
+3. Si `--only` está presente, descartar silenciosamente los tickets cuyo desenlace no matchee los tipos solicitados.
+4. Contar solo los tickets que pasan el filtro contra el `--limit`.
+
+Ejemplo: `--only derivados --limit 10` → buscar tickets hasta encontrar 10 que sean DERIVADO (los DESCARTADO/RESUELTO se saltan sin mostrar ni contar).
 
 Ejecutar el JQL usando el MCP Atlassian (`searchJiraIssuesUsingJql`).
 
@@ -57,7 +103,9 @@ Si no hay resultados: mostrar `ℹ️ No hay tickets cerrados pendientes de anal
 
 ---
 
-### 2. Para cada ticket (iteración interactiva)
+### 2. Para cada ticket (iteración interactiva — UNO POR UNO, sin batch)
+
+⚠️ **REGLA CRÍTICA — ANÁLISIS INDIVIDUAL OBLIGATORIO**: Cada ticket DEBE analizarse completamente de forma individual. **PROHIBIDO** agrupar, resumir o "batchear" múltiples tickets en un solo paso. Aunque varios tickets parezcan similares, cada uno puede tener matices que lo diferencien (equipo destino distinto, señal única, verificación previa diferente). El volumen no es un criterio para saltear — un ticket único puede materializar una regla válida. Si un ticket no matchea ningún patrón existente con ≥3 tickets previos, IGUALMENTE debe analizarse individualmente y presentarse al usuario con su propuesta. El usuario decide si materializar; el agente no descarta por volumen.
 
 Mostrar contador de progreso antes de cada ticket: `[N/M] Analizando SSHP-XXXXXXX…`
 
@@ -187,12 +235,20 @@ Si falla la escritura por permisos → advertir al usuario con el ticket afectad
 ```
 ─────────────────────────────────────────────────
 📊 Análisis histórico completado
-
-Tickets procesados:         N de M consultados
+<si --only activo>
+Filtro aplicado:            --only <tipos>
+</si>
+Tickets consultados:        M
+Tickets procesados:         N (tras filtro --only, si aplica)
   ✅ Materializados:         X
   ⛔ Propuesta descartada:   Y
   ⏭️  Saltados:               Z
   ⚠️  Manual review:          W
+
+Por desenlace:
+  📤 Derivados:              D
+  🚫 Descartados:            E
+  ✔️  Resueltos:              F
 
 Reglas agregadas:           Q  (R-DESC: A  |  R-DER: B)
 Soluciones guardadas:       R
@@ -219,6 +275,7 @@ se filtrarán automáticamente por JQL.
 
 ## Notas de diseño
 
+- **ANÁLISIS EXHAUSTIVO — NO SALTEAR TICKETS**: el agente DEBE analizar cada ticket individualmente contra las reglas existentes y presentar una propuesta al usuario. No agrupar tickets por similaridad aparente para "ganar velocidad". No omitir tickets porque "ya hay muchos del mismo tipo". Un solo ticket puede revelar un patrón nuevo, un equipo destino distinto o un matiz que mejore una regla existente. Si el agente detecta N tickets similares, IGUALMENTE debe mostrar cada uno al usuario con su propuesta individual — el usuario decide si materializar, agrupar o descartar. El threshold de volumen (ej. 3+ o 5+) es una sugerencia para priorizar, NO una razón para ignorar tickets.
 - **WRITE CONTROLADO**: este subcommand escribe en la knowledge base local (`triage-rules.md` o `solutions/`) y agrega labels en Jira. **No** transiciona estados de tickets ni postea comentarios públicos o internos.
 - **Idempotencia garantizada**: tickets con `groot-kb-analyzed` no aparecen en el JQL base. Usar `--force` para forzar re-análisis.
 - **Flujo interactivo por diseño**: la extracción automática puede proponer señales incorrectas o malinterpretar el desenlace; el usuario confirma antes de materializar cada caso.
