@@ -203,6 +203,11 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - PT: "roles anteriores nao retornam", "permissao temporaria expirou e os roles nao voltaram", "roles incompatíveis previamente atribuídos".
   - EN: "previous roles are not restored", "temporary permission expired and roles did not return", "previously assigned incompatible roles".
 - **Razón**: Desde el 14 de marzo no se exceptúan incompatibilidades de roles por pedido del equipo de auditoría. Usuarios con roles incompatibles asignados previamente pueden perder progresivamente esa concurrencia cuando pasan por flujos de roles temporales.
+- **⚠️ NO APLICA cuando**:
+  - El rol temporal **nunca impactó** en la operación (no se reflejó en la HH, el usuario nunca pudo trabajar con el rol asignado). Eso es un **bug real** → `VALIDO_GROOT`.
+  - El usuario reporta que el **proceso de rol temporal falló completamente** (asignación no efectiva, retorno no ejecutado, el sistema no procesó el cambio). Eso es un **error sistémico** → `VALIDO_GROOT`.
+  - El ticket menciona roles temporales usados **justamente para evitar compliance** en procesos operativos (ej: Picking temporal para cubrir turno). Estos roles se usan dentro del diseño del sistema; si no funcionan, es un bug.
+  - **Aplica SOLO cuando**: el usuario se queja de que **perdió roles que antes tenía** (roles incompatibles que coexistían) después de pasar por un flujo de roles temporales, y la pérdida se debe a que ya no se exceptúan incompatibilidades desde el 14 de marzo.
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido** (nota interna):
   > "Usuarios con roles incompatibles previamente asignados desde el 14 de marzo esto se dejo de exceptuar incompatibilidades por pedido del equipo de auditoria esto hace que usuario con roles asignados previamente cuando entren en estos procesos empiecen a perder paultatinamente la concurrencia de roles incompatibles"
@@ -571,7 +576,7 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 34. **R-DESC-11** → si el problema ocurre en un sistema externo a Groot/Kraken (ej. HCM Rostering) y no hay error en ninguna herramienta de Groot.
 35. **R-DESC-12** ⚠️ _[pendiente validación — clasificar como `REVISAR_MANUAL` hasta confirmar copy con Francisco Gonzalez]_ → si el reporte es una jerarquía que cambió automáticamente en LMS (sin solicitud manual) y el contexto apunta a un sync de Rostering, clasificar como `REVISAR_MANUAL` hasta validar el copy de descarte.
 36. **R-DESC-14** → si un usuario interno dado de baja en SSFF aparece inactivo en Groot y no puede reactivarse manualmente.
-37. **R-DESC-15** → si roles previos no se restauran tras expirar un rol temporal por incompatibilidades de roles que ya no se exceptúan.
+37. **R-DESC-15** → si roles previos no se restauran tras expirar un rol temporal **por incompatibilidades de roles que ya no se exceptúan** (regla de auditoría del 14 de marzo). ⚠️ **NO aplicar** si el rol temporal nunca impactó en la operación, el retorno no se ejecutó, o el proceso falló completamente — en esos casos el veredicto es `VALIDO_GROOT` (bug real del proceso de roles temporales).
 38. **R-DESC-16** → si el usuario reporta jerarquía/gestor incorrecto en Groot pero la verificación confirma que el valor coincide con SSFF (SuccessFactors).
 39. **R-DESC-17** → si el usuario reporta que no puede acceder a sistemas/tools cuyas URLs NO pertenecen al dominio de Groot (`envios.adminml.com/tools/auth/*`).
 40. **R-DESC-19** → si la solicitud pide ejecutar una operación estándar que la tool ya provee por autogestión, sin error técnico, y no matchea ninguna regla más específica anterior.
