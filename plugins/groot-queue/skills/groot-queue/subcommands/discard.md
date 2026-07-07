@@ -102,10 +102,14 @@ Si ninguna aplica, evaluar el veredicto completo y marcar como `NO_DESCARTA` con
 
 La transición de descarte en SSHP es **"Descartar" (id: `101`)**. No es necesario descubrirla cada vez.
 
-Para cada ticket, verificar su estado actual:
-- Si está en **"Waiting for support"** → primero transicionar a **"En progreso" (id: `21`)**, luego aplicar "Descartar" (id: `101`).
-- Si está en **"In Progress"** → aplicar directamente "Descartar" (id: `101`).
+Para cada ticket, verificar su estado actual. **Los nombres de estado pueden aparecer en inglés o español** (depende de la configuración del proyecto/usuario); siempre matchear ambos idiomas:
+
+- Si está en **"Waiting for support"** / **"Esperando soporte"** → primero transicionar a **"En progreso" (id: `21`)**, luego aplicar "Descartar" (id: `101`).
+- Si está en **"In Progress"** / **"En progreso"** → aplicar directamente "Descartar" (id: `101`).
+- Si está en **"Waiting for customer"** / **"Esperando al cliente"** → primero transicionar a **"En progreso" (id: `21`)**, luego aplicar "Descartar" (id: `101`).
 - Si está en otro estado → obtener transiciones disponibles con `getTransitionsForJiraIssue` y buscar la ruta a "Descartar".
+
+> ⚠️ **Nombres bilingües**: Jira puede devolver el estado en inglés o español indistintamente. Comparar siempre case-insensitive y considerar ambas variantes: "Waiting for support" = "Esperando soporte", "In Progress" = "En progreso", "Resolved" = "Resuelto", etc.
 
 Guardar `CLOSE_TRANSITION_ID = "101"` y `CLOSE_TRANSITION_NAME = "Descartar"` para usar en todos los tickets.
 
