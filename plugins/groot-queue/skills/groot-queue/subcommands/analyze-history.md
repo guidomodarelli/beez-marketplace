@@ -103,7 +103,9 @@ Si no hay resultados: mostrar `ℹ️ No hay tickets cerrados pendientes de anal
 
 ---
 
-### 2. Para cada ticket (iteración interactiva)
+### 2. Para cada ticket (iteración interactiva — UNO POR UNO, sin batch)
+
+⚠️ **REGLA CRÍTICA — ANÁLISIS INDIVIDUAL OBLIGATORIO**: Cada ticket DEBE analizarse completamente de forma individual. **PROHIBIDO** agrupar, resumir o "batchear" múltiples tickets en un solo paso. Aunque varios tickets parezcan similares, cada uno puede tener matices que lo diferencien (equipo destino distinto, señal única, verificación previa diferente). El volumen no es un criterio para saltear — un ticket único puede materializar una regla válida. Si un ticket no matchea ningún patrón existente con ≥3 tickets previos, IGUALMENTE debe analizarse individualmente y presentarse al usuario con su propuesta. El usuario decide si materializar; el agente no descarta por volumen.
 
 Mostrar contador de progreso antes de cada ticket: `[N/M] Analizando SSHP-XXXXXXX…`
 
@@ -273,6 +275,7 @@ se filtrarán automáticamente por JQL.
 
 ## Notas de diseño
 
+- **ANÁLISIS EXHAUSTIVO — NO SALTEAR TICKETS**: el agente DEBE analizar cada ticket individualmente contra las reglas existentes y presentar una propuesta al usuario. No agrupar tickets por similaridad aparente para "ganar velocidad". No omitir tickets porque "ya hay muchos del mismo tipo". Un solo ticket puede revelar un patrón nuevo, un equipo destino distinto o un matiz que mejore una regla existente. Si el agente detecta N tickets similares, IGUALMENTE debe mostrar cada uno al usuario con su propuesta individual — el usuario decide si materializar, agrupar o descartar. El threshold de volumen (ej. 3+ o 5+) es una sugerencia para priorizar, NO una razón para ignorar tickets.
 - **WRITE CONTROLADO**: este subcommand escribe en la knowledge base local (`triage-rules.md` o `solutions/`) y agrega labels en Jira. **No** transiciona estados de tickets ni postea comentarios públicos o internos.
 - **Idempotencia garantizada**: tickets con `groot-kb-analyzed` no aparecen en el JQL base. Usar `--force` para forzar re-análisis.
 - **Flujo interactivo por diseño**: la extracción automática puede proponer señales incorrectas o malinterpretar el desenlace; el usuario confirma antes de materializar cada caso.
