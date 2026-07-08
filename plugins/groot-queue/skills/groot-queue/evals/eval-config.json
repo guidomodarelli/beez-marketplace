@@ -580,6 +580,11 @@
           "type": "regex",
           "description": "the catalog uses the green chat-visible marker without the purple marker",
           "pattern": "🟢 \\*\\*/groot-queue\\*\\* `setup`"
+        },
+        {
+          "type": "regex",
+          "description": "final command descriptions keep non-collapsible indentation in chat Markdown",
+          "pattern": "(?:\\u00a0){6}→ Analizá tickets cerrados"
         }
       ]
     }
