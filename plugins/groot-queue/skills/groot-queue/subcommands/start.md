@@ -62,7 +62,7 @@ Renderizar el siguiente bloque, reemplazando los placeholders:
 
  👋 Hola, {{USER_NAME}}!
 
- ┌─ Entorno ───────────────────────────────────────────────────────┐
+ ┌─ Entorno ────────────────────────────────────────────────────────┐
  │ {{HEALTH_LINE}}                                                  │
  └──────────────────────────────────────────────────────────────────┘
 ```
@@ -70,8 +70,8 @@ Renderizar el siguiente bloque, reemplazando los placeholders:
 Si hay conteo de tickets disponible, agregar inmediatamente después:
 
 ```
- ┌─ Cola ahora ────────────────────────────────────────────────────┐
- │ 📬 {{TOTAL}} abiertos | 👤 {{UNASSIGNED}} sin asignar | 🔥 {{SLA_RISK}} en riesgo SLA │
+ ┌─ Cola ahora ─────────────────────────────────────────────────────┐
+ │ 📬 {{TOTAL}} | 👤 {{UNASSIGNED}} | 🔥 {{SLA_RISK}} en riesgo SLA │
  └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -88,56 +88,56 @@ Luego continuar con:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
  🚀 EMPEZAR
- ┃
- ┣━ /groot-queue setup
- ┃  └─ ¿Primera vez usando esta tool? Corré esto para configurar tu entorno.
- ┃
- ┣━ /groot-queue list
- ┃  └─ Mirá qué tickets están abiertos ahora mismo en la cola.
- ┃
- ┣━ /groot-queue stats
- ┃  └─ Necesitás un resumen rápido de cómo está la cola hoy.
+ │
+ ├─ /groot-queue setup
+ │     → ¿Primera vez usando esta tool? Corré esto para configurar tu entorno.
+ │
+ ├─ /groot-queue list
+ │     → Mirá qué tickets están abiertos ahora mismo en la cola.
+ │
+ └─ /groot-queue stats
+       → Necesitás un resumen rápido de cómo está la cola hoy.
 
  🔍 INVESTIGAR
- ┃
- ┣━ /groot-queue classify
- ┃  └─ Agrupá los tickets por tipo de problema y urgencia de un vistazo.
- ┃
- ┣━ /groot-queue detail <SSHP-XXXXXX>
- ┃  └─ Profundizá en un ticket puntual: qué pasó, clasificación y sugerencia.
- ┃
- ┣━ /groot-queue solve <SSHP-XXXXXX>
- ┃  └─ ¿No sabés cómo resolver un ticket? Te sugiero una solución paso a paso.
+ │
+ ├─ /groot-queue classify
+ │     → Agrupá los tickets por tipo de problema y urgencia de un vistazo.
+ │
+ ├─ /groot-queue detail <SSHP-XXXXXX>
+ │     → Profundizá en un ticket puntual: qué pasó, clasificación y sugerencia.
+ │
+ └─ /groot-queue solve <SSHP-XXXXXX>
+       → ¿No sabés cómo resolver un ticket? Te sugiero una solución paso a paso.
 
  ⚡ ACTUAR
- ┃
- ┣━ /groot-queue assign-unassigned
- ┃  └─ Repartí equitativamente los tickets sin dueño entre el equipo.
- ┃
- ┣━ /groot-queue derive <SSHP-XXXXXX>
- ┃  └─ Este ticket no es nuestro — derivalo al equipo correcto.
- ┃
- ┣━ /groot-queue discard <SSHP-XXXXXX>
- ┃  └─ El ticket no corresponde a soporte Groot — cerralo con justificación.
- ┃
- ┣━ /groot-queue backfill-guides
- ┃  └─ Posteá guías de resolución en tickets asignados que todavía no tienen una.
+ │
+ ├─ /groot-queue assign-unassigned
+ │     → Repartí equitativamente los tickets sin dueño entre el equipo.
+ │
+ ├─ /groot-queue derive <SSHP-XXXXXX>
+ │     → Este ticket no es nuestro — derivalo al equipo correcto.
+ │
+ ├─ /groot-queue discard <SSHP-XXXXXX>
+ │     → El ticket no corresponde a soporte Groot — cerralo con justificación.
+ │
+ └─ /groot-queue backfill-guides
+       → Posteá guías de resolución en tickets asignados que todavía no tienen una.
 
  🚨 ALERTAS
- ┃
- ┣━ /groot-queue alerts
- ┃  └─ ¿Algún ticket está por romper SLA? Detectalos y notificá por Slack.
+ │
+ └─ /groot-queue alerts
+       → ¿Algún ticket está por romper SLA? Detectalos y notificá por Slack.
 
  📚 KNOWLEDGE BASE
- ┃
- ┣━ /groot-queue save <SSHP-XXXXXX> <desc>
- ┃  └─ Resolviste un ticket? Guardá la solución para que el equipo la reutilice.
- ┃
- ┣━ /groot-queue add-rule
- ┃  └─ Agregá una nueva regla de triage para mejorar la clasificación automática.
- ┃
- ┣━ /groot-queue analyze-history
- ┃  └─ Analizá tickets cerrados y extraé patrones para nutrir la knowledge base.
+ │
+ ├─ /groot-queue save <SSHP-XXXXXX> <desc>
+ │     → Resolviste un ticket? Guardá la solución para que el equipo la reutilice.
+ │
+ ├─ /groot-queue add-rule
+ │     → Agregá una nueva regla de triage para mejorar la clasificación automática.
+ │
+ └─ /groot-queue analyze-history
+       → Analizá tickets cerrados y extraé patrones para nutrir la knowledge base.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  💡 Tip: en Claude Code también podés usar la forma con dos puntos
