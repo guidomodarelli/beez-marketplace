@@ -4,7 +4,9 @@ description: Verifica e instala dependencias necesarias (ACLI, Atlassian MCP, Sl
 
 # /groot-queue:setup
 
-Verificar e instalar todo lo necesario para usar la skill. Ejecutar en orden:
+Verificar e instalar todo lo necesario para usar la skill. Ejecutar en orden.
+
+> **Re-ejecutable**: este subcomando es idempotente. Correrlo de nuevo no rompe nada — sólo revalida lo ya configurado y completa lo que falte. Usalo cuando algo deje de andar.
 
 ## 1. ACLI (Atlassian CLI)
 
@@ -50,12 +52,18 @@ El subcomando `derive` usa el MCP de Atlassian para ejecutar la transición "Der
 
 ## 3. Slack MCP
 
-- Verificar si el tool `mcp__plugin_slack_slack__authenticate` está disponible en el contexto
-- Si no está disponible: indicar al usuario que instale el plugin de Slack:
+El subcomando `alerts` usa el MCP de Slack para enviar DMs de resumen de SLA. El nombre de las herramientas Slack **varía según el proveedor y la configuración del MCP** — no hardcodear un nombre exacto.
+
+- Buscar en el contexto **cualquier** tool cuyo nombre contenga `slack` y exponga capacidad de buscar usuarios y enviar mensajes (ej: `mcp__slack__search_users`, `mcp__plugin_slack_slack__search_users`, `mcp__<id>__slack_search_users`, u otra variante).
+- Si **no existe ninguna** tool de Slack:
   ```
-  claude mcp add slack
+  ⚠️  Slack MCP no detectado.
+  Para Claude Code: instalá el plugin/connector de Slack (Settings → Integrations) o vía `claude mcp add`.
+  Para Codex: configurá el MCP de Slack en .codex/mcp.json.
+  El subcomando /groot-queue:alerts sólo podrá correr en modo --dry-run sin este MCP.
   ```
-- Si está disponible pero no autenticado: ejecutar `mcp__plugin_slack_slack__authenticate`
+- Si existe pero no está autenticado: ejecutar la tool de autenticación de Slack disponible (si el proveedor la expone) o indicar al usuario que complete el login del connector.
+- Si existe y está autenticado → ✅.
 
 ## 4. Permisos ACLI en settings
 
@@ -73,13 +81,34 @@ El subcomando `derive` usa el MCP de Atlassian para ejecutar la transición "Der
 
 ## Output esperado
 
-```
-✅ ACLI instalado (v8.x.x)
-✅ ACLI autenticado en mercadolibre.atlassian.net
-✅ Atlassian MCP disponible, autenticado y con cloudId validado para mercadolibre.atlassian.net
-✅ Slack MCP disponible y autenticado
-✅ Permiso Bash(acli jira *) configurado
-✅ Equipo configurado (8 miembros)
+Renderizar una tabla de estado con el resultado **real** de cada check (no valores de ejemplo). Reemplazar cada `<...>` con lo que se obtuvo en tiempo de ejecución:
 
-Setup completo. Podés usar /groot-queue:list para empezar.
 ```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔧 Setup — Groot Queue
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+| Check                         | Estado | Detalle                                  |
+|-------------------------------|--------|------------------------------------------|
+| ACLI instalado                | <✅/❌> | <versión real, ej: v8.x.x>               |
+| ACLI autenticado              | <✅/❌> | mercadolibre.atlassian.net               |
+| Atlassian MCP + cloudId       | <✅/❌/⚠️> | <cloudId validado / no verificable>   |
+| Slack MCP                     | <✅/❌/⚠️> | <disponible y autenticado / no detectado> |
+| Permiso Bash(acli jira *)     | <✅/❌> | .claude/settings.local.json              |
+| TEAM configurado              | <✅/⚠️> | <N miembros / vacío>                      |
+```
+
+- `✅` = OK · `❌` = falta y es bloqueante para algún subcomando · `⚠️` = degradado o no verificable en este proveedor.
+- Los valores entre `<...>` son placeholders: rellenarlos con el resultado real de cada verificación.
+
+### Cierre
+
+- Si **todos** los checks críticos (ACLI instalado + autenticado + permiso) están en ✅:
+  > ✅ Setup completo. Podés usar `/groot-queue list` para empezar.
+- Si hay ❌ o ⚠️, listar debajo **qué falló, cómo arreglarlo y qué subcomandos quedan limitados** mientras tanto. Ejemplo:
+  ```
+  ⚠️ Setup incompleto:
+  • Slack MCP no detectado → /groot-queue alerts sólo corre con --dry-run. Arreglo: ver sección 3.
+  • TEAM vacío → /groot-queue assign-unassigned no funciona. Arreglo: completá la sección TEAM del SKILL.md.
+
+  El resto de los comandos (list, classify, detail, solve, derive, discard) ya está operativo.
+  ```
