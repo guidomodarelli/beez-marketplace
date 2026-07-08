@@ -98,24 +98,20 @@ Si ninguna aplica, evaluar el veredicto completo y marcar como `NO_DESCARTA` con
 >
 > ⚠️ **R-DESC-12 no se descarta automáticamente**: el copy validado todavía está pendiente de confirmación. Si un ticket matchea R-DESC-12, marcarlo como `REVISAR_MANUAL` y no postear comentario ni cerrar el ticket desde este subcomando.
 
-### 3. Descubrir transición de cierre (una vez por ejecución)
+### 3. Verificar estado del ticket y preparar transición
 
-Antes de mostrar el plan, obtener las transiciones disponibles para cualquier ticket válido de la lista:
+La transición de descarte en SSHP es **"Descartar" (id: `101`)**. No es necesario descubrirla cada vez.
 
-```
-mcp__Atlassian__getTransitionsForJiraIssue(cloudId, issueIdOrKey)
-```
+Para cada ticket, verificar su estado actual. **Los nombres de estado pueden aparecer en inglés o español** (depende de la configuración del proyecto/usuario); siempre matchear ambos idiomas:
 
-Buscar en el resultado la transición más apropiada para cerrar como "Won't Do", en este orden de preferencia:
-1. Nombre exacto: `Won't Do`, `Won't do`, `No aplica`, `No Aplica`
-2. Nombre que contenga: `Cancelled`, `Cancelado`, `Cancelar`
-3. Nombre que contenga: `Resolve`, `Resolver`
-4. Nombre que contenga: `Cerrar`, `Close`, `Done`, `Completar`
+- Si está en **"Waiting for support"** / **"Esperando soporte"** → primero transicionar a **"En progreso" (id: `21`)**, luego aplicar "Descartar" (id: `101`).
+- Si está en **"In Progress"** / **"En progreso"** → aplicar directamente "Descartar" (id: `101`).
+- Si está en **"Waiting for customer"** / **"Esperando al cliente"** → primero transicionar a **"En progreso" (id: `21`)**, luego aplicar "Descartar" (id: `101`).
+- Si está en otro estado → obtener transiciones disponibles con `getTransitionsForJiraIssue` y buscar la ruta a "Descartar".
 
-Guardar el `id` y el `name` de la transición encontrada como `CLOSE_TRANSITION_ID` y `CLOSE_TRANSITION_NAME` para usar en todos los tickets.
+> ⚠️ **Nombres bilingües**: Jira puede devolver el estado en inglés o español indistintamente. Comparar siempre case-insensitive y considerar ambas variantes: "Waiting for support" = "Esperando soporte", "In Progress" = "En progreso", "Resolved" = "Resuelto", etc.
 
-- Si no se encuentra ninguna coincidencia razonable → mostrar la lista de transiciones disponibles y pedir al usuario que indique cuál usar antes de continuar.
-- Si la única coincidencia es de **prioridad 3 o 4** (`Resolve` / `Cerrar` / `Close` / `Done` / `Completar`), su semántica de resolución puede no ser "Won't Do". En ese caso, **no asumir**: mostrar la lista de transiciones disponibles, indicar cuál se eligió y por qué, y pedir confirmación explícita al usuario antes de continuar.
+Guardar `CLOSE_TRANSITION_ID = "101"` y `CLOSE_TRANSITION_NAME = "Descartar"` para usar en todos los tickets.
 
 ### 4. Mostrar plan consolidado
 
@@ -165,18 +161,73 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 
 - Si falla: registrar `✗ Comentario` en el resultado de ese ticket, **no continuar con la transición de ese ticket**, pasar al siguiente.
 
-**5c. Transicionar a cerrado** con MCP Atlassian en una llamada **separada**, después de que el comentario retorne exitosamente:
+**5c. Transicionar a "Descartar"** con MCP Atlassian en una llamada **separada**, después de que el comentario retorne exitosamente:
 
-- `cloudId`: valor validado en la pre-condición
-- `issueIdOrKey`: `"SSHP-XXXXXX"`
-- `transition`: `{"id": "<CLOSE_TRANSITION_ID>"}`
-- Si la transición requiere campo de resolución → incluir en `fields`:
-  ```json
-  { "resolution": { "name": "Won't Do" } }
-  ```
-  Si `"Won't Do"` no es un valor válido, intentar `"Won't Fix"` o `"Cancelled"`.
+> ⚠️ **IMPORTANTE — Payload JSM "Descartar"**: La transición "Descartar" (id: `101`) en SSHP es una pantalla JSM que requiere **obligatoriamente** tanto el campo `customfield_19296` (Reason for rejection) como un comentario público en `update.comment` con la propiedad `sd.public.comment`. Sin ambos, el validador rechaza con "Por favor, ingresa un mensaje informando por qué se descarta..."
 
-- Si falla: registrar `✗ Transición` en el resultado. **No abortar** — el comentario ya fue posteado. Continuar al siguiente ticket.
+**Workflow path**: Si el ticket está en "Waiting for support", primero transicionar a "En progreso" (id: `21`) y luego aplicar "Descartar" (id: `101`). Si ya está en "In Progress", aplicar directamente la transición `101`.
+
+**Payload completo para `transitionJiraIssue`**:
+
+```json
+{
+  "cloudId": "<CLOUD_ID>",
+  "issueIdOrKey": "SSHP-XXXXXX",
+  "transition": {"id": "101"},
+  "fields": {
+    "customfield_19296": {"id": "<REJECTION_REASON_ID>"}
+  },
+  "update": {
+    "comment": [{
+      "add": {
+        "body": {
+          "content": [{"content": [{"text": "<COMENTARIO_PUBLICO>", "type": "text"}], "type": "paragraph"}],
+          "type": "doc",
+          "version": 1
+        },
+        "properties": [{"key": "sd.public.comment", "value": {"internal": false}}]
+      }
+    }]
+  }
+}
+```
+
+**Mapeo de `customfield_19296` "Reason for rejection" por regla R-DESC:**
+
+| Regla | Rejection Reason | ID |
+|-------|------------------|----|
+| R-DESC-04 (cambio de líder autogestión) | [R] Funcionalidad existente | `81170` |
+| R-DESC-15 (roles incompatibles) | [R] Funcionalidad existente | `81170` |
+| R-DESC-19 (funcionalidad existente genérica) | [R] Funcionalidad existente | `81170` |
+| R-DESC-02 (asignación de roles autogestión) | [R] Funcionalidad existente | `81170` |
+| R-DESC-11 (sistema externo / HCM / no es Groot) | [R] Categoría incorrecta | `81175` |
+| R-DESC-01 (sin error sistémico) | [R] Rechazado Datos Incorrectos | `81169` |
+| R-DESC-03 (usuario ya tiene lo solicitado) | [R] Funcionalidad existente | `81170` |
+| R-DESC-05 (duplicado) | [R] Duplicados | `81177` |
+| R-DESC-06 (canal inválido) | [R] Canal invalido | `81172` |
+| R-DESC-07 (procedimiento operativo) | [R] Procedimiento operativo indicado | `81171` |
+| R-DESC-08 (funcionalidad existente) | [R] Funcionalidad existente | `81170` |
+| R-DESC-09 (cancelado por usuario) | [R] Cancelado por el usuario | `96919` |
+| R-DESC-10 (usuario no válido) | [R] Usuario no valido para generar la solicitud | `81174` |
+| R-DESC-12 (requerimiento rechazado) | [R] Requerimiento rechazado por aprobadores | `81173` |
+
+**Catálogo completo de IDs de rejection reason:**
+- `81170` = "[R] Funcionalidad existente"
+- `81172` = "[R] Canal invalido"
+- `81175` = "[R] Categoría incorrecta"
+- `81176` = "[R] Cierre por agrupacion de tickets"
+- `81177` = "[R] Duplicados"
+- `81169` = "[R] Rechazado Datos Incorrectos"
+- `81171` = "[R] Procedimiento operativo indicado"
+- `81173` = "[R] Requerimiento rechazado por aprobadores"
+- `81174` = "[R] Usuario no valido para generar la solicitud"
+- `96919` = "[R] Cancelado por el usuario"
+
+**Notas clave:**
+- El comentario del paso 5b queda **redundante** porque la transición ya incluye comentario público vía `update.comment`. Sin embargo, mantener paso 5b como fallback: si la transición falla, al menos el comentario quedó posteado por separado. Si la transición tiene éxito, el ticket tendrá dos comentarios idénticos (aceptable).
+- **Alternativa más limpia**: omitir paso 5b y confiar solo en el comentario dentro de `update.comment` del payload de transición. Si la transición falla, reintentar el comentario por separado.
+
+- Si falla: registrar `✗ Transición` en el resultado. **No abortar** — el comentario ya fue posteado en 5b. Continuar al siguiente ticket.
 
 **5d. Escribir labels en Jira** (después de transición exitosa):
 
