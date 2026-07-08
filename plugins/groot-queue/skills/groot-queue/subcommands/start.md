@@ -25,16 +25,18 @@ Ejecutar **en paralelo** (para minimizar latencia):
    - **MCP Slack**: Verificar si existe MCP Slack configurado (`claude mcp list 2>/dev/null | grep -i slack`). Si existe → `✅ Slack MCP`. Si no → `❌ Slack MCP`.
    - Si algún check falla por error de permisos o tool no disponible, marcar como `⚠️ <nombre> (no verificable)`.
 
-4. **Conteo express de tickets**: Ejecutar con ACLI:
+4. **Conteo express de tickets** (best-effort — no bloquear el banner por esto): dejar que el JQL calcule los conteos en el servidor en vez de parsear fechas client-side. Ejecutar en paralelo:
    ```bash
-   acli jira issue list --project SSHP --jql "project = SSHP AND \"Squad\" = Groot AND type = Incident AND statusCategory != Done" --output json 2>/dev/null
+   # Total abiertos
+   acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type = Incident AND resolution = Unresolved" --output json 2>/dev/null
+   # Sin asignar
+   acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type = Incident AND resolution = Unresolved AND assignee IS EMPTY" --output json 2>/dev/null
+   # En riesgo SLA (alta prioridad + más de 24h de antigüedad, calculado por Jira)
+   acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type = Incident AND resolution = Unresolved AND priority IN (Highest, High) AND created <= -24h" --output json 2>/dev/null
    ```
-   Del resultado extraer:
-   - **Total abiertos**: Cantidad total de tickets.
-   - **Sin asignar**: Tickets donde `assignee` es null/vacío.
-   - **En riesgo SLA**: Tickets con prioridad `Highest` o `High` creados hace más de 24hs (comparar `created` con fecha actual).
-   
-   Si ACLI falla o no está disponible, omitir esta sección completamente (no mostrar conteo con errores).
+   Tomar el conteo de resultados de cada query (`Total abiertos`, `Sin asignar`, `En riesgo SLA`).
+
+   Si ACLI falla o no está disponible, omitir esta sección completamente (no mostrar conteo con errores). No reintentar ni esperar: el banner debe salir rápido.
 
 ### Paso 2: Mostrar el output
 
@@ -47,13 +49,14 @@ Renderizar el siguiente bloque, reemplazando los placeholders:
 ```
 ╔══════════════════════════════════════════════════════════════════╗
 ║                                                                  ║
-║    ██████╗ ██████╗  ██████╗  ██████╗ ████████╗                   ║
-║   ██╔════╝ ██╔══██╗██╔═══██╗██╔═══██╗╚══██╔══╝                  ║
-║   ██║  ███╗██████╔╝██║   ██║██║   ██║   ██║                     ║
-║   ██║   ██║██╔══██╗██║   ██║██║   ██║   ██║                     ║
-║   ╚██████╔╝██║  ██║╚██████╔╝╚██████╔╝   ██║                     ║
-║    ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝                    ║
-║                                              QUEUE  v{{VERSION}} ║
+║   ██████╗ ██████╗  ██████╗  ██████╗ ████████╗                    ║
+║  ██╔════╝ ██╔══██╗██╔═══██╗██╔═══██╗╚══██╔══╝                    ║
+║  ██║  ███╗██████╔╝██║   ██║██║   ██║   ██║                       ║
+║  ██║   ██║██╔══██╗██║   ██║██║   ██║   ██║                       ║
+║  ╚██████╔╝██║  ██║╚██████╔╝╚██████╔╝   ██║                       ║
+║   ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝                       ║
+║                                                                  ║
+║                                             QUEUE  v{{VERSION}}  ║
 ║                                                                  ║
 ╚══════════════════════════════════════════════════════════════════╝
 
@@ -137,7 +140,8 @@ Luego continuar con:
  ┃  └─ Analizá tickets cerrados y extraé patrones para nutrir la knowledge base.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- 💡 Tip: Usá /groot-queue <comando> --help para ver detalles de cada uno.
+ 💡 Tip: en Claude Code también podés usar la forma con dos puntos
+    (ej: /groot-queue:list). ¿No sabés por dónde empezar? Corré /groot-queue setup.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
