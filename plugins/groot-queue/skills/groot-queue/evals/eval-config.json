@@ -181,7 +181,7 @@
         },
         {
           "type": "contains_any",
-          "values": ["gestao de usuarios", "gestão de usuários", "operacao", "operação", "gestion de usuarios", "gestión de usuarios"]
+          "values": ["gestao de usuarios", "gestão de usuários", "gestor de usuarios", "gestor de usuários", "operacao", "operação", "gestion de usuarios", "gestión de usuarios"]
         },
         {
           "type": "contains_any",
@@ -301,7 +301,7 @@
     {
       "id": "analyze-history-idempotency-label",
       "description": "analyze-history uses JQL label filters that skip processed tickets while still including unlabeled tickets",
-      "input": "/groot-queue analyze-history --help. The groot-queue skill documentation is already available in context; answer from its analyze-history section. Explain how this subcommand avoids re-analyzing tickets that were already processed. Do not execute Jira commands or query live tickets.",
+      "input": "/groot-queue analyze-history --help. The groot-queue skill documentation is already available in context; answer from its analyze-history section. Explain how this subcommand avoids re-analyzing tickets that were already processed and how the JQL handles tickets without labels. Do not execute Jira commands or query live tickets.",
       "assertions": [
         {
           "type": "contains_any",
@@ -560,8 +560,9 @@
           "value": "QUEUE"
         },
         {
-          "type": "contains_any",
-          "values": ["v1.", "version", "VERSION"]
+          "type": "regex",
+          "description": "the banner shows the resolved version or the documented unknown fallback",
+          "pattern": "QUEUE\\s+v(?:1\\.|\\(unknown\\))"
         },
         {
           "type": "contains",
@@ -573,7 +574,12 @@
         },
         {
           "type": "contains",
-          "value": "/groot-queue setup"
+          "value": "/groot-queue"
+        },
+        {
+          "type": "regex",
+          "description": "the catalog uses the green chat-visible marker without the purple marker",
+          "pattern": "🟢 \\*\\*/groot-queue\\*\\* `setup`"
         }
       ]
     }

@@ -399,7 +399,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola chicos, derivamos este caso para su analisis, no podemos resolver este ticket desde Groot"
 - **Fuente**: SSHP-1457833, 2026-06-02. Verificado contra el ticket real (summary PT "Nao consegue criar novo colaborador no Groot; erro tax_id already used", description EN con error literal "Tax_id has already been used", alta de un new hire): status `Resolved` y assignee `sup_iamcommerce_01` (IAM Soporte), lo que confirma la derivación.
 
-### R-DER-12 — Errores en la contabilidad de horas en Be a Rep → LMS ⚠️ PENDIENTE VALIDACIÓN (option id LMS faltante)
+### R-DER-12 — Errores en la contabilidad de horas en Be a Rep → LMS (clasificación activa; automatización pendiente)
 - **Señales**:
   - ES: "errores en la contabilidad de horas en Be a Rep", "horas mal contabilizadas en Be a Rep", "diferencia de horas en Be a Rep", "las horas de Be a Rep no coinciden en LMS".
   - PT: "erros na contabilização de horas no Be a Rep", "horas contabilizadas incorretamente no Be a Rep", "divergência de horas no Be a Rep", "horas do Be a Rep não batem no LMS".
@@ -540,7 +540,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 
 Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredicto que matchee:
 
-1. **R-DER-12** ⚠️ _[pendiente validación — no ejecutar automáticamente]_ → si el reporte menciona errores, diferencias o inconsistencias en la contabilidad de horas de Be a Rep con impacto en LMS / Labour Management System.
+1. **R-DER-12** _[clasificación activa; no ejecutar derivación automáticamente]_ → si el reporte menciona errores, diferencias o inconsistencias en la contabilidad de horas de Be a Rep con impacto en LMS / Labour Management System.
 2. **R-DER-22** → si LMS muestra pantalla en blanco, CAD/site incorrecto o bolhas que desaparecen, y la configuración en Groot/Kraken está correcta (no es R-DER-12 ni configuración faltante).
 3. **R-DER-06** → si LDAP `ext_*` aparece como **cuenta Meli** en Kioske/TOTEM y no puede cambiar contraseña.
 4. **R-DER-07** → si la herramienta afectada es **Shield** y el flujo es cambio de líder para colaboradores externos.
