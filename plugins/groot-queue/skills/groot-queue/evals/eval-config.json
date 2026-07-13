@@ -547,6 +547,40 @@
       ]
     },
     {
+      "id": "r-desc-02-role-assignment-request",
+      "description": "R-DESC-02 discards operational role-assignment requests without a system error",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Atribuição de role para usuário'. Description='Precisamos adicionar o role de picking ao usuário. Não houve tentativa nem erro na ferramenta; solicitamos que Groot faça a atribuição.'. Apply triage rules.",
+      "assertions": [
+        {
+          "type": "contains",
+          "description": "the role-assignment request rule is matched",
+          "value": "R-DESC-02"
+        },
+        {
+          "type": "contains_any",
+          "description": "verdict is discard",
+          "values": ["DESCARTAR", "descartar", "Won't Do"]
+        }
+      ]
+    },
+    {
+      "id": "r-desc-02-role-assignment-system-error-exception",
+      "description": "R-DESC-02 keeps role-assignment failures in Groot when an authorized user should be able to perform the operation",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Gestor autorizado no puede asignar rol'. Description='El gestor tiene permisos válidos y debería poder asignar el rol de picking, pero Groot muestra un error y no guarda el cambio.'. Apply triage rules.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "verdict keeps the systemic failure in Groot",
+          "values": ["VALIDO_GROOT", "VÁLIDO_GROOT", "VALIDO GROOT", "válido para Groot", "error sistémico"]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "the exception must not be discarded by R-DESC-02",
+          "values": ["Veredicto: DESCARTAR", "Veredicto: `DESCARTAR`", "⛔ DESCARTAR"]
+        }
+      ]
+    },
+    {
       "id": "start-command",
       "description": "start subcommand shows the welcome banner with version and command catalog",
       "input": "/groot-queue start",
