@@ -38,11 +38,11 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 
 ### R-DESC-02 — Solicitud de asignación de roles a un usuario
 - **Señales**:
-  - Summary/description contiene: "asignar rol", "asignación de roles", "darle rol", "agregar rol a usuario".
+  - Summary/description contiene una solicitud operativa de asignación de roles: ES "asignar rol", "asignación de roles", "darle rol", "agregar rol a usuario"; PT "atribuir role", "atribuição de roles", "dar role ao usuário", "adicionar role ao usuário"; EN "assign role", "role assignment", "grant role", "add role to user".
   - Cuenta **sin** tag azul de "no es cuenta de envíos" (es decir, es de shipping).
   - No hay problema técnico: el usuario simplemente pide que le asignen un rol.
 - **Razón**: Groot Soporte **no** hace asignación de roles; eso lo hace el gestor de usuarios de la operación. Groot atiende **solo errores sistémicos**.
-- **Verificación previa**: Si el requester reporta que intentó asignar el rol y la herramienta **da error / no guarda** → reclasificar como `VALIDO_GROOT` (error sistémico, runbook Roles/Permisos). Mismo criterio de escape que `R-DESC-09`.
+- **Verificación previa**: Si el requester reporta que intentó asignar el rol y la herramienta **da error / no guarda**, o que un usuario con permisos válidos para asignarlo **no puede hacerlo aunque debería poder**, reclasificar como `VALIDO_GROOT` (error sistémico, runbook Roles/Permisos). Señales de excepción: ES "no puede asignar el rol", "debería poder asignarlo", "error al asignar rol"; PT "não consegue atribuir o role", "deveria conseguir atribuir", "erro ao atribuir role"; EN "cannot assign the role", "should be able to assign it", "error assigning role". Mismo criterio de escape que `R-DESC-09`.
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "Desde Groot Soporte no hacemos asignación de roles a usuarios. Para esto debe comunicarse con el gestor de usuarios de su operación."
