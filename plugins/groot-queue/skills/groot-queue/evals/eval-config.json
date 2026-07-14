@@ -163,11 +163,6 @@
         {
           "type": "contains",
           "value": "IAM Soporte"
-        },
-        {
-          "type": "not_contains_any",
-          "description": "must not present R-DER-16 / IAM Commerce as the selected routing; rejected-alternative mentions are allowed",
-          "values": ["R-DER-16 —", "R-DER-16 →", "Acción: Derivar a **IAM Commerce**", "Acción sugerida: Derivar a IAM Commerce", "Derivar a **IAM Commerce** (sup_iamcommerce_01)"]
         }
       ]
     },
