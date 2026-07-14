@@ -80,3 +80,39 @@ if ! grep -q -- '--model prefixed-model' "$args_log"; then
   echo "run-evals should pass GROOT_MARKETPLACE_EVAL_MODEL to the provider." >&2
   exit 1
 fi
+
+cat > "$bin_dir/touch" <<'TOUCH_STUB'
+#!/bin/bash
+
+case "$1" in
+  *.failures)
+    exit 1
+    ;;
+  *)
+    /usr/bin/touch "$@"
+    ;;
+esac
+TOUCH_STUB
+chmod +x "$bin_dir/touch"
+
+: > "$args_log"
+
+PATH="$bin_dir:$PATH" \
+CLAUDE_ARGS_LOG="$args_log" \
+GROOT_MARKETPLACE_EVAL_PROVIDER=claude \
+"$RUNNER" --jobs 1 "$skill_dir" > "$tmp_dir/failures-file-setup-output.jsonl" || true
+
+if ! jq -e 'select(.event == "case" and .id == "contract" and .status == "failed" and .failed_assertions[0].type == "infrastructure")' "$tmp_dir/failures-file-setup-output.jsonl" >/dev/null; then
+  echo "run-evals should emit a failed JSONL case when the per-case failures file cannot be created." >&2
+  exit 1
+fi
+
+if ! jq -e 'select(.event == "summary" and .total == 1 and .passed == 0 and .failed == 1)' "$tmp_dir/failures-file-setup-output.jsonl" >/dev/null; then
+  echo "run-evals should count failures-file setup errors as failed cases in the summary." >&2
+  exit 1
+fi
+
+if [ "$(wc -l < "$args_log" | tr -d ' ')" -ne 1 ]; then
+  echo "run-evals should stop before executing the case prompt when failures-file setup fails." >&2
+  exit 1
+fi
