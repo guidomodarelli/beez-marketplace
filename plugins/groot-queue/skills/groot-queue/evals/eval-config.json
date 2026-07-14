@@ -178,6 +178,11 @@
         {
           "type": "contains",
           "value": "IAM Soporte"
+        },
+        {
+          "type": "regex",
+          "description": "correct routing pairs R-DER-09 with IAM Soporte, while still allowing explicit contrast against rejected alternatives",
+          "pattern": "R-DER-09(.|[[:space:]])*IAM Soporte|IAM Soporte(.|[[:space:]])*R-DER-09"
         }
       ]
     },
