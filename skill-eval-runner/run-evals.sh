@@ -387,12 +387,28 @@ record_case_setup_failure() {
     local workspace="$8"
     local detail="$9"
     local elapsed="${10}"
+    local output_dir="${11}"
     local failed_json
 
     failed_json=$(jq -nc --arg detail "$detail" \
         '[{type: "infrastructure", description: "Eval runner failed before executing case", detail: $detail}]')
     printf '1\n' > "$result_dir/$case_idx.txt"
     write_case_result_jsonl "$result_dir" "$case_idx" "$skill_name" "$id" "$description" "$input" "$total" "failed" "$elapsed" "$failed_json" "$workspace"
+
+    # Write a minimal case-output artifact so the pretty print phase doesn't abort.
+    if [ -n "$output_dir" ]; then
+        {
+            echo "─────────────────────────────────────────"
+            echo -e "${BOLD}CASE [$((case_idx + 1))/$total]: $id${NC}"
+            echo "DESC: $description"
+            echo "INPUT: $input"
+            echo ""
+            echo -e "  ${RED}⚠ INFRASTRUCTURE FAILURE: $detail${NC}"
+            echo ""
+            echo -e "  ${RED}RESULT: ❌ FAILED${NC}"
+            echo ""
+        } > "$output_dir/$case_idx.txt" 2>/dev/null || true
+    fi
 }
 
 run_assertions() {
@@ -503,7 +519,7 @@ run_single_case() {
     touch "$failures_file" || {
         local setup_elapsed=$(( SECONDS - start_time ))
         echo "ERROR: Case setup failed: could not create failures file: $failures_file" >&2
-        record_case_setup_failure "$result_dir" "$i" "$skill_name" "$id" "$description" "$input" "$total" "$workspace" "could not create failures file: $failures_file" "$setup_elapsed"
+        record_case_setup_failure "$result_dir" "$i" "$skill_name" "$id" "$description" "$input" "$total" "$workspace" "could not create failures file: $failures_file" "$setup_elapsed" "$output_dir"
         echo -e "  ${RED}❌ [$((i + 1))/$total] $id${NC}  ${setup_elapsed}s (infrastructure failure)" >&2
         return 0
     }

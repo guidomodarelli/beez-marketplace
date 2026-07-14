@@ -95,12 +95,20 @@ Usar el alias `DERIVATION_DESTINATION_SQUAD_FIELD` para referirse al campo Jira 
 > `R-DER-03` deriva a IAM Commerce, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD` ni comentario validado en esta tabla. Marcar esos tickets como `MANUAL_DERIVATION` y no ejecutar acciones automáticas hasta completar esos datos.
 > `R-DER-05` no deriva a un squad de Jira: redirige al canal Slack `#help-authz-internal-admins`. Marcar esos tickets como `MANUAL_REDIRECT` y no ejecutar acciones automáticas.
 > `R-DER-12` deriva a LMS, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD` ni comentario validado contra un ticket real. Marcar esos tickets como `MANUAL_DERIVATION` y no ejecutar acciones automáticas hasta completar esos datos.
+> `R-DER-13` deriva a Equipo Chat Interno (Pidgey), pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
+> `R-DER-15` deriva a IAM Commerce, pero todavía no tiene option id. Marcar como `MANUAL_DERIVATION`.
+> `R-DER-16` deriva a IAM Commerce, pero todavía no tiene option id. Marcar como `MANUAL_DERIVATION`.
+> `R-DER-17` deriva a Equipo WMS, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
+> `R-DER-18` deriva a Equipo WMS/Operaciones, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
+> `R-DER-20` deriva a IAM Commerce, pero todavía no tiene option id. Marcar como `MANUAL_DERIVATION`.
+> `R-DER-22` deriva a LMS, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
+> `R-DER-23` deriva a Equipo SHE/AppSheet, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
 
 ## Algoritmo
 
 ### 1. Cargar referencias
 
-Leer `$SKILL_DIR/knowledge/triage-rules.md` (reglas R-DER-01 a R-DER-12 + algoritmo de triage).
+Leer `$SKILL_DIR/knowledge/triage-rules.md` (reglas R-DER-01 a R-DER-24 + algoritmo de triage).
 
 ### 2. Fase de análisis — obtener y evaluar todos los tickets
 
@@ -120,10 +128,23 @@ acli jira workitem view SSHP-XXXXXX
 
 **2c. Evaluar reglas R-DER:**
 
-Aplicar **únicamente los pasos 4–15 del algoritmo de triage** definido en `triage-rules.md`, en orden:
-- R-DER-12, R-DER-06, R-DER-07, R-DER-09, R-DER-11, R-DER-10, R-DER-08, R-DER-04, R-DER-05, R-DER-01, R-DER-02, R-DER-03
+Aplicar **únicamente las siguientes reglas R-DER del algoritmo de triage** definido en `triage-rules.md`, en el orden listado (idéntico al algoritmo completo):
+- R-DER-12, R-DER-22, R-DER-06, R-DER-07, R-DER-09, R-DER-11, R-DER-10, R-DER-08, R-DER-13, R-DER-14, R-DER-15, R-DER-16, R-DER-20, R-DER-17, R-DER-18, R-DER-23, R-DER-04, R-DER-05, R-DER-01, R-DER-02, R-DER-03, R-DER-24
 
-Tomar la **primera regla que matchee**. Si matchea `R-DER-03`, marcar el ticket como `MANUAL_DERIVATION` con destino `IAM Commerce` y no incluirlo en la ejecución automática. Si matchea `R-DER-12`, marcar el ticket como `MANUAL_DERIVATION` con destino `LMS` y no incluirlo en la ejecución automática. Si matchea `R-DER-05`, marcar el ticket como `MANUAL_REDIRECT` con destino `#help-authz-internal-admins` y no incluirlo en la ejecución automática. Si ninguna aplica, evaluar el veredicto completo y marcar como `NO_DERIVA` con el veredicto resultante (DESCARTAR / FIX_APLICADO / VALIDO_GROOT / REVISAR_MANUAL).
+Tomar la **primera regla que matchee**. Reglas sin automatización (marcar y excluir de ejecución automática):
+- `R-DER-03` → `MANUAL_DERIVATION` con destino `IAM Commerce`.
+- `R-DER-05` → `MANUAL_REDIRECT` con destino `#help-authz-internal-admins`.
+- `R-DER-12` → `MANUAL_DERIVATION` con destino `LMS`.
+- `R-DER-22` → `MANUAL_DERIVATION` con destino `LMS`.
+- `R-DER-13` → `MANUAL_DERIVATION` con destino `Equipo Chat Interno (Pidgey)`.
+- `R-DER-15` → `MANUAL_DERIVATION` con destino `IAM Commerce`.
+- `R-DER-16` → `MANUAL_DERIVATION` con destino `IAM Commerce`.
+- `R-DER-20` → `MANUAL_DERIVATION` con destino `IAM Commerce`.
+- `R-DER-17` → `MANUAL_DERIVATION` con destino `Equipo WMS`.
+- `R-DER-18` → `MANUAL_DERIVATION` con destino `Equipo WMS/Operaciones`.
+- `R-DER-23` → `MANUAL_DERIVATION` con destino `Equipo SHE/AppSheet`.
+
+Si ninguna aplica, evaluar el veredicto completo y marcar como `NO_DERIVA` con el veredicto resultante (DESCARTAR / FIX_APLICADO / VALIDO_GROOT / REVISAR_MANUAL).
 
 ### 3. Mostrar plan consolidado
 

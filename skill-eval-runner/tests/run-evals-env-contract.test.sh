@@ -115,3 +115,22 @@ if [ "$(wc -l < "$args_log" | tr -d ' ')" -ne 0 ]; then
   echo "run-evals should stop before executing the case prompt when failures-file setup fails." >&2
   exit 1
 fi
+
+# ── Pretty mode: setup failure must produce a case-output artifact ──
+
+: > "$args_log"
+
+PATH="$bin_dir:$PATH" \
+CLAUDE_ARGS_LOG="$args_log" \
+GROOT_MARKETPLACE_EVAL_PROVIDER=claude \
+"$RUNNER" --jobs 1 --pretty "$skill_dir" > "$tmp_dir/failures-file-setup-pretty.txt" || true
+
+if ! grep -q "INFRASTRUCTURE FAILURE" "$tmp_dir/failures-file-setup-pretty.txt"; then
+  echo "run-evals --pretty should report infrastructure failures when per-case setup fails." >&2
+  exit 1
+fi
+
+if ! grep -q "FAILED" "$tmp_dir/failures-file-setup-pretty.txt"; then
+  echo "run-evals --pretty should show FAILED result for setup failures." >&2
+  exit 1
+fi

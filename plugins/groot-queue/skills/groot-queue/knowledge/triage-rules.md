@@ -42,7 +42,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - Cuenta **sin** tag azul de "no es cuenta de envíos" (es decir, es de shipping).
   - No hay problema técnico: el usuario simplemente pide que le asignen un rol.
 - **Razón**: Groot Soporte **no** hace asignación de roles; eso lo hace el gestor de usuarios de la operación. Groot atiende **solo errores sistémicos**.
-- **Verificación previa**: Si el requester reporta que intentó asignar el rol y la herramienta **da error / no guarda**, o que un usuario con permisos válidos para asignarlo **no puede hacerlo aunque debería poder**, reclasificar como `VALIDO_GROOT` (error sistémico, runbook Roles/Permisos). Señales de excepción: ES "no puede asignar el rol", "debería poder asignarlo", "error al asignar rol"; PT "não consegue atribuir o role", "deveria conseguir atribuir", "erro ao atribuir role"; EN "cannot assign the role", "should be able to assign it", "error assigning role". Mismo criterio de escape que `R-DESC-09`.
+- **Verificación previa**: Si el requester reporta que intentó asignar el rol y la herramienta **da error / no guarda**, o que un usuario con permisos válidos para asignarlo **no puede hacerlo aunque debería poder** → distinguir: si el error es un **mensaje de validación** (ej. "atributo obligatorio", "debe tener valor por defecto", "debe corregir lo siguiente") → aplicar `R-DER-24` (derivar a IAM Soporte, no es error sistémico). Solo reclasificar como `VALIDO_GROOT` (runbook Roles/Permisos) si el error es **sistémico** (500, timeout, crash, comportamiento inesperado sin mensaje de validación claro). Señales de excepción sistémica: ES "no puede asignar el rol", "debería poder asignarlo", "error inesperado al asignar rol"; PT "não consegue atribuir o role", "deveria conseguir atribuir", "erro inesperado ao atribuir role"; EN "cannot assign the role", "should be able to assign it", "unexpected error assigning role". Mismo criterio de escape que `R-DESC-09`.
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "Desde Groot Soporte no hacemos asignación de roles a usuarios. Para esto debe comunicarse con el gestor de usuarios de su operación."
@@ -131,7 +131,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - No hay error técnico reportado.
   - El requester no es gestor de usuarios de operación; simplemente pide que Groot ejecute la remoción.
 - **Razón**: Groot Soporte no ejecuta asignación ni remoción manual de roles (complementa `R-DESC-02`). Esas operaciones las realiza el gestor de usuarios del site desde la propia herramienta Groot admin.
-- **Verificación previa**: Si el requester dice "intenté remover y me da error" → reclasificar como `VALIDO_GROOT` (runbook Roles/Permisos).
+- **Verificación previa**: Si el requester dice "intenté remover y me da error" → distinguir: si el error es un **mensaje de validación** (ej. "atributo obligatorio", "debe tener valor por defecto") → aplicar `R-DER-24` (derivar a IAM Soporte). Solo reclasificar como `VALIDO_GROOT` (runbook Roles/Permisos) si el error es **sistémico** (500, timeout, crash, comportamiento inesperado).
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "Esta solicitud debe ser enviada al equipo de gestión de usuario de su operación. Desde soporte Groot/Kraken no hacemos este tipo de asignaciones o remociones."
@@ -143,7 +143,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - **No** hay error técnico/sistémico: la herramienta de Groot funciona; el requester solo pide que Groot ejecute la asignación/cambio.
   - El requester no es gestor de usuarios de la operación; pide que Groot haga la operación por él.
 - **Razón**: Groot Soporte atiende **solo errores sistémicos**. La asignación o cambio de valores de atributo sin error de la herramienta la realiza el gestor de usuarios de la operación (mismo criterio que `R-DESC-02` / `R-DESC-09` para roles, extendido a atributos). Si la solicitud es solo "ejecutá esta acción porque al usuario le falta el atributo", el canal no es la ticketera de Groot.
-- **Verificación previa**: Si el requester reporta que intentó la operación y la tool **da error / no guarda** → reclasificar como `VALIDO_GROOT` (error sistémico). Distinto de `R-DESC-03` (el valor no aparece en autogestión porque el líder no lo tiene), `R-DESC-06` (rep sin clock-in) y `R-DESC-07` (reps ya ubicados en el facility): si matchea una de esas señales específicas, usar esa regla.
+- **Verificación previa**: Si el requester reporta que intentó la operación y la tool **da error / no guarda** → distinguir: si el error es un **mensaje de validación** (ej. "atributo X es obligatorio", "debe tener valor por defecto") → aplicar `R-DER-24` (derivar a IAM Soporte, no es error sistémico). Solo reclasificar como `VALIDO_GROOT` si el error es **sistémico** (500, timeout, crash, comportamiento inesperado sin mensaje de validación claro). Distinto de `R-DESC-03` (el valor no aparece en autogestión porque el líder no lo tiene), `R-DESC-06` (rep sin clock-in) y `R-DESC-07` (reps ya ubicados en el facility): si matchea una de esas señales específicas, usar esa regla.
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "Hola, desde soporte Groot/Kraken solo atendemos errores sistémicos. La asignación o cambio de valores de atributo (CAD, facility, etc.) sin un error de la herramienta debe gestionarla el equipo de gestión de usuarios de su operación."
@@ -474,16 +474,17 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 
 ### R-DER-17 — Error funcional de WMS/Logistics con permisos correctos en Groot → Equipo WMS
 - **Señales**:
-  - ES: "tiene permisos pero no puede acceder a WMS", "monitores WMS inbound sin acceso", "pantalla en blanco WMS", "error 403 WMS", "no puede tomar proceso", "WMS se recarga", "botón aplicar deshabilitado", "sin visibilidad del warehouse", "cambio automático de warehouse".
-  - PT: "tem permissões mas não consegue acessar WMS", "monitores WMS inbound sem acesso", "tela em branco WMS", "erro 403 WMS", "não consegue pegar processo", "WMS recarregando", "botão aplicar desabilitado", "sem visibilidade do warehouse", "mudança automática de warehouse".
-  - EN: "has permissions but cannot access WMS", "WMS inbound monitors no access", "blank screen WMS", "403 error WMS", "cannot take process", "WMS reloading", "apply button disabled", "no warehouse visibility", "automatic warehouse change".
-  - El usuario tiene roles y bolhas correctamente asignados en Groot/Kraken, pero **WMS/Logistics no refleja esos permisos** o presenta errores funcionales (pantalla en blanco, error 403, page reloading, botones deshabilitados, procesos inaccesibles).
-- **Razón**: Si el usuario está correctamente configurado en Groot (bolhas asignadas, warehouse correcto, roles vigentes) pero WMS/Logistics falla o no muestra las funciones esperadas, el problema es del **sistema WMS** (frontend o backend), no de la configuración de permisos. Groot Soporte no tiene visibilidad ni herramientas para resolver bugs de WMS.
-- **Verificación previa**: Confirmar que el usuario **efectivamente tiene** los roles/bolhas/warehouse en Groot. Si la configuración en Groot es incorrecta o faltante → reclasificar como `VALIDO_GROOT` (ajustar permisos en Groot).
+  - ES: "tiene permisos pero no puede acceder a WMS", "monitores WMS inbound sin acceso", "pantalla en blanco WMS", "error 403 WMS", "no puede tomar proceso", "WMS se recarga", "botón aplicar deshabilitado", "sin visibilidad del warehouse", "cambio automático de warehouse", "limitado al CAD local en WMS", "no puede consultar todos los CADs", "funciona en pestaña de incógnito", "solo pasa con su usuario en WMS".
+  - PT: "tem permissões mas não consegue acessar WMS", "monitores WMS inbound sem acesso", "tela em branco WMS", "erro 403 WMS", "não consegue pegar processo", "WMS recarregando", "botão aplicar desabilitado", "sem visibilidade do warehouse", "mudança automática de warehouse", "limitado ao CAD local no WMS", "não consegue consultar todos os CADs", "funciona em aba anônima", "só acontece com o usuário dele no WMS".
+  - EN: "has permissions but cannot access WMS", "WMS inbound monitors no access", "blank screen WMS", "403 error WMS", "cannot take process", "WMS reloading", "apply button disabled", "no warehouse visibility", "automatic warehouse change", "limited to local CAD in WMS", "cannot query all CADs", "works in incognito tab", "only happens to this user in WMS".
+  - El usuario tiene roles y bolhas correctamente asignados en Groot/Kraken, pero **WMS/Logistics no refleja esos permisos** o presenta errores funcionales (pantalla en blanco, error 403, page reloading, botones deshabilitados, procesos inaccesibles, vista limitada al CAD local cuando debería ser regional).
+  - **Señal fuerte**: si el usuario reporta que **funciona en pestaña de incógnito / aba anônima pero no en navegador normal**, es casi seguro un problema de sesión/cache del frontend WMS. Si el backend (Groot) tuviera mal la configuración, incógnito tampoco funcionaría. Esta señal por sí sola es suficiente para derivar a WMS si se confirma que Groot está correcto.
+- **Razón**: Groot Soporte atiende **solo errores sistémicos de Groot**. Si el usuario está correctamente configurado en Groot (bolhas asignadas, warehouse correcto, roles vigentes, atributos regionales) pero WMS/Logistics falla o no muestra las funciones esperadas, el problema es del **sistema WMS** (frontend o backend), no de la configuración de permisos. Groot Soporte no tiene visibilidad ni herramientas para resolver bugs de WMS. No es responsabilidad de Groot investigar problemas de sesión, cache ni rendering del frontend WMS.
+- **Verificación previa**: Confirmar que el usuario **efectivamente tiene** los roles/bolhas/warehouse/atributos en Groot. Si la configuración en Groot es incorrecta o faltante → reclasificar como `VALIDO_GROOT` (ajustar permisos en Groot). Si todo en Groot está correcto → derivar sin demora, no intentar workarounds de cache ni troubleshooting de WMS: eso le compete al equipo WMS.
 - **Acción**: Derivar a **Equipo WMS**.
 - **Comentario sugerido**:
   > "Hola, verificamos la configuración del usuario en Groot y los permisos están correctos. El problema parece ser funcional de WMS/Logistics. Derivamos al equipo de WMS para que puedan investigar."
-- **Fuente**: Análisis histórico (9 tickets: SSHP-1508621, SSHP-1500233, SSHP-1495880, SSHP-1492695, SSHP-1486490, SSHP-1485607, SSHP-1484713, SSHP-1465825, SSHP-1486341).
+- **Fuente**: Análisis histórico (9 tickets: SSHP-1508621, SSHP-1500233, SSHP-1495880, SSHP-1492695, SSHP-1486490, SSHP-1485607, SSHP-1484713, SSHP-1465825, SSHP-1486341). Reforzado con SSHP-1504561 (usuario regional limitado al CAD local en WMS solo en navegador normal; incógnito funciona correctamente).
 
 ### R-DER-18 — Solicitud operativa de WMS (gestión de paquetes/envíos, no de usuarios) → Equipo WMS/Operaciones
 - **Señales**:
@@ -537,6 +538,21 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola, el error reportado ocurre en AppSheet (plataforma externa). Groot Soporte no administra esa herramienta. Derivamos al equipo responsable de SHE/GEMBA para que puedan investigar."
 - **Fuente**: Análisis histórico (2 tickets: SSHP-1434223, SSHP-1435140).
 
+### R-DER-24 — Error de validación al guardar en Groot por atributo/rol/permiso faltante (error esperable, no sistémico) → IAM Soporte
+- **Señales**:
+  - ES: "No es posible guardar los cambios", "El atributo X es obligatorio", "debe tener un valor por defecto", "error al guardar: atributo obligatorio", "debe corregir lo siguiente", "no se puede salvar las alteraciones".
+  - PT: "Não é possível salvar as alterações", "O atributo X é obrigatório", "deve ter um valor padrão", "erro ao salvar: atributo obrigatório", "você deve corrigir o seguinte", "nao e possivel salvar as alteracoes".
+  - EN: "Cannot save changes", "Attribute X is required", "must have a default value", "error saving: mandatory attribute", "you must correct the following".
+  - El usuario intenta editar/guardar un cambio en Groot (quitar facility, cambiar rol, modificar atributos) y la herramienta muestra un **mensaje de validación** indicando que un campo obligatorio no está completo o que falta un valor por defecto.
+  - El error **no** es un crash, timeout, 500, ni comportamiento inesperado del sistema — es la herramienta validando correctamente que los datos están incompletos.
+- **Razón**: Groot Soporte atiende **solo errores sistémicos** (bugs, crashes, fallos inesperados). Los errores de validación por atributos/roles/permisos faltantes son **comportamiento esperado** de la herramienta: está correctamente bloqueando un guardado inválido. La configuración de atributos obligatorios y valores por defecto es responsabilidad de IAM / gestión de usuarios.
+- **Verificación previa**: Confirmar que el error reportado es un mensaje de validación (texto del tipo "atributo X es obligatorio" / "debe tener valor por defecto") y **no** un error sistémico (500, timeout, "ocurrió un error inesperado", stack trace, pantalla en blanco). Si el error es sistémico real → reclasificar como `VALIDO_GROOT`.
+- **Distinción clave**: Un "error al guardar" puede ser sistémico (bug) o de validación (esperable). Solo es `VALIDO_GROOT` si el sistema falla de forma **inesperada** (error no controlado, crash, timeout). Si el sistema muestra un mensaje claro indicando qué campo falta o qué condición no se cumple → es validación, no bug.
+- **Acción**: Derivar a **IAM Soporte**.
+- **Comentario sugerido**:
+  > "Hola, el error que reportan es una validación esperada de la herramienta indicando que hay un atributo o configuración obligatoria faltante. Esto no es un error sistémico de Groot. Derivamos a IAM Soporte para que puedan asistir con la configuración de los atributos requeridos."
+- **Fuente**: SSHP-1518473, 2026-07-14. Ticket reporta "Não é possível salvar as alterações: El atributo Service Center es obligatorio / debe tener un valor por defecto" al intentar retirar un facility — validación esperada, no bug.
+
 ---
 
 ## Algoritmo de triage (para `list` y `classify`)
@@ -564,26 +580,27 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 19. **R-DER-01** → si menciona "tag azul", "no es cuenta de envíos", "conta não é de envios", "sin opción de deshabilitar", o el admin (accediendo al perfil en la tool de Groot) ve que "no puede habilitar al usuario" porque "no pertenece a envíos / no pertenece a Mercado Envío" / PT "não pertence às remessas" / "nao pertence as remessas" / EN "does not belong to shipping" / "not a shipping account" (cuenta desactivada que piden reactivar; IAM debe ajustar el flag de shipping).
 20. **R-DER-02** → si menciona "app nav", "navegación del app", "navegação" sin señal de R-DER-05.
 21. **R-DER-03** → si menciona "vincular cuenta", "desvincular", "cuenta Meli vs ext_", "cambio de contraseña" (sin señal de Kioske/TOTEM que apunte a R-DER-06).
-22. **R-DESC-03** → si el usuario reporta que en xtools / autogestión "no aparece CAD" / "não aparece CAD" / "no puedo seleccionar facility" + contexto de visitar otro site.
-23. **R-DESC-06** → si el usuario afectado es **rep** y el reporte es previo al clock-in físico del día en el site objetivo.
-24. **R-DESC-07** → si reps no ven una bolha/función y la verificación confirma que **están** en el facility correcto.
-25. **R-DESC-13** → si pide liberar bolha/permisos/roles para una función operativa sin error técnico de Groot, y la acción corresponde al gestor de aplicación u operación.
-26. **R-DESC-08** → si el requester menciona "learning completado", "training hub", "learning hub" y pide asignación de rol post-capacitación.
-27. **R-DESC-04** → si es pedido de **cambio de líder / supervisor directo** sin error técnico (lista de usuarios a mover + nuevo líder).
-28. **R-DESC-09** → si pide **remover** un rol a un operario y no hay error técnico reportado.
-29. **R-DESC-05** → si hay error "no autorizado" / "not authorized" o solicitud de permisos para un módulo/URL específico y el usuario **sí** logra loguearse.
-30. **R-DESC-02** → si es solicitud de **asignación de rol** a usuario (sin error técnico) y la cuenta **no** tiene tag azul.
-31. **R-DESC-10** → si pide **asignar / cambiar / quitar un valor de atributo** (CAD, facility, atributo operativo) sin error técnico, y no matchea R-DESC-03 / R-DESC-06 / R-DESC-07.
-32. **R-DESC-18** → si el usuario no puede crear Labour Share para ninguno de sus HCs y la verificación confirma que tiene posición `analyst` (no `team_lead` ni `supervisor`).
-33. **R-DESC-01** → si proviene de **Opex Full / SMO** y fue derivado fuera de ventana (>15 días de aging al llegar a Groot, posterior a 2025-10-28).
-34. **R-DESC-11** → si el problema ocurre en un sistema externo a Groot/Kraken (ej. HCM Rostering) y no hay error en ninguna herramienta de Groot.
-35. **R-DESC-12** ⚠️ _[pendiente validación — clasificar como `REVISAR_MANUAL` hasta confirmar copy con Francisco Gonzalez]_ → si el reporte es una jerarquía que cambió automáticamente en LMS (sin solicitud manual) y el contexto apunta a un sync de Rostering, clasificar como `REVISAR_MANUAL` hasta validar el copy de descarte.
-36. **R-DESC-14** → si un usuario interno dado de baja en SSFF aparece inactivo en Groot y no puede reactivarse manualmente.
-37. **R-DESC-15** → si roles previos no se restauran tras expirar un rol temporal **por incompatibilidades de roles que ya no se exceptúan** (regla de auditoría del 14 de marzo). ⚠️ **NO aplicar** si el rol temporal nunca impactó en la operación, el retorno no se ejecutó, o el proceso falló completamente — en esos casos el veredicto es `VALIDO_GROOT` (bug real del proceso de roles temporales).
-38. **R-DESC-16** → si el usuario reporta jerarquía/gestor incorrecto en Groot pero la verificación confirma que el valor coincide con SSFF (SuccessFactors).
-39. **R-DESC-17** → si el usuario reporta que no puede acceder a sistemas/tools cuyas URLs NO pertenecen al dominio de Groot (`envios.adminml.com/tools/auth/*`).
-40. **R-DESC-19** → si la solicitud pide ejecutar una operación estándar que la tool ya provee por autogestión, sin error técnico, y no matchea ninguna regla más específica anterior.
-41. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
+22. **R-DER-24** → si el usuario reporta un "error al guardar" en Groot pero el mensaje es una **validación** (ej. "atributo X es obligatorio", "debe tener un valor por defecto", "deve corrigir o seguinte") y **no** un error sistémico (500, timeout, crash). Es comportamiento esperado, no bug.
+23. **R-DESC-03** → si el usuario reporta que en xtools / autogestión "no aparece CAD" / "não aparece CAD" / "no puedo seleccionar facility" + contexto de visitar otro site.
+24. **R-DESC-06** → si el usuario afectado es **rep** y el reporte es previo al clock-in físico del día en el site objetivo.
+25. **R-DESC-07** → si reps no ven una bolha/función y la verificación confirma que **están** en el facility correcto.
+26. **R-DESC-13** → si pide liberar bolha/permisos/roles para una función operativa sin error técnico de Groot, y la acción corresponde al gestor de aplicación u operación.
+27. **R-DESC-08** → si el requester menciona "learning completado", "training hub", "learning hub" y pide asignación de rol post-capacitación.
+28. **R-DESC-04** → si es pedido de **cambio de líder / supervisor directo** sin error técnico (lista de usuarios a mover + nuevo líder).
+29. **R-DESC-09** → si pide **remover** un rol a un operario y no hay error técnico reportado.
+30. **R-DESC-05** → si hay error "no autorizado" / "not authorized" o solicitud de permisos para un módulo/URL específico y el usuario **sí** logra loguearse.
+31. **R-DESC-02** → si es solicitud de **asignación de rol** a usuario (sin error técnico) y la cuenta **no** tiene tag azul.
+32. **R-DESC-10** → si pide **asignar / cambiar / quitar un valor de atributo** (CAD, facility, atributo operativo) sin error técnico, y no matchea R-DESC-03 / R-DESC-06 / R-DESC-07.
+33. **R-DESC-18** → si el usuario no puede crear Labour Share para ninguno de sus HCs y la verificación confirma que tiene posición `analyst` (no `team_lead` ni `supervisor`).
+34. **R-DESC-01** → si proviene de **Opex Full / SMO** y fue derivado fuera de ventana (>15 días de aging al llegar a Groot, posterior a 2025-10-28).
+35. **R-DESC-11** → si el problema ocurre en un sistema externo a Groot/Kraken (ej. HCM Rostering) y no hay error en ninguna herramienta de Groot.
+36. **R-DESC-12** ⚠️ _[pendiente validación — clasificar como `REVISAR_MANUAL` hasta confirmar copy con Francisco Gonzalez]_ → si el reporte es una jerarquía que cambió automáticamente en LMS (sin solicitud manual) y el contexto apunta a un sync de Rostering, clasificar como `REVISAR_MANUAL` hasta validar el copy de descarte.
+37. **R-DESC-14** → si un usuario interno dado de baja en SSFF aparece inactivo en Groot y no puede reactivarse manualmente.
+38. **R-DESC-15** → si roles previos no se restauran tras expirar un rol temporal **por incompatibilidades de roles que ya no se exceptúan** (regla de auditoría del 14 de marzo). ⚠️ **NO aplicar** si el rol temporal nunca impactó en la operación, el retorno no se ejecutó, o el proceso falló completamente — en esos casos el veredicto es `VALIDO_GROOT` (bug real del proceso de roles temporales).
+39. **R-DESC-16** → si el usuario reporta jerarquía/gestor incorrecto en Groot pero la verificación confirma que el valor coincide con SSFF (SuccessFactors).
+40. **R-DESC-17** → si el usuario reporta que no puede acceder a sistemas/tools cuyas URLs NO pertenecen al dominio de Groot (`envios.adminml.com/tools/auth/*`).
+41. **R-DESC-19** → si la solicitud pide ejecutar una operación estándar que la tool ya provee por autogestión, sin error técnico, y no matchea ninguna regla más específica anterior.
+42. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
 
 ---
 

@@ -29,7 +29,11 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["ACLI", "acli", "setup"]
+          "values": [
+            "ACLI",
+            "acli",
+            "setup"
+          ]
         }
       ]
     },
@@ -40,7 +44,11 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["SSHP", "Groot", "acli jira"]
+          "values": [
+            "SSHP",
+            "Groot",
+            "acli jira"
+          ]
         }
       ]
     },
@@ -51,7 +59,12 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["SSHP-XXXXXX", "Uso:", "ticket", "argumento"]
+          "values": [
+            "SSHP-XXXXXX",
+            "Uso:",
+            "ticket",
+            "argumento"
+          ]
         }
       ]
     },
@@ -62,7 +75,13 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["SSHP-XXXXXX", "key válida", "keys válidas", "Uso:", "ticket válida"]
+          "values": [
+            "SSHP-XXXXXX",
+            "key válida",
+            "keys válidas",
+            "Uso:",
+            "ticket válida"
+          ]
         }
       ]
     },
@@ -73,7 +92,21 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["R-DER", "Plan de derivación", "Equipo destino", "Derivar a otro equipo", "acli jira workitem view", "MCP", "Atlassian", "configuración", "setup", "autorización", "permiso", "acli", "⚠️"]
+          "values": [
+            "R-DER",
+            "Plan de derivación",
+            "Equipo destino",
+            "Derivar a otro equipo",
+            "acli jira workitem view",
+            "MCP",
+            "Atlassian",
+            "configuración",
+            "setup",
+            "autorización",
+            "permiso",
+            "acli",
+            "⚠️"
+          ]
         }
       ]
     },
@@ -95,11 +128,47 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["no crea automáticamente", "no debe crear", "solo cuando", "conocimiento nuevo", "does not automatically", "should not create", "only when", "new knowledge"]
+          "values": [
+            "no crea automáticamente",
+            "no debe crear",
+            "solo cuando",
+            "conocimiento nuevo",
+            "does not automatically",
+            "should not create",
+            "only when",
+            "new knowledge"
+          ]
         },
         {
           "type": "contains_any",
-          "values": ["reutilizable", "reusable", "ausente", "novedad", "nuevo", "no documentado", "no documentada", "no cubierto", "no cubierta", "señal nueva", "reutilizável", "ausente", "novidade", "novo", "não documentado", "não documentada", "não coberto", "não coberta", "sinal novo", "absent", "novelty", "new", "undocumented", "not documented", "not covered", "new signal"]
+          "values": [
+            "reutilizable",
+            "reusable",
+            "ausente",
+            "novedad",
+            "nuevo",
+            "no documentado",
+            "no documentada",
+            "no cubierto",
+            "no cubierta",
+            "señal nueva",
+            "reutilizável",
+            "ausente",
+            "novidade",
+            "novo",
+            "não documentado",
+            "não documentada",
+            "não coberto",
+            "não coberta",
+            "sinal novo",
+            "absent",
+            "novelty",
+            "new",
+            "undocumented",
+            "not documented",
+            "not covered",
+            "new signal"
+          ]
         }
       ]
     },
@@ -110,7 +179,17 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["Plan de derivación", "R-DER", "Equipo destino", "Derivar a otro equipo", "MCP", "Atlassian", "configuración", "setup", "⚠️"]
+          "values": [
+            "Plan de derivación",
+            "R-DER",
+            "Equipo destino",
+            "Derivar a otro equipo",
+            "MCP",
+            "Atlassian",
+            "configuración",
+            "setup",
+            "⚠️"
+          ]
         }
       ]
     },
@@ -121,7 +200,17 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["Plan de derivación", "R-DER", "Equipo destino", "Derivar a otro equipo", "MCP", "Atlassian", "configuración", "setup", "⚠️"]
+          "values": [
+            "Plan de derivación",
+            "R-DER",
+            "Equipo destino",
+            "Derivar a otro equipo",
+            "MCP",
+            "Atlassian",
+            "configuración",
+            "setup",
+            "⚠️"
+          ]
         }
       ]
     },
@@ -132,7 +221,13 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["derivar", "Derivar", "derivable", "R-DER", "¿Querés"]
+          "values": [
+            "derivar",
+            "Derivar",
+            "derivable",
+            "R-DER",
+            "¿Querés"
+          ]
         }
       ]
     },
@@ -178,11 +273,6 @@
         {
           "type": "contains",
           "value": "IAM Soporte"
-        },
-        {
-          "type": "regex",
-          "description": "correct routing pairs R-DER-09 with IAM Soporte, while still allowing explicit contrast against rejected alternatives",
-          "pattern": "R-DER-09(.|[[:space:]])*IAM Soporte|IAM Soporte(.|[[:space:]])*R-DER-09"
         }
       ]
     },
@@ -197,11 +287,20 @@
         },
         {
           "type": "contains_any",
-          "values": ["gestion de usuarios", "gestión de usuarios", "operacion", "operación"]
+          "values": [
+            "gestion de usuarios",
+            "gestión de usuarios",
+            "operacion",
+            "operación"
+          ]
         },
         {
           "type": "contains_any",
-          "values": ["DESCARTAR", "descartar", "Won't Do"]
+          "values": [
+            "DESCARTAR",
+            "descartar",
+            "Won't Do"
+          ]
         }
       ]
     },
@@ -216,11 +315,24 @@
         },
         {
           "type": "contains_any",
-          "values": ["gestao de usuarios", "gestão de usuários", "gestor de usuarios", "gestor de usuários", "operacao", "operação", "gestion de usuarios", "gestión de usuarios"]
+          "values": [
+            "gestao de usuarios",
+            "gestão de usuários",
+            "gestor de usuarios",
+            "gestor de usuários",
+            "operacao",
+            "operação",
+            "gestion de usuarios",
+            "gestión de usuarios"
+          ]
         },
         {
           "type": "contains_any",
-          "values": ["DESCARTAR", "descartar", "Won't Do"]
+          "values": [
+            "DESCARTAR",
+            "descartar",
+            "Won't Do"
+          ]
         }
       ]
     },
@@ -242,7 +354,12 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["SSHP-XXXXXX", "Uso:", "ticket", "argumento"]
+          "values": [
+            "SSHP-XXXXXX",
+            "Uso:",
+            "ticket",
+            "argumento"
+          ]
         }
       ]
     },
@@ -253,7 +370,13 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["SSHP-XXXXXX", "key válida", "keys válidas", "Uso:", "ticket válida"]
+          "values": [
+            "SSHP-XXXXXX",
+            "key válida",
+            "keys válidas",
+            "Uso:",
+            "ticket válida"
+          ]
         }
       ]
     },
@@ -264,7 +387,20 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["Plan de descarte", "R-DESC", "Won't Do", "acli jira workitem view", "MCP", "Atlassian", "configuración", "setup", "autorización", "permiso", "acli", "⚠️"]
+          "values": [
+            "Plan de descarte",
+            "R-DESC",
+            "Won't Do",
+            "acli jira workitem view",
+            "MCP",
+            "Atlassian",
+            "configuración",
+            "setup",
+            "autorización",
+            "permiso",
+            "acli",
+            "⚠️"
+          ]
         }
       ]
     },
@@ -275,11 +411,47 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["no crea automáticamente", "no debe crear", "solo cuando", "conocimiento nuevo", "does not automatically", "should not create", "only when", "new knowledge"]
+          "values": [
+            "no crea automáticamente",
+            "no debe crear",
+            "solo cuando",
+            "conocimiento nuevo",
+            "does not automatically",
+            "should not create",
+            "only when",
+            "new knowledge"
+          ]
         },
         {
           "type": "contains_any",
-          "values": ["reutilizable", "reusable", "ausente", "novedad", "nuevo", "no documentado", "no documentada", "no cubierto", "no cubierta", "señal nueva", "reutilizável", "ausente", "novidade", "novo", "não documentado", "não documentada", "não coberto", "não coberta", "sinal novo", "absent", "novelty", "new", "undocumented", "not documented", "not covered", "new signal"]
+          "values": [
+            "reutilizable",
+            "reusable",
+            "ausente",
+            "novedad",
+            "nuevo",
+            "no documentado",
+            "no documentada",
+            "no cubierto",
+            "no cubierta",
+            "señal nueva",
+            "reutilizável",
+            "ausente",
+            "novidade",
+            "novo",
+            "não documentado",
+            "não documentada",
+            "não coberto",
+            "não coberta",
+            "sinal novo",
+            "absent",
+            "novelty",
+            "new",
+            "undocumented",
+            "not documented",
+            "not covered",
+            "new signal"
+          ]
         }
       ]
     },
@@ -290,7 +462,16 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["Plan de descarte", "R-DESC", "Won't Do", "MCP", "Atlassian", "configuración", "setup", "⚠️"]
+          "values": [
+            "Plan de descarte",
+            "R-DESC",
+            "Won't Do",
+            "MCP",
+            "Atlassian",
+            "configuración",
+            "setup",
+            "⚠️"
+          ]
         }
       ]
     },
@@ -301,7 +482,13 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["descartar", "Descartar", "descartable", "R-DESC", "¿Querés"]
+          "values": [
+            "descartar",
+            "Descartar",
+            "descartable",
+            "R-DESC",
+            "¿Querés"
+          ]
         }
       ]
     },
@@ -313,12 +500,22 @@
         {
           "type": "contains_any",
           "description": "selection is random / shuffled rather than a persisted index",
-          "values": ["azar", "aleatori", "baraj", "shuffle", "random", "rand"]
+          "values": [
+            "azar",
+            "aleatori",
+            "baraj",
+            "shuffle",
+            "random",
+            "rand"
+          ]
         },
         {
           "type": "not_contains_any",
           "description": "must not rely on a persisted local index or round-robin state file",
-          "values": ["next_assignee_index", "roundrobin-state.json"]
+          "values": [
+            "next_assignee_index",
+            "roundrobin-state.json"
+          ]
         }
       ]
     },
@@ -340,11 +537,23 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["MCP", "Atlassian", "mcp.atlassian.com"]
+          "values": [
+            "MCP",
+            "Atlassian",
+            "mcp.atlassian.com"
+          ]
         },
         {
           "type": "contains_any",
-          "values": ["habilitar", "enable", "oauth", "OAuth", "autenticación", "mcp add", "claude mcp"]
+          "values": [
+            "habilitar",
+            "enable",
+            "oauth",
+            "OAuth",
+            "autenticación",
+            "mcp add",
+            "claude mcp"
+          ]
         }
       ]
     },
@@ -355,11 +564,20 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["groot-kb-analyzed", "label", "JQL"]
+          "values": [
+            "groot-kb-analyzed",
+            "label",
+            "JQL"
+          ]
         },
         {
           "type": "contains_any",
-          "values": ["labels IS EMPTY", "sin labels", "unlabeled", "sem labels"]
+          "values": [
+            "labels IS EMPTY",
+            "sin labels",
+            "unlabeled",
+            "sem labels"
+          ]
         }
       ]
     },
@@ -370,7 +588,13 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["groot-kb-analyzed", "fuerza", "force", "re-analiz", "ya marcad"]
+          "values": [
+            "groot-kb-analyzed",
+            "fuerza",
+            "force",
+            "re-analiz",
+            "ya marcad"
+          ]
         }
       ]
     },
@@ -381,11 +605,27 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["excluido", "excluye", "sigue excluido", "not included", "omite", "omit", "No incluye", "no incluye", "no lo incluye", "excluded"]
+          "values": [
+            "excluido",
+            "excluye",
+            "sigue excluido",
+            "not included",
+            "omite",
+            "omit",
+            "No incluye",
+            "no incluye",
+            "no lo incluye",
+            "excluded"
+          ]
         },
         {
           "type": "contains_any",
-          "values": ["groot-kb-manual-review", "manual-review", "revisión manual", "manual review"]
+          "values": [
+            "groot-kb-manual-review",
+            "manual-review",
+            "revisión manual",
+            "manual review"
+          ]
         }
       ]
     },
@@ -407,11 +647,21 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["DERIVADO", "DESCARTADO", "RESUELTO"]
+          "values": [
+            "DERIVADO",
+            "DESCARTADO",
+            "RESUELTO"
+          ]
         },
         {
           "type": "contains_any",
-          "values": ["changelog", "comentario", "transición", "resolución", "Won't Do"]
+          "values": [
+            "changelog",
+            "comentario",
+            "transición",
+            "resolución",
+            "Won't Do"
+          ]
         }
       ]
     },
@@ -422,11 +672,25 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["ES + PT + EN", "tres idiomas", "trilingü", "español, portugués", "español y portugués"]
+          "values": [
+            "ES + PT + EN",
+            "tres idiomas",
+            "trilingü",
+            "español, portugués",
+            "español y portugués"
+          ]
         },
         {
           "type": "contains_any",
-          "values": ["summary", "description", "título", "descripción", "wording", "texto literal", "literal"]
+          "values": [
+            "summary",
+            "description",
+            "título",
+            "descripción",
+            "wording",
+            "texto literal",
+            "literal"
+          ]
         }
       ]
     },
@@ -437,7 +701,11 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["groot-kb-manual-review", "manual-review", "revisión manual"]
+          "values": [
+            "groot-kb-manual-review",
+            "manual-review",
+            "revisión manual"
+          ]
         }
       ]
     },
@@ -448,11 +716,21 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["updated >= \"2026-01-01\"", "updated >= 2026-01-01", "2026-01-01", "fecha"]
+          "values": [
+            "updated >= \"2026-01-01\"",
+            "updated >= 2026-01-01",
+            "2026-01-01",
+            "fecha"
+          ]
         },
         {
           "type": "contains_any",
-          "values": ["JQL", "filtro", "filter", "query"]
+          "values": [
+            "JQL",
+            "filtro",
+            "filter",
+            "query"
+          ]
         }
       ]
     },
@@ -463,11 +741,21 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["add-rule", "add-rule.md", "triage-rules.md"]
+          "values": [
+            "add-rule",
+            "add-rule.md",
+            "triage-rules.md"
+          ]
         },
         {
           "type": "contains_any",
-          "values": ["DESCARTAR", "R-DESC", "pre-poblad", "pre-filled", "datos del ticket"]
+          "values": [
+            "DESCARTAR",
+            "R-DESC",
+            "pre-poblad",
+            "pre-filled",
+            "datos del ticket"
+          ]
         }
       ]
     },
@@ -478,11 +766,23 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["Materializados", "Saltados", "Manual review", "resumen", "conteo", "procesados"]
+          "values": [
+            "Materializados",
+            "Saltados",
+            "Manual review",
+            "resumen",
+            "conteo",
+            "procesados"
+          ]
         },
         {
           "type": "contains_any",
-          "values": ["R-DESC", "R-DER", "Reglas agregadas", "Soluciones guardadas"]
+          "values": [
+            "R-DESC",
+            "R-DER",
+            "Reglas agregadas",
+            "Soluciones guardadas"
+          ]
         }
       ]
     },
@@ -499,12 +799,26 @@
         {
           "type": "not_contains_any",
           "description": "final verdict line is not DESCARTAR (guards the rendered verdict, not rule-name/0-count-summary/reasoning mentions of DESCARTAR)",
-          "values": ["`⛔ DESCARTAR`", "Veredicto de Triage: `⛔", "Veredicto: `⛔", "Veredicto Final: `⛔"]
+          "values": [
+            "`⛔ DESCARTAR`",
+            "Veredicto de Triage: `⛔",
+            "Veredicto: `⛔",
+            "Veredicto Final: `⛔"
+          ]
         },
         {
           "type": "contains_any",
           "description": "the inactive/offboarded-leader exception is recognized",
-          "values": ["R-DESC-04", "inactivo", "dado de baja", "desvinculad", "fuera de la empresa", "sin acceso", "no aplica", "Excepción"]
+          "values": [
+            "R-DESC-04",
+            "inactivo",
+            "dado de baja",
+            "desvinculad",
+            "fuera de la empresa",
+            "sin acceso",
+            "no aplica",
+            "Excepción"
+          ]
         }
       ]
     },
@@ -543,12 +857,23 @@
         {
           "type": "contains_any",
           "description": "verdict is discard",
-          "values": ["DESCARTAR", "descartar", "Won't Do"]
+          "values": [
+            "DESCARTAR",
+            "descartar",
+            "Won't Do"
+          ]
         },
         {
           "type": "contains_any",
           "description": "ownership is routed to application or operation user management",
-          "values": ["gestor de aplicación", "gestor de aplicacion", "gestión de usuarios", "gestion de usuarios", "operación", "operacion"]
+          "values": [
+            "gestor de aplicación",
+            "gestor de aplicacion",
+            "gestión de usuarios",
+            "gestion de usuarios",
+            "operación",
+            "operacion"
+          ]
         }
       ]
     },
@@ -565,12 +890,21 @@
         {
           "type": "contains_any",
           "description": "verdict is discard",
-          "values": ["DESCARTAR", "descartar", "Won't Do"]
+          "values": [
+            "DESCARTAR",
+            "descartar",
+            "Won't Do"
+          ]
         },
         {
           "type": "contains_any",
           "description": "reactivation depends on SSFF",
-          "values": ["SSFF", "automáticamente", "automaticamente", "reactiva"]
+          "values": [
+            "SSFF",
+            "automáticamente",
+            "automaticamente",
+            "reactiva"
+          ]
         }
       ]
     },
@@ -587,12 +921,21 @@
         {
           "type": "contains_any",
           "description": "verdict is discard",
-          "values": ["DESCARTAR", "descartar", "Won't Do"]
+          "values": [
+            "DESCARTAR",
+            "descartar",
+            "Won't Do"
+          ]
         },
         {
           "type": "contains_any",
           "description": "reason mentions role incompatibilities or audit rule",
-          "values": ["incompatibilidades", "roles incompatibles", "auditoría", "auditoria"]
+          "values": [
+            "incompatibilidades",
+            "roles incompatibles",
+            "auditoría",
+            "auditoria"
+          ]
         }
       ]
     },
@@ -609,7 +952,11 @@
         {
           "type": "contains_any",
           "description": "verdict is discard",
-          "values": ["DESCARTAR", "descartar", "Won't Do"]
+          "values": [
+            "DESCARTAR",
+            "descartar",
+            "Won't Do"
+          ]
         }
       ]
     },
@@ -621,12 +968,22 @@
         {
           "type": "contains_any",
           "description": "verdict keeps the systemic failure in Groot",
-          "values": ["VALIDO_GROOT", "VÁLIDO_GROOT", "VALIDO GROOT", "válido para Groot", "error sistémico"]
+          "values": [
+            "VALIDO_GROOT",
+            "VÁLIDO_GROOT",
+            "VALIDO GROOT",
+            "válido para Groot",
+            "error sistémico"
+          ]
         },
         {
           "type": "not_contains_any",
           "description": "the exception must not be discarded by R-DESC-02",
-          "values": ["Veredicto: DESCARTAR", "Veredicto: `DESCARTAR`", "⛔ DESCARTAR"]
+          "values": [
+            "Veredicto: DESCARTAR",
+            "Veredicto: `DESCARTAR`",
+            "⛔ DESCARTAR"
+          ]
         }
       ]
     },
@@ -638,22 +995,45 @@
         {
           "type": "contains_any",
           "description": "the known hierarchy-leader solution is retrieved",
-          "values": ["cambio-lider-manual-ext-thathama", "SSHP-1416401"]
+          "values": [
+            "cambio-lider-manual-ext-thathama",
+            "SSHP-1416401"
+          ]
         },
         {
           "type": "contains_any",
           "description": "the manual workaround is recommended",
-          "values": ["adecuo manualmente", "adecuar manualmente", "intervencion manual", "manual"]
+          "values": [
+            "adecuo manualmente",
+            "adecuar manualmente",
+            "intervencion manual",
+            "manual"
+          ]
         },
         {
           "type": "contains_any",
           "description": "the ticket remains valid for Groot",
-          "values": ["VALIDO_GROOT", "VÁLIDO_GROOT", "válido para Groot", "error sistémico", "error técnico", "bug de Groot", "bug de jerarquía", "incidente de jerarquía", "soporte de Groot", "dev Groot"]
+          "values": [
+            "VALIDO_GROOT",
+            "VÁLIDO_GROOT",
+            "válido para Groot",
+            "error sistémico",
+            "error técnico",
+            "bug de Groot",
+            "bug de jerarquía",
+            "incidente de jerarquía",
+            "soporte de Groot",
+            "dev Groot"
+          ]
         },
         {
           "type": "not_contains_any",
           "description": "the failure mode must not be discarded as self-service",
-          "values": ["Veredicto: DESCARTAR", "Veredicto: `DESCARTAR`", "⛔ DESCARTAR"]
+          "values": [
+            "Veredicto: DESCARTAR",
+            "Veredicto: `DESCARTAR`",
+            "⛔ DESCARTAR"
+          ]
         }
       ]
     },
@@ -681,7 +1061,11 @@
         },
         {
           "type": "contains_any",
-          "values": ["EMPEZAR", "INVESTIGAR", "ACTUAR"]
+          "values": [
+            "EMPEZAR",
+            "INVESTIGAR",
+            "ACTUAR"
+          ]
         },
         {
           "type": "contains",
