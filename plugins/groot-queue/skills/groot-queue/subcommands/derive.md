@@ -5,7 +5,7 @@ argument-hint: SSHP-XXXXXX [SSHP-YYYYYY ...]
 
 # /groot-queue:derive
 
-Derivar uno o más tickets al equipo correcto. **Este subcomando escribe en Jira** (nota interna + transición de estado con campos de pantalla), registra cada derivación en la knowledge base local y deja un evento en el log de auditoría append-only.
+Derivar uno o más tickets al equipo correcto. **Este subcomando escribe en Jira** (nota interna + transición de estado con campos de pantalla), registra en la knowledge base local solo derivaciones con conocimiento nuevo reusable y deja un evento en el log de auditoría append-only.
 
 Argumentos: una o más keys de tickets (`SSHP-XXXXXX`), separadas por **espacios o comas** (o combinación de ambos).
 
@@ -223,9 +223,18 @@ Mapeo de destino → slug de label:
 
 - Si falla: registrar `✗ Labels` en el resultado. **No abortar** — las acciones principales en Jira (nota interna + transición) ya fueron completadas. Continuar al siguiente ticket.
 
-**4e. Registrar en knowledge base** (Write tool):
-- Registrar en KB solo si la nota interna y la transición terminaron exitosamente.
+**4e. Evaluar novedad y registrar en knowledge base solo cuando aporte valor** (Write tool):
+- Una derivación exitosa **no** crea automáticamente un archivo por ticket. Labels y audit log ya registran aplicación de regla conocida.
+- Crear archivo en KB solo si nota interna + transición terminaron exitosamente **y** ticket aporta conocimiento verificable, reusable y ausente en `triage-rules.md` y `solutions/`.
+- Considerar conocimiento nuevo únicamente cuando agrega al menos uno de estos elementos:
+  1. Señal real nueva que mejora identificación futura de regla.
+  2. Excepción o condición previa no documentada que cambia destino o veredicto.
+  3. Gotcha operativo verificable o evidencia concreta reusable para derivar casos futuros.
+- No crear archivo si ticket se limita a ejemplificar regla existente, repite señales documentadas o solo aporta IDs/datos propios del caso.
+- Antes de escribir, buscar duplicados semánticos en regla y carpeta de categoría correspondiente. Si hay cobertura suficiente, reportar `KB — (sin conocimiento nuevo)`.
+- Si novedad es dudosa, no escribir; reportar `KB — (revisión futura)`.
 - Si la nota interna o la transición fallan, no crear un registro `effectiveness: confirmed`; reportar `KB —` en la tabla final para ese ticket.
+- Cuando señal nueva funcione como matcher, documentar variantes ES + PT + EN verificadas contra wording real del ticket, según regla trilingüe del repositorio.
 - Path: `$SKILL_DIR/knowledge/solutions/queue-management/<ticket-key-lowercase>-derivar-<destino-slug>.md`
 - Slug destino: `iam-soporte`, `smo`, `helpdesk-ia`, etc.
 - Antes de escribir, asegurar que el directorio exista: `mkdir -p "$SKILL_DIR/knowledge/solutions/queue-management"`.

@@ -89,6 +89,21 @@
       ]
     },
     {
+      "id": "derive-kb-only-for-new-knowledge",
+      "description": "derive does not create one KB solution per ticket when an existing R-DER rule already covers the case",
+      "input": "Explain whether /groot-queue derive must create a KB solution file for every successfully derived ticket. Do not execute Jira commands.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["no crea automáticamente", "no debe crear", "solo cuando", "conocimiento nuevo", "does not automatically", "should not create", "only when", "new knowledge"]
+        },
+        {
+          "type": "contains_any",
+          "values": ["reutilizable", "reusable", "ausente", "novedad", "absent", "novelty"]
+        }
+      ]
+    },
+    {
       "id": "derive-multi-ticket-spaces",
       "description": "derive accepts multiple ticket keys separated by spaces (shows the derivation plan or the MCP precondition abort)",
       "input": "/groot-queue derive SSHP-1111111 SSHP-2222222 SSHP-3333333",
