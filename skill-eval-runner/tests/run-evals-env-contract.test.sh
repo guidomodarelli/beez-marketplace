@@ -43,13 +43,12 @@ JSON
 cat > "$bin_dir/claude" <<'CLAUDE_STUB'
 #!/bin/bash
 
-printf '%s\n' "$*" >> "$CLAUDE_ARGS_LOG"
-
 case "$*" in
   *eval-provider-ready*)
     printf 'eval-provider-ready\n'
     ;;
   *)
+    printf '%s\n' "$*" >> "$CLAUDE_ARGS_LOG"
     printf 'ok\n'
     ;;
 esac
@@ -112,7 +111,7 @@ if ! jq -e 'select(.event == "summary" and .total == 1 and .passed == 0 and .fai
   exit 1
 fi
 
-if [ "$(wc -l < "$args_log" | tr -d ' ')" -ne 1 ]; then
+if [ "$(wc -l < "$args_log" | tr -d ' ')" -ne 0 ]; then
   echo "run-evals should stop before executing the case prompt when failures-file setup fails." >&2
   exit 1
 fi
