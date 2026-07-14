@@ -234,6 +234,21 @@
       ]
     },
     {
+      "id": "discard-kb-only-for-new-knowledge",
+      "description": "discard does not create one KB solution per ticket when an existing rule already covers the case",
+      "input": "Explain whether /groot-queue discard must create a KB solution file for every successfully discarded ticket. Do not execute Jira commands.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["no crea automáticamente", "no debe crear", "solo cuando", "conocimiento nuevo"]
+        },
+        {
+          "type": "contains_any",
+          "values": ["reutilizable", "reusable", "ausente", "novedad"]
+        }
+      ]
+    },
+    {
       "id": "discard-multi-ticket-spaces",
       "description": "discard accepts multiple ticket keys separated by spaces (shows the discard plan or the MCP precondition abort)",
       "input": "/groot-queue discard SSHP-1111111 SSHP-2222222 SSHP-3333333",

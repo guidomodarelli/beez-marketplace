@@ -5,7 +5,7 @@ argument-hint: SSHP-XXXXXX [SSHP-YYYYYY ...]
 
 # /groot-queue:discard
 
-Descartar uno o más tickets que no corresponden al alcance de Groot Soporte. **Este subcomando escribe en Jira** (comentario público + transición de cierre), registra cada descarte en la knowledge base local y deja un evento en el log de auditoría append-only.
+Descartar uno o más tickets que no corresponden al alcance de Groot Soporte. **Este subcomando escribe en Jira** (comentario público + transición de cierre), registra conocimiento nuevo y reutilizable en la knowledge base local cuando corresponde, y deja un evento en el log de auditoría append-only.
 
 Argumentos: una o más keys de tickets (`SSHP-XXXXXX`), separadas por **espacios o comas** (o combinación de ambos).
 
@@ -243,9 +243,19 @@ Usar `editJiraIssue` (MCP Atlassian) para agregar labels de trazabilidad al tick
 
 - Si falla: registrar `✗ Labels` en el resultado. **No abortar** — las acciones principales en Jira (comentario + transición) ya fueron completadas. Continuar al siguiente ticket.
 
-**5e. Registrar en knowledge base** (Write tool):
-- Registrar en KB solo si comentario + transición terminaron exitosamente.
-- Si alguno falló, no crear un registro `effectiveness: confirmed`; reportar `KB —` en la tabla final.
+**5e. Evaluar novedad y registrar en knowledge base solo cuando aporte valor** (Write tool):
+
+- Un descarte exitoso **no** crea automáticamente un archivo por ticket. Labels y audit log ya registran aplicación de regla conocida.
+- Crear archivo en KB solo si comentario + transición terminaron exitosamente **y** ticket aporta conocimiento verificable, reusable y ausente en `triage-rules.md` y `solutions/`.
+- Considerar conocimiento nuevo únicamente cuando agrega al menos uno de estos elementos:
+  1. Señal real nueva que mejora identificación futura de regla.
+  2. Excepción o condición previa no documentada que cambia veredicto.
+  3. Gotcha operativo verificable o evidencia concreta reusable para resolver casos futuros.
+- No crear archivo si ticket se limita a ejemplificar regla existente, repite señales documentadas o solo aporta IDs/datos propios del caso.
+- Antes de escribir, buscar duplicados semánticos en regla y carpeta de categoría correspondiente. Si hay cobertura suficiente, reportar `KB — (sin conocimiento nuevo)`.
+- Si novedad es dudosa, no escribir; reportar `KB — (revisión futura)`.
+- Si alguno de comentario o transición falló, no crear registro `effectiveness: confirmed`; reportar `KB —`.
+- Cuando señal nueva funcione como matcher, documentar variantes ES + PT + EN verificadas contra wording real del ticket, según regla trilingüe del repositorio.
 - Path: `$SKILL_DIR/knowledge/solutions/queue-management/<ticket-key-lowercase>-descartado-<regla-slug>.md`
 - Slug regla: `r-desc-01`, `r-desc-02`, etc.
 
@@ -273,7 +283,7 @@ Ticket cerrado como **Won't Do** aplicando regla **R-DESC-XX** — <nombre de la
 <señales concretas y sanitizadas de la regla que matchearon en este ticket>
 ```
 
-- Si falla el Write: reportar (las acciones en Jira ya están hechas; el registro es secundario, no bloquea).
+- Si falla el Write: reportar (las acciones en Jira ya están hechas; registro es secundario, no bloquea).
 
 **5f. Registrar en el log de auditoría** (append-only — una línea JSON por ticket sobre el que se intentó una acción de descarte, es decir que matcheó una regla R-DESC):
 
@@ -297,7 +307,7 @@ Resultados de descarte (N tickets procesados):
 
 | Key           | Regla      | Comentario | Transición | Labels | KB  |
 |---------------|------------|------------|------------|--------|-----|
-| SSHP-XXXXXX   | R-DESC-02  | ✓          | ✓          | ✓      | ✓   |
+| SSHP-XXXXXX   | R-DESC-02  | ✓          | ✓          | ✓      | — Sin conocimiento nuevo |
 | SSHP-YYYYYY   | R-DESC-04  | ✓          | ✓          | ✓      | ✓   |
 | SSHP-ZZZZZZ   | —          | NO_DESCARTA| —          | —      | —   |
 | SSHP-WWWWWW   | —          | REVISAR    | Manual     | —      | —   |
