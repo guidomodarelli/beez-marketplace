@@ -693,9 +693,9 @@
           "pattern": "🟢 \\*\\*/groot-queue\\*\\* `setup`"
         },
         {
-          "type": "contains",
+          "type": "regex",
           "description": "final command descriptions keep non-collapsible indentation in chat Markdown",
-          "value": "      → Analizá tickets cerrados"
+          "pattern": "(?:\\u00a0){6}→ Analizá tickets cerrados"
         },
         {
           "type": "regex",
