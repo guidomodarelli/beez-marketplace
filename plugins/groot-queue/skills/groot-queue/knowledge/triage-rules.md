@@ -57,7 +57,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Acción**: Cerrar como `Won't Do` / descartado.
 - **Comentario sugerido**:
   > "Hola, su líder no tiene el valor de atributo asignado, es por esto que el usuario no puede solicitar el valor de atributo desde autogestión. Para habilitarlo, el líder directo debe tener primero el atributo asignado."
-- **Fuente**: Francisco Gonzalez, ticket SSHP-1410959 (2026-04-21). Ver `solutions/cad-profile/autogestion-cad-lider-sin-atributo.md`.
+- **Fuente**: Francisco Gonzalez, ticket SSHP-1410959 (2026-04-21).
 
 ### R-DESC-04 — Cambio de líder / supervisor directo sin error técnico → autogestionable por el líder actual
 - **Señales**:
@@ -73,7 +73,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Acción**: Cerrar como `Won't Do` redirigiendo al requester a la tool de autogestión.
 - **Comentario sugerido**:
   > "Hola, desde soporte Groot sólo atendemos errores sistémicos. Este tipo de solicitud la pueden hacer los líderes actuales a través de https://envios.adminml.com/tools/auth/users/shared?active=true usando la opción de cambio de líder."
-- **Fuente**: Francisco Gonzalez, ticket SSHP-1415474 (2026-04-21). Ver `solutions/hierarchy-leader/cambio-supervisor-directo-autogestion-lider.md`. Excepción "líder inactivo" agregada el 2026-05-27.
+- **Fuente**: Francisco Gonzalez, ticket SSHP-1415474 (2026-04-21). Excepción "líder inactivo" agregada el 2026-05-27.
 
 ### R-DESC-05 — Error "no autorizado" en módulo específico → Groot no mapea rol↔funcionalidad
 - **Señales**:
@@ -87,7 +87,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "Hola, desde soporte Groot/Kraken no somos responsables de saber cuál es el permiso/rol que habilita una funcionalidad. Esto debe ser dirigido a los equipos de gestión de usuarios de su operación para que determinen si hay un rol faltante o si requiere ajustes en los roles actuales."
-- **Fuente**: Francisco Gonzalez, ticket SSHP-1416994 (2026-04-21). Ver `solutions/role-permission/no-autorizado-modulo-logistics.md`.
+- **Fuente**: Francisco Gonzalez, ticket SSHP-1416994 (2026-04-21).
 
 ### R-DESC-06 — Rep sin clock-in físico → valor de atributo se obtiene dinámicamente al hacer clock-in
 - **Señales**:
@@ -99,7 +99,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "Hola, el usuario al ser un rep obtiene los valores a partir de los clock-in físicos. Vemos que el usuario después de hacer el clock-in tiene asignado el valor que requiere."
-- **Fuente**: Francisco Gonzalez, ticket SSHP-1409680 (2026-04-21). Ver `solutions/user-visibility/rep-sin-clock-in-no-ve-bolha.md`.
+- **Fuente**: Francisco Gonzalez, ticket SSHP-1409680 (2026-04-21).
 
 ### R-DESC-07 — Reps sin acceso a bolha/función pero ya ubicados en el facility correcto → gestor de usuarios de la operación
 - **Señales**:
@@ -111,7 +111,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "Hola, los usuarios están ubicados en el facility mencionado. En caso de no tener acceso a alguna función, esto debe ser revisado con el equipo de gestión de usuarios de su operación."
-- **Fuente**: Francisco Gonzalez, ticket SSHP-1409554 (2026-04-21). Ver `solutions/user-visibility/reps-no-ven-bolha-inventario.md`.
+- **Fuente**: Francisco Gonzalez, ticket SSHP-1409554 (2026-04-21).
 
 ### R-DESC-08 — Solicitud de rol por Learning Hub / Training Hub completado
 - **Señales**:
@@ -123,7 +123,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "Hola, las solicitudes de roles a partir de asistencia en Learning Hub / Training Hub son atendidas por el equipo de gestión de usuarios de la operación. Desde aquí no damos soporte a este tipo de solicitudes."
-- **Fuente**: Francisco Gonzalez, ticket SSHP-1412472 (2026-04-21). Ver `solutions/role-permission/rol-learning-hub-asignacion-gestion-usuarios-operacion.md`.
+- **Fuente**: Francisco Gonzalez, ticket SSHP-1412472 (2026-04-21).
 
 ### R-DESC-09 — Remoción manual de rol sin error técnico → gestor de usuarios de la operación
 - **Señales**:
@@ -250,7 +250,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "Hola, el error al crear Labour Share se debe a que la posición del usuario es 'analyst'. Solo los usuarios con posición team_lead o supervisor tienen habilitada la funcionalidad de crear Labour Share. Esto es por diseño del sistema."
-- **Fuente**: ticket SSHP-1417376 (2026-04-17). Ver `solutions/labor-share/error-labour-share-posicion-analyst.md`.
+- **Fuente**: ticket SSHP-1417376 (2026-04-17).
 
 ### R-DESC-19 — Solicitud de operación que ya es funcionalidad existente en la tool de autogestión (catch-all)
 - **Señales**:
@@ -314,7 +314,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Comentario sugerido**:
   > "Hola, el error corresponde a un componente externo a nuestro soporte Groot/Kraken. Esto debe ser revisado con el equipo de Platsec/Randall owner del componente. El usuario está correctamente configurado en Kraken."
 - **Canal directo Slack**: `#help-authz-internal-admins`.
-- **Fuente**: Francisco Gonzalez, ticket SSHP-1412840 (2026-04-21). Ver `solutions/queue-management/componente-externo-platsec-randall.md`.
+- **Fuente**: Francisco Gonzalez, ticket SSHP-1412840 (2026-04-21).
 
 ### R-DER-05 — Issues de taxonomía/clasificación en tool Groot o app nav → canal Slack #help-authz-internal-admins
 - **Señales**:
@@ -326,7 +326,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Acción**: Rechazar el ticket por canal inválido y redirigir al canal de Slack de plataforma.
 - **Comentario sugerido**:
   > "Hola, este tema depende de equipos de platsec al igual que los issues del app nav. El canal de Slack de plataforma para reportar sería #help-authz-internal-admins."
-- **Fuente**: Francisco Gonzalez, ticket SSHP-1403550 (2026-04-21). Ver `solutions/queue-management/reclasificar-proceso-madre-tool-groot-canal-invalido.md`.
+- **Fuente**: Francisco Gonzalez, ticket SSHP-1403550 (2026-04-21).
 
 ### R-DER-06 — Usuario externo (ext_) reconocido como cuenta Meli en Kioske/TOTEM → IAM Soporte
 - **Señales**:
@@ -339,7 +339,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Acción**: Derivar a **IAM Soporte**.
 - **Comentario sugerido**:
   > "Usuario externo que es reconocido como usuario interno y por esta razón no puede ser gestionado por el TOTEM de autogestión de las operaciones."
-- **Fuente**: Francisco Gonzalez, ticket SSHP-1412206 (2026-04-21). Ver `solutions/link-unlink-account/ext-reconocido-como-cuenta-meli-en-kioske.md`.
+- **Fuente**: Francisco Gonzalez, ticket SSHP-1412206 (2026-04-21).
 
 ### R-DER-07 — Flujos en Shield (herramienta externa) → IAM Soporte
 - **Señales**:
@@ -351,7 +351,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Acción**: Derivar a **IAM Soporte**.
 - **Comentario sugerido**:
   > "Herramientas de Shield que no damos soporte. Derivar a IAM Soporte."
-- **Fuente**: Francisco Gonzalez, ticket SSHP-1415340 (2026-04-21). Ver `solutions/queue-management/shield-cierra-solicitud-cambio-lider-ext.md`.
+- **Fuente**: Francisco Gonzalez, ticket SSHP-1415340 (2026-04-21).
 
 ### R-DER-08 — Cambio de nombre de usuario → IAM Soporte
 - **Señales**:
@@ -427,7 +427,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Acción**: Derivar a **Equipo Chat Interno (Pidgey)**.
 - **Comentario sugerido**:
   > "Hola, este inconveniente corresponde al equipo de Chat Interno (Pidgey), que es el responsable de los permisos de acceso a las notificaciones en xtools. Derivamos para que continúen con la atención del caso."
-- **Fuente**: ticket SSHP-1413000 (2026-04-18). Ver `solutions/role-permission/no-autorizado-xtools-pidgey-derivado.md`.
+- **Fuente**: ticket SSHP-1413000 (2026-04-18).
 
 ### R-DER-14 — Alta/regularización de nodo o valor nuevo en Kraken → Helpdesk IA (platsec/randall o integradores)
 - **Señales**:
@@ -616,7 +616,7 @@ Luego continuar con la clasificación por categoría habitual.
 ## Mantenimiento
 
 - Cada vez que el equipo (Francisco, Julián, etc.) deje en los threads de Slack una acción sobre un ticket (`Descartar`, `Derivar a otro equipo`), **actualizar este archivo** agregando una nueva regla `R-DESC-XX` o `R-DER-XX`.
-- Paralelamente, archivar el caso concreto en `solutions/<categoria>/` con el formato de la knowledge base (ver `README.md`).
+- Archivar el caso concreto en `solutions/<categoria>/` solo si agrega una señal, excepción, causa raíz o procedimiento reusable que no esté documentado en esta regla ni en otro solution.
 - Mantener el **comentario sugerido** tal cual lo escribió el equipo (es copy validado para responder al usuario). Si es necesario normalizar tildes o puntuación, hacerlo mínimamente y sin alterar el sentido.
-- Siempre incluir el campo **Fuente** con autor + ticket + fecha + link al archivo `solutions/` correspondiente.
+- Siempre incluir el campo **Fuente** con autor + ticket + fecha. Agregar link a `solutions/` únicamente cuando exista un caso reusable materializado.
 - Si un fix deja de ser válido (regresión), marcar la regla con `[DEPRECATED — fecha]` pero no borrarla (historial).

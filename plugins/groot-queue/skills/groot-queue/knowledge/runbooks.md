@@ -130,7 +130,7 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 **Problema típico**: CAD no aparece en autogestión, perfil incorrecto en xtools.
 
 **Pasos**:
-0. **Si el síntoma es "no aparece CAD/atributo para seleccionar en autogestión (xtools)"** → verificar primero si el **líder directo** del usuario tiene el CAD/atributo asignado. Si **no** lo tiene → aplicar `R-DESC-03` de `triage-rules.md` (descartar), porque la autogestión solo ofrece valores que el líder ya posee. No es un bug del sistema. Ver caso de referencia: `solutions/cad-profile/autogestion-cad-lider-sin-atributo.md`.
+0. **Si el síntoma es "no aparece CAD/atributo para seleccionar en autogestión (xtools)"** → verificar primero si el **líder directo** del usuario tiene el CAD/atributo asignado. Si **no** lo tiene → aplicar `R-DESC-03` de `triage-rules.md` (descartar), porque la autogestión solo ofrece valores que el líder ya posee. No es un bug del sistema.
 1. Verificar el CAD del usuario en Groot admin
 2. Si el CAD es incorrecto → editar en Groot → campo facility/site
 3. Si no aparece en autogestión (xtools) **y el líder sí tiene el atributo** → verificar que el usuario tiene acceso a xtools y que el CAD está sincronizado
