@@ -335,6 +335,17 @@ record_failure() {
         '{type: $type, description: $description, detail: $detail}' >> "$failures_file"
 }
 
+read_failures_json() {
+    local failures_file="$1"
+
+    if [ -f "$failures_file" ] && [ -s "$failures_file" ]; then
+        jq -cs '.' "$failures_file" 2>/dev/null || printf '[]'
+        return 0
+    fi
+
+    printf '[]'
+}
+
 run_assertions() {
     local response="$1"
     local config_file="$2"
@@ -435,7 +446,8 @@ run_single_case() {
 
     # Per-case file collecting failed-assertion JSON objects (one per line).
     local failures_file="$result_dir/$i.failures"
-    : > "$failures_file"
+    mkdir -p "$result_dir" 2>/dev/null || return 0
+    touch "$failures_file" 2>/dev/null || return 0
 
     local start_time=$SECONDS
     {
@@ -506,8 +518,8 @@ run_single_case() {
     # Build the per-case JSONL line (consumed in the print phase when --jsonl is set).
     local status_str="passed"
     [ "$result" -eq 0 ] || status_str="failed"
-    local failed_json="[]"
-    [ -s "$failures_file" ] && failed_json=$(jq -cs '.' "$failures_file")
+    local failed_json
+    failed_json=$(read_failures_json "$failures_file")
     jq -nc \
         --arg skill "$skill_name" \
         --arg provider "$RESOLVED_EVAL_PROVIDER" \
