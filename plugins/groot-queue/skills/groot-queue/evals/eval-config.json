@@ -89,6 +89,21 @@
       ]
     },
     {
+      "id": "derive-kb-only-for-new-knowledge",
+      "description": "derive does not create one KB solution per ticket when an existing R-DER rule already covers the case",
+      "input": "Documentation question: when explaining the derive workflow, must it create a KB solution file for every successfully derived ticket? Do not execute Jira commands.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["no crea automáticamente", "no debe crear", "solo cuando", "conocimiento nuevo", "does not automatically", "should not create", "only when", "new knowledge"]
+        },
+        {
+          "type": "contains_any",
+          "values": ["reutilizable", "reusable", "ausente", "novedad", "nuevo", "no documentado", "no documentada", "no cubierto", "no cubierta", "señal nueva", "reutilizável", "ausente", "novidade", "novo", "não documentado", "não documentada", "não coberto", "não coberta", "sinal novo", "absent", "novelty", "new", "undocumented", "not documented", "not covered", "new signal"]
+        }
+      ]
+    },
+    {
       "id": "derive-multi-ticket-spaces",
       "description": "derive accepts multiple ticket keys separated by spaces (shows the derivation plan or the MCP precondition abort)",
       "input": "/groot-queue derive SSHP-1111111 SSHP-2222222 SSHP-3333333",
@@ -148,6 +163,26 @@
         {
           "type": "contains",
           "value": "#help-authz-internal-admins"
+        }
+      ]
+    },
+    {
+      "id": "rder09-invalid-tax-identifier-wording",
+      "description": "triage rules route exact invalid tax identifier wording to IAM Soporte instead of R-DER-16 IAM Commerce",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='No pudimos continuar con la creación de la cuenta'. Description='Al intentar crear usuario externo desde Groot aparece el error Identificador tributario invalido. No hay documento duplicado.'. Apply triage rules.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "R-DER-09"
+        },
+        {
+          "type": "contains",
+          "value": "IAM Soporte"
+        },
+        {
+          "type": "regex",
+          "description": "correct routing pairs R-DER-09 with IAM Soporte, while still allowing explicit contrast against rejected alternatives",
+          "pattern": "R-DER-09(.|[[:space:]])*IAM Soporte|IAM Soporte(.|[[:space:]])*R-DER-09"
         }
       ]
     },
@@ -230,6 +265,21 @@
         {
           "type": "contains_any",
           "values": ["Plan de descarte", "R-DESC", "Won't Do", "acli jira workitem view", "MCP", "Atlassian", "configuración", "setup", "autorización", "permiso", "acli", "⚠️"]
+        }
+      ]
+    },
+    {
+      "id": "discard-kb-only-for-new-knowledge",
+      "description": "discard does not create one KB solution per ticket when an existing rule already covers the case",
+      "input": "Documentation question: when explaining the discard workflow, must it create a KB solution file for every successfully discarded ticket? Do not execute Jira commands.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["no crea automáticamente", "no debe crear", "solo cuando", "conocimiento nuevo", "does not automatically", "should not create", "only when", "new knowledge"]
+        },
+        {
+          "type": "contains_any",
+          "values": ["reutilizable", "reusable", "ausente", "novedad", "nuevo", "no documentado", "no documentada", "no cubierto", "no cubierta", "señal nueva", "reutilizável", "ausente", "novidade", "novo", "não documentado", "não documentada", "não coberto", "não coberta", "sinal novo", "absent", "novelty", "new", "undocumented", "not documented", "not covered", "new signal"]
         }
       ]
     },
@@ -581,6 +631,33 @@
       ]
     },
     {
+      "id": "solve-external-user-leader-change-manual-workaround",
+      "description": "solve retrieves the confirmed manual workaround for ext_* leader-change failures in Groot",
+      "input": "/groot-queue solve this synthetic ticket without querying Jira: Summary='Error al cambiar lider de usuario externo'. Description='No puedo cambiar el supervisor de ext_user_test desde el flujo estandar de Groot. La solicitud de cambio de lider falla y no guarda el nuevo lider.'. Use the hierarchy-leader solutions knowledge base.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "the known hierarchy-leader solution is retrieved",
+          "values": ["cambio-lider-manual-ext-thathama", "SSHP-1416401"]
+        },
+        {
+          "type": "contains_any",
+          "description": "the manual workaround is recommended",
+          "values": ["adecuo manualmente", "adecuar manualmente", "intervencion manual", "manual"]
+        },
+        {
+          "type": "contains_any",
+          "description": "the ticket remains valid for Groot",
+          "values": ["VALIDO_GROOT", "VÁLIDO_GROOT", "válido para Groot", "error sistémico", "error técnico", "bug de Groot", "bug de jerarquía", "incidente de jerarquía", "soporte de Groot", "dev Groot"]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "the failure mode must not be discarded as self-service",
+          "values": ["Veredicto: DESCARTAR", "Veredicto: `DESCARTAR`", "⛔ DESCARTAR"]
+        }
+      ]
+    },
+    {
       "id": "start-command",
       "description": "start subcommand shows the welcome banner with version and command catalog",
       "input": "/groot-queue start",
@@ -619,6 +696,11 @@
           "type": "regex",
           "description": "final command descriptions keep non-collapsible indentation in chat Markdown",
           "pattern": "(?:\\u00a0){6}→ Analizá tickets cerrados"
+        },
+        {
+          "type": "regex",
+          "description": "the setup tip keeps its literal command without shell substitution",
+          "pattern": "Tip:.*Corré `/groot-queue setup`\\."
         }
       ]
     }

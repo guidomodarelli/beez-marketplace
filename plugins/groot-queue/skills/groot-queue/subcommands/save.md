@@ -18,6 +18,7 @@ Guardar la resolución real de un ticket en la knowledge base. Argumentos: la ke
 4. Generar slug del archivo: `<ticket-key>-<primeras-3-palabras-del-summary>.md` (minúsculas, guiones)
    - Ejemplo: `SSHP-1407882-referencia-circular-lider.md`
 5. Buscar si ya existe un archivo para ese ticket en `$SKILL_DIR/knowledge/solutions/<categoria>/`:
+   - Antes de leer o escribir, asegurar que la carpeta exista: `mkdir -p "$SKILL_DIR/knowledge/solutions/<categoria>"`.
    - Leer los frontmatter `ticket:` de cada archivo `.md` de esa carpeta.
    - Si ya existe: mostrar `⚠️ Ya existe una solución para SSHP-XXXXXX en <path>. ¿Querés sobrescribir? (sí/no)`.
    - Si el usuario dice no: abortar.

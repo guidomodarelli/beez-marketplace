@@ -335,6 +335,66 @@ record_failure() {
         '{type: $type, description: $description, detail: $detail}' >> "$failures_file"
 }
 
+read_failures_json() {
+    local failures_file="$1"
+
+    if [ -f "$failures_file" ] && [ -s "$failures_file" ]; then
+        jq -cs '.' "$failures_file" 2>/dev/null || printf '[]'
+        return 0
+    fi
+
+    printf '[]'
+}
+
+write_case_result_jsonl() {
+    local result_dir="$1"
+    local case_idx="$2"
+    local skill_name="$3"
+    local id="$4"
+    local description="$5"
+    local input="$6"
+    local total="$7"
+    local status_str="$8"
+    local elapsed="$9"
+    local failed_json="${10}"
+    local workspace="${11}"
+
+    jq -nc \
+        --arg skill "$skill_name" \
+        --arg provider "$RESOLVED_EVAL_PROVIDER" \
+        --arg id "$id" \
+        --arg description "$description" \
+        --arg input "$input" \
+        --argjson index "$((case_idx + 1))" \
+        --argjson total "$total" \
+        --arg status "$status_str" \
+        --argjson duration "$elapsed" \
+        --argjson failed "$failed_json" \
+        --arg with_skill "$workspace/with-skill/$id.txt" \
+        --arg baseline "$workspace/without-skill/$id.txt" \
+        '{event: "case", provider: $provider, skill: $skill, id: $id, description: $description, input: $input, index: $index, total: $total, status: $status, duration_seconds: $duration, failed_assertions: $failed, artifacts: {with_skill: $with_skill, baseline: $baseline}}' \
+        > "$result_dir/$case_idx.jsonl"
+}
+
+record_case_setup_failure() {
+    local result_dir="$1"
+    local case_idx="$2"
+    local skill_name="$3"
+    local id="$4"
+    local description="$5"
+    local input="$6"
+    local total="$7"
+    local workspace="$8"
+    local detail="$9"
+    local elapsed="${10}"
+    local failed_json
+
+    failed_json=$(jq -nc --arg detail "$detail" \
+        '[{type: "infrastructure", description: "Eval runner failed before executing case", detail: $detail}]')
+    printf '1\n' > "$result_dir/$case_idx.txt"
+    write_case_result_jsonl "$result_dir" "$case_idx" "$skill_name" "$id" "$description" "$input" "$total" "failed" "$elapsed" "$failed_json" "$workspace"
+}
+
 run_assertions() {
     local response="$1"
     local config_file="$2"
@@ -432,12 +492,22 @@ run_single_case() {
     input=$(jq -r ".test_cases[$i].input" "$config_file")
     description=$(jq -r ".test_cases[$i].description" "$config_file")
     skill_name=$(jq -r '.skill' "$config_file")
+    local start_time=$SECONDS
 
     # Per-case file collecting failed-assertion JSON objects (one per line).
     local failures_file="$result_dir/$i.failures"
-    : > "$failures_file"
+    mkdir -p "$result_dir" || {
+        echo "ERROR: Case setup failed: could not create result directory: $result_dir" >&2
+        return 1
+    }
+    touch "$failures_file" || {
+        local setup_elapsed=$(( SECONDS - start_time ))
+        echo "ERROR: Case setup failed: could not create failures file: $failures_file" >&2
+        record_case_setup_failure "$result_dir" "$i" "$skill_name" "$id" "$description" "$input" "$total" "$workspace" "could not create failures file: $failures_file" "$setup_elapsed"
+        echo -e "  ${RED}❌ [$((i + 1))/$total] $id${NC}  ${setup_elapsed}s (infrastructure failure)" >&2
+        return 0
+    }
 
-    local start_time=$SECONDS
     {
         echo "─────────────────────────────────────────"
         echo -e "${BOLD}CASE [$((i + 1))/$total]: $id${NC}"
@@ -506,23 +576,9 @@ run_single_case() {
     # Build the per-case JSONL line (consumed in the print phase when --jsonl is set).
     local status_str="passed"
     [ "$result" -eq 0 ] || status_str="failed"
-    local failed_json="[]"
-    [ -s "$failures_file" ] && failed_json=$(jq -cs '.' "$failures_file")
-    jq -nc \
-        --arg skill "$skill_name" \
-        --arg provider "$RESOLVED_EVAL_PROVIDER" \
-        --arg id "$id" \
-        --arg description "$description" \
-        --arg input "$input" \
-        --argjson index "$((i + 1))" \
-        --argjson total "$total" \
-        --arg status "$status_str" \
-        --argjson duration "$elapsed" \
-        --argjson failed "$failed_json" \
-        --arg with_skill "$workspace/with-skill/$id.txt" \
-        --arg baseline "$workspace/without-skill/$id.txt" \
-        '{event: "case", provider: $provider, skill: $skill, id: $id, description: $description, input: $input, index: $index, total: $total, status: $status, duration_seconds: $duration, failed_assertions: $failed, artifacts: {with_skill: $with_skill, baseline: $baseline}}' \
-        > "$result_dir/$i.jsonl"
+    local failed_json
+    failed_json=$(read_failures_json "$failures_file")
+    write_case_result_jsonl "$result_dir" "$i" "$skill_name" "$id" "$description" "$input" "$total" "$status_str" "$elapsed" "$failed_json" "$workspace"
 
     if [ "$result" -eq 0 ]; then
         echo -e "  ${GREEN}✅ [$done_count/$total] $id${NC}  ${duration}" >&2
@@ -626,6 +682,18 @@ run_skill_evals() {
     local passed=0
     local failed=0
     for i in $(seq 0 $((total - 1))); do
+        if [ ! -f "$result_dir/$i.txt" ]; then
+            mkdir -p "$result_dir" 2>/dev/null || true
+            local missing_id missing_input missing_description missing_elapsed missing_failed_json
+            missing_id=$(jq -r ".test_cases[$i].id" "$config_file")
+            missing_input=$(jq -r ".test_cases[$i].input" "$config_file")
+            missing_description=$(jq -r ".test_cases[$i].description" "$config_file")
+            missing_elapsed=$(( SECONDS - suite_start ))
+            missing_failed_json=$(jq -nc \
+                '[{type: "infrastructure", description: "Eval runner did not write a case result", detail: "case finished before writing result files"}]')
+            printf '1\n' > "$result_dir/$i.txt" 2>/dev/null || true
+            write_case_result_jsonl "$result_dir" "$i" "$skill_name" "$missing_id" "$missing_description" "$missing_input" "$total" "failed" "$missing_elapsed" "$missing_failed_json" "$workspace" 2>/dev/null || true
+        fi
         if [ "$EVAL_JSONL" = "1" ]; then
             cat "$result_dir/$i.jsonl" 2>/dev/null || true
         else

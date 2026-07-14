@@ -80,7 +80,11 @@ Si algún valor de riesgo SLA es > 0, agregar debajo:
  ⚠️  Hay tickets en riesgo — considerá correr /groot-queue alerts
 ```
 
-Luego, usar el **Bash tool** para ejecutar `$SKILL_DIR/scripts/render-catalog.sh` exactamente como está, sin abreviar, omitir líneas ni recrear su contenido. El script emite Markdown compatible con la interfaz de chat: preservar literalmente sus marcadores, negritas y código inline al mostrar el resultado.
+Luego, usar el **Bash tool** para ejecutar `$SKILL_DIR/scripts/render-catalog.sh` exactamente como está. Tratar stdout completo como artefacto opaco y agregarlo byte por byte después del banner: no abreviar, omitir, reindentar, reformatear ni recrear contenido. Esto incluye espacios no separables (`U+00A0`), marcadores, negritas y código inline.
+
+Si script no puede ejecutarse, informar error y detener salida; nunca sintetizar catálogo manualmente como fallback.
+
+Antes de responder, verificar que stdout copiado contiene tanto `🟢 **/groot-queue** \`setup\`` como línea final de `analyze-history` con seis `U+00A0` antes de `→`. Si falta cualquiera, volver a usar stdout original sin transformaciones.
 
 3. **Después del output**, preguntar al usuario:
 
@@ -95,7 +99,7 @@ Luego, usar el **Bash tool** para ejecutar `$SKILL_DIR/scripts/render-catalog.sh
 - Si ACLI no está disponible, **no fallar** — simplemente omitir la sección de conteo y marcar ACLI como ❌ en el health-check.
 - Si `claude mcp list` no está disponible (ej: Codex), marcar MCP checks como `⚠️ (no verificable)`.
 - Si el usuario responde con un comando válido después del prompt, dispatchar al subcomando correspondiente.
-- El script bash del catálogo debe ejecutarse **verbatim** vía Bash tool — no resumir, no omitir líneas, no generar el output de memoria.
-- Preservar el Markdown emitido por el script; no convertirlo a ANSI ni envolver el catálogo en un bloque de código.
+- El script bash del catálogo debe ejecutarse **verbatim** vía Bash tool — no resumir, no omitir líneas, no generar output de memoria ni reemplazarlo por una versión equivalente.
+- Preservar Markdown y bytes emitidos por script; no convertirlos a ANSI, envolver catálogo en bloque de código ni normalizar whitespace.
 - El output debe renderizarse tal cual, respetando los caracteres Unicode box-drawing y los emojis.
 - Mantener la latencia al mínimo: ejecutar los checks en paralelo siempre que sea posible.

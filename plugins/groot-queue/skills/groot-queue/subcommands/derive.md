@@ -5,7 +5,7 @@ argument-hint: SSHP-XXXXXX [SSHP-YYYYYY ...]
 
 # /groot-queue:derive
 
-Derivar uno o más tickets al equipo correcto. **Este subcomando escribe en Jira** (nota interna + transición de estado con campos de pantalla), registra cada derivación en la knowledge base local y deja un evento en el log de auditoría append-only.
+Derivar uno o más tickets al equipo correcto. **Este subcomando escribe en Jira** (nota interna + transición de estado con campos de pantalla), registra en la knowledge base local solo derivaciones con conocimiento nuevo reusable y deja un evento en el log de auditoría append-only.
 
 Argumentos: una o más keys de tickets (`SSHP-XXXXXX`), separadas por **espacios o comas** (o combinación de ambos).
 
@@ -19,6 +19,14 @@ Ejemplos válidos:
 
 ## Pre-condición
 
+### Gate obligatorio de argumentos — ejecutar antes de cualquier tool
+
+Este gate tiene prioridad absoluta sobre MCP, ACLI y Jira:
+
+1. Parsear y validar argumentos sin ejecutar tools.
+2. Si no queda ninguna key válida, responder exactamente con mensaje de uso indicado abajo y **detener ejecución**.
+3. En ese caso no consultar disponibilidad MCP, no ejecutar ACLI, no construir links Jira y no continuar con ninguna otra pre-condición.
+
 - Parsear los argumentos: dividir por comas y/o espacios, eliminar duplicados e ignorar tokens vacíos.
 - Conservar para ejecución solo tokens que matcheen `^SSHP-[0-9]+$` (case-insensitive) y normalizarlos a uppercase antes de usarlos en comandos Jira.
 - Si se detectan tokens no válidos, no pasarlos nunca a `acli`; mostrarlos como ignorados en el plan o en el error de uso.
@@ -28,7 +36,7 @@ Ejemplos válidos:
 
 ## Pre-condición: MCP Atlassian
 
-**Verificar después de validar que existe al menos una key `SSHP-XXXXXX` válida y antes de consultar o modificar Jira. Si alguno de los siguientes pasos falla, abortar y no continuar.**
+**Verificar únicamente después de que gate obligatorio confirme al menos una key `SSHP-XXXXXX` válida y antes de consultar o modificar Jira. Si alguno de los siguientes pasos falla, abortar y no continuar.**
 
 **A. Disponibilidad de herramientas:**
 Intentar llamar `mcp__Atlassian__getAccessibleAtlassianResources` (o herramienta equivalente si el proveedor usa un prefijo distinto).
@@ -215,11 +223,21 @@ Mapeo de destino → slug de label:
 
 - Si falla: registrar `✗ Labels` en el resultado. **No abortar** — las acciones principales en Jira (nota interna + transición) ya fueron completadas. Continuar al siguiente ticket.
 
-**4e. Registrar en knowledge base** (Write tool):
-- Registrar en KB solo si la nota interna y la transición terminaron exitosamente.
+**4e. Evaluar novedad y registrar en knowledge base solo cuando aporte valor** (Write tool):
+- Una derivación exitosa **no** crea automáticamente un archivo por ticket. Labels y audit log ya registran aplicación de regla conocida.
+- Crear archivo en KB solo si nota interna + transición terminaron exitosamente **y** ticket aporta conocimiento verificable, reusable y ausente en `triage-rules.md` y `solutions/`.
+- Considerar conocimiento nuevo únicamente cuando agrega al menos uno de estos elementos:
+  1. Señal real nueva que mejora identificación futura de regla.
+  2. Excepción o condición previa no documentada que cambia destino o veredicto.
+  3. Gotcha operativo verificable o evidencia concreta reusable para derivar casos futuros.
+- No crear archivo si ticket se limita a ejemplificar regla existente, repite señales documentadas o solo aporta IDs/datos propios del caso.
+- Antes de escribir, buscar duplicados semánticos en regla y carpeta de categoría correspondiente. Si hay cobertura suficiente, reportar `KB — (sin conocimiento nuevo)`.
+- Si novedad es dudosa, no escribir; reportar `KB — (revisión futura)`.
 - Si la nota interna o la transición fallan, no crear un registro `effectiveness: confirmed`; reportar `KB —` en la tabla final para ese ticket.
+- Cuando señal nueva funcione como matcher, documentar variantes ES + PT + EN verificadas contra wording real del ticket, según regla trilingüe del repositorio.
 - Path: `$SKILL_DIR/knowledge/solutions/queue-management/<ticket-key-lowercase>-derivar-<destino-slug>.md`
 - Slug destino: `iam-soporte`, `smo`, `helpdesk-ia`, etc.
+- Antes de escribir, asegurar que el directorio exista: `mkdir -p "$SKILL_DIR/knowledge/solutions/queue-management"`.
 
 ```markdown
 ---
