@@ -91,7 +91,7 @@
     {
       "id": "derive-kb-only-for-new-knowledge",
       "description": "derive does not create one KB solution per ticket when an existing R-DER rule already covers the case",
-      "input": "Explain whether /groot-queue derive must create a KB solution file for every successfully derived ticket. Do not execute Jira commands.",
+      "input": "Documentation question: when explaining the derive workflow, must it create a KB solution file for every successfully derived ticket? Do not execute Jira commands.",
       "assertions": [
         {
           "type": "contains_any",
@@ -271,7 +271,7 @@
     {
       "id": "discard-kb-only-for-new-knowledge",
       "description": "discard does not create one KB solution per ticket when an existing rule already covers the case",
-      "input": "Explain whether /groot-queue discard must create a KB solution file for every successfully discarded ticket. Do not execute Jira commands.",
+      "input": "Documentation question: when explaining the discard workflow, must it create a KB solution file for every successfully discarded ticket? Do not execute Jira commands.",
       "assertions": [
         {
           "type": "contains_any",
