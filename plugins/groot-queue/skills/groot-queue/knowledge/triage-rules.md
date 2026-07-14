@@ -366,8 +366,11 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 
 ### R-DER-09 — Tax ID inválido → IAM Soporte
 - **Señales**:
-  - Summary/description: "tax id inválido", "tax id invalido", "CUIT inválido", "CPF inválido", "documento inválido", "error al validar tax id".
+  - ES: "tax id inválido", "tax id invalido", "identificador tributario inválido", "Identificador tributario invalido", "CUIT inválido", "documento inválido", "error al validar tax id".
+  - PT: "tax id inválido", "identificador tributário inválido", "CPF inválido", "documento inválido", "erro ao validar tax id".
+  - EN: "invalid tax id", "invalid tax identifier", "invalid tax document", "invalid document", "tax id validation error".
   - Puede aparecer en **frontend** (un usuario reporta) o en **bulk/masivo** (lote falla por tax id).
+- **Prioridad de triage**: Si aparece el wording exacto "Identificador tributario invalido" / "identificador tributario inválido", aplicar esta regla aunque el error ocurra durante la creación de cuenta o colaborador. No clasificarlo como `VALIDO_GROOT` ni como R-DER-16.
 - **Razón**: La validación de tax id ocurre del lado de IAM (identidad). Groot no es dueño del flujo de validación de documentos.
 - **Verificación previa**: Si el error es de **otra validación** (rol faltante, líder NULL, atributo) → no aplica.
 - **Acción**: Derivar a **IAM Soporte**.
@@ -463,7 +466,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - EN: "error creating user", "invalid data", "does not generate Groot ID", "identifier error", "SuccessFactors does not allow to continue", "data error in creation".
   - El líder intenta crear uno o varios usuarios (internos o externos) desde Groot y recibe error del sistema que menciona SuccessFactors, datos inválidos, o identificador tributario (pero **no** es un documento duplicado — para eso ver R-DER-11).
 - **Razón**: Los errores sistémicos de integración con SuccessFactors requieren investigación del equipo IAM Commerce, que tiene acceso a los logs de integración y puede corregir datos en la fuente.
-- **Verificación previa**: Confirmar que no es un caso de documento duplicado (R-DER-11). Si el error menciona "tax_id has already been used" o "CPF já utilizado" → aplicar R-DER-11 en su lugar.
+- **Verificación previa**: Confirmar que no es un caso de documento inválido (R-DER-09) ni documento duplicado (R-DER-11). Si el error menciona "identificador tributario inválido" / "Identificador tributario invalido" / "invalid tax id" → aplicar R-DER-09. Si menciona "tax_id has already been used" o "CPF já utilizado" → aplicar R-DER-11 en su lugar.
 - **Acción**: Derivar a **IAM Commerce** (sup_iamcommerce_01).
 - **Comentario sugerido**:
   > "Hola, el error de creación está relacionado con la integración de SuccessFactors y requiere investigación del equipo de IAM. Derivamos para que puedan resolver el problema de datos."
@@ -544,14 +547,14 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 2. **R-DER-22** → si LMS muestra pantalla en blanco, CAD/site incorrecto o bolhas que desaparecen, y la configuración en Groot/Kraken está correcta (no es R-DER-12 ni configuración faltante).
 3. **R-DER-06** → si LDAP `ext_*` aparece como **cuenta Meli** en Kioske/TOTEM y no puede cambiar contraseña.
 4. **R-DER-07** → si la herramienta afectada es **Shield** y el flujo es cambio de líder para colaboradores externos.
-5. **R-DER-09** → si el reporte menciona "tax id inválido", "CUIT inválido", "CPF inválido", "documento inválido" (frontend o bulk).
+5. **R-DER-09** → si el reporte menciona "tax id inválido", "identificador tributario inválido", "Identificador tributario invalido", "CUIT inválido", "CPF inválido", "documento inválido" (frontend o bulk).
 6. **R-DER-11** → si al crear/dar de alta un colaborador el error es "Tax_id has already been used" / ES "tax id ya utilizado" / PT "tax_id já utilizado" (documento **válido** pero ya en uso; distinto de R-DER-09 que es tax id *inválido*).
 7. **R-DER-10** → si el usuario final ve un mensaje tipo "no perteneces a envíos" / "no pertence a envios" al intentar crear cuenta o desbloquearla (y por eso no puede conocer su LDAP).
 8. **R-DER-08** → si el pedido es **cambio de nombre** del usuario (first/last name), sin error técnico de Groot.
 9. **R-DER-13** → si la URL afectada es `xtools.adminml.com/tools/pidgey/*` (chat interno / notificaciones outbound) y el problema no involucra configuración de usuario en Groot.
 10. **R-DER-14** → si la solicitud pide dar de **alta / crear / registrar** un nodo o valor nuevo que no existe en Kraken (ej. "alta de nodo NEX", "registrar nodo", "crear valor nuevo").
 11. **R-DER-15** → si un usuario está desactivado/expirado en Groot y no puede ser reactivado por autogestión (error al reactivar, cuenta expirada sin opción de recovery).
-12. **R-DER-16** → si la creación de usuario(s) falla con error de SuccessFactors / "datos inválidos" / "identificador tributario" (pero **no** es documento duplicado — para eso R-DER-11).
+12. **R-DER-16** → si la creación de usuario(s) falla con error de SuccessFactors / "datos inválidos" / "identificador tributario" (pero **no** es documento inválido — para eso R-DER-09 — ni documento duplicado — para eso R-DER-11).
 13. **R-DER-20** → si el usuario estaba activo y perdió acceso a WMS/LMS sin que nadie modificara su configuración en Groot (desincronización IAM↔downstream).
 14. **R-DER-17** → si el usuario tiene roles/bolhas/warehouse correctos en Groot pero **WMS/Logistics no refleja esos permisos** o presenta errores funcionales (pantalla en blanco, error 403, reloading, botones deshabilitados).
 15. **R-DER-18** → si la solicitud es puramente **operativa de WMS** (gestión de paquetes, envíos, shipments) y no involucra usuarios, permisos ni roles.

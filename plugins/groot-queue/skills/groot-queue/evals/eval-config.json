@@ -152,6 +152,25 @@
       ]
     },
     {
+      "id": "rder09-invalid-tax-identifier-wording",
+      "description": "triage rules route exact invalid tax identifier wording to IAM Soporte instead of R-DER-16 IAM Commerce",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='No pudimos continuar con la creación de la cuenta'. Description='Al intentar crear usuario externo desde Groot aparece el error Identificador tributario invalido. No hay documento duplicado.'. Apply triage rules.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "R-DER-09"
+        },
+        {
+          "type": "contains",
+          "value": "IAM Soporte"
+        },
+        {
+          "type": "not_contains_any",
+          "values": ["R-DER-16", "IAM Commerce"]
+        }
+      ]
+    },
+    {
       "id": "rdesc05-operational-modules-permissions",
       "description": "triage rules discard operational module permission requests as operation user-management ownership",
       "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Usuario sin permisos para acceder a modulos operativos INB/OUT'. Description='Problem solver puede loguearse correctamente, pero no puede operar Stage in, Movimiento de stock, labeling, seguimiento de unidades ni reimpresion de shipping label en ARBA01. Solicita revision de permisos y roles.'. Apply triage rules.",
