@@ -72,7 +72,7 @@ Confirmar que el proveedor expone capacidad de crear **nota interna de Jira Serv
 
 1. Obtener todos los tickets abiertos:
    ```bash
-   acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type = Incident AND resolution = Unresolved ORDER BY created DESC"
+   acli jira workitem search --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved ORDER BY created DESC"
    ```
 2. Filtrar solo los que **no tienen assignee** (campo `assignee` vacío o null).
 3. Ordenar por urgencia descendente (score 5 primero — ver `classification.md`).

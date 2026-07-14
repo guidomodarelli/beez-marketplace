@@ -23,6 +23,21 @@ Construir un mapa `email → name` para resolver cada assignee a su nombre human
 
 ---
 
+## Pre-condición: MCP Atlassian (para SLA "Time to resolution")
+
+El paso 3 necesita consultar `customfield_12400` de cada ticket vía MCP Atlassian. Verificar disponibilidad:
+
+1. Intentar llamar `getAccessibleAtlassianResources` (o equivalente).
+   - Si la herramienta **no existe** → marcar `ATLASSIAN_MCP_AVAILABLE = false` y mostrar warning:
+     ```
+     ⚠️ MCP Atlassian no disponible — SLA "Time to resolution" no se puede verificar.
+     Solo se evaluará la condición de "Esperando por Soporte" para determinar alertas.
+     Para habilitar: claude mcp add --transport http "Atlassian" https://mcp.atlassian.com/v1/mcp
+     ```
+   - Si existe → autenticarse y resolver `cloudId` de `mercadolibre.atlassian.net`. Marcar `ATLASSIAN_MCP_AVAILABLE = true`.
+
+---
+
 ## Pre-condición: Slack MCP (solo si NO es `--dry-run`)
 
 El nombre de las herramientas Slack varía según el proveedor y la configuración del MCP. Buscar cualquier tool que contenga `slack` en su nombre (ej: `mcp__plugin_slack_slack__authenticate`, `mcp__slack__authenticate`, u otra variante).
@@ -49,7 +64,7 @@ Leer las referencias:
 
 Ejecutar el JQL base:
 ```bash
-acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type = Incident AND resolution = Unresolved ORDER BY created DESC"
+acli jira workitem search --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved ORDER BY created DESC"
 ```
 
 Filtrar **solo tickets que tienen assignee** (sin assignee → no se puede notificar; para esos, usar `/groot-queue:assign-unassigned` primero).
@@ -59,19 +74,93 @@ Filtrar **solo tickets que tienen assignee** (sin assignee → no se puede notif
 Para cada ticket:
 1. Aplicar el **triage de veredicto** de `triage-rules.md`.
 2. **Excluir** tickets con veredicto `DESCARTAR` o `DERIVAR` (no tiene sentido alertar sobre tickets que no corresponden a Groot).
-3. Clasificar en Dimensión 1 (categoría) y Dimensión 2 (urgencia) según `classification.md`.
+3. Clasificar en Dimensión 1 (categoría) según `classification.md` (se usa en el mensaje del paso 5).
 
 ### 3. Determinar estado de SLA
 
-Para cada ticket restante, determinar su estado de SLA basándose en la **edad del ticket** (horas desde su creación hasta ahora):
+Para cada ticket restante, determinar su estado de SLA basándose en el campo **Time to resolution** del ticket (SLA nativo de Jira Service Management).
+
+**Obtener el campo "Time to resolution" — `customfield_12400`:**
+
+El campo **NO aparece** en el output de `acli jira workitem view`. Requiere MCP Atlassian.
+
+**Método: una única búsqueda JQL vía MCP Atlassian (batch):**
+
+Usar `searchJiraIssuesUsingJql` con el mismo JQL base y solicitando **solo los campos necesarios** en una sola llamada para todos los tickets:
+
+```
+searchJiraIssuesUsingJql(
+  cloudId: "<cloudId de mercadolibre.atlassian.net>",
+  jql: "project = SSHP AND Squad = Groot AND resolution = Unresolved AND assignee IS NOT EMPTY ORDER BY created DESC",
+  fields: ["customfield_12400", "status", "assignee", "summary", "created"],
+  limit: 50
+)
+```
+
+> ⚠️ **Nunca usar `fields: ["*all"]`** — genera respuestas de ~300K chars que saturan el contexto. Siempre pedir solo los campos listados arriba.
+
+> ⚠️ **No hacer llamadas individuales `getJiraIssue` por ticket** — con 25+ tickets son 25+ llamadas. La búsqueda JQL trae todos en una sola llamada.
+
+**Fallback si `searchJiraIssuesUsingJql` no retorna `customfield_12400`:**
+Algunos entornos no exponen campos SLA vía search. Si el campo viene null para todos los tickets en la búsqueda batch, hacer una **única** llamada `getJiraIssue` de prueba con un ticket para confirmar:
+```
+getJiraIssue(
+  cloudId: "<cloudId>",
+  issueIdOrKey: "<primer KEY>",
+  fields: ["customfield_12400"]
+)
+```
+Si el campo sí viene en `getJiraIssue` pero no en search, entonces usar `getJiraIssue` en paralelo para todos los tickets. Este es el fallback, no el camino principal.
+
+**Estructura del campo `customfield_12400`:**
+
+```json
+{
+  "id": "203",
+  "name": "Time to resolution",
+  "_links": { "self": "https://mercadolibre.atlassian.net/rest/servicedeskapi/request/<id>/sla/203" },
+  "ongoingCycle": {
+    "breached": true,
+    "breachTime": {
+      "jira": "2026-06-30T12:00:00.000-0300",
+      "friendly": "30/Jun/26 12:00 PM"
+    },
+    "remainingTime": { "millis": -345600000, "friendly": "-96h" },
+    "goalDuration": { ... },
+    "elapsedTime": { ... }
+  },
+  "completedCycles": []
+}
+```
+
+**Parseo — usar siempre `breachTime.jira` (tiempo calendario):**
+
+> ⚠️ **NO usar `remainingTime.millis`** para calcular horas restantes. Ese campo cuenta solo **horas hábiles** (working time), no calendario. Un `remainingTime` de 25h working puede significar 70h de calendario. Siempre comparar `breachTime.jira` contra `ahora` para obtener las horas reales de calendario.
+
+- `ongoingCycle.breached == true` → **VENCIDO** directamente (no hace falta comparar fechas)
+- `ongoingCycle.breached == false` → calcular: `horas_restantes = breachTime.jira - ahora` (en horas de calendario, misma timezone)
+  - Si `horas_restantes` ≤ 48h → **POR VENCER**
+  - Si `horas_restantes` > 48h → no alertar
+- Si `ongoingCycle` es null y hay `completedCycles` → el SLA ya se completó (ticket resuelto), no alertar.
+
+**Fallback si MCP Atlassian no está disponible:**
+Si MCP no está disponible (verificación de pre-condición), evaluar **solo** por la condición de "Esperando por Soporte" (ver abajo). Mostrar warning:
+```
+⚠️ MCP Atlassian no disponible — SLA "Time to resolution" no se puede verificar.
+Solo se evaluará la condición de "Esperando por Soporte".
+```
+
+**Reglas de clasificación:**
 
 | Estado | Condición | Indicador |
 |--------|-----------|-----------|
-| **VENCIDO** | Edad > 72h **O** (status = "Esperando por Soporte" sin respuesta del equipo > 48h) | 🔴 |
-| **POR VENCER** | Edad entre 24h y 72h **Y** urgencia ≥ 4 **O** (status = "Esperando por Soporte" sin respuesta del equipo entre 24h y 48h) | 🟡 |
+| **VENCIDO** | `ongoingCycle.breached == true` **O** (status = "Esperando por Soporte" sin respuesta del equipo > 48h) | 🔴 |
+| **POR VENCER** | `breachTime.jira - ahora` ≤ 48h calendario **O** (status = "Esperando por Soporte" sin respuesta del equipo entre 24h y 48h) | 🟡 |
 
 - Si un ticket no califica como VENCIDO ni POR VENCER, descartarlo del reporte.
+- Si un ticket no tiene el campo `customfield_12400` (null o vacío), evaluarlo solo por la condición de "Esperando por Soporte". Si tampoco aplica, descartarlo.
 - "Sin respuesta del equipo" significa que no hay comentario interno posterior al último comentario del reporter o a la transición a "Esperando por Soporte".
+- Un ticket que matchee ambas condiciones (SLA breached + "Esperando por Soporte" >48h) se clasifica una sola vez como VENCIDO (no se duplica).
 
 ### 4. Agrupar por responsable
 
