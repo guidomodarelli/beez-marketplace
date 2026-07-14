@@ -638,7 +638,7 @@
         {
           "type": "contains_any",
           "description": "the known hierarchy-leader solution is retrieved",
-          "values": ["cambio-lider-manual-ext-thathama", "SSHP-1416401", "usuario externo", "ext_*"]
+          "values": ["cambio-lider-manual-ext-thathama", "SSHP-1416401"]
         },
         {
           "type": "contains_any",
@@ -648,7 +648,7 @@
         {
           "type": "contains_any",
           "description": "the ticket remains valid for Groot",
-          "values": ["VALIDO_GROOT", "VÁLIDO_GROOT", "válido para Groot", "error sistémico"]
+          "values": ["VALIDO_GROOT", "VÁLIDO_GROOT", "válido para Groot", "error sistémico", "error técnico", "bug de Groot", "bug de jerarquía", "incidente de jerarquía", "soporte de Groot", "dev Groot"]
         },
         {
           "type": "not_contains_any",
