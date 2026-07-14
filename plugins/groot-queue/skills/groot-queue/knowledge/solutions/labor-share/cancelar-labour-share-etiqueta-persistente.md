@@ -22,8 +22,8 @@ El equipo de soporte eliminó manualmente la etiqueta de Labour Share del perfil
 
 ## Señales para identificar este patrón
 - ES: "labour share trabado", "labour share bloqueado", "no se puede completar ni cancelar labour share", "estado inconsistente de labour share", "corregir estado del usuario manualmente".
-- PT: "labour share travada", "labour share preso", "nao consegue concluir nem cancelar labour share", "estado inconsistente do labour share", "corrigir estado do usuario manualmente".
-- EN: "labour share stuck", "labor share stuck", "cannot complete or cancel labour share", "inconsistent labour share state", "manually correct user state".
+- PT: "labour share travada", "labour share preso", "usuario preso no warehouse de destino", "representante preso no warehouse de destino", "nao retorna ao warehouse de origem", "nao consegue concluir nem cancelar labour share", "estado inconsistente do labour share", "corrigir estado do usuario manualmente".
+- EN: "labour share stuck", "labor share stuck", "user stuck in the destination warehouse", "rep stuck in the destination warehouse", "does not return to the origin warehouse", "cannot complete or cancel labour share", "inconsistent labour share state", "manually correct user state".
 
 ## API Calls Involucrados
 - Consulta y modificación del perfil del usuario en: `envios.adminml.com/tools/auth/users/shared/`
