@@ -240,11 +240,11 @@
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["no crea automáticamente", "no debe crear", "solo cuando", "conocimiento nuevo"]
+          "values": ["no crea automáticamente", "no debe crear", "solo cuando", "conocimiento nuevo", "does not automatically", "should not create", "only when", "new knowledge"]
         },
         {
           "type": "contains_any",
-          "values": ["reutilizable", "reusable", "ausente", "novedad"]
+          "values": ["reutilizable", "reusable", "ausente", "novedad", "absent", "novelty"]
         }
       ]
     },
