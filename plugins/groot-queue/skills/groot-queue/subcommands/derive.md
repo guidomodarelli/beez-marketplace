@@ -19,6 +19,14 @@ Ejemplos válidos:
 
 ## Pre-condición
 
+### Gate obligatorio de argumentos — ejecutar antes de cualquier tool
+
+Este gate tiene prioridad absoluta sobre MCP, ACLI y Jira:
+
+1. Parsear y validar argumentos sin ejecutar tools.
+2. Si no queda ninguna key válida, responder exactamente con mensaje de uso indicado abajo y **detener ejecución**.
+3. En ese caso no consultar disponibilidad MCP, no ejecutar ACLI, no construir links Jira y no continuar con ninguna otra pre-condición.
+
 - Parsear los argumentos: dividir por comas y/o espacios, eliminar duplicados e ignorar tokens vacíos.
 - Conservar para ejecución solo tokens que matcheen `^SSHP-[0-9]+$` (case-insensitive) y normalizarlos a uppercase antes de usarlos en comandos Jira.
 - Si se detectan tokens no válidos, no pasarlos nunca a `acli`; mostrarlos como ignorados en el plan o en el error de uso.
@@ -28,7 +36,7 @@ Ejemplos válidos:
 
 ## Pre-condición: MCP Atlassian
 
-**Verificar después de validar que existe al menos una key `SSHP-XXXXXX` válida y antes de consultar o modificar Jira. Si alguno de los siguientes pasos falla, abortar y no continuar.**
+**Verificar únicamente después de que gate obligatorio confirme al menos una key `SSHP-XXXXXX` válida y antes de consultar o modificar Jira. Si alguno de los siguientes pasos falla, abortar y no continuar.**
 
 **A. Disponibilidad de herramientas:**
 Intentar llamar `mcp__Atlassian__getAccessibleAtlassianResources` (o herramienta equivalente si el proveedor usa un prefijo distinto).

@@ -650,9 +650,14 @@
           "pattern": "🟢 \\*\\*/groot-queue\\*\\* `setup`"
         },
         {
-          "type": "regex",
+          "type": "contains",
           "description": "final command descriptions keep non-collapsible indentation in chat Markdown",
-          "pattern": "(?:\\u00a0){6}→ Analizá tickets cerrados"
+          "value": "      → Analizá tickets cerrados"
+        },
+        {
+          "type": "regex",
+          "description": "the setup tip keeps its literal command without shell substitution",
+          "pattern": "Tip:.*Corré `/groot-queue setup`\\."
         }
       ]
     }
