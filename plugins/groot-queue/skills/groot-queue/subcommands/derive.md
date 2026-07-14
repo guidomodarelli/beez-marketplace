@@ -228,6 +228,7 @@ Mapeo de destino → slug de label:
 - Si la nota interna o la transición fallan, no crear un registro `effectiveness: confirmed`; reportar `KB —` en la tabla final para ese ticket.
 - Path: `$SKILL_DIR/knowledge/solutions/queue-management/<ticket-key-lowercase>-derivar-<destino-slug>.md`
 - Slug destino: `iam-soporte`, `smo`, `helpdesk-ia`, etc.
+- Antes de escribir, asegurar que el directorio exista: `mkdir -p "$SKILL_DIR/knowledge/solutions/queue-management"`.
 
 ```markdown
 ---

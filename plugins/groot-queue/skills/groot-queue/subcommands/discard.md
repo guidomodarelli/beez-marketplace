@@ -258,6 +258,7 @@ Usar `editJiraIssue` (MCP Atlassian) para agregar labels de trazabilidad al tick
 - Cuando señal nueva funcione como matcher, documentar variantes ES + PT + EN verificadas contra wording real del ticket, según regla trilingüe del repositorio.
 - Path: `$SKILL_DIR/knowledge/solutions/queue-management/<ticket-key-lowercase>-descartado-<regla-slug>.md`
 - Slug regla: `r-desc-01`, `r-desc-02`, etc.
+- Antes de escribir, asegurar que el directorio exista: `mkdir -p "$SKILL_DIR/knowledge/solutions/queue-management"`.
 
 ```markdown
 ---
