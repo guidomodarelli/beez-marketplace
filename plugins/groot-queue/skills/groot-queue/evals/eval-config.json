@@ -616,6 +616,33 @@
       ]
     },
     {
+      "id": "solve-external-user-leader-change-manual-workaround",
+      "description": "solve retrieves the confirmed manual workaround for ext_* leader-change failures in Groot",
+      "input": "/groot-queue solve this synthetic ticket without querying Jira: Summary='Error al cambiar lider de usuario externo'. Description='No puedo cambiar el supervisor de ext_user_test desde el flujo estandar de Groot. La solicitud de cambio de lider falla y no guarda el nuevo lider.'. Use the hierarchy-leader solutions knowledge base.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "the known hierarchy-leader solution is retrieved",
+          "values": ["cambio-lider-manual-ext-thathama", "SSHP-1416401", "usuario externo", "ext_*"]
+        },
+        {
+          "type": "contains_any",
+          "description": "the manual workaround is recommended",
+          "values": ["adecuo manualmente", "adecuar manualmente", "intervencion manual", "manual"]
+        },
+        {
+          "type": "contains_any",
+          "description": "the ticket remains valid for Groot",
+          "values": ["VALIDO_GROOT", "VÁLIDO_GROOT", "válido para Groot", "error sistémico"]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "the failure mode must not be discarded as self-service",
+          "values": ["Veredicto: DESCARTAR", "Veredicto: `DESCARTAR`", "⛔ DESCARTAR"]
+        }
+      ]
+    },
+    {
       "id": "start-command",
       "description": "start subcommand shows the welcome banner with version and command catalog",
       "input": "/groot-queue start",
