@@ -682,6 +682,18 @@ run_skill_evals() {
     local passed=0
     local failed=0
     for i in $(seq 0 $((total - 1))); do
+        if [ ! -f "$result_dir/$i.txt" ]; then
+            mkdir -p "$result_dir" 2>/dev/null || true
+            local missing_id missing_input missing_description missing_elapsed missing_failed_json
+            missing_id=$(jq -r ".test_cases[$i].id" "$config_file")
+            missing_input=$(jq -r ".test_cases[$i].input" "$config_file")
+            missing_description=$(jq -r ".test_cases[$i].description" "$config_file")
+            missing_elapsed=$(( SECONDS - suite_start ))
+            missing_failed_json=$(jq -nc \
+                '[{type: "infrastructure", description: "Eval runner did not write a case result", detail: "case finished before writing result files"}]')
+            printf '1\n' > "$result_dir/$i.txt" 2>/dev/null || true
+            write_case_result_jsonl "$result_dir" "$i" "$skill_name" "$missing_id" "$missing_description" "$missing_input" "$total" "failed" "$missing_elapsed" "$missing_failed_json" "$workspace" 2>/dev/null || true
+        fi
         if [ "$EVAL_JSONL" = "1" ]; then
             cat "$result_dir/$i.jsonl" 2>/dev/null || true
         else
