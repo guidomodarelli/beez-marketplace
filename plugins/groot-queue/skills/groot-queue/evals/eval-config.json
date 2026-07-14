@@ -99,7 +99,7 @@
         },
         {
           "type": "contains_any",
-          "values": ["reutilizable", "reusable", "ausente", "novedad", "absent", "novelty"]
+          "values": ["reutilizable", "reusable", "ausente", "novedad", "nuevo", "no documentado", "no documentada", "no cubierto", "no cubierta", "señal nueva", "reutilizável", "ausente", "novidade", "novo", "não documentado", "não documentada", "não coberto", "não coberta", "sinal novo", "absent", "novelty", "new", "undocumented", "not documented", "not covered", "new signal"]
         }
       ]
     },
@@ -279,7 +279,7 @@
         },
         {
           "type": "contains_any",
-          "values": ["reutilizable", "reusable", "ausente", "novedad", "absent", "novelty"]
+          "values": ["reutilizable", "reusable", "ausente", "novedad", "nuevo", "no documentado", "no documentada", "no cubierto", "no cubierta", "señal nueva", "reutilizável", "ausente", "novidade", "novo", "não documentado", "não documentada", "não coberto", "não coberta", "sinal novo", "absent", "novelty", "new", "undocumented", "not documented", "not covered", "new signal"]
         }
       ]
     },
