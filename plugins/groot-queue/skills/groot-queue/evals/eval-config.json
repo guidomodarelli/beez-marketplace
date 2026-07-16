@@ -53,6 +53,71 @@
       ]
     },
     {
+      "id": "start-counts-include-service-requests",
+      "description": "start uses the shared open-queue definition for banner counts, including Incident and Service Request tickets",
+      "input": "/groot-queue start --help. When explaining the express ticket counts in the banner, which Jira issue types are included in the open/unassigned/SLA-risk queries? Do not execute Jira commands.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "Incident",
+            "Service Request",
+            "type IN",
+            "cola abierta compartida",
+            "open-queue definition"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "alerts-sla-fetch-covers-all-keys",
+      "description": "alerts explains that SLA fields must be fetched in exact key batches so tickets beyond the first 50 are not missed",
+      "input": "Documentation question: in /groot-queue alerts, how must customfield_12400 be fetched so tickets beyond the first 50 assigned issues are not silently missed? Do not execute Jira commands.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "issuekey in",
+            "lote de keys",
+            "lotes de hasta 50",
+            "batch por lote",
+            "maxResults: 50",
+            "no `limit`",
+            "no limit",
+            "todos los lotes",
+            "No cortar después del primer batch"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "missing_keys",
+            "keys faltantes",
+            "getJiraIssue",
+            "recuperarla explícitamente",
+            "recuperarlas explícitamente"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "backfill-guides-includes-service-requests",
+      "description": "backfill-guides uses the shared open-queue definition so Service Requests also receive missing guides",
+      "input": "/groot-queue backfill-guides --help. Which open Jira issue types are eligible for the initial backfill search before checking the groot-guide-posted label? Do not execute Jira commands.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "Incident",
+            "Service Request",
+            "type IN",
+            "cola abierta compartida",
+            "shared open-queue definition"
+          ]
+        }
+      ]
+    },
+    {
       "id": "derive-no-args",
       "description": "derive without a ticket key shows usage message",
       "input": "/groot-queue derive",
@@ -168,6 +233,34 @@
             "not documented",
             "not covered",
             "new signal"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "assign-unassigned-restricts-supported-types",
+      "description": "assign-unassigned keeps an explicit issue-type filter so only Incident and Service Request tickets are auto-assigned",
+      "input": "/groot-queue assign-unassigned --help. Which Jira issue types does this writable flow include in its initial search, and what happens with other unresolved SSHP/Groot issue types? Do not execute Jira commands.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "Incident",
+            "Service Request",
+            "type IN",
+            "tipos soportados",
+            "issue types soportados"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no debe tocarse",
+            "fuera de alcance",
+            "out of scope",
+            "left untouched",
+            "no debe tocar",
+            "no se toca"
           ]
         }
       ]

@@ -84,25 +84,46 @@ Para cada ticket restante, determinar su estado de SLA basándose en el campo **
 
 El campo **NO aparece** en el output de `acli jira workitem view`. Requiere MCP Atlassian.
 
-**Método: una única búsqueda JQL vía MCP Atlassian (batch):**
+**Método principal: búsquedas batch por lote de keys (sin perder tickets 51+):**
 
-Usar `searchJiraIssuesUsingJql` con el mismo JQL base y solicitando **solo los campos necesarios** en una sola llamada para todos los tickets:
+Después del paso 2, construir `ticket_keys_alertables` con **todos** los tickets restantes (los que tienen assignee y no fueron excluidos por triage). No usar una única búsqueda global limitada a 50, porque deja tickets fuera del fetch de SLA.
+
+Dividir `ticket_keys_alertables` en lotes de hasta `50` keys y consultar **todos los lotes, uno por uno, hasta agotar la lista completa** con `searchJiraIssuesUsingJql`, pidiendo **solo los campos necesarios**:
 
 ```
 searchJiraIssuesUsingJql(
   cloudId: "<cloudId de mercadolibre.atlassian.net>",
-  jql: "project = SSHP AND Squad = Groot AND resolution = Unresolved AND assignee IS NOT EMPTY ORDER BY created DESC",
+  jql: "issuekey in (SSHP-1234567, SSHP-1234568, ..., SSHP-1234616) ORDER BY created DESC",
   fields: ["customfield_12400", "status", "assignee", "summary", "created"],
-  limit: 50
+  maxResults: 50
 )
 ```
 
+Ese `maxResults: 50` es **por lote**, no global. Si hay 137 tickets alertables, se hacen 3 búsquedas (50 + 50 + 37). **No cortar después del primer batch**.
+
+> ⚠️ **Usar `maxResults`, no `limit`**. En el MCP Atlassian de `searchJiraIssuesUsingJql`, `limit` no es un argumento soportado para esta tool y puede hacer fallar la búsqueda antes de devolver `customfield_12400`.
+
 > ⚠️ **Nunca usar `fields: ["*all"]`** — genera respuestas de ~300K chars que saturan el contexto. Siempre pedir solo los campos listados arriba.
 
-> ⚠️ **No hacer llamadas individuales `getJiraIssue` por ticket** — con 25+ tickets son 25+ llamadas. La búsqueda JQL trae todos en una sola llamada.
+> ⚠️ **No hacer llamadas individuales `getJiraIssue` por ticket como camino principal** — con 25+ tickets son 25+ llamadas. El camino principal debe ser batch por lotes.
+
+Al terminar los lotes:
+
+1. Construir un mapa `issue_key -> customfield_12400/status/assignee/summary/created`.
+2. Verificar cobertura completa: `missing_keys = ticket_keys_alertables - fetched_issue_keys`.
+3. Si `missing_keys` no está vacío, hacer `getJiraIssue` **solo para esas keys faltantes** (en paralelo) con:
+   ```
+   getJiraIssue(
+     cloudId: "<cloudId>",
+     issueIdOrKey: "<KEY faltante>",
+     fields: ["customfield_12400", "status", "assignee", "summary", "created"]
+   )
+   ```
+
+> ⚠️ **Nunca degradar silenciosamente un ticket a "SLA desconocido" solo porque quedó fuera de un batch**. Si una key no volvió en `searchJiraIssuesUsingJql`, recuperarla explícitamente antes de clasificarla.
 
 **Fallback si `searchJiraIssuesUsingJql` no retorna `customfield_12400`:**
-Algunos entornos no exponen campos SLA vía search. Si el campo viene null para todos los tickets en la búsqueda batch, hacer una **única** llamada `getJiraIssue` de prueba con un ticket para confirmar:
+Algunos entornos no exponen campos SLA vía search. Si `customfield_12400` viene `null` para **todos** los tickets recuperados por batch, hacer una **única** llamada `getJiraIssue` de prueba con un ticket para confirmar:
 ```
 getJiraIssue(
   cloudId: "<cloudId>",
@@ -110,7 +131,7 @@ getJiraIssue(
   fields: ["customfield_12400"]
 )
 ```
-Si el campo sí viene en `getJiraIssue` pero no en search, entonces usar `getJiraIssue` en paralelo para todos los tickets. Este es el fallback, no el camino principal.
+Si el campo sí viene en `getJiraIssue` pero no en search, entonces usar `getJiraIssue` en paralelo para todos los tickets que sigan sin `customfield_12400`. Este es el fallback de compatibilidad cuando search no expone el SLA; la recuperación de `missing_keys` anterior cubre el caso distinto en el que faltan keys porque un batch no devolvió todo el conjunto solicitado.
 
 **Estructura del campo `customfield_12400`:**
 
