@@ -25,14 +25,14 @@ Ejecutar **en paralelo** (para minimizar latencia):
    - **MCP Slack**: Verificar si existe MCP Slack configurado (`claude mcp list 2>/dev/null | grep -i slack`). Si existe → `✅ Slack MCP`. Si no → `❌ Slack MCP`.
    - Si algún check falla por error de permisos o tool no disponible, marcar como `⚠️ <nombre> (no verificable)`.
 
-4. **Conteo express de tickets** (best-effort — no bloquear el banner por esto): dejar que el JQL calcule los conteos en el servidor en vez de parsear fechas client-side. Ejecutar en paralelo:
+4. **Conteo express de tickets** (best-effort — no bloquear el banner por esto): dejar que el JQL calcule los conteos en el servidor en vez de parsear fechas client-side. Usar la misma definición de cola abierta compartida (`Incident` + `Service Request`). Ejecutar en paralelo:
    ```bash
    # Total abiertos
-   acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type = Incident AND resolution = Unresolved" --output json 2>/dev/null
+   acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type IN (Incident, \"Service Request\") AND resolution = Unresolved" --output json 2>/dev/null
    # Sin asignar
-   acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type = Incident AND resolution = Unresolved AND assignee IS EMPTY" --output json 2>/dev/null
+   acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type IN (Incident, \"Service Request\") AND resolution = Unresolved AND assignee IS EMPTY" --output json 2>/dev/null
    # En riesgo SLA (alta prioridad + más de 24h de antigüedad, calculado por Jira)
-   acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type = Incident AND resolution = Unresolved AND priority IN (Highest, High) AND created <= -24h" --output json 2>/dev/null
+   acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type IN (Incident, \"Service Request\") AND resolution = Unresolved AND priority IN (Highest, High) AND created <= -24h" --output json 2>/dev/null
    ```
    Tomar el conteo de resultados de cada query (`Total abiertos`, `Sin asignar`, `En riesgo SLA`).
 

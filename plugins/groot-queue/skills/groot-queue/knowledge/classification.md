@@ -6,10 +6,10 @@ Este archivo concentra el JQL base y la lógica de clasificación que usan los c
 
 ## JQL base
 
-Para listar todos los incidentes abiertos:
+Para listar todos los tickets abiertos (Incidents y Service Requests):
 
 ```bash
-acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type = Incident AND resolution = Unresolved ORDER BY created DESC"
+acli jira workitem search --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved ORDER BY created DESC"
 ```
 
 Para ver un ticket específico:

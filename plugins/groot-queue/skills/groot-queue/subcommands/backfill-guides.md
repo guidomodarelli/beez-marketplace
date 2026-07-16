@@ -53,10 +53,10 @@ Solo continuar si A, B y C pasaron.
 
 ### 1. Obtener tickets elegibles (filtrado primario por label)
 
-Usar JQL para obtener directamente tickets abiertos, asignados y **sin el label `groot-guide-posted`**:
+Usar JQL para obtener directamente tickets abiertos, asignados y **sin el label `groot-guide-posted`**. Mantener la misma definición de cola abierta compartida (`Incident` + `Service Request`):
 
 ```bash
-acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type = Incident AND resolution = Unresolved AND assignee IS NOT EMPTY AND (labels not in (\"groot-guide-posted\") OR labels is EMPTY) ORDER BY created DESC"
+acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type IN (Incident, \"Service Request\") AND resolution = Unresolved AND assignee IS NOT EMPTY AND (labels not in (\"groot-guide-posted\") OR labels is EMPTY) ORDER BY created DESC"
 ```
 
 Esto filtra en la búsqueda misma, sin necesidad de fetchear cada ticket individualmente para verificar si ya tiene guía. La cláusula `OR labels is EMPTY` es necesaria porque en Jira `labels not in (...)` excluye tickets sin ningún label — justamente los que más necesitan backfill.
