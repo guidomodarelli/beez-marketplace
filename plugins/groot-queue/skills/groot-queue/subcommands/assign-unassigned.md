@@ -93,7 +93,7 @@ Si no hay tickets sin assignee, mostrar: "✅ No hay tickets sin assignee en la 
 
    Las verificaciones previas de R-DESC-03, 04, 05, 06, 07, 08 que requieren Groot admin: si no es posible confirmarlas desde el contenido, clasificar como `REVISAR_MANUAL`.
 
-4. Mostrar el plan consolidado y pedir confirmación única:
+4. Mostrar el plan consolidado y ejecutar confirmaciones por nivel:
 
 ```
 📋 Plan de corrida — N tickets sin assignee
@@ -130,29 +130,61 @@ Si no hay tickets sin assignee, mostrar: "✅ No hay tickets sin assignee en la 
 Derivar: M  |  Descartar: K  |  Revisión manual: J  |  Asignar: P
 ```
 
-Omitir secciones vacías (si no hay tickets para derivar, no mostrar esa sección, etc.).
+Omitir secciones vacías.
 
-Si `GROOT_QUEUE_AUTORUN=true`, omitir la pregunta y proceder directamente. Si no:
+Si `GROOT_QUEUE_AUTORUN=true`, omitir todas las confirmaciones y proceder directamente con todos los tickets. Si no, seguir el flujo de confirmación diferenciado:
+
+**Confirmación ⚡ (lote):**
+
+Si hay tickets ⚡ (DERIVAR-AC o DESCARTAR-AC):
+```
+⚡ Alta confianza — N tickets
+¿Procesar todos en lote? (sí / no)
+```
+- **Sí**: todos los ⚡ van al paso 5.
+- **No**: todos los ⚡ se omiten (quedan sin acción; el usuario puede ejecutarlos luego con `/groot-queue derive` o `/groot-queue discard`).
+
+**Confirmación ❓ (uno por uno):**
+
+Si hay tickets ❓ (DERIVAR o DESCARTAR), procesarlos en orden, mostrando para cada uno:
 
 ```
-¿Ejecutar este plan? (sí / no)
+[X/K] SSHP-XXXXX — R-DER-04 → Helpdesk IA
+  Summary: "..."
+  Señales detectadas: <señales concretas que activaron la regla>
+¿Derivar? (s)í / (n)o / (q) procesar todos los restantes
 ```
 
-Solo continuar si el usuario responde afirmativamente (sí, s, yes, y). Si responde no: mostrar "Corrida cancelada. No se realizó ninguna acción." y terminar.
+o para descarte:
+
+```
+[X/K] SSHP-XXXXX — R-DESC-04 → Won't Do
+  Summary: "..."
+  Señales detectadas: <señales concretas que activaron la regla>
+¿Descartar? (s)í / (n)o / (q) descartar todos los restantes
+```
+
+- **(s)í**: el ticket va al paso 5.
+- **(n)o**: el ticket se omite para esta corrida. Mostrar: > "Omitido. Podés ejecutarlo luego con `/groot-queue derive/discard SSHP-XXXXX`."
+- **(q)**: el ticket actual y todos los ❓ restantes van al paso 5 (equivale a "sí" en lote para los que quedan).
+
+Mezclar derivaciones y descartes en el mismo loop ordenado por key (no separar en dos rondas).
 
 5. **Fase de derive/discard** — ejecutar **primero**, antes de cualquier asignación:
 
-   **Derivar:** Invocar el flujo de `$SKILL_DIR/subcommands/derive.md` para todos los tickets `DERIVAR-AC` y `DERIVAR` (la confirmación ya fue obtenida en el paso 4 — omitir la confirmación interna de `derive.md`). Al registrar en el log de auditoría:
+   Solo se procesan los tickets aprobados en el paso 4 (⚡ aprobados en lote + ❓ aprobados individualmente o por `q`). Los tickets ❓ rechazados con `n` se omiten y se registran como `"omitido"` en la tabla final.
+
+   **Derivar:** Invocar el flujo de `$SKILL_DIR/subcommands/derive.md` para los tickets `DERIVAR-AC` y `DERIVAR` aprobados (la confirmación ya fue obtenida en el paso 4 — omitir la confirmación interna de `derive.md`). Al registrar en el log de auditoría:
    - `DERIVAR-AC`: usar `source = "auto-assign-autoconfianza"`.
    - `DERIVAR`: usar `source = "auto-assign"`.
    - `GROOT_QUEUE_AUTORUN=true`: usar `source = "auto-run"` para todos.
 
-   **Descartar:** Invocar el flujo de `$SKILL_DIR/subcommands/discard.md` para todos los tickets `DESCARTAR-AC` y `DESCARTAR` (la confirmación ya fue obtenida en el paso 4 — omitir la confirmación interna de `discard.md`). Al registrar en el log de auditoría:
+   **Descartar:** Invocar el flujo de `$SKILL_DIR/subcommands/discard.md` para los tickets `DESCARTAR-AC` y `DESCARTAR` aprobados (la confirmación ya fue obtenida en el paso 4 — omitir la confirmación interna de `discard.md`). Al registrar en el log de auditoría:
    - `DESCARTAR-AC`: usar `source = "auto-assign-autoconfianza"`. Usar el **comentario universal** de `triage-rules.md` (con la variante de R-DESC-14 si corresponde) en lugar del comentario por regla.
    - `DESCARTAR`: usar `source = "auto-assign"`. Usar el comentario sugerido de la regla.
    - `GROOT_QUEUE_AUTORUN=true`: usar `source = "auto-run"` para todos.
 
-   Los tickets `REVISAR_MANUAL` **no se tocan** en este paso.
+   Los tickets `REVISAR_MANUAL` y los ❓ omitidos **no se tocan** en este paso.
 
 6. **Fase de asignación** — solo para los tickets clasificados como `ASIGNAR` en el paso 3. Los tickets derivados, descartados o de revisión manual **no participan del reparto**.
 
@@ -283,11 +315,12 @@ Ejecutar este paso solo para los tickets clasificados como `ASIGNAR` en el paso 
 Resultado final (N tickets sin assignee procesados):
 
 Derivados/Descartados:
-| Key          | Summary  | Acción      | Regla     | Estado     |
-|--------------|----------|-------------|-----------|------------|
-| SSHP-XXXXX   | ...      | ➡️ Derivado  | R-DER-09  | ✓ OK       |
-| SSHP-XXXXX   | ...      | ⛔ Descartado | R-DESC-02 | ✓ OK       |
-| SSHP-XXXXX   | ...      | ⚠️ Manual    | R-DESC-06 | Sin acción |
+| Key          | Summary  | Acción       | Regla     | Estado         |
+|--------------|----------|--------------|-----------|----------------|
+| SSHP-XXXXX   | ...      | ➡️ Derivado   | R-DER-09  | ✓ OK           |
+| SSHP-XXXXX   | ...      | ⛔ Descartado  | R-DESC-02 | ✓ OK           |
+| SSHP-XXXXX   | ...      | ⏭️ Omitido    | R-DER-04  | Sin acción     |
+| SSHP-XXXXX   | ...      | ⚠️ Manual     | R-DESC-06 | Sin acción     |
 
 Asignaciones:
 | Key          | Summary  | Transición  | Asignado a   | Nota    | Estado |
@@ -296,5 +329,7 @@ Asignaciones:
 | SSHP-XXXXX   | ...      | ✓ En curso  | lpadularrosa | — Skip  | ✓ OK   |
 | SSHP-XXXXX   | ...      | ✗ Error     | —            | — Skip  | ✗ Skip |
 
-Resumen: N total  |  M derivados  |  K descartados  |  J revisión manual  |  P asignados  |  E errores
+Resumen: N total  |  M derivados/descartados  |  K omitidos  |  J revisión manual  |  P asignados  |  E errores
 ```
+
+- **⏭️ Omitido**: el usuario respondió `n` en la confirmación individual. El ticket sigue sin assignee; ejecutar luego con `/groot-queue derive SSHP-XXXXX` o `/groot-queue discard SSHP-XXXXX`.
