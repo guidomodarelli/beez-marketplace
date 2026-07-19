@@ -168,30 +168,44 @@ Para cada ticket asignado exitosamente, obtener su contenido actualizado con:
 ```bash
 acli jira workitem view <KEY>
 ```
-Aplicar **únicamente las reglas R-DER** del algoritmo de triage (misma lógica que el paso 2b de `derive.md`). Tomar la primera regla que matchee.
+Aplicar **únicamente las reglas R-DER** del algoritmo de triage (misma lógica que el paso 2b de `derive.md`). Tomar la primera regla que matchee. Clasificar el match como:
+- **⚡ alta confianza**: la regla está marcada con ⚡ en `triage-rules.md` y ninguna condición de escape es ambigua en el texto del ticket.
+- **normal**: cualquier otro match (sin ⚡, o con señal de escape ambigua).
 
 **9c. Si ningún ticket matchea una regla R-DER:** no mostrar nada adicional y continuar al paso 10.
 
-**9d. Si uno o más tickets matchean**, mostrar la tabla y la pregunta de confirmación:
+**9d. Si uno o más tickets matchean:**
+
+Separar en dos grupos y mostrar:
 
 ```
 🔀 Tickets derivables detectados (N):
+
+⚡ Alta confianza — se derivan automáticamente (M tickets):
 | Key          | Summary                  | Regla     | Equipo destino |
 |--------------|--------------------------|-----------|----------------|
-| SSHP-XXXXX   | ...                      | R-DER-10  | IAM Soporte    |
-| SSHP-XXXXX   | ...                      | R-DER-07  | IAM Soporte    |
+| SSHP-XXXXX   | ...                      | R-DER-09  | IAM Soporte    |
 
-¿Querés derivar estos N tickets ahora? (sí / no)
+❓ Requieren confirmación (K tickets):
+| Key          | Summary                  | Regla     | Equipo destino |
+|--------------|--------------------------|-----------|----------------|
+| SSHP-XXXXX   | ...                      | R-DER-04  | Helpdesk IA    |
+
+¿Derivar los K tickets de confirmación manual? (sí / no)
 ```
 
-**9e. Confirmar derivación:**
+Si solo hay tickets ⚡, omitir la tabla de confirmación y la pregunta.
+Si solo hay tickets no-⚡, omitir la tabla ⚡.
 
-- **Si `GROOT_QUEUE_AUTORUN=true`:** omitir la pregunta y proceder directamente como si la respuesta fuera "sí". Al registrar en el log de auditoría (paso 4e de `derive.md`), usar `source = "auto-run"`.
-- **Si no (modo interactivo):** esperar respuesta del usuario:
-  - **Sí** (o "s", "yes", "y"): ejecutar el flujo completo de `$SKILL_DIR/subcommands/derive.md` con las keys de los tickets derivables, exactamente como si el usuario hubiera corrido `/groot-queue derive <KEY1> <KEY2> ...`. Al registrar en el log de auditoría (paso 4e de `derive.md`), usar `source = "auto-assign"`.
-  - **No** (o cualquier otra respuesta): mostrar:
-    > "Derivación omitida. Podés ejecutarla luego con `/groot-queue derive <KEY1> <KEY2> ...`"
-    y continuar al paso 10.
+**9e. Ejecución:**
+
+- **Tickets ⚡**: ejecutar derivación **sin esperar confirmación** (análoga a `GROOT_QUEUE_AUTORUN=true` para ese subset). Invocar el flujo de `$SKILL_DIR/subcommands/derive.md`. Al registrar en el log de auditoría, usar `source = "auto-assign-autoconfianza"`.
+
+- **Tickets no-⚡**:
+  - **Si `GROOT_QUEUE_AUTORUN=true`:** proceder directamente. Al registrar, usar `source = "auto-run"`.
+  - **Si no (modo interactivo):**
+    - **Sí** (o "s", "yes", "y"): ejecutar derivación. Al registrar, usar `source = "auto-assign"`.
+    - **No**: mostrar: > "Derivación omitida. Podés ejecutarla luego con `/groot-queue derive <KEY1> <KEY2> ...`" y continuar al paso 10.
 
 ## 10. Detección post-asignación de tickets descartables
 
@@ -207,33 +221,53 @@ Para cada ticket asignado exitosamente que no matcheó una regla R-DER en el pas
   acli jira workitem view <KEY>
   ```
 - Aplicar **únicamente las reglas R-DESC del algoritmo de triage** de `triage-rules.md`, en orden: R-DESC-03, R-DESC-06, R-DESC-07, R-DESC-08, R-DESC-04, R-DESC-09, R-DESC-05, R-DESC-02, R-DESC-10, R-DESC-01, R-DESC-11, R-DESC-12.
-- Tomar la primera regla que matchee.
-- Las verificaciones previas (R-DESC-03, R-DESC-04, R-DESC-05, R-DESC-06, R-DESC-07, R-DESC-08) que requieren inspección en Groot admin: si no es posible confirmarlas desde el contenido del ticket, marcar como `REVISAR_MANUAL` y no incluirlo en la lista de descartables.
+- Tomar la primera regla que matchee. Clasificar el match como:
+  - **⚡ alta confianza**: la regla está marcada con ⚡ en `triage-rules.md` **y** el texto del ticket no contiene señal de escape (no menciona haber intentado la operación con error, no hay descripción ambigua o incompleta).
+  - **normal**: regla sin ⚡, o regla ⚡ con señal de escape ambigua.
+- Las verificaciones previas (R-DESC-03, R-DESC-04, R-DESC-05, R-DESC-06, R-DESC-07, R-DESC-08) que requieren inspección en Groot admin: si no es posible confirmarlas desde el contenido del ticket, marcar como `REVISAR_MANUAL` y no incluirlo en ninguno de los dos grupos.
 
 **10c. Si ningún ticket matchea una regla R-DESC:** no mostrar nada adicional y continuar al paso 11.
 
-**10d. Si uno o más tickets matchean**, mostrar la tabla y la pregunta de confirmación:
+**10d. Si uno o más tickets matchean:**
+
+Separar en dos grupos y mostrar:
 
 ```
 ⛔ Tickets descartables detectados (N):
-| Key          | Summary                  | Regla      | Acción           |
-|--------------|--------------------------|------------|------------------|
-| SSHP-XXXXX   | ...                      | R-DESC-02  | Cerrar Won't Do  |
-| SSHP-XXXXX   | ...                      | R-DESC-04  | Cerrar Won't Do  |
 
-¿Querés descartar estos N tickets ahora? (sí / no)
+⚡ Alta confianza — se descartan automáticamente (M tickets):
+| Key          | Summary                  | Regla      |
+|--------------|--------------------------|------------|
+| SSHP-XXXXX   | ...                      | R-DESC-02  |
+| Comentario: "Hola, desde Groot/Kraken Soporte atendemos exclusivamente errores sistémicos..."
+
+❓ Requieren confirmación (K tickets):
+| Key          | Summary                  | Regla      | Acción          |
+|--------------|--------------------------|------------|-----------------|
+| SSHP-XXXXX   | ...                      | R-DESC-04  | Cerrar Won't Do |
+
+⚠️ Revisión manual requerida (J tickets):
+| Key          | Summary                  | Motivo                         |
+|--------------|--------------------------|--------------------------------|
+| SSHP-XXXXX   | ...                      | Verificación previa incompleta |
+
+¿Descartar los K tickets de confirmación manual? (sí / no)
 ```
 
-Al explicar este paso en modo ayuda, usar explícitamente las frases `R-DESC`, `tickets descartables` y `¿Querés descartar estos N tickets ahora?`.
+Si solo hay tickets ⚡, omitir la tabla de confirmación y la pregunta.
+Si solo hay tickets no-⚡, omitir la tabla ⚡.
 
-**10e. Confirmar descarte:**
+Al explicar este paso en modo ayuda, usar explícitamente las frases `R-DESC`, `tickets descartables` y `¿Descartar los K tickets de confirmación manual?`.
 
-- **Si `GROOT_QUEUE_AUTORUN=true`:** omitir la pregunta y proceder directamente como si la respuesta fuera "sí". La confirmación ya fue obtenida implícitamente por el modo automatizado — al llegar al paso 4 de `discard.md`, omitir la pregunta de confirmación y pasar directamente a la ejecución. Al registrar en el log de auditoría (paso 5e de `discard.md`), usar `source = "auto-run"`.
-- **Si no (modo interactivo):** esperar respuesta del usuario:
-  - **Sí** (o "s", "yes", "y"): ejecutar el flujo completo de `$SKILL_DIR/subcommands/discard.md` con las keys de los tickets descartables. La confirmación ya fue obtenida en este paso — al llegar al paso 4 de `discard.md`, omitir la pregunta de confirmación y pasar directamente a la ejecución. Al registrar en el log de auditoría (paso 5e de `discard.md`), usar `source = "auto-assign"`.
-  - **No** (o cualquier otra respuesta): mostrar:
-    > "Descarte omitido. Podés ejecutarlo luego con `/groot-queue discard <KEY1> <KEY2> ...`"
-    y continuar al paso 11.
+**10e. Ejecución:**
+
+- **Tickets ⚡**: ejecutar descarte **sin esperar confirmación**. Invocar el flujo de `$SKILL_DIR/subcommands/discard.md` con `source = "auto-assign-autoconfianza"`. Usar el **comentario universal** de la sección `## Comentario universal — auto-descarte de alta confianza` de `triage-rules.md` (con la variante específica de R-DESC-14 si corresponde) en lugar del comentario por regla.
+
+- **Tickets no-⚡**:
+  - **Si `GROOT_QUEUE_AUTORUN=true`:** proceder directamente como si la respuesta fuera "sí". La confirmación ya fue obtenida implícitamente — al llegar al paso 4 de `discard.md`, omitir la pregunta. Al registrar, usar `source = "auto-run"`.
+  - **Si no (modo interactivo):**
+    - **Sí** (o "s", "yes", "y"): ejecutar el flujo de `$SKILL_DIR/subcommands/discard.md`. La confirmación ya fue obtenida — omitir la pregunta interna de `discard.md`. Al registrar, usar `source = "auto-assign"`.
+    - **No**: mostrar: > "Descarte omitido. Podés ejecutarlo luego con `/groot-queue discard <KEY1> <KEY2> ...`" y continuar al paso 11.
 
 ## 11. Postear notas internas solo para tickets asignados que siguen siendo Groot
 
