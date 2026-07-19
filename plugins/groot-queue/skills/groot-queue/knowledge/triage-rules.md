@@ -11,6 +11,24 @@ description: Reglas de triage para determinar si un ticket de la cola Groot (SSH
 
 ---
 
+## Alcance de Groot Soporte — definición de "error sistémico"
+
+Groot Soporte atiende **exclusivamente errores sistémicos**: bugs, comportamientos inesperados o fallos de la herramienta que **no pueden resolverse mediante las herramientas de autogestión disponibles** (Groot admin, Alfred, xtools, autogestión del líder).
+
+**Son errores sistémicos (→ `VALIDO_GROOT`):**
+- Crashes, timeouts, errores 500, pantallas en blanco o comportamiento inesperado del sistema.
+- La herramienta falla al ejecutar una operación que debería funcionar (no muestra mensaje de validación claro, no guarda sin motivo aparente).
+- Un usuario o administrador con permisos válidos no puede realizar una acción que el sistema debería permitirle.
+
+**NO son errores sistémicos (→ `DESCARTAR` o `DERIVAR`):**
+- Solicitudes de asignar, cambiar o remover roles, atributos, permisos o configuraciones — esas operaciones las ejecuta el gestor de usuarios de la operación desde la tool de autogestión.
+- Errores de validación esperables: mensajes del tipo "atributo X es obligatorio", "debe tener un valor por defecto", "debe corregir lo siguiente" — la herramienta está funcionando correctamente al bloquear datos incompletos.
+- Funcionalidades que no aparecen porque faltan permisos, roles o atributos — eso es configuración operativa, no bug de la plataforma.
+
+> **Criterio de distinción**: si la herramienta muestra un mensaje claro indicando qué falta o qué condición no se cumple → es validación esperada, no bug. Si falla de forma inesperada sin mensaje de validación claro → es error sistémico.
+
+---
+
 ## Veredictos posibles
 
 | Veredicto | Indicador | Significado |
@@ -561,7 +579,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 
 Cuando `/groot-queue classify` auto-descarta tickets de reglas ⚡, **usa este comentario** en lugar del comentario por regla:
 
-> "Hola, desde Groot/Kraken Soporte atendemos exclusivamente errores sistémicos (bugs, crashes o comportamientos inesperados de la herramienta). La asignación o cambio de roles, permisos, atributos y configuraciones operativas no es responsabilidad de este equipo — debe gestionarla el responsable de usuarios de su operación."
+> "Hola, desde Groot/Kraken Soporte atendemos exclusivamente errores sistémicos: bugs, comportamientos inesperados o fallos de la herramienta que no pueden resolverse por autogestión. La asignación o cambio de roles, permisos, atributos y configuraciones operativas — incluyendo errores de validación por datos faltantes — no es responsabilidad de este equipo y debe gestionarla el responsable de usuarios de su operación."
 
 **Rejection reason** a usar en la transición: `[R] Funcionalidad existente` (id: `81170`), salvo que la tabla de `discard.md` indique otro para la regla específica.
 
