@@ -181,31 +181,29 @@ Separar en dos grupos y mostrar:
 ```
 🔀 Tickets derivables detectados (N):
 
-⚡ Alta confianza — se derivan automáticamente (M tickets):
+⚡ Alta confianza (M tickets):
 | Key          | Summary                  | Regla     | Equipo destino |
 |--------------|--------------------------|-----------|----------------|
 | SSHP-XXXXX   | ...                      | R-DER-09  | IAM Soporte    |
 
-❓ Requieren confirmación (K tickets):
+❓ Confianza estándar (K tickets):
 | Key          | Summary                  | Regla     | Equipo destino |
 |--------------|--------------------------|-----------|----------------|
 | SSHP-XXXXX   | ...                      | R-DER-04  | Helpdesk IA    |
 
-¿Derivar los K tickets de confirmación manual? (sí / no)
+¿Derivar todos estos N tickets? (sí / no)
 ```
 
-Si solo hay tickets ⚡, omitir la tabla de confirmación y la pregunta.
-Si solo hay tickets no-⚡, omitir la tabla ⚡.
+Si solo hay un grupo (todos ⚡ o todos no-⚡), omitir la tabla del grupo vacío. La pregunta de confirmación se muestra siempre.
 
 **9e. Ejecución:**
 
-- **Tickets ⚡**: ejecutar derivación **sin esperar confirmación** (análoga a `GROOT_QUEUE_AUTORUN=true` para ese subset). Invocar el flujo de `$SKILL_DIR/subcommands/derive.md`. Al registrar en el log de auditoría, usar `source = "auto-assign-autoconfianza"`.
-
-- **Tickets no-⚡**:
-  - **Si `GROOT_QUEUE_AUTORUN=true`:** proceder directamente. Al registrar, usar `source = "auto-run"`.
-  - **Si no (modo interactivo):**
-    - **Sí** (o "s", "yes", "y"): ejecutar derivación. Al registrar, usar `source = "auto-assign"`.
-    - **No**: mostrar: > "Derivación omitida. Podés ejecutarla luego con `/groot-queue derive <KEY1> <KEY2> ...`" y continuar al paso 10.
+- **Si `GROOT_QUEUE_AUTORUN=true`:** proceder directamente para todos los tickets (⚡ y no-⚡). Al registrar, usar `source = "auto-run"`.
+- **Si no (modo interactivo):**
+  - **Sí** (o "s", "yes", "y"):
+    - Tickets ⚡: ejecutar derivación. Al registrar, usar `source = "auto-assign-autoconfianza"`.
+    - Tickets no-⚡: ejecutar derivación. Al registrar, usar `source = "auto-assign"`.
+  - **No**: mostrar: > "Derivación omitida. Podés ejecutarla luego con `/groot-queue derive <KEY1> <KEY2> ...`" y continuar al paso 10.
 
 ## 10. Detección post-asignación de tickets descartables
 
@@ -235,13 +233,13 @@ Separar en dos grupos y mostrar:
 ```
 ⛔ Tickets descartables detectados (N):
 
-⚡ Alta confianza — se descartan automáticamente (M tickets):
+⚡ Alta confianza (M tickets):
 | Key          | Summary                  | Regla      |
 |--------------|--------------------------|------------|
 | SSHP-XXXXX   | ...                      | R-DESC-02  |
 | Comentario: "Hola, desde Groot/Kraken Soporte atendemos exclusivamente errores sistémicos..."
 
-❓ Requieren confirmación (K tickets):
+❓ Confianza estándar (K tickets):
 | Key          | Summary                  | Regla      | Acción          |
 |--------------|--------------------------|------------|-----------------|
 | SSHP-XXXXX   | ...                      | R-DESC-04  | Cerrar Won't Do |
@@ -251,23 +249,21 @@ Separar en dos grupos y mostrar:
 |--------------|--------------------------|--------------------------------|
 | SSHP-XXXXX   | ...                      | Verificación previa incompleta |
 
-¿Descartar los K tickets de confirmación manual? (sí / no)
+¿Descartar los N tickets? (sí / no)
 ```
 
-Si solo hay tickets ⚡, omitir la tabla de confirmación y la pregunta.
-Si solo hay tickets no-⚡, omitir la tabla ⚡.
+Si solo hay un grupo (todos ⚡ o todos no-⚡), omitir la tabla del grupo vacío. La pregunta de confirmación se muestra siempre. Los tickets de revisión manual se muestran siempre que existan, pero nunca se incluyen en la ejecución automática.
 
 Al explicar este paso en modo ayuda, usar explícitamente las frases `R-DESC`, `tickets descartables` y `¿Descartar los K tickets de confirmación manual?`.
 
 **10e. Ejecución:**
 
-- **Tickets ⚡**: ejecutar descarte **sin esperar confirmación**. Invocar el flujo de `$SKILL_DIR/subcommands/discard.md` con `source = "auto-assign-autoconfianza"`. Usar el **comentario universal** de la sección `## Comentario universal — auto-descarte de alta confianza` de `triage-rules.md` (con la variante específica de R-DESC-14 si corresponde) en lugar del comentario por regla.
-
-- **Tickets no-⚡**:
-  - **Si `GROOT_QUEUE_AUTORUN=true`:** proceder directamente como si la respuesta fuera "sí". La confirmación ya fue obtenida implícitamente — al llegar al paso 4 de `discard.md`, omitir la pregunta. Al registrar, usar `source = "auto-run"`.
-  - **Si no (modo interactivo):**
-    - **Sí** (o "s", "yes", "y"): ejecutar el flujo de `$SKILL_DIR/subcommands/discard.md`. La confirmación ya fue obtenida — omitir la pregunta interna de `discard.md`. Al registrar, usar `source = "auto-assign"`.
-    - **No**: mostrar: > "Descarte omitido. Podés ejecutarlo luego con `/groot-queue discard <KEY1> <KEY2> ...`" y continuar al paso 11.
+- **Si `GROOT_QUEUE_AUTORUN=true`:** proceder directamente para todos los tickets (⚡ y no-⚡). Al registrar, usar `source = "auto-run"`.
+- **Si no (modo interactivo):**
+  - **Sí** (o "s", "yes", "y"):
+    - Tickets ⚡: ejecutar el flujo de `$SKILL_DIR/subcommands/discard.md` con `source = "auto-assign-autoconfianza"`. Usar el **comentario universal** de `triage-rules.md` (con la variante de R-DESC-14 si corresponde) en lugar del comentario por regla.
+    - Tickets no-⚡: ejecutar el flujo de `$SKILL_DIR/subcommands/discard.md` con `source = "auto-assign"`. La confirmación ya fue obtenida — omitir la pregunta interna de `discard.md`.
+  - **No**: mostrar: > "Descarte omitido. Podés ejecutarlo luego con `/groot-queue discard <KEY1> <KEY2> ...`" y continuar al paso 11.
 
 ## 11. Postear notas internas solo para tickets asignados que siguen siendo Groot
 
