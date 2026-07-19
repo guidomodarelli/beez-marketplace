@@ -165,14 +165,14 @@ o para descarte:
 ```
 
 - **(s)í**: el ticket va al paso 5.
-- **(n)o**: el ticket se omite para esta corrida. Mostrar: > "Omitido. Podés ejecutarlo luego con `/groot-queue derive/discard SSHP-XXXXX`."
+- **(n)o**: el ticket se omite para esta corrida. **No se escribe nada en Jira** (sin comentario, sin transición, sin asignación — el ticket queda intacto en "Waiting for support" sin assignee). Mostrar: > "Omitido. Podés ejecutarlo luego con `/groot-queue derive/discard SSHP-XXXXX`."
 - **(q)**: el ticket actual y todos los ❓ restantes van al paso 5 (equivale a "sí" en lote para los que quedan).
 
 Mezclar derivaciones y descartes en el mismo loop ordenado por key (no separar en dos rondas).
 
 5. **Fase de derive/discard** — ejecutar **primero**, antes de cualquier asignación:
 
-   Solo se procesan los tickets aprobados en el paso 4 (⚡ aprobados en lote + ❓ aprobados individualmente o por `q`). Los tickets ❓ rechazados con `n` se omiten y se registran como `"omitido"` en la tabla final.
+   Solo se procesan los tickets aprobados en el paso 4 (⚡ aprobados en lote + ❓ aprobados individualmente o por `q`). Los tickets ❓ rechazados con `n` **no generan ninguna escritura en Jira** — no se postea comentario, no se transiciona estado, no se asigna responsable; quedan intactos en su estado original. Se registran como `"omitido"` únicamente en la tabla final local.
 
    **Derivar:** Invocar el flujo de `$SKILL_DIR/subcommands/derive.md` para los tickets `DERIVAR-AC` y `DERIVAR` aprobados (la confirmación ya fue obtenida en el paso 4 — omitir la confirmación interna de `derive.md`). Al registrar en el log de auditoría:
    - `DERIVAR-AC`: usar `source = "auto-assign-autoconfianza"`.
