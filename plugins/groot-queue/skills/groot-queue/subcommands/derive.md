@@ -144,7 +144,7 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 **4c. Transicionar estado / asignar responsable** con MCP Atlassian o ACLI en una llamada **separada**, después de que la nota retorne exitosamente:
 
 > ⚠️ **R-DER-13 (célula Nexus): flujo especial — asignación en lugar de transición de squad.**
-> No existe squad en Jira para Pidgey. En lugar de la transición "Derivar a otro equipo" (ID 121):
+> No existe squad en Jira para la célula Nexus. En lugar de la transición "Derivar a otro equipo" (ID 121):
 > 1. Leer la lista de emails de `$SKILL_DIR/knowledge/pidgey-team.md`.
 > 2. Generar un shuffle aleatorio de esa lista con entropía del sistema (no inventar el orden).
 > 3. Tomar el primer email del orden barajado.
@@ -206,7 +206,7 @@ Mapeo de destino → slug de label:
 | Helpdesk IA | `groot-derive-to-helpdesk-ia` |
 | LMS | `groot-derive-to-lms` |
 | SHE | `groot-derive-to-she` |
-| Célula Nexus | `groot-derive-to-pidgey` |
+| Célula Nexus | `groot-derive-to-pidgey` | <!-- label existente en Jira — no renombrar sin migración --> |
 
 > ⚠️ Las labels son kebab-case, todo en minúsculas, sin espacios. El slug de la regla es la regla matcheada en lowercase: `r-der-01`, `r-der-09`, etc.
 

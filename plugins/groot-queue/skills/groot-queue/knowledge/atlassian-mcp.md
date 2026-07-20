@@ -63,7 +63,8 @@ Usar el resultado de la llamada anterior:
   ```
   ❌ MCP Atlassian no autenticado.
 
-  Ejecutá /mcp dentro de Claude Code y completá el flujo OAuth para mercadolibre.atlassian.net.
+  Ejecutá /mcp y completá el flujo OAuth para mercadolibre.atlassian.net.
+  Ver knowledge/atlassian-mcp.md § Instalación para instrucciones por proveedor.
   ```
 - Si retorna recursos: elegir el que represente `mercadolibre.atlassian.net` y guardar su `cloudId`.
 - Si `mercadolibre.atlassian.net` **no aparece** en los recursos → abortar con:
