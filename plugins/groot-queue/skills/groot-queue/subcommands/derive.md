@@ -86,23 +86,15 @@ Solo continuar al algoritmo si los tres puntos anteriores pasaron. El `cloudId` 
 
 Usar el alias `DERIVATION_DESTINATION_SQUAD_FIELD` para referirse al campo Jira que define el squad destino de la transición "Derivar a otro equipo". El mapeo del alias al field id real está documentado en `$SKILL_DIR/knowledge/README.md`. Antes de llamar al MCP/Jira, expandir el alias al field id real; no enviar el alias literal en el payload.
 
-| Equipo destino | `DERIVATION_DESTINATION_SQUAD_FIELD` option id |
-|----------------|-----------------------------------------------|
-| IAM Soporte | `57102` |
-| SMO (Randall) | `41817` (Resolution SMO) |
-| Helpdesk IA | `125821` |
+> Los option IDs de squads destino y motivos de derivación están centralizados en `$SKILL_DIR/knowledge/jira-field-options.md`. Consultarlo para obtener los IDs — no copiar valores en este archivo.
 
 > `R-DER-05` no deriva a un squad de Jira: redirige al canal Slack `#help-authz-internal-admins`. Marcar esos tickets como `MANUAL_REDIRECT` y no ejecutar acciones automáticas.
-> `R-DER-12` deriva a LMS, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD` ni comentario validado contra un ticket real. Marcar esos tickets como `MANUAL_DERIVATION` y no ejecutar acciones automáticas hasta completar esos datos.
-> `R-DER-13` deriva a Equipo Chat Interno (Pidgey), pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
-> `R-DER-22` deriva a LMS, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
-> `R-DER-23` deriva a Equipo SHE/AppSheet, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
 
 ## Algoritmo
 
 ### 1. Cargar referencias
 
-Leer `$SKILL_DIR/knowledge/triage-rules.md` (reglas R-DER-01 a R-DER-24 + algoritmo de triage).
+Leer `$SKILL_DIR/knowledge/triage-rules.md` (reglas R-DER-01 a R-DER-24 + algoritmo de triage) y `$SKILL_DIR/knowledge/jira-field-options.md` (option IDs de squads destino y motivos de derivación).
 
 ### 2. Fase de análisis — obtener y evaluar todos los tickets
 
@@ -127,10 +119,6 @@ Aplicar **únicamente las siguientes reglas R-DER del algoritmo de triage** defi
 
 Tomar la **primera regla que matchee**. Reglas sin automatización (marcar y excluir de ejecución automática):
 - `R-DER-05` → `MANUAL_REDIRECT` con destino `#help-authz-internal-admins`.
-- `R-DER-12` → `MANUAL_DERIVATION` con destino `LMS`.
-- `R-DER-22` → `MANUAL_DERIVATION` con destino `LMS`.
-- `R-DER-13` → `MANUAL_DERIVATION` con destino `Equipo Chat Interno (Pidgey)`.
-- `R-DER-23` → `MANUAL_DERIVATION` con destino `Equipo SHE/AppSheet`.
 
 Si ninguna aplica, evaluar el veredicto completo y marcar como `NO_DERIVA` con el veredicto resultante (DESCARTAR / FIX_APLICADO / VALIDO_GROOT / REVISAR_MANUAL).
 
@@ -176,7 +164,22 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 
 - Si falla: registrar `✗ Nota interna` en el resultado de ese ticket, **no continuar con la transición de ese ticket**, pasar al siguiente.
 
-**4c. Transicionar estado** con MCP Atlassian en una llamada **separada**, después de que la nota retorne exitosamente:
+**4c. Transicionar estado / asignar responsable** con MCP Atlassian o ACLI en una llamada **separada**, después de que la nota retorne exitosamente:
+
+> ⚠️ **R-DER-13 (célula Pidgey): flujo especial — asignación en lugar de transición de squad.**
+> No existe squad en Jira para Pidgey. En lugar de la transición "Derivar a otro equipo" (ID 121):
+> 1. Leer la lista de emails de `$SKILL_DIR/knowledge/pidgey-team.md`.
+> 2. Generar un shuffle aleatorio de esa lista con entropía del sistema (no inventar el orden).
+> 3. Tomar el primer email del orden barajado.
+> 4. Asignar el ticket con ACLI:
+>    ```bash
+>    acli jira workitem assign --key SSHP-XXXXXX --assignee <email-pidgey> --yes
+>    ```
+> 5. Verificar que `Assignee` == `<email>` después de ejecutar. Si no coincide, reintentar una vez.
+> 6. Si falla: registrar `✗ Asignación` en el resultado. **No abortar** — la nota interna ya fue posteada. Continuar al siguiente ticket.
+> 7. Continuar con el paso 4d (labels) si la asignación fue exitosa.
+
+Para **todas las demás reglas R-DER** (no R-DER-13):
 
 - `cloudId`: valor validado en la pre-condición para `mercadolibre.atlassian.net`
 - `issueIdOrKey`: `"SSHP-XXXXXX"`
@@ -185,10 +188,10 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
   ```json
   {
     "<DERIVATION_DESTINATION_SQUAD_FIELD>": {"id": "<id-squad-destino>"},
-    "customfield_14924": {"id": "20884"}
+    "customfield_14924": {"id": "<id-motivo>"}
   }
   ```
-  _(20884 = "Solución parcial, otro Squad requerido")_
+  _(El option id del motivo "Solución parcial, otro Squad requerido" está en `$SKILL_DIR/knowledge/jira-field-options.md`)_
   Antes de ejecutar la llamada real, reemplazar `<DERIVATION_DESTINATION_SQUAD_FIELD>` por el field id real documentado en `$SKILL_DIR/knowledge/README.md`.
 - `update`:
   ```json
@@ -224,6 +227,9 @@ Mapeo de destino → slug de label:
 | IAM Soporte | `groot-derive-to-iam-soporte` |
 | SMO (Randall) | `groot-derive-to-smo` |
 | Helpdesk IA | `groot-derive-to-helpdesk-ia` |
+| LMS | `groot-derive-to-lms` |
+| SHE | `groot-derive-to-she` |
+| Célula Pidgey | `groot-derive-to-pidgey` |
 
 > ⚠️ Las labels son kebab-case, todo en minúsculas, sin espacios. El slug de la regla es la regla matcheada en lowercase: `r-der-01`, `r-der-09`, etc.
 

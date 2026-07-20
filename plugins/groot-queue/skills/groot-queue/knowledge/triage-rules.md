@@ -332,7 +332,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Verificación previa**: Revisar roles/facility/atributos del usuario en Groot. Si todo está correcto → derivar. Si falta un rol Groot → `VALIDO_GROOT`.
 - **Acción**: Derivar a **Helpdesk IA** (ruteo al owner correcto).
 - **Comentario sugerido**:
-  > "Hola, el error corresponde a un componente externo a nuestro soporte Groot/Kraken. Esto debe ser revisado con el equipo de Platsec/Randall owner del componente. El usuario está correctamente configurado en Kraken."
+  > "Hola, este ticket no corresponde a Groot/Kraken Soporte. El usuario está correctamente configurado en Kraken y el error corresponde a un componente externo (Platsec/Randall) que está fuera de nuestro alcance. Derivamos a Helpdesk IA para que enruten el caso con el equipo owner del componente."
 - **Canal directo Slack**: `#help-authz-internal-admins`.
 - **Fuente**: Francisco Gonzalez, ticket SSHP-1412840 (2026-04-21).
 
@@ -422,7 +422,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola chicos, derivamos este caso para su analisis, no podemos resolver este ticket desde Groot"
 - **Fuente**: SSHP-1457833, 2026-06-02. Verificado contra el ticket real (summary PT "Nao consegue criar novo colaborador no Groot; erro tax_id already used", description EN con error literal "Tax_id has already been used", alta de un new hire): status `Resolved` y assignee `sup_iamcommerce_01` (IAM Soporte), lo que confirma la derivación.
 
-### R-DER-12 — Errores en la contabilidad de horas en Be a Rep → LMS (clasificación activa; automatización pendiente)
+### R-DER-12 — Errores en la contabilidad de horas en Be a Rep → LMS
 - **Señales**:
   - ES: "errores en la contabilidad de horas en Be a Rep", "horas mal contabilizadas en Be a Rep", "diferencia de horas en Be a Rep", "las horas de Be a Rep no coinciden en LMS".
   - PT: "erros na contabilização de horas no Be a Rep", "horas contabilizadas incorretamente no Be a Rep", "divergência de horas no Be a Rep", "horas do Be a Rep não batem no LMS".
@@ -432,12 +432,12 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Razón**: La contabilización y conciliación de horas en LMS queda fuera del dominio de Groot/Kraken. Groot puede exponer o consumir datos del flujo Be a Rep, pero los desvíos de horas deben ser revisados por el equipo dueño de LMS.
 - **Verificación previa**: Si el síntoma es devolución de roles en Be a Rep / Labour Share, verificar primero que el problema no sea una inconsistencia de snapshot resuelta por el equipo dev. Si el problema es una falla técnica de agendado, snapshot, permisos, CAD o rol dentro de Groot, no aplica esta regla y debe seguir el runbook correspondiente.
 - **Acción**: Derivar a **LMS**.
-- **Automatización**: No ejecutar derivación automática hasta completar el option id de LMS para `DERIVATION_DESTINATION_SQUAD_FIELD` y validar el copy de nota interna con un ticket real.
+- **Automatización**: Habilitada. Option id en `$SKILL_DIR/knowledge/jira-field-options.md`. Copy de nota interna pendiente de validación en ticket real — ajustar si hay feedback.
 - **Comentario sugerido provisional**:
   > "Hola, derivamos este caso al equipo de LMS porque el problema reportado corresponde a la contabilidad de horas de Be a Rep en LMS, fuera del alcance de soporte Groot/Kraken."
 - **Fuente**: Pedido directo del usuario, 2026-06-03. Regla agregada sin ticket real por instrucción explícita; pendiente de validar wording y copy contra un caso SSHP concreto.
 
-### R-DER-13 — Acceso denegado a xtools/Pidgey (chat interno / notificaciones outbound) → Equipo Chat Interno
+### R-DER-13 — Acceso denegado a xtools/Pidgey (chat interno / notificaciones outbound) → Célula Pidgey (asignación interna)
 - **Señales**:
   - La URL afectada pertenece a `xtools.adminml.com/tools/pidgey/*`.
   - ES: "no autorizado en xtools", "no puede acceder a notificaciones de chat", "error en pidgey", "sin acceso a sección de notificaciones en xtools".
@@ -445,11 +445,11 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - EN: "not authorized in xtools", "cannot access chat notifications", "pidgey error", "no access to notifications section in xtools".
   - El problema afecta específicamente a funcionalidades de chat interno / burbuja outbound en xtools, no a configuración de usuario en Groot.
   - El ticket puede llegar mal asignado a Groot o a WoWChat.
-- **Razón**: xtools/Pidgey (chat interno y notificaciones outbound) no pertenece al dominio de Groot ni de WoWChat. El equipo dueño es el de Chat Interno (Pidgey), que gestiona los permisos de acceso a esa sección.
+- **Razón**: xtools/Pidgey es responsabilidad de la **célula Pidgey**, que es una célula interna de Groot. No existe squad de Jira para derivación automática: el ticket debe asignarse directamente a un miembro de la célula.
 - **Verificación previa**: Confirmar que la URL reportada es `xtools.adminml.com/tools/pidgey/*`. Si el error es en otra sección de xtools que sí involucre configuración de usuario Groot (ej. perfil, facility, CAD) → no aplica, reclasificar a la categoría correspondiente.
-- **Acción**: Derivar a **Equipo Chat Interno (Pidgey)**.
-- **Comentario sugerido**:
-  > "Hola, este inconveniente corresponde al equipo de Chat Interno (Pidgey), que es el responsable de los permisos de acceso a las notificaciones en xtools. Derivamos para que continúen con la atención del caso."
+- **Acción**: Asignación automática vía shuffle a un miembro de la célula Pidgey. Ver `$SKILL_DIR/knowledge/pidgey-team.md` para la lista de emails. No hay squad en Jira — se usa `acli jira workitem assign` en lugar de la transición "Derivar a otro equipo".
+- **Comentario sugerido** (nota interna al asignar):
+  > "Derivado a célula Pidgey — acceso denegado a xtools/Pidgey (chat interno / notificaciones outbound). La configuración del usuario en Groot no está involucrada."
 - **Fuente**: ticket SSHP-1413000 (2026-04-18).
 
 ### R-DER-14 — Alta/regularización de nodo o valor nuevo en Kraken → Helpdesk IA (platsec/randall o integradores)
@@ -463,7 +463,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Verificación previa**: Confirmar que el nodo/valor efectivamente no existe en Kraken. Si el nodo existe pero hay un error al intentar asociarlo → reclasificar como `VALIDO_GROOT` (error sistémico).
 - **Acción**: Derivar a **Helpdesk IA** (ruteo a platsec/randall o integradores).
 - **Comentario sugerido**:
-  > "Hola, desde soporte Groot/Kraken no tenemos opción para dar de alta valores nuevos. Estos deben llegar por los integradores o pedir ayuda al equipo de platsec/randall."
+  > "Hola, este ticket no corresponde a Groot/Kraken Soporte. El alta de nodos o valores nuevos en Kraken está fuera de nuestras herramientas; debe gestionarse con los integradores o el equipo de platsec/randall. Derivamos a Helpdesk IA para que enruten el caso con el equipo correspondiente."
 - **Fuente**: Francisco Gonzalez, ticket SSHP-1469338 (2026-07-07).
 
 ### R-DER-15 — Reactivación de usuario desactivado/expirado que Groot no puede resolver → IAM Soporte
@@ -503,7 +503,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Verificación previa**: Confirmar que el usuario **efectivamente tiene** los roles/bolhas/warehouse/atributos en Groot. Si la configuración en Groot es incorrecta o faltante → reclasificar como `VALIDO_GROOT` (ajustar permisos en Groot). Si todo en Groot está correcto → derivar sin demora, no intentar workarounds de cache ni troubleshooting de WMS: eso le compete al equipo WMS vía Helpdesk IA.
 - **Acción**: Derivar a **Helpdesk IA** (ruteo a WMS/Logistics).
 - **Comentario sugerido**:
-  > "Hola, verificamos la configuración del usuario en Groot y los permisos están correctos. El problema parece ser funcional de WMS/Logistics. Derivamos a Helpdesk IA para que enrute el caso con el equipo correspondiente."
+  > "Hola, este ticket no corresponde a Groot Soporte. Verificamos la configuración del usuario en Groot y los permisos están correctos (roles, bolhas y warehouse asignados). El problema es funcional de WMS/Logistics, fuera del alcance de Groot. Derivamos a Helpdesk IA para que enruten el caso con el equipo de WMS."
 - **Fuente**: Análisis histórico (9 tickets: SSHP-1508621, SSHP-1500233, SSHP-1495880, SSHP-1492695, SSHP-1486490, SSHP-1485607, SSHP-1484713, SSHP-1465825, SSHP-1486341). Reforzado con SSHP-1504561 (usuario regional limitado al CAD local en WMS solo en navegador normal; incógnito funciona correctamente).
 
 ### R-DER-18 — Solicitud operativa de WMS (gestión de paquetes/envíos, no de usuarios) → Helpdesk IA
@@ -516,7 +516,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Verificación previa**: Confirmar que el pedido es puramente operativo y no un error derivado de permisos faltantes del usuario.
 - **Acción**: Derivar a **Helpdesk IA** (ruteo a WMS/Operaciones).
 - **Comentario sugerido**:
-  > "Hola, desde Groot Soporte gestionamos usuarios y permisos. Tu solicitud es operativa (gestión de paquetes/envíos en WMS) y corresponde al equipo de WMS/Operaciones. Derivamos a Helpdesk IA para que enrute el caso con el equipo correspondiente."
+  > "Hola, este ticket no corresponde a Groot Soporte. Groot gestiona usuarios y permisos; las operaciones sobre paquetes/envíos en WMS están fuera de nuestro alcance. Derivamos a Helpdesk IA para que enruten el caso con el equipo de WMS/Operaciones."
 - **Fuente**: Análisis histórico (2 tickets: SSHP-1489984, SSHP-1489350).
 
 ### R-DER-20 — Pérdida de acceso o desincronización IAM↔WMS/LMS (usuario activo pierde permisos sin causa visible en Groot) → IAM Soporte
@@ -541,6 +541,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Razón**: Si el usuario está correctamente configurado en Groot pero LMS muestra datos incorrectos o no carga, el problema es del sistema LMS. Groot Soporte no tiene herramientas para corregir inconsistencias internas de LMS.
 - **Verificación previa**: Confirmar que no es un problema de R-DER-12 (horas Be a Rep) ni de configuración faltante en Groot. Si al usuario le faltan roles en Groot → `VALIDO_GROOT`.
 - **Acción**: Derivar a **LMS** (equipo Labour Management).
+- **Automatización**: Habilitada. Option id en `$SKILL_DIR/knowledge/jira-field-options.md`.
 - **Comentario sugerido**:
   > "Hola, verificamos tu configuración en Groot y está correcta. El problema parece ser funcional de LMS. Derivamos al equipo de LMS para que puedan investigar."
 - **Fuente**: Análisis histórico (2 tickets: SSHP-1475187, SSHP-1470659).
@@ -553,7 +554,8 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - El reporte menciona una URL de `appsheet.com/start/...` con errores como "Something has gone wrong", "Internal Server Error" o la app no carga.
 - **Razón**: AppSheet SHE y GEMBA son aplicaciones externas mantenidas por otro equipo. Groot Soporte no tiene acceso ni herramientas para diagnosticar errores internos de AppSheet. El equipo de SHE gestiona estas apps.
 - **Verificación previa**: Confirmar que la URL reportada es de `appsheet.com` y el error NO está relacionado con permisos de usuario en Groot (si el usuario no puede loguearse → verificar primero en Groot).
-- **Acción**: Derivar a **Equipo SHE/AppSheet** (Salma Dermisache).
+- **Acción**: Derivar a **Equipo SHE/AppSheet**.
+- **Automatización**: Habilitada. Option id en `$SKILL_DIR/knowledge/jira-field-options.md`.
 - **Comentario sugerido**:
   > "Hola, el error reportado ocurre en AppSheet (plataforma externa). Groot Soporte no administra esa herramienta. Derivamos al equipo responsable de SHE/GEMBA para que puedan investigar."
 - **Fuente**: Análisis histórico (2 tickets: SSHP-1434223, SSHP-1435140).
@@ -602,7 +604,7 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 6. **R-DER-11** → si al crear/dar de alta un colaborador el error es "Tax_id has already been used" / ES "tax id ya utilizado" / PT "tax_id já utilizado" (documento **válido** pero ya en uso; distinto de R-DER-09 que es tax id *inválido*).
 7. **R-DER-10** → si el usuario final ve un mensaje tipo "no perteneces a envíos" / "no pertence a envios" al intentar crear cuenta o desbloquearla (y por eso no puede conocer su LDAP).
 8. **R-DER-08** → si el pedido es **cambio de nombre** del usuario (first/last name), sin error técnico de Groot.
-9. **R-DER-13** → si la URL afectada es `xtools.adminml.com/tools/pidgey/*` (chat interno / notificaciones outbound) y el problema no involucra configuración de usuario en Groot.
+9. **R-DER-13** _[asignación automática vía shuffle — célula interna Pidgey, sin squad Jira]_ → si la URL afectada es `xtools.adminml.com/tools/pidgey/*` (chat interno / notificaciones outbound) y el problema no involucra configuración de usuario en Groot.
 10. **R-DER-14** → si la solicitud pide dar de **alta / crear / registrar** un nodo o valor nuevo que no existe en Kraken (ej. "alta de nodo NEX", "registrar nodo", "crear valor nuevo").
 11. **R-DER-15** → si un usuario está desactivado/expirado en Groot y no puede ser reactivado por autogestión (error al reactivar, cuenta expirada sin opción de recovery).
 12. **R-DER-16** → si la creación de usuario(s) falla con error de SuccessFactors / "datos inválidos" / "identificador tributario" (pero **no** es documento inválido — para eso R-DER-09 — ni documento duplicado — para eso R-DER-11).
