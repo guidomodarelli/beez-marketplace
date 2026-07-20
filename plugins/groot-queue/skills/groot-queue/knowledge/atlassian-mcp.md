@@ -8,14 +8,20 @@ Referencia centralizada para todos los subcommands que usan el MCP de Atlassian.
 
 Después de instalar con cualquiera de las opciones siguientes, completar el flujo OAuth autorizando acceso a `mercadolibre.atlassian.net`.
 
-**Claude Code — CLI (recomendado):**
-```bash
-claude mcp add --transport http "Atlassian" https://mcp.atlassian.com/v1/mcp
-```
-Luego ejecutar `/mcp` dentro de Claude Code para completar el OAuth.
+**Claude Code — UI (recomendado):**
+Settings → Integrations → Browse extensions → Plugins → buscar Atlassian → Install.
+Claude solicitará autenticación con la cuenta de Atlassian Cloud en el browser.
 
-**Claude Code — UI:**
-Settings → Integrations → Atlassian → autorizar `mercadolibre.atlassian.net`.
+**Claude Code — plugin (CLI):**
+Desde una sesión activa de Claude Code:
+```
+/plugin install atlassian@claude-plugins-official
+```
+O desde la línea de comandos:
+```bash
+claude plugin install atlassian@claude-plugins-official
+```
+Luego autenticar con `/mcp` si Claude Code lo solicita.
 
 **Codex** — agregar en `~/.codex/config.toml`:
 ```toml
