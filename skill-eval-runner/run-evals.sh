@@ -8,7 +8,7 @@
 #   run-evals                         Run evals for skill in current directory
 #   run-evals --all                   Run evals for all skills with eval-config.json
 #   run-evals --jobs N [...]          Run N cases in parallel (default: 4, env: EVAL_JOBS)
-#   run-evals --provider codex [...]  Run evals with Codex instead of auto-detecting
+#   run-evals --provider copilot [...]  Run evals with GitHub Copilot CLI instead of auto-detecting
 #
 # Each skill only needs evals/eval-config.json — this script handles the rest.
 
@@ -27,6 +27,7 @@ NC='\033[0m'
 # Total concurrent API calls = EVAL_JOBS * 2. Lower EVAL_JOBS if rate-limited.
 EVAL_JOBS="${EVAL_JOBS:-4}"
 GROOT_MARKETPLACE_EVAL_MODEL="${GROOT_MARKETPLACE_EVAL_MODEL:-}"
+GROOT_MARKETPLACE_EVAL_REASONING_EFFORT="${GROOT_MARKETPLACE_EVAL_REASONING_EFFORT:-}"
 # Machine-readable JSONL is the default so CI, tests, and real eval runs are
 # reproducible and easy to parse. Use --pretty for the human-readable report.
 EVAL_JSONL="${EVAL_JSONL:-1}"
@@ -53,11 +54,15 @@ usage() {
     echo "  --jobs N, -j N               Run N cases in parallel (default: 4)"
     echo "                               Each case runs 2 agent calls concurrently,"
     echo "                               so total API calls = N*2. Lower if rate-limited."
-    echo "  --model M, -m M              Agent model to use (defaults: haiku for Claude,"
+    echo "  --model M, -m M              Agent model to use (defaults: claude-sonnet-4.6 for Copilot/Claude,"
     echo "                               gpt-5.4-mini for Codex)"
     echo "                               Accepts aliases (haiku, sonnet, opus) or full model IDs."
     echo "                               Also configurable via GROOT_MARKETPLACE_EVAL_MODEL env var."
-    echo "  --provider P                 Agent provider: auto, codex, or claude (default: auto)."
+    echo "  --reasoning-effort E, -e E   Reasoning effort: low, medium, high, max (default: high"
+    echo "                               for all providers)."
+    echo "                               Also configurable via GROOT_MARKETPLACE_EVAL_REASONING_EFFORT."
+    echo "  --provider P                 Agent provider: auto, copilot, codex, or claude (default: auto,"
+    echo "                               prefers copilot > codex > claude)."
     echo "                               Also configurable via GROOT_MARKETPLACE_EVAL_PROVIDER env var."
     echo "  --jsonl, -J                  Emit machine-readable JSONL on stdout. This is"
     echo "                               the default and can also be set with EVAL_JSONL=1."
@@ -86,30 +91,24 @@ check_dependencies() {
 
 resolve_eval_provider() {
     case "$GROOT_MARKETPLACE_EVAL_PROVIDER" in
-        claude|codex)
+        claude|codex|copilot)
             RESOLVED_EVAL_PROVIDER="$GROOT_MARKETPLACE_EVAL_PROVIDER"
             ;;
         auto)
-            if [ -n "${CODEX_THREAD_ID:-}" ] || [ -n "${CODEX_CI:-}" ] || [ -n "${CODEX_HOME:-}" ]; then
-                if command -v codex &> /dev/null; then
-                    RESOLVED_EVAL_PROVIDER="codex"
-                fi
-            fi
-            if [ -z "$RESOLVED_EVAL_PROVIDER" ] && { [ -n "${CLAUDECODE:-}" ] || [ -n "${CLAUDE_CODE_SSE_PORT:-}" ]; }; then
-                if command -v claude &> /dev/null; then
-                    RESOLVED_EVAL_PROVIDER="claude"
-                fi
-            fi
-            if [ -z "$RESOLVED_EVAL_PROVIDER" ] && command -v claude &> /dev/null; then
-                RESOLVED_EVAL_PROVIDER="claude"
+            # Always prefer copilot > codex > claude, regardless of environment signals.
+            if [ -z "$RESOLVED_EVAL_PROVIDER" ] && command -v copilot &> /dev/null; then
+                RESOLVED_EVAL_PROVIDER="copilot"
             fi
             if [ -z "$RESOLVED_EVAL_PROVIDER" ] && command -v codex &> /dev/null; then
                 RESOLVED_EVAL_PROVIDER="codex"
             fi
-            [ -n "$RESOLVED_EVAL_PROVIDER" ] || RESOLVED_EVAL_PROVIDER="claude"
+            if [ -z "$RESOLVED_EVAL_PROVIDER" ] && command -v claude &> /dev/null; then
+                RESOLVED_EVAL_PROVIDER="claude"
+            fi
+            [ -n "$RESOLVED_EVAL_PROVIDER" ] || RESOLVED_EVAL_PROVIDER="copilot"
             ;;
         *)
-            echo -e "${RED}ERROR: Invalid provider '$GROOT_MARKETPLACE_EVAL_PROVIDER'. Use auto, codex, or claude.${NC}" >&2
+            echo -e "${RED}ERROR: Invalid provider '$GROOT_MARKETPLACE_EVAL_PROVIDER'. Use auto, copilot, codex, or claude.${NC}" >&2
             exit 1
             ;;
     esac
@@ -117,8 +116,12 @@ resolve_eval_provider() {
     if [ -z "$GROOT_MARKETPLACE_EVAL_MODEL" ]; then
         case "$RESOLVED_EVAL_PROVIDER" in
             codex) GROOT_MARKETPLACE_EVAL_MODEL="gpt-5.4-mini" ;;
-            *) GROOT_MARKETPLACE_EVAL_MODEL="haiku" ;;
+            *)     GROOT_MARKETPLACE_EVAL_MODEL="claude-sonnet-4.6" ;;
         esac
+    fi
+
+    if [ -z "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT" ]; then
+        GROOT_MARKETPLACE_EVAL_REASONING_EFFORT="high"
     fi
 }
 
@@ -136,12 +139,31 @@ run_agent_prompt() {
                 --allowedTools "Bash(read_only:true),Read,Glob,Grep") \
                 > "$output_file" 2>&1
             ;;
+        copilot)
+            local effort_flag=()
+            if [ -n "${GROOT_MARKETPLACE_EVAL_REASONING_EFFORT:-}" ]; then
+                effort_flag=(--effort "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT")
+            fi
+
+            (cd "$cwd" && copilot -p "$input" \
+                --model "$GROOT_MARKETPLACE_EVAL_MODEL" \
+                "${effort_flag[@]}" \
+                --available-tools Read,Glob,Grep,Bash \
+                --allow-all) \
+                > "$output_file" 2>&1
+            ;;
         codex)
             local event_stream_file
             event_stream_file=$(mktemp)
 
+            local reasoning_effort_flag=()
+            if [ -n "${GROOT_MARKETPLACE_EVAL_REASONING_EFFORT:-}" ]; then
+                reasoning_effort_flag=(-c "model_reasoning_effort=\"$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT\"")
+            fi
+
             CODEX_HOME="$codex_home" codex exec \
                 --model "$GROOT_MARKETPLACE_EVAL_MODEL" \
+                "${reasoning_effort_flag[@]}" \
                 --cd "$cwd" \
                 --skip-git-repo-check \
                 --ephemeral \
@@ -628,7 +650,7 @@ run_skill_evals() {
     rm -rf "$workspace"/case-output-* "$workspace"/case-results-*
     mkdir -p "$output_dir" "$result_dir"
 
-    # Shared temp dirs: with-skill has the skill symlinked for both supported
+    # Shared temp dirs: with-skill has the skill symlinked for all supported
     # providers; baseline is a plain empty dir with no project-local skills.
     local skill_cwd baseline_cwd skill_codex_home baseline_codex_home
     skill_cwd=$(mktemp -d)
@@ -637,6 +659,8 @@ run_skill_evals() {
     ln -s "$(cd "$skill_path" && pwd)" "$skill_cwd/.claude/skills/$skill_name"
     mkdir -p "$skill_cwd/.codex/skills"
     ln -s "$(cd "$skill_path" && pwd)" "$skill_cwd/.codex/skills/$skill_name"
+    mkdir -p "$skill_cwd/.agents/skills"
+    ln -s "$(cd "$skill_path" && pwd)" "$skill_cwd/.agents/skills/$skill_name"
     skill_codex_home=""
     baseline_codex_home=""
     if [ "$RESOLVED_EVAL_PROVIDER" = "codex" ]; then
@@ -663,6 +687,9 @@ run_skill_evals() {
         echo -e "  Cases:     $total"
         echo -e "  Jobs:      $EVAL_JOBS (parallel)"
         echo -e "  Model:     $GROOT_MARKETPLACE_EVAL_MODEL"
+        if [ -n "${GROOT_MARKETPLACE_EVAL_REASONING_EFFORT:-}" ]; then
+            echo -e "  Effort:    $GROOT_MARKETPLACE_EVAL_REASONING_EFFORT"
+        fi
         echo -e "  Provider:  $RESOLVED_EVAL_PROVIDER"
         echo -e "  Results:   $workspace"
         echo ""
@@ -877,6 +904,10 @@ while [ $# -gt 0 ]; do
             ;;
         --model|-m)
             GROOT_MARKETPLACE_EVAL_MODEL="$2"
+            shift 2
+            ;;
+        --reasoning-effort|-e)
+            GROOT_MARKETPLACE_EVAL_REASONING_EFFORT="$2"
             shift 2
             ;;
         --provider)

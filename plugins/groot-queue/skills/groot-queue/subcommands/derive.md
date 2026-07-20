@@ -92,15 +92,9 @@ Usar el alias `DERIVATION_DESTINATION_SQUAD_FIELD` para referirse al campo Jira 
 | SMO (Randall) | `41817` (Resolution SMO) |
 | Helpdesk IA | `125821` |
 
-> `R-DER-03` deriva a IAM Commerce, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD` ni comentario validado en esta tabla. Marcar esos tickets como `MANUAL_DERIVATION` y no ejecutar acciones automáticas hasta completar esos datos.
 > `R-DER-05` no deriva a un squad de Jira: redirige al canal Slack `#help-authz-internal-admins`. Marcar esos tickets como `MANUAL_REDIRECT` y no ejecutar acciones automáticas.
 > `R-DER-12` deriva a LMS, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD` ni comentario validado contra un ticket real. Marcar esos tickets como `MANUAL_DERIVATION` y no ejecutar acciones automáticas hasta completar esos datos.
 > `R-DER-13` deriva a Equipo Chat Interno (Pidgey), pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
-> `R-DER-15` deriva a IAM Commerce, pero todavía no tiene option id. Marcar como `MANUAL_DERIVATION`.
-> `R-DER-16` deriva a IAM Commerce, pero todavía no tiene option id. Marcar como `MANUAL_DERIVATION`.
-> `R-DER-17` deriva a Equipo WMS, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
-> `R-DER-18` deriva a Equipo WMS/Operaciones, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
-> `R-DER-20` deriva a IAM Commerce, pero todavía no tiene option id. Marcar como `MANUAL_DERIVATION`.
 > `R-DER-22` deriva a LMS, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
 > `R-DER-23` deriva a Equipo SHE/AppSheet, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
 
@@ -132,16 +126,10 @@ Aplicar **únicamente las siguientes reglas R-DER del algoritmo de triage** defi
 - R-DER-12, R-DER-22, R-DER-06, R-DER-07, R-DER-09, R-DER-11, R-DER-10, R-DER-08, R-DER-13, R-DER-14, R-DER-15, R-DER-16, R-DER-20, R-DER-17, R-DER-18, R-DER-23, R-DER-04, R-DER-05, R-DER-01, R-DER-02, R-DER-03, R-DER-24
 
 Tomar la **primera regla que matchee**. Reglas sin automatización (marcar y excluir de ejecución automática):
-- `R-DER-03` → `MANUAL_DERIVATION` con destino `IAM Commerce`.
 - `R-DER-05` → `MANUAL_REDIRECT` con destino `#help-authz-internal-admins`.
 - `R-DER-12` → `MANUAL_DERIVATION` con destino `LMS`.
 - `R-DER-22` → `MANUAL_DERIVATION` con destino `LMS`.
 - `R-DER-13` → `MANUAL_DERIVATION` con destino `Equipo Chat Interno (Pidgey)`.
-- `R-DER-15` → `MANUAL_DERIVATION` con destino `IAM Commerce`.
-- `R-DER-16` → `MANUAL_DERIVATION` con destino `IAM Commerce`.
-- `R-DER-20` → `MANUAL_DERIVATION` con destino `IAM Commerce`.
-- `R-DER-17` → `MANUAL_DERIVATION` con destino `Equipo WMS`.
-- `R-DER-18` → `MANUAL_DERIVATION` con destino `Equipo WMS/Operaciones`.
 - `R-DER-23` → `MANUAL_DERIVATION` con destino `Equipo SHE/AppSheet`.
 
 Si ninguna aplica, evaluar el veredicto completo y marcar como `NO_DERIVA` con el veredicto resultante (DESCARTAR / FIX_APLICADO / VALIDO_GROOT / REVISAR_MANUAL).
@@ -161,9 +149,6 @@ Antes de ejecutar **cualquier** acción en Jira, mostrar el plan para todos los 
     Nota interna: "Hola, el error de tax id inválido..."
 
   SSHP-ZZZZZZ  ⚠️  NO_DERIVA — VALIDO_GROOT (sin acción)
-
-  SSHP-WWWWWW  ⚠️  MANUAL_DERIVATION — IAM Commerce (R-DER-03 sin automatización)
-
   SSHP-UUUUUU  ⚠️  MANUAL_DERIVATION — LMS (R-DER-12 sin automatización)
 
   SSHP-VVVVVV  ⚠️  MANUAL_REDIRECT — #help-authz-internal-admins (R-DER-05 sin transición Jira)
@@ -311,7 +296,6 @@ Resultados de derivación (N tickets procesados):
 | SSHP-XXXXXX   | R-DER-10  | IAM Soporte  | ✓            | ✓          | ✓      | ✓   |
 | SSHP-YYYYYY   | R-DER-09  | IAM Soporte  | ✓            | ✓          | ✓      | ✓   |
 | SSHP-ZZZZZZ   | —         | NO_DERIVA    | —            | —          | —      | —   |
-| SSHP-WWWWWW   | R-DER-03  | IAM Commerce | Manual       | Manual     | —      | —   |
 | SSHP-VVVVVV   | R-DER-05  | Slack channel | Manual       | Manual     | —      | —   |
 | SSHP-WWWWWW   | R-DER-07  | IAM Soporte  | ✓            | ✗ Bad Req  | —      | —   |
 

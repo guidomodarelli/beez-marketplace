@@ -62,8 +62,8 @@ CLAUDE_ARGS_LOG="$args_log" \
 GROOT_MARKETPLACE_EVAL_PROVIDER=claude \
 "$RUNNER" --jobs 1 "$skill_dir" > "$tmp_dir/default-model-output.jsonl"
 
-if ! grep -q -- '--model haiku' "$args_log"; then
-  echo "run-evals should use the Claude default model when GROOT_MARKETPLACE_EVAL_MODEL is unset." >&2
+if ! grep -q -- '--model claude-sonnet-4.6' "$args_log"; then
+  echo "run-evals should use claude-sonnet-4.6 as the default model when GROOT_MARKETPLACE_EVAL_MODEL is unset." >&2
   exit 1
 fi
 
