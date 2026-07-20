@@ -25,16 +25,7 @@ Construir un mapa `email → name` para resolver cada assignee a su nombre human
 
 ## Pre-condición: MCP Atlassian (para SLA "Time to resolution")
 
-El paso 3 necesita consultar `customfield_12400` de cada ticket vía MCP Atlassian. Verificar disponibilidad:
-
-1. Intentar llamar `getAccessibleAtlassianResources` (o equivalente).
-   - Si la herramienta **no existe** → marcar `ATLASSIAN_MCP_AVAILABLE = false` y mostrar warning:
-     ```
-     ⚠️ MCP Atlassian no disponible — SLA "Time to resolution" no se puede verificar.
-     Solo se evaluará la condición de "Esperando por Soporte" para determinar alertas.
-     Para habilitar: claude mcp add --transport http "Atlassian" https://mcp.atlassian.com/v1/mcp
-     ```
-   - Si existe → autenticarse y resolver `cloudId` de `mercadolibre.atlassian.net`. Marcar `ATLASSIAN_MCP_AVAILABLE = true`.
+El paso 3 necesita consultar `customfield_12400` de cada ticket vía MCP Atlassian. Aplicar **modo DEGRADAR** (pasos A + B) de `$SKILL_DIR/knowledge/atlassian-mcp.md`. Omitir el paso C (este subcomando no postea notas internas). Usar `ATLASSIAN_MCP_AVAILABLE` como nombre de la variable de estado. El warning de degradación debe aclarar: "SLA `Time to resolution` no se puede verificar — solo se evaluará la condición de `Esperando por Soporte` para determinar alertas."
 
 ---
 

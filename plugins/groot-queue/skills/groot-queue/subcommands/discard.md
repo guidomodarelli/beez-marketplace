@@ -28,40 +28,9 @@ Ejemplos válidos:
 
 ## Pre-condición: MCP Atlassian
 
-**Verificar después de validar argumentos.** Si no hay ninguna key `SSHP-XXXXXX` válida, abortar con el mensaje de uso de la sección anterior sin intentar usar MCP. Si hay keys válidas, verificar MCP antes de proceder con cualquier lectura o escritura en Jira. Si alguno de los siguientes pasos falla, abortar y no continuar.
+**Verificar después de validar argumentos.** Si no hay ninguna key `SSHP-XXXXXX` válida, abortar con el mensaje de uso de la sección anterior sin intentar usar MCP.
 
-**A. Disponibilidad de herramientas:**
-Intentar llamar `mcp__Atlassian__getAccessibleAtlassianResources` (o herramienta equivalente si el proveedor usa un prefijo distinto).
-
-Si la herramienta **no existe** en el contexto → abortar con:
-```
-❌ MCP Atlassian no disponible.
-
-/groot-queue:discard requiere el MCP de Atlassian para ejecutar el descarte.
-Instalalo con:
-  claude mcp add --transport http "Atlassian" https://mcp.atlassian.com/v1/mcp
-Luego completá el flujo OAuth con /mcp dentro de Claude Code.
-Podés verificar el entorno completo con /groot-queue setup.
-```
-
-**B. Autenticación y `cloudId`:**
-Usar el resultado de la llamada anterior:
-- Si retorna error de autenticación (401 / 403 o equivalente) → abortar con:
-  ```
-  ❌ MCP Atlassian no autenticado.
-
-  Ejecutá /mcp dentro de Claude Code y completá el flujo OAuth para mercadolibre.atlassian.net.
-  ```
-- Si retorna recursos: elegir el que represente `mercadolibre.atlassian.net` y guardar su `cloudId`.
-- Si `mercadolibre.atlassian.net` **no aparece** en los recursos → abortar con:
-  ```
-  ❌ No se encontró mercadolibre.atlassian.net en los recursos del MCP de Atlassian.
-
-  Verificá que hayas autorizado acceso a ese workspace durante el flujo OAuth.
-  Ejecutá /groot-queue setup para diagnóstico completo.
-  ```
-
-Solo continuar al algoritmo si A y B pasaron. El `cloudId` obtenido en el punto B se reutiliza en los pasos 5b y 5c.
+Aplicar **modo ABORTAR** (pasos A + B) de `$SKILL_DIR/knowledge/atlassian-mcp.md`. Omitir el paso C (este subcomando postea comentarios públicos, no notas internas). Usar `/groot-queue:discard` como nombre del subcomando en los mensajes de error. El `cloudId` obtenido en B se reutiliza en los pasos 5b y 5c.
 
 ## Algoritmo
 
