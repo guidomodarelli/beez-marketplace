@@ -61,19 +61,14 @@ usage() {
     echo ""
 }
 
-# ── Provider resolution (same logic as run-evals) ───────
+# ── Provider resolution ─────────────────────────────────
+# Priority: copilot > codex > claude (ignores env signals — always prefer copilot)
 resolve_provider() {
     case "$GROOT_MARKETPLACE_EVAL_PROVIDER" in
         claude|codex|copilot)
             RESOLVED_EVAL_PROVIDER="$GROOT_MARKETPLACE_EVAL_PROVIDER"
             ;;
         auto)
-            if [ -n "${CODEX_THREAD_ID:-}" ] || [ -n "${CODEX_CI:-}" ] || [ -n "${CODEX_HOME:-}" ]; then
-                command -v codex &>/dev/null && RESOLVED_EVAL_PROVIDER="codex"
-            fi
-            if [ -z "$RESOLVED_EVAL_PROVIDER" ] && { [ -n "${CLAUDECODE:-}" ] || [ -n "${CLAUDE_CODE_SSE_PORT:-}" ]; }; then
-                command -v claude &>/dev/null && RESOLVED_EVAL_PROVIDER="claude"
-            fi
             [ -z "$RESOLVED_EVAL_PROVIDER" ] && command -v copilot &>/dev/null && RESOLVED_EVAL_PROVIDER="copilot"
             [ -z "$RESOLVED_EVAL_PROVIDER" ] && command -v codex   &>/dev/null && RESOLVED_EVAL_PROVIDER="codex"
             [ -z "$RESOLVED_EVAL_PROVIDER" ] && command -v claude  &>/dev/null && RESOLVED_EVAL_PROVIDER="claude"

@@ -95,17 +95,7 @@ resolve_eval_provider() {
             RESOLVED_EVAL_PROVIDER="$GROOT_MARKETPLACE_EVAL_PROVIDER"
             ;;
         auto)
-            if [ -n "${CODEX_THREAD_ID:-}" ] || [ -n "${CODEX_CI:-}" ] || [ -n "${CODEX_HOME:-}" ]; then
-                if command -v codex &> /dev/null; then
-                    RESOLVED_EVAL_PROVIDER="codex"
-                fi
-            fi
-            if [ -z "$RESOLVED_EVAL_PROVIDER" ] && { [ -n "${CLAUDECODE:-}" ] || [ -n "${CLAUDE_CODE_SSE_PORT:-}" ]; }; then
-                if command -v claude &> /dev/null; then
-                    RESOLVED_EVAL_PROVIDER="claude"
-                fi
-            fi
-            # Prefer copilot > codex > claude when no environment signal detected.
+            # Always prefer copilot > codex > claude, regardless of environment signals.
             if [ -z "$RESOLVED_EVAL_PROVIDER" ] && command -v copilot &> /dev/null; then
                 RESOLVED_EVAL_PROVIDER="copilot"
             fi
