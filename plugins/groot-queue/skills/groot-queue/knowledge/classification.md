@@ -12,7 +12,7 @@ Para listar todos los tickets abiertos (Incidents y Service Requests):
 acli jira workitem search --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved ORDER BY created DESC"
 ```
 
-Para listar solo los tickets asignados a un LDAP específico:
+Para listar solo los tickets asignados a un LDAP específico (usado por `assignee=<ldap>`, `assignee=me` y `@me`):
 
 ```bash
 acli jira workitem search --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved AND assignee = <ldap> ORDER BY created DESC"
