@@ -206,7 +206,7 @@ Mapeo de destino → slug de label:
 | Helpdesk IA | `groot-derive-to-helpdesk-ia` |
 | LMS | `groot-derive-to-lms` |
 | SHE | `groot-derive-to-she` |
-| Célula Nexus | `groot-derive-to-pidgey` | <!-- label existente en Jira — no renombrar sin migración --> |
+| Célula Nexus | `groot-derive-to-pidgey` <!-- label existente en Jira — no renombrar sin migración --> |
 
 > ⚠️ Las labels son kebab-case, todo en minúsculas, sin espacios. El slug de la regla es la regla matcheada en lowercase: `r-der-01`, `r-der-09`, etc.
 
