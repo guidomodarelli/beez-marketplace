@@ -26,44 +26,26 @@ En los subcomandos, `$SKILL_DIR` refiere a ese directorio resuelto. No asumir un
 
 ## Dispatcher (importante)
 
-Al activarse la skill, **primero** chequear el modo de ejecución con Bash:
+Al activarse la skill, parsear el primer token del input del usuario después de `/groot-queue` como subcomando:
 
-```bash
-echo "${GROOT_QUEUE_DIRECT:-}"
-```
+- Si el subcomando coincide con uno de la tabla → **leer `subcommands/<subcomando>.md` y seguir literalmente sus instrucciones**, pasando el resto del input como argumentos.
+- Si el input contiene `--help`, igual debe tratarse como una consulta del subcomando: **no ejecutar Jira ni shell**, pero sí responder desde las instrucciones del archivo `subcommands/<subcomando>.md`.
+- Si el subcomando no existe o no se provee → **ejecutar `subcommands/start.md`** (equivalente a `/groot-queue start`).
 
-### Modo script (output vacío — invocación directa del usuario)
+Ejemplos:
 
-Parsear el subcomando y argumentos del input, luego ejecutar vía Bash:
+| Input del usuario | Archivo a leer | Argumentos |
+|-------------------|----------------|------------|
+| `/groot-queue start` | `subcommands/start.md` | — |
+| `/groot-queue setup` | `subcommands/setup.md` | — |
+| `/groot-queue detail SSHP-1234567` | `subcommands/detail.md` | `SSHP-1234567` |
+| `/groot-queue save SSHP-1234567 cambio de lider corregido` | `subcommands/save.md` | `SSHP-1234567 cambio de lider corregido` |
+| `/groot-queue analyze-history --help` | `subcommands/analyze-history.md` | `--help` |
+| `/groot-queue` | `subcommands/start.md` | — |
 
-```bash
-run-groot-queue <subcomando> [args...]
-```
+Path resuelto: `$SKILL_DIR/subcommands/<nombre>.md`.
 
-Mostrar el output al usuario. El script gestiona provider, modelo y effort automáticamente con los defaults correctos (claude-sonnet-4.6 + high para copilot/claude, gpt-5.4-mini + high para codex).
-
-Si `run-groot-queue` no está en PATH, buscar el script relativo al skill:
-
-```bash
-# Resolver path real del skill (sigue symlinks)
-SKILL_REAL="$(python3 -c "import os; p='$SKILL_DIR'; print(os.path.realpath(p))" 2>/dev/null || realpath "$SKILL_DIR" 2>/dev/null || echo "$SKILL_DIR")"
-bash "$SKILL_REAL/../../scripts/run-groot-queue.sh" <subcomando> [args...]
-```
-
-Si el input contiene `--help` o no hay subcomando → ejecutar `run-groot-queue start` (o `start --help`).
-
-### Modo directo (output = `1` — spawneado por el script, evita recursión)
-
-Leer `$SKILL_DIR/subcommands/<subcomando>.md` y seguir literalmente sus instrucciones, pasando el resto como argumentos. Si no hay subcomando → `subcommands/start.md`.
-
-| Input del usuario | Subcomando | Argumentos |
-|-------------------|-----------|------------|
-| `/groot-queue start` | `start` | — |
-| `/groot-queue detail SSHP-1234567` | `detail` | `SSHP-1234567` |
-| `/groot-queue analyze-history --help` | `analyze-history` | `--help` |
-| `/groot-queue` | `start` | — |
-
-**Nota para Claude Code**: si el usuario invoca `/groot-queue:<nombre>` (sintaxis de slash command de plugin), Claude carga directamente `commands/<nombre>.md` — un wrapper que apunta al mismo `subcommands/<nombre>.md`. El dispatcher de esta skill solo se ejecuta cuando se entra por la skill (Codex o Claude tipeando `/groot-queue` sin `:`).
+**Nota para Claude Code**: si el usuario invoca `/groot-queue:<nombre>` (sintaxis de slash command de plugin), Claude carga directamente `commands/<nombre>.md` del plugin — un wrapper que apunta al mismo `subcommands/<nombre>.md`. La fuente de verdad es la misma; el dispatcher de esta skill solo se ejecuta cuando se entra por la skill (Codex o Claude tipeando `/groot-queue` sin `:`).
 
 ---
 
