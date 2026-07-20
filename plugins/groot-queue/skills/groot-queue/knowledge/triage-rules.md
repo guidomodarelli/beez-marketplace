@@ -437,19 +437,19 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola, derivamos este caso al equipo de LMS porque el problema reportado corresponde a la contabilidad de horas de Be a Rep en LMS, fuera del alcance de soporte Groot/Kraken."
 - **Fuente**: Pedido directo del usuario, 2026-06-03. Regla agregada sin ticket real por instrucción explícita; pendiente de validar wording y copy contra un caso SSHP concreto.
 
-### R-DER-13 — Acceso denegado a xtools/Pidgey (chat interno / notificaciones outbound) → Célula Pidgey (asignación interna)
+### R-DER-13 — Acceso denegado a xtools/Pidgey, xtools/Alfred o Chat Interno → Célula Nexus (asignación interna)
 - **Señales**:
-  - La URL afectada pertenece a `xtools.adminml.com/tools/pidgey/*`.
-  - ES: "no autorizado en xtools", "no puede acceder a notificaciones de chat", "error en pidgey", "sin acceso a sección de notificaciones en xtools".
-  - PT: "nao autorizado no xtools", "sem acesso às notificações de chat", "erro no pidgey", "nao consegue acessar notificações no xtools".
-  - EN: "not authorized in xtools", "cannot access chat notifications", "pidgey error", "no access to notifications section in xtools".
-  - El problema afecta específicamente a funcionalidades de chat interno / burbuja outbound en xtools, no a configuración de usuario en Groot.
+  - La URL afectada pertenece a `xtools.adminml.com/tools/pidgey/*`, `xtools.adminml.com/tools/alfred/*` o la URL de Chat Interno (pendiente confirmar).
+  - ES: "no autorizado en xtools", "no puede acceder a notificaciones", "error en pidgey", "sin acceso a sección de notificaciones en xtools", "error en alfred", "sin acceso a aprobaciones en xtools", "no puede ver procesos masivos", "sin acceso a chat interno", "error en chat interno".
+  - PT: "nao autorizado no xtools", "sem acesso às notificações", "erro no pidgey", "nao consegue acessar notificações no xtools", "erro no alfred", "sem acesso a aprovações no xtools", "sem acesso ao chat interno", "erro no chat interno".
+  - EN: "not authorized in xtools", "cannot access notifications", "pidgey error", "no access to notifications section in xtools", "alfred error", "no access to approvals in xtools", "cannot access mass processes", "no access to internal chat", "internal chat error".
+  - El problema afecta específicamente a xtools/Pidgey (notificaciones), xtools/Alfred (tickets, aprobaciones, procesos masivos) o Chat Interno, no a configuración de usuario en Groot.
   - El ticket puede llegar mal asignado a Groot o a WoWChat.
-- **Razón**: xtools/Pidgey es responsabilidad de la **célula Pidgey**, que es una célula interna de Groot. No existe squad de Jira para derivación automática: el ticket debe asignarse directamente a un miembro de la célula.
-- **Verificación previa**: Confirmar que la URL reportada es `xtools.adminml.com/tools/pidgey/*`. Si el error es en otra sección de xtools que sí involucre configuración de usuario Groot (ej. perfil, facility, CAD) → no aplica, reclasificar a la categoría correspondiente.
-- **Acción**: Asignación automática vía shuffle a un miembro de la célula Pidgey. Ver `$SKILL_DIR/knowledge/pidgey-team.md` para la lista de emails. No hay squad en Jira — se usa `acli jira workitem assign` en lugar de la transición "Derivar a otro equipo".
+- **Razón**: Pidgey, Alfred y Chat Interno son responsabilidad de la **célula Nexus**, que es una célula interna de Groot. No existe squad de Jira para derivación automática: el ticket debe asignarse directamente a un miembro de la célula.
+- **Verificación previa**: Confirmar que la URL reportada es `xtools.adminml.com/tools/pidgey/*`, `xtools.adminml.com/tools/alfred/*` o la URL de Chat Interno. Si el error es en otra sección de xtools que sí involucre configuración de usuario Groot (ej. perfil, facility, CAD) → no aplica, reclasificar a la categoría correspondiente.
+- **Acción**: Asignación automática vía shuffle a un miembro de la célula Nexus. Ver `$SKILL_DIR/knowledge/pidgey-team.md` para la lista de emails. No hay squad en Jira — se usa `acli jira workitem assign` en lugar de la transición "Derivar a otro equipo".
 - **Comentario sugerido** (nota interna al asignar):
-  > "Derivado a célula Pidgey — acceso denegado a xtools/Pidgey (chat interno / notificaciones outbound). La configuración del usuario en Groot no está involucrada."
+  > "Derivado a célula Nexus — acceso denegado a xtools/Pidgey (notificaciones), xtools/Alfred (tickets, aprobaciones, procesos masivos) o Chat Interno. La configuración del usuario en Groot no está involucrada."
 - **Fuente**: ticket SSHP-1413000 (2026-04-18).
 
 ### R-DER-14 — Alta/regularización de nodo o valor nuevo en Kraken → Helpdesk IA (platsec/randall o integradores)
@@ -604,7 +604,7 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 6. **R-DER-11** → si al crear/dar de alta un colaborador el error es "Tax_id has already been used" / ES "tax id ya utilizado" / PT "tax_id já utilizado" (documento **válido** pero ya en uso; distinto de R-DER-09 que es tax id *inválido*).
 7. **R-DER-10** → si el usuario final ve un mensaje tipo "no perteneces a envíos" / "no pertence a envios" al intentar crear cuenta o desbloquearla (y por eso no puede conocer su LDAP).
 8. **R-DER-08** → si el pedido es **cambio de nombre** del usuario (first/last name), sin error técnico de Groot.
-9. **R-DER-13** _[asignación automática vía shuffle — célula interna Pidgey, sin squad Jira]_ → si la URL afectada es `xtools.adminml.com/tools/pidgey/*` (chat interno / notificaciones outbound) y el problema no involucra configuración de usuario en Groot.
+9. **R-DER-13** _[asignación automática vía shuffle — célula interna Nexus, sin squad Jira]_ → si la URL afectada es `xtools.adminml.com/tools/pidgey/*` (notificaciones), `xtools.adminml.com/tools/alfred/*` (tickets, aprobaciones, procesos masivos) o Chat Interno, y el problema no involucra configuración de usuario en Groot.
 10. **R-DER-14** → si la solicitud pide dar de **alta / crear / registrar** un nodo o valor nuevo que no existe en Kraken (ej. "alta de nodo NEX", "registrar nodo", "crear valor nuevo").
 11. **R-DER-15** → si un usuario está desactivado/expirado en Groot y no puede ser reactivado por autogestión (error al reactivar, cuenta expirada sin opción de recovery).
 12. **R-DER-16** → si la creación de usuario(s) falla con error de SuccessFactors / "datos inválidos" / "identificador tributario" (pero **no** es documento inválido — para eso R-DER-09 — ni documento duplicado — para eso R-DER-11).
