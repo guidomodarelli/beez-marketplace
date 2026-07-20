@@ -147,13 +147,13 @@ case "$RESOLVED_EVAL_PROVIDER" in
     copilot)
         effort_flag=()
         [ -n "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT" ] && effort_flag=(--effort "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT")
-        (cd "$skill_cwd" && copilot -p "$PROMPT" \
+        (cd "$skill_cwd" && GROOT_QUEUE_DIRECT=1 copilot -p "$PROMPT" \
             --model "$GROOT_MARKETPLACE_EVAL_MODEL" \
             "${effort_flag[@]}" \
             --allow-all)
         ;;
     claude)
-        (cd "$skill_cwd" && env -u CLAUDECODE claude -p "$PROMPT" \
+        (cd "$skill_cwd" && GROOT_QUEUE_DIRECT=1 env -u CLAUDECODE claude -p "$PROMPT" \
             --model "$GROOT_MARKETPLACE_EVAL_MODEL" \
             --setting-sources user \
             --allowedTools "all")
@@ -162,7 +162,7 @@ case "$RESOLVED_EVAL_PROVIDER" in
         reasoning_effort_flag=()
         [ -n "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT" ] && \
             reasoning_effort_flag=(-c "model_reasoning_effort=\"$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT\"")
-        codex exec \
+        GROOT_QUEUE_DIRECT=1 codex exec \
             --model "$GROOT_MARKETPLACE_EVAL_MODEL" \
             "${reasoning_effort_flag[@]}" \
             --cd "$skill_cwd" \
