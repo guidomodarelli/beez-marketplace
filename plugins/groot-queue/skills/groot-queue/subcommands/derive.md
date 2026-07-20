@@ -95,8 +95,6 @@ Usar el alias `DERIVATION_DESTINATION_SQUAD_FIELD` para referirse al campo Jira 
 > `R-DER-05` no deriva a un squad de Jira: redirige al canal Slack `#help-authz-internal-admins`. Marcar esos tickets como `MANUAL_REDIRECT` y no ejecutar acciones automáticas.
 > `R-DER-12` deriva a LMS, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD` ni comentario validado contra un ticket real. Marcar esos tickets como `MANUAL_DERIVATION` y no ejecutar acciones automáticas hasta completar esos datos.
 > `R-DER-13` deriva a Equipo Chat Interno (Pidgey), pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
-> `R-DER-17` deriva a Equipo WMS, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
-> `R-DER-18` deriva a Equipo WMS/Operaciones, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
 > `R-DER-22` deriva a LMS, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
 > `R-DER-23` deriva a Equipo SHE/AppSheet, pero todavía no tiene option id para `DERIVATION_DESTINATION_SQUAD_FIELD`. Marcar como `MANUAL_DERIVATION`.
 
@@ -132,8 +130,6 @@ Tomar la **primera regla que matchee**. Reglas sin automatización (marcar y exc
 - `R-DER-12` → `MANUAL_DERIVATION` con destino `LMS`.
 - `R-DER-22` → `MANUAL_DERIVATION` con destino `LMS`.
 - `R-DER-13` → `MANUAL_DERIVATION` con destino `Equipo Chat Interno (Pidgey)`.
-- `R-DER-17` → `MANUAL_DERIVATION` con destino `Equipo WMS`.
-- `R-DER-18` → `MANUAL_DERIVATION` con destino `Equipo WMS/Operaciones`.
 - `R-DER-23` → `MANUAL_DERIVATION` con destino `Equipo SHE/AppSheet`.
 
 Si ninguna aplica, evaluar el veredicto completo y marcar como `NO_DERIVA` con el veredicto resultante (DESCARTAR / FIX_APLICADO / VALIDO_GROOT / REVISAR_MANUAL).

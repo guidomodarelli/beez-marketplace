@@ -492,21 +492,21 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola, el error de creación está relacionado con la integración de SuccessFactors y requiere investigación del equipo de IAM. Derivamos para que puedan resolver el problema de datos."
 - **Fuente**: Análisis histórico (8+ tickets: SSHP-1482522, SSHP-1483624, SSHP-1483830, SSHP-1483831, SSHP-1483993, SSHP-1482546, SSHP-1482691, SSHP-1480290, SSHP-1482672).
 
-### R-DER-17 — Error funcional de WMS/Logistics con permisos correctos en Groot → Equipo WMS
+### R-DER-17 — Error funcional de WMS/Logistics con permisos correctos en Groot → Helpdesk IA
 - **Señales**:
   - ES: "tiene permisos pero no puede acceder a WMS", "monitores WMS inbound sin acceso", "pantalla en blanco WMS", "error 403 WMS", "no puede tomar proceso", "WMS se recarga", "botón aplicar deshabilitado", "sin visibilidad del warehouse", "cambio automático de warehouse", "limitado al CAD local en WMS", "no puede consultar todos los CADs", "funciona en pestaña de incógnito", "solo pasa con su usuario en WMS".
   - PT: "tem permissões mas não consegue acessar WMS", "monitores WMS inbound sem acesso", "tela em branco WMS", "erro 403 WMS", "não consegue pegar processo", "WMS recarregando", "botão aplicar desabilitado", "sem visibilidade do warehouse", "mudança automática de warehouse", "limitado ao CAD local no WMS", "não consegue consultar todos os CADs", "funciona em aba anônima", "só acontece com o usuário dele no WMS".
   - EN: "has permissions but cannot access WMS", "WMS inbound monitors no access", "blank screen WMS", "403 error WMS", "cannot take process", "WMS reloading", "apply button disabled", "no warehouse visibility", "automatic warehouse change", "limited to local CAD in WMS", "cannot query all CADs", "works in incognito tab", "only happens to this user in WMS".
   - El usuario tiene roles y bolhas correctamente asignados en Groot/Kraken, pero **WMS/Logistics no refleja esos permisos** o presenta errores funcionales (pantalla en blanco, error 403, page reloading, botones deshabilitados, procesos inaccesibles, vista limitada al CAD local cuando debería ser regional).
-  - **Señal fuerte**: si el usuario reporta que **funciona en pestaña de incógnito / aba anônima pero no en navegador normal**, es casi seguro un problema de sesión/cache del frontend WMS. Si el backend (Groot) tuviera mal la configuración, incógnito tampoco funcionaría. Esta señal por sí sola es suficiente para derivar a WMS si se confirma que Groot está correcto.
+  - **Señal fuerte**: si el usuario reporta que **funciona en pestaña de incógnito / aba anônima pero no en navegador normal**, es casi seguro un problema de sesión/cache del frontend WMS. Si el backend (Groot) tuviera mal la configuración, incógnito tampoco funcionaría. Esta señal por sí sola es suficiente para derivar a Helpdesk IA si se confirma que Groot está correcto.
 - **Razón**: Groot Soporte atiende **solo errores sistémicos de Groot**. Si el usuario está correctamente configurado en Groot (bolhas asignadas, warehouse correcto, roles vigentes, atributos regionales) pero WMS/Logistics falla o no muestra las funciones esperadas, el problema es del **sistema WMS** (frontend o backend), no de la configuración de permisos. Groot Soporte no tiene visibilidad ni herramientas para resolver bugs de WMS. No es responsabilidad de Groot investigar problemas de sesión, cache ni rendering del frontend WMS.
-- **Verificación previa**: Confirmar que el usuario **efectivamente tiene** los roles/bolhas/warehouse/atributos en Groot. Si la configuración en Groot es incorrecta o faltante → reclasificar como `VALIDO_GROOT` (ajustar permisos en Groot). Si todo en Groot está correcto → derivar sin demora, no intentar workarounds de cache ni troubleshooting de WMS: eso le compete al equipo WMS.
-- **Acción**: Derivar a **Equipo WMS**.
+- **Verificación previa**: Confirmar que el usuario **efectivamente tiene** los roles/bolhas/warehouse/atributos en Groot. Si la configuración en Groot es incorrecta o faltante → reclasificar como `VALIDO_GROOT` (ajustar permisos en Groot). Si todo en Groot está correcto → derivar sin demora, no intentar workarounds de cache ni troubleshooting de WMS: eso le compete al equipo WMS vía Helpdesk IA.
+- **Acción**: Derivar a **Helpdesk IA** (ruteo a WMS/Logistics).
 - **Comentario sugerido**:
-  > "Hola, verificamos la configuración del usuario en Groot y los permisos están correctos. El problema parece ser funcional de WMS/Logistics. Derivamos al equipo de WMS para que puedan investigar."
+  > "Hola, verificamos la configuración del usuario en Groot y los permisos están correctos. El problema parece ser funcional de WMS/Logistics. Derivamos a Helpdesk IA para que enrute el caso con el equipo correspondiente."
 - **Fuente**: Análisis histórico (9 tickets: SSHP-1508621, SSHP-1500233, SSHP-1495880, SSHP-1492695, SSHP-1486490, SSHP-1485607, SSHP-1484713, SSHP-1465825, SSHP-1486341). Reforzado con SSHP-1504561 (usuario regional limitado al CAD local en WMS solo en navegador normal; incógnito funciona correctamente).
 
-### R-DER-18 — Solicitud operativa de WMS (gestión de paquetes/envíos, no de usuarios) → Equipo WMS/Operaciones
+### R-DER-18 — Solicitud operativa de WMS (gestión de paquetes/envíos, no de usuarios) → Helpdesk IA
 - **Señales**:
   - ES: "actualizar status de orders", "destrabar pedidos", "liberar shipments", "paquetes en espera", "cambiar estado de envío", "shipment_id bloqueado".
   - PT: "atualizar status de orders", "destravar pedidos", "liberar shipments", "pacotes em espera", "mudar estado de envio", "shipment_id bloqueado".
@@ -514,9 +514,9 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - La solicitud **no involucra usuarios, permisos ni roles** — pide una acción operativa sobre paquetes, envíos o estados en WMS.
 - **Razón**: Groot Soporte gestiona usuarios y permisos. Las operaciones sobre paquetes/envíos/orders en WMS corresponden al equipo de WMS/Operaciones.
 - **Verificación previa**: Confirmar que el pedido es puramente operativo y no un error derivado de permisos faltantes del usuario.
-- **Acción**: Derivar a **Equipo WMS/Operaciones**.
+- **Acción**: Derivar a **Helpdesk IA** (ruteo a WMS/Operaciones).
 - **Comentario sugerido**:
-  > "Hola, desde Groot Soporte gestionamos usuarios y permisos. Tu solicitud es operativa (gestión de paquetes/envíos en WMS) y corresponde al equipo de WMS/Operaciones. Derivamos para que puedan ayudarte."
+  > "Hola, desde Groot Soporte gestionamos usuarios y permisos. Tu solicitud es operativa (gestión de paquetes/envíos en WMS) y corresponde al equipo de WMS/Operaciones. Derivamos a Helpdesk IA para que enrute el caso con el equipo correspondiente."
 - **Fuente**: Análisis histórico (2 tickets: SSHP-1489984, SSHP-1489350).
 
 ### R-DER-20 — Pérdida de acceso o desincronización IAM↔WMS/LMS (usuario activo pierde permisos sin causa visible en Groot) → IAM Soporte
