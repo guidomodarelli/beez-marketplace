@@ -16,7 +16,7 @@ Durante la corrida se usan **archivos scratch efímeros** (creados con `mktemp`,
 
 Si la variable de entorno `GROOT_QUEUE_AUTORUN` está definida y su valor es `true`:
 
-1. **Omitir todas las preguntas de confirmación** de los pasos 9e y 10e.
+1. **Omitir la pregunta de confirmación** del paso 4.
 2. Proceder directamente **como si el usuario hubiera respondido "sí"** (derivar y descartar automáticamente).
 3. Al registrar en el log de auditoría, usar `source = "auto-run"` (distinto a `"auto-assign"` usado en confirmación interactiva, para distinguir corridas 100% automáticas).
 4. Verificar el valor con:
@@ -75,8 +75,120 @@ Confirmar que el proveedor expone capacidad de crear **nota interna de Jira Serv
    acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type IN (Incident, \"Service Request\") AND resolution = Unresolved ORDER BY created DESC"
    ```
 2. Filtrar solo los que **no tienen assignee** (campo `assignee` vacío o null).
-3. Ordenar por urgencia descendente (score 5 primero — ver `classification.md`).
-4. **Barajar el TEAM una sola vez (shuffle aleatorio) y crear los archivos scratch.** El shuffle se ejecuta **una única vez por corrida**. Generar un orden aleatorio real con entropía del sistema (no inventar el orden a mano). En una sola llamada Bash, crear con `mktemp` el archivo de orden `$ORDER` (los emails del TEAM barajados, uno por línea) y copiarlo a la cola de trabajo `$QUEUE`, con este one-liner portable (macOS + Linux):
+
+Si no hay tickets sin assignee, mostrar: "✅ No hay tickets sin assignee en la cola." y terminar.
+
+3. Leer `$SKILL_DIR/knowledge/triage-rules.md` y obtener el contenido de **todos** los tickets filtrados (en paralelo si es posible):
+   ```bash
+   acli jira workitem view <KEY>
+   ```
+   Para cada ticket, aplicar el algoritmo de triage completo en orden: primero R-DER (tomar la primera que matchee), luego R-DESC (si ninguna R-DER matcheó). Clasificar cada ticket en una de estas categorías:
+
+   - **`DERIVAR-AC`**: matchea una regla R-DER marcada con ⚡ y ninguna condición de escape es ambigua.
+   - **`DERIVAR`**: matchea una regla R-DER sin ⚡, o con señal de escape ambigua.
+   - **`DESCARTAR-AC`**: matchea una regla R-DESC marcada con ⚡ y el texto del ticket no contiene señal de escape.
+   - **`DESCARTAR`**: matchea una regla R-DESC sin ⚡, o con señal de escape ambigua.
+   - **`REVISAR_MANUAL`**: matchea una regla que requiere verificación en Groot admin que no puede confirmarse desde el contenido del ticket.
+   - **`ASIGNAR`**: no matchea ninguna regla R-DER ni R-DESC, o su veredicto es `VALIDO_GROOT`.
+
+   Las verificaciones previas de R-DESC-03, 04, 05, 06, 07, 08 que requieren Groot admin: si no es posible confirmarlas desde el contenido, clasificar como `REVISAR_MANUAL`.
+
+4. Mostrar el plan consolidado y ejecutar confirmaciones por nivel:
+
+```
+📋 Plan de corrida — N tickets sin assignee
+═══════════════════════════════════════════════════════════════
+
+🔀 Para derivar (M tickets):
+  ⚡ Alta confianza:
+  | Key          | Summary  | Regla    | Destino     |
+  | SSHP-XXXXX   | ...      | R-DER-09 | IAM Soporte |
+
+  ❓ Confianza estándar:
+  | Key          | Summary  | Regla    | Destino      |
+  | SSHP-XXXXX   | ...      | R-DER-04 | Helpdesk IA  |
+
+⛔ Para descartar (K tickets):
+  ⚡ Alta confianza:
+  | Key          | Summary  | Regla     |
+  | SSHP-XXXXX   | ...      | R-DESC-02 |
+  Comentario: "Hola, desde Groot/Kraken Soporte atendemos exclusivamente errores sistémicos..."
+
+  ❓ Confianza estándar:
+  | Key          | Summary  | Regla     |
+  | SSHP-XXXXX   | ...      | R-DESC-04 |
+
+⚠️ Revisión manual requerida (J tickets — no se tocan en esta corrida):
+  | Key          | Summary  | Motivo                         |
+  | SSHP-XXXXX   | ...      | Verificación previa incompleta |
+
+✅ Para asignar a Groot (P tickets):
+  | Key          | Summary  | Urgencia |
+  | SSHP-XXXXX   | ...      | 🔴 Alta  |
+
+═══════════════════════════════════════════════════════════════
+Derivar: M  |  Descartar: K  |  Revisión manual: J  |  Asignar: P
+```
+
+Omitir secciones vacías.
+
+Si `GROOT_QUEUE_AUTORUN=true`, omitir todas las confirmaciones y proceder directamente con todos los tickets. Si no, seguir el flujo de confirmación diferenciado:
+
+**Confirmación ⚡ (lote):**
+
+Si hay tickets ⚡ (DERIVAR-AC o DESCARTAR-AC):
+```
+⚡ Alta confianza — N tickets
+¿Procesar todos en lote? (sí / no)
+```
+- **Sí**: todos los ⚡ van al paso 5.
+- **No**: todos los ⚡ se omiten (quedan sin acción; el usuario puede ejecutarlos luego con `/groot-queue derive` o `/groot-queue discard`).
+
+**Confirmación ❓ (uno por uno):**
+
+Si hay tickets ❓ (DERIVAR o DESCARTAR), procesarlos en orden, mostrando para cada uno:
+
+```
+[X/K] SSHP-XXXXX — R-DER-04 → Helpdesk IA
+  Summary: "..."
+  Señales detectadas: <señales concretas que activaron la regla>
+¿Derivar? (s)í / (n)o / (q) procesar todos los restantes
+```
+
+o para descarte:
+
+```
+[X/K] SSHP-XXXXX — R-DESC-04 → Won't Do
+  Summary: "..."
+  Señales detectadas: <señales concretas que activaron la regla>
+¿Descartar? (s)í / (n)o / (q) descartar todos los restantes
+```
+
+- **(s)í**: el ticket va al paso 5.
+- **(n)o**: el ticket se omite para esta corrida. **No se escribe nada en Jira** (sin comentario, sin transición, sin asignación — el ticket queda intacto en "Waiting for support" sin assignee). Mostrar: > "Omitido. Podés ejecutarlo luego con `/groot-queue derive/discard SSHP-XXXXX`."
+- **(q)**: el ticket actual y todos los ❓ restantes van al paso 5 (equivale a "sí" en lote para los que quedan).
+
+Mezclar derivaciones y descartes en el mismo loop ordenado por key (no separar en dos rondas).
+
+5. **Fase de derive/discard** — ejecutar **primero**, antes de cualquier asignación:
+
+   Solo se procesan los tickets aprobados en el paso 4 (⚡ aprobados en lote + ❓ aprobados individualmente o por `q`). Los tickets ❓ rechazados con `n` **no generan ninguna escritura en Jira** — no se postea comentario, no se transiciona estado, no se asigna responsable; quedan intactos en su estado original. Se registran como `"omitido"` únicamente en la tabla final local.
+
+   **Derivar:** Invocar el flujo de `$SKILL_DIR/subcommands/derive.md` para los tickets `DERIVAR-AC` y `DERIVAR` aprobados (la confirmación ya fue obtenida en el paso 4 — omitir la confirmación interna de `derive.md`). Al registrar en el log de auditoría:
+   - `DERIVAR-AC`: usar `source = "auto-assign-autoconfianza"`.
+   - `DERIVAR`: usar `source = "auto-assign"`.
+   - `GROOT_QUEUE_AUTORUN=true`: usar `source = "auto-run"` para todos.
+
+   **Descartar:** Invocar el flujo de `$SKILL_DIR/subcommands/discard.md` para los tickets `DESCARTAR-AC` y `DESCARTAR` aprobados (la confirmación ya fue obtenida en el paso 4 — omitir la confirmación interna de `discard.md`). Al registrar en el log de auditoría:
+   - `DESCARTAR-AC`: usar `source = "auto-assign-autoconfianza"`. Usar el **comentario universal** de `triage-rules.md` (con la variante de R-DESC-14 si corresponde) en lugar del comentario por regla.
+   - `DESCARTAR`: usar `source = "auto-assign"`. Usar el comentario sugerido de la regla.
+   - `GROOT_QUEUE_AUTORUN=true`: usar `source = "auto-run"` para todos.
+
+   Los tickets `REVISAR_MANUAL` y los ❓ omitidos **no se tocan** en este paso.
+
+6. **Fase de asignación** — solo para los tickets clasificados como `ASIGNAR` en el paso 3. Los tickets derivados, descartados o de revisión manual **no participan del reparto**.
+
+   **Barajar el TEAM una sola vez (shuffle aleatorio) y crear los archivos scratch.** El shuffle se ejecuta **una única vez por corrida**. Generar un orden aleatorio real con entropía del sistema (no inventar el orden a mano). En una sola llamada Bash, crear con `mktemp` el archivo de orden `$ORDER` (los emails del TEAM barajados, uno por línea) y copiarlo a la cola de trabajo `$QUEUE`, con este one-liner portable (macOS + Linux):
    ```bash
    ORDER=$(mktemp -t groot-assign-order.XXXXXX 2>/dev/null || mktemp)
    QUEUE=$(mktemp -t groot-assign-queue.XXXXXX 2>/dev/null || mktemp)
@@ -90,14 +202,16 @@ Confirmar que el proveedor expone capacidad de crear **nota interna de Jira Serv
    echo "ORDER=$ORDER QUEUE=$QUEUE"   # recordar estos paths para el resto de la corrida
    ```
    `$ORDER` es el **orden barajado de esta corrida** y **no se vuelve a tocar** (el shuffle no se repite). `$QUEUE` es la **cola de trabajo**: su primera línea es siempre el próximo a asignar. Guardar ambos paths para reutilizarlos en los pasos siguientes.
-5. Para cada ticket sin asignar, tomar el **primer email** de `$QUEUE` (`head -n1 "$QUEUE"`) — reparto **sin repetición**. Cuando `$QUEUE` quede vacío (más tickets que miembros), **rellenarla con el mismo orden barajado** copiando `$ORDER` de nuevo (`cp "$ORDER" "$QUEUE"`) — **no se vuelve a barajar** — y seguir. Así nadie recibe un segundo ticket hasta que todos hayan recibido uno, y las rondas siguientes repiten el mismo orden del shuffle inicial.
-6. Para cada ticket sin asignar:
+
+   Para cada ticket `ASIGNAR`, tomar el **primer email** de `$QUEUE` (`head -n1 "$QUEUE"`) — reparto **sin repetición**. Cuando `$QUEUE` quede vacío (más tickets que miembros), **rellenarla con el mismo orden barajado** copiando `$ORDER` de nuevo (`cp "$ORDER" "$QUEUE"`) — **no se vuelve a barajar** — y seguir.
+
+   Para cada ticket `ASIGNAR`:
 
    a. `assignee` = primer email de `$QUEUE`:
       ```bash
       head -n1 "$QUEUE"
       ```
-      Si `$QUEUE` está vacío, rellenarla con `cp "$ORDER" "$QUEUE"` (paso 5) y volver a leer.
+      Si `$QUEUE` está vacío, rellenarla con `cp "$ORDER" "$QUEUE"` y volver a leer.
 
    b. **Transicionar a "En curso" PRIMERO** — en una llamada Bash **separada**:
       ```bash
@@ -122,23 +236,23 @@ Confirmar que el proveedor expone capacidad de crear **nota interna de Jira Serv
         - Si sigue sin coincidir: reportar ⚠️ con el ticket y el assignee incorrecto, **NO eliminar la línea de `$QUEUE`**.
       - Si `Assignee` == `<email>`: continuar al paso e.
 
-   e. Si transición + asignación + verificación exitosas:
+   e. Si transición + asignación + verificación exitosos:
       - **Consumir el email**: eliminar la primera línea de `$QUEUE` en una llamada Bash:
         ```bash
         tail -n +2 "$QUEUE" > "$QUEUE.tmp" && mv "$QUEUE.tmp" "$QUEUE"
         ```
-        Así ese miembro no vuelve al pool hasta la próxima ronda (cuando se rellena `$QUEUE` desde `$ORDER`).
+        Así ese miembro no vuelve al pool hasta la próxima ronda.
 
 7. **Limpieza obligatoria.** Al terminar el loop —tanto si completó como si abortó por un error— eliminar los archivos scratch:
    ```bash
    rm -f "$QUEUE" "$ORDER"
    ```
-   No persiste estado entre corridas: la próxima ejecución (de quien sea) creará `$ORDER` y `$QUEUE` nuevos y barajará desde cero.
+   No persiste estado entre corridas.
 
-8. Mostrar tabla preliminar de asignación:
+8. Mostrar tabla de asignaciones:
 
 ```
-Asignaciones realizadas (N tickets):
+Asignaciones realizadas (P tickets):
 | Key          | Summary                  | Transición  | Asignado a   | Estado  |
 |--------------|--------------------------|-------------|--------------|---------|
 | SSHP-XXXXX   | ...                      | ✓ En curso   | frgonzalez   | ✓ OK    |
@@ -152,96 +266,11 @@ Reparto de esta corrida:
   | lpadularrosa | 1       |
 ```
 
-- La nota interna de resolución **todavía no se postea en este punto**. Primero hay que detectar si el ticket será derivado o descartado en los pasos 9 y 10.
+Si no hay tickets `ASIGNAR` (todos fueron derivados/descartados), mostrar: "✅ Todos los tickets sin assignee fueron derivados o descartados — no quedan tickets para asignar."
 
-Si no hay tickets sin asignar, mostrar: "✅ No hay tickets sin assignee en la cola."
+## 9. Postear notas internas para tickets asignados
 
-## 9. Detección post-asignación de tickets derivables
-
-Solo ejecutar este paso si hubo al menos un ticket con estado **✓ OK** en la tabla del paso 8.
-
-**9a. Cargar reglas de derivación:**
-Leer `$SKILL_DIR/knowledge/triage-rules.md`.
-
-**9b. Evaluar cada ticket ✓ OK:**
-Para cada ticket asignado exitosamente, obtener su contenido actualizado con:
-```bash
-acli jira workitem view <KEY>
-```
-Aplicar **únicamente las reglas R-DER** del algoritmo de triage (misma lógica que el paso 2b de `derive.md`). Tomar la primera regla que matchee.
-
-**9c. Si ningún ticket matchea una regla R-DER:** no mostrar nada adicional y continuar al paso 10.
-
-**9d. Si uno o más tickets matchean**, mostrar la tabla y la pregunta de confirmación:
-
-```
-🔀 Tickets derivables detectados (N):
-| Key          | Summary                  | Regla     | Equipo destino |
-|--------------|--------------------------|-----------|----------------|
-| SSHP-XXXXX   | ...                      | R-DER-10  | IAM Soporte    |
-| SSHP-XXXXX   | ...                      | R-DER-07  | IAM Soporte    |
-
-¿Querés derivar estos N tickets ahora? (sí / no)
-```
-
-**9e. Confirmar derivación:**
-
-- **Si `GROOT_QUEUE_AUTORUN=true`:** omitir la pregunta y proceder directamente como si la respuesta fuera "sí". Al registrar en el log de auditoría (paso 4e de `derive.md`), usar `source = "auto-run"`.
-- **Si no (modo interactivo):** esperar respuesta del usuario:
-  - **Sí** (o "s", "yes", "y"): ejecutar el flujo completo de `$SKILL_DIR/subcommands/derive.md` con las keys de los tickets derivables, exactamente como si el usuario hubiera corrido `/groot-queue derive <KEY1> <KEY2> ...`. Al registrar en el log de auditoría (paso 4e de `derive.md`), usar `source = "auto-assign"`.
-  - **No** (o cualquier otra respuesta): mostrar:
-    > "Derivación omitida. Podés ejecutarla luego con `/groot-queue derive <KEY1> <KEY2> ...`"
-    y continuar al paso 10.
-
-## 10. Detección post-asignación de tickets descartables
-
-Solo ejecutar este paso si hubo al menos un ticket con estado **✓ OK** en la tabla del paso 8 que **no fue incluido como derivable en el paso 9**.
-
-**10a. Cargar reglas de descarte:**
-Si `triage-rules.md` ya fue leído en el paso 9a, reutilizar. Si no, leer `$SKILL_DIR/knowledge/triage-rules.md`.
-
-**10b. Evaluar cada ticket ✓ OK no derivable:**
-Para cada ticket asignado exitosamente que no matcheó una regla R-DER en el paso 9:
-- Si el contenido ya fue obtenido en el paso 9b, reutilizarlo; si no, obtenerlo con:
-  ```bash
-  acli jira workitem view <KEY>
-  ```
-- Aplicar **únicamente las reglas R-DESC del algoritmo de triage** de `triage-rules.md`, en orden: R-DESC-03, R-DESC-06, R-DESC-07, R-DESC-08, R-DESC-04, R-DESC-09, R-DESC-05, R-DESC-02, R-DESC-10, R-DESC-01, R-DESC-11, R-DESC-12.
-- Tomar la primera regla que matchee.
-- Las verificaciones previas (R-DESC-03, R-DESC-04, R-DESC-05, R-DESC-06, R-DESC-07, R-DESC-08) que requieren inspección en Groot admin: si no es posible confirmarlas desde el contenido del ticket, marcar como `REVISAR_MANUAL` y no incluirlo en la lista de descartables.
-
-**10c. Si ningún ticket matchea una regla R-DESC:** no mostrar nada adicional y continuar al paso 11.
-
-**10d. Si uno o más tickets matchean**, mostrar la tabla y la pregunta de confirmación:
-
-```
-⛔ Tickets descartables detectados (N):
-| Key          | Summary                  | Regla      | Acción           |
-|--------------|--------------------------|------------|------------------|
-| SSHP-XXXXX   | ...                      | R-DESC-02  | Cerrar Won't Do  |
-| SSHP-XXXXX   | ...                      | R-DESC-04  | Cerrar Won't Do  |
-
-¿Querés descartar estos N tickets ahora? (sí / no)
-```
-
-Al explicar este paso en modo ayuda, usar explícitamente las frases `R-DESC`, `tickets descartables` y `¿Querés descartar estos N tickets ahora?`.
-
-**10e. Confirmar descarte:**
-
-- **Si `GROOT_QUEUE_AUTORUN=true`:** omitir la pregunta y proceder directamente como si la respuesta fuera "sí". La confirmación ya fue obtenida implícitamente por el modo automatizado — al llegar al paso 4 de `discard.md`, omitir la pregunta de confirmación y pasar directamente a la ejecución. Al registrar en el log de auditoría (paso 5e de `discard.md`), usar `source = "auto-run"`.
-- **Si no (modo interactivo):** esperar respuesta del usuario:
-  - **Sí** (o "s", "yes", "y"): ejecutar el flujo completo de `$SKILL_DIR/subcommands/discard.md` con las keys de los tickets descartables. La confirmación ya fue obtenida en este paso — al llegar al paso 4 de `discard.md`, omitir la pregunta de confirmación y pasar directamente a la ejecución. Al registrar en el log de auditoría (paso 5e de `discard.md`), usar `source = "auto-assign"`.
-  - **No** (o cualquier otra respuesta): mostrar:
-    > "Descarte omitido. Podés ejecutarlo luego con `/groot-queue discard <KEY1> <KEY2> ...`"
-    y continuar al paso 11.
-
-## 11. Postear notas internas solo para tickets asignados que siguen siendo Groot
-
-Ejecutar este paso **después** de las detecciones de derivación y descarte. La nota se postea únicamente para tickets con estado **✓ OK** que:
-- **no** matchearon una regla `R-DER` en el paso 9, y
-- **no** matchearon una regla `R-DESC` en el paso 10.
-
-Si un ticket fue identificado como derivable o descartable, **no** postear la guía de resolución de Groot aunque el usuario haya decidido no ejecutar la derivación o el descarte todavía. En esos casos la nota sería ruido o podría orientar mal al siguiente equipo.
+Ejecutar este paso solo para los tickets clasificados como `ASIGNAR` en el paso 3 que terminaron con estado **✓ OK** en el paso 8. Los tickets derivados, descartados o de revisión manual no reciben nota interna.
 
 **Procedimiento por ticket elegible:**
 
@@ -275,22 +304,32 @@ Si un ticket fue identificado como derivable o descartable, **no** postear la gu
    - Leer las labels actuales del ticket (del contenido ya obtenido en paso 2).
    - Agregar `groot-guide-posted` a la lista existente (merge, no reemplazar).
    - Si falla el label: registrar warning pero **no abortar** — la nota ya fue posteada y el slug garantiza la idempotencia como fallback.
-7. **Si falla la nota**: registrar `✗ Nota` para ese ticket en la tabla final del paso 12. **No abortar** — la asignación ya fue completada exitosamente.
-8. **Si tiene éxito (nota + label)**: registrar `✓ Nota` para ese ticket en la tabla final del paso 12.
+7. **Si falla la nota**: registrar `✗ Nota` para ese ticket en la tabla final del paso 10. **No abortar** — la asignación ya fue completada exitosamente.
+8. **Si tiene éxito (nota + label)**: registrar `✓ Nota` para ese ticket en la tabla final del paso 10.
 
 > ⚠️ Este paso es **best-effort**: un fallo al postear la nota no afecta la asignación ni bloquea el flujo. El ticket queda asignado y en progreso de todas formas.
 
-## 12. Mostrar tabla final consolidada
+## 10. Mostrar tabla final consolidada
 
 ```
-Resultado final (N tickets):
-| Key          | Summary                  | Transición  | Asignado a   | Nota    | Estado  |
-|--------------|--------------------------|-------------|--------------|---------|---------|
-| SSHP-XXXXX   | ...                      | ✓ En curso  | frgonzalez   | ✓ Nota  | ✓ OK    |
-| SSHP-XXXXX   | ...                      | ✓ En curso  | lpadularrosa | — Skip  | ➡️ DERIVABLE |
-| SSHP-XXXXX   | ...                      | ✓ En curso  | jperez       | — Skip  | ⛔ DESCARTABLE |
-| SSHP-XXXXX   | ...                      | ✗ Error     | —            | — Skip  | ✗ Skip  |
+Resultado final (N tickets sin assignee procesados):
+
+Derivados/Descartados:
+| Key          | Summary  | Acción       | Regla     | Estado         |
+|--------------|----------|--------------|-----------|----------------|
+| SSHP-XXXXX   | ...      | ➡️ Derivado   | R-DER-09  | ✓ OK           |
+| SSHP-XXXXX   | ...      | ⛔ Descartado  | R-DESC-02 | ✓ OK           |
+| SSHP-XXXXX   | ...      | ⏭️ Omitido    | R-DER-04  | Sin acción     |
+| SSHP-XXXXX   | ...      | ⚠️ Manual     | R-DESC-06 | Sin acción     |
+
+Asignaciones:
+| Key          | Summary  | Transición  | Asignado a   | Nota    | Estado |
+|--------------|----------|-------------|--------------|---------|--------|
+| SSHP-XXXXX   | ...      | ✓ En curso  | frgonzalez   | ✓ Nota  | ✓ OK   |
+| SSHP-XXXXX   | ...      | ✓ En curso  | lpadularrosa | — Skip  | ✓ OK   |
+| SSHP-XXXXX   | ...      | ✗ Error     | —            | — Skip  | ✗ Skip |
+
+Resumen: N total  |  M derivados/descartados  |  K omitidos  |  J revisión manual  |  P asignados  |  E errores
 ```
 
-- La columna **Nota** muestra `✓ Nota` si la nota interna se posteó con éxito, `✗ Nota` si falló, o `— Skip` si MCP no estaba disponible, el ticket no fue asignado exitosamente, o el ticket fue identificado como derivable/descartable.
-- Los tickets identificados como `R-DER` o `R-DESC` deben quedar claramente marcados como `➡️ DERIVABLE` o `⛔ DESCARTABLE` en la columna Estado hasta que el flujo automático correspondiente los procese o el usuario decida resolverlos manualmente.
+- **⏭️ Omitido**: el usuario respondió `n` en la confirmación individual. El ticket sigue sin assignee; ejecutar luego con `/groot-queue derive SSHP-XXXXX` o `/groot-queue discard SSHP-XXXXX`.

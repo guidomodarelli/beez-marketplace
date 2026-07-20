@@ -155,7 +155,9 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 
 - `cloudId`: valor validado en la pre-condición
 - `issueIdOrKey`: `"SSHP-XXXXXX"`
-- `commentBody`: el comentario sugerido de la regla R-DESC tal como está en `triage-rules.md`
+- `commentBody`:
+  - Si source = `"auto-assign-autoconfianza"` (auto-descarte de alta confianza desde `assign-unassigned`): usar el **comentario universal** de la sección `## Comentario universal — auto-descarte de alta confianza` de `triage-rules.md` (con la variante específica de R-DESC-14 si la regla matcheada es R-DESC-14).
+  - Si source = `"manual"` o `"auto-assign"`: usar el comentario sugerido de la regla R-DESC tal como está en `triage-rules.md`.
 - `contentFormat`: `"markdown"`
 - Visibilidad: **pública** — visible al reporter del portal. NO usar nota interna ni `commentVisibility` de Service Desk Team.
 
@@ -288,7 +290,7 @@ Ticket cerrado como **Won't Do** aplicando regla **R-DESC-XX** — <nombre de la
 
 **5f. Registrar en el log de auditoría** (append-only — una línea JSON por ticket sobre el que se intentó una acción de descarte, es decir que matcheó una regla R-DESC):
 
-- **Determinar `source`**: si este subcomando fue invocado desde el flujo de `assign-unassigned` (paso 10e de `assign-unassigned.md`), usar `"auto-assign"`; si lo invocó el usuario directamente con `/groot-queue discard`, usar `"manual"`.
+- **Determinar `source`**: si este subcomando fue invocado desde `assign-unassigned` en modo auto-acción de alta confianza (⚡), usar `"auto-assign-autoconfianza"`; si fue invocado desde `assign-unassigned` en modo confirmación interactiva (paso 10e), usar `"auto-assign"`; si lo invocó el usuario directamente con `/groot-queue discard`, usar `"manual"`.
 - **Determinar `result`**:
   - `"ok"` — comentario + transición de cierre exitosos.
   - `"partial-error"` — el comentario salió pero la transición falló (o viceversa).

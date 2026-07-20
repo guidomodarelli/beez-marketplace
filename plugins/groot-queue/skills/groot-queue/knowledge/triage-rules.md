@@ -11,6 +11,24 @@ description: Reglas de triage para determinar si un ticket de la cola Groot (SSH
 
 ---
 
+## Alcance de Groot Soporte — definición de "error sistémico"
+
+Groot Soporte atiende **exclusivamente errores sistémicos**: bugs, comportamientos inesperados o fallos de la herramienta que **no pueden resolverse mediante las herramientas de autogestión disponibles** (Groot admin, Alfred, xtools, autogestión del líder).
+
+**Son errores sistémicos (→ `VALIDO_GROOT`):**
+- Crashes, timeouts, errores 500, pantallas en blanco o comportamiento inesperado del sistema.
+- La herramienta falla al ejecutar una operación que debería funcionar (no muestra mensaje de validación claro, no guarda sin motivo aparente).
+- Un usuario o administrador con permisos válidos no puede realizar una acción que el sistema debería permitirle.
+
+**NO son errores sistémicos (→ `DESCARTAR` o `DERIVAR`):**
+- Solicitudes de asignar, cambiar o remover roles, atributos, permisos o configuraciones — esas operaciones las ejecuta el gestor de usuarios de la operación desde la tool de autogestión.
+- Errores de validación esperables: mensajes del tipo "atributo X es obligatorio", "debe tener un valor por defecto", "debe corregir lo siguiente" — la herramienta está funcionando correctamente al bloquear datos incompletos.
+- Funcionalidades que no aparecen porque faltan permisos, roles o atributos — eso es configuración operativa, no bug de la plataforma.
+
+> **Criterio de distinción**: si la herramienta muestra un mensaje claro indicando qué falta o qué condición no se cumple → es validación esperada, no bug. Si falla de forma inesperada sin mensaje de validación claro → es error sistémico.
+
+---
+
 ## Veredictos posibles
 
 | Veredicto | Indicador | Significado |
@@ -36,7 +54,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Comentario sugerido**:
   > "Hola, lamentamos el tiempo de respuesta de este ticket, sin embargo el mismo fue derivado a nuestra cola a destiempo. En caso de seguir necesitando soporte, volver a abrir el ticket con las evidencias del caso."
 
-### R-DESC-02 — Solicitud de asignación de roles a un usuario
+### R-DESC-02 — Solicitud de asignación de roles a un usuario ⚡
 - **Señales**:
   - Summary/description contiene una solicitud operativa de asignación de roles: ES "asignar rol", "asignación de roles", "darle rol", "agregar rol a usuario"; PT "atribuir role", "atribuição de roles", "dar role ao usuário", "adicionar role ao usuário"; EN "assign role", "role assignment", "grant role", "add role to user".
   - Cuenta **sin** tag azul de "no es cuenta de envíos" (es decir, es de shipping).
@@ -113,7 +131,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola, los usuarios están ubicados en el facility mencionado. En caso de no tener acceso a alguna función, esto debe ser revisado con el equipo de gestión de usuarios de su operación."
 - **Fuente**: Francisco Gonzalez, ticket SSHP-1409554 (2026-04-21).
 
-### R-DESC-08 — Solicitud de rol por Learning Hub / Training Hub completado
+### R-DESC-08 — Solicitud de rol por Learning Hub / Training Hub completado ⚡
 - **Señales**:
   - Summary/description menciona: "completó learning", "learning hub", "training hub", "asistió al entrenamiento", "terminó capacitación".
   - El usuario pide la asignación de un rol específico post-capacitación.
@@ -125,7 +143,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola, las solicitudes de roles a partir de asistencia en Learning Hub / Training Hub son atendidas por el equipo de gestión de usuarios de la operación. Desde aquí no damos soporte a este tipo de solicitudes."
 - **Fuente**: Francisco Gonzalez, ticket SSHP-1412472 (2026-04-21).
 
-### R-DESC-09 — Remoción manual de rol sin error técnico → gestor de usuarios de la operación
+### R-DESC-09 — Remoción manual de rol sin error técnico → gestor de usuarios de la operación ⚡
 - **Señales**:
   - Summary/description: "remover rol", "quitar rol", "desasignar rol" a un operario puntual.
   - No hay error técnico reportado.
@@ -137,7 +155,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Esta solicitud debe ser enviada al equipo de gestión de usuario de su operación. Desde soporte Groot/Kraken no hacemos este tipo de asignaciones o remociones."
 - **Fuente**: Francisco Gonzalez, ticket SSHP-1418490 (2026-04-21). Patrón absorbido por la regla; el archivo de ejemplo fue eliminado por redundancia (la regla es suficiente).
 
-### R-DESC-10 — Solicitud de asignación/cambio de valor de atributo sin error sistémico → gestor de usuarios de la operación
+### R-DESC-10 — Solicitud de asignación/cambio de valor de atributo sin error sistémico → gestor de usuarios de la operación ⚡
 - **Señales**:
   - Summary/description pide **asignar / agregar / cambiar / quitar un valor de atributo** (CAD, facility, atributo operativo) a uno o pocos usuarios. Variantes de texto: ES "asignar atributo", "agregar atributo", "cambiar CAD", "asignar facility", "falta el atributo X", "asignar valor de atributo"; PT "atribuir atributo", "adicionar atributo", "trocar CAD", "atribuir facility", "falta o atributo", "valor de atributo faltando"; EN "assign attribute", "add attribute", "change CAD", "assign facility", "set attribute value", "missing attribute".
   - **No** hay error técnico/sistémico: la herramienta de Groot funciona; el requester solo pide que Groot ejecute la asignación/cambio.
@@ -149,7 +167,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola, desde soporte Groot/Kraken solo atendemos errores sistémicos. La asignación o cambio de valores de atributo (CAD, facility, etc.) sin un error de la herramienta debe gestionarla el equipo de gestión de usuarios de su operación."
 - **Fuente**: Sync Groot Queue, criterio general de triage roles/atributos, 2026-06-02.
 
-### R-DESC-11 — Incidencia en sistema externo a Groot (ej. HCM Rostering) → falso positivo, rechazar
+### R-DESC-11 — Incidencia en sistema externo a Groot (ej. HCM Rostering) → falso positivo, rechazar ⚡
 - **Señales**:
   - ES: "no pudo crear usuario en HCM Rostering", "error al dar de alta en HCM Rostering", "fallo en Rostering al crear colaborador".
   - PT: "nao foi possivel criar usuario no HCM Rostering", "erro no HCM Rostering ao criar usuario", "nao consegue criar novato no Rostering".
@@ -174,7 +192,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Incidencia rechazada por IT / Incidente rejeitado pelo IT."
 - **Fuente**: groot-queue:analyze-history, SSHP-1454812, 2026-05-26. Nota interna: el comentario real del equipo no estaba disponible en la API al minar este ticket; confirmar el copy validado con Francisco Gonzalez antes de usar.
 
-### R-DESC-13 — Solicitud de liberar bolha/permisos o roles sin error técnico → gestor de aplicación
+### R-DESC-13 — Solicitud de liberar bolha/permisos o roles sin error técnico → gestor de aplicación ⚡
 - **Señales**:
   - ES: "liberar acceso a bolha", "habilitar Put Away", "ajuste de permisos", "agregar función", "asignar rol para función operativa".
   - PT: "liberar acesso a bolha", "habilitar Put Away", "ajuste de permissoes", "adicionar funcao", "atribuir role para funcao operacional".
@@ -186,7 +204,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Desde groot no hacemos modificacion de atributos/roles, para eso debe ponerse en contacto con el gestor de su aplicacion."
 - **Fuente**: groot-queue:analyze-history, SSHP-1470912, 2026-06-08.
 
-### R-DESC-14 — Usuario interno dado de baja en SSFF no puede reactivarse manualmente
+### R-DESC-14 — Usuario interno dado de baja en SSFF no puede reactivarse manualmente ⚡
 - **Señales**:
   - ES: "usuario interno dado de baja en SSFF", "usuario inactivo en Groot no puede ser reactivado", "opción de activar deshabilitada".
   - PT: "usuario interno desligado no SSFF", "usuario inativo em Groot nao pode ser reativado", "opcao de ativar desabilitada".
@@ -252,7 +270,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola, el error al crear Labour Share se debe a que la posición del usuario es 'analyst'. Solo los usuarios con posición team_lead o supervisor tienen habilitada la funcionalidad de crear Labour Share. Esto es por diseño del sistema."
 - **Fuente**: ticket SSHP-1417376 (2026-04-17).
 
-### R-DESC-19 — Solicitud de operación que ya es funcionalidad existente en la tool de autogestión (catch-all)
+### R-DESC-19 — Solicitud de operación que ya es funcionalidad existente en la tool de autogestión (catch-all) ⚡
 - **Señales**:
   - ES: "cambiar líder", "cambio de TL", "alteración de TL", "mover usuario a otro supervisor", "cambiar atributo", "asignar CAD", "modificar facility", "quiero cambiar X a Y".
   - PT: "alteração de TL", "trocar líder", "mover usuário para outro supervisor", "modificar atributo", "trocar facility", "quero alterar X para Y".
@@ -555,6 +573,21 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 
 ---
 
+## Comentario universal — auto-descarte de alta confianza
+
+> ⚡ Reglas marcadas con ⚡ son **alta confianza**: el texto del ticket es suficiente para aplicarlas sin verificación en Groot admin. `/groot-queue classify` puede ejecutar su descarte automáticamente.
+
+Cuando `/groot-queue classify` auto-descarta tickets de reglas ⚡, **usa este comentario** en lugar del comentario por regla:
+
+> "Hola, desde Groot/Kraken Soporte atendemos exclusivamente errores sistémicos: bugs, comportamientos inesperados o fallos de la herramienta que no pueden resolverse por autogestión. La asignación o cambio de roles, permisos, atributos y configuraciones operativas — incluyendo errores de validación por datos faltantes — no es responsabilidad de este equipo y debe gestionarla el responsable de usuarios de su operación."
+
+**Rejection reason** a usar en la transición: `[R] Funcionalidad existente` (id: `81170`), salvo que la tabla de `discard.md` indique otro para la regla específica.
+
+**Excepción — R-DESC-14**: para esta regla, el comentario universal se complementa con la explicación específica porque el motivo de cierre es distinto (baja en SSFF, no gestión de permisos):
+> "Hola, desde Groot/Kraken Soporte atendemos exclusivamente errores sistémicos. Los usuarios internos dados de baja en SSFF no pueden reactivarse manualmente desde Groot — cuando SSFF los reactive, la cuenta se actualizará automáticamente."
+
+---
+
 ## Algoritmo de triage (para `list` y `classify`)
 
 Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredicto que matchee:
@@ -584,22 +617,22 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 23. **R-DESC-03** → si el usuario reporta que en xtools / autogestión "no aparece CAD" / "não aparece CAD" / "no puedo seleccionar facility" + contexto de visitar otro site.
 24. **R-DESC-06** → si el usuario afectado es **rep** y el reporte es previo al clock-in físico del día en el site objetivo.
 25. **R-DESC-07** → si reps no ven una bolha/función y la verificación confirma que **están** en el facility correcto.
-26. **R-DESC-13** → si pide liberar bolha/permisos/roles para una función operativa sin error técnico de Groot, y la acción corresponde al gestor de aplicación u operación.
-27. **R-DESC-08** → si el requester menciona "learning completado", "training hub", "learning hub" y pide asignación de rol post-capacitación.
+26. **R-DESC-13** ⚡ → si pide liberar bolha/permisos/roles para una función operativa sin error técnico de Groot, y la acción corresponde al gestor de aplicación u operación.
+27. **R-DESC-08** ⚡ → si el requester menciona "learning completado", "training hub", "learning hub" y pide asignación de rol post-capacitación.
 28. **R-DESC-04** → si es pedido de **cambio de líder / supervisor directo** sin error técnico (lista de usuarios a mover + nuevo líder).
-29. **R-DESC-09** → si pide **remover** un rol a un operario y no hay error técnico reportado.
+29. **R-DESC-09** ⚡ → si pide **remover** un rol a un operario y no hay error técnico reportado.
 30. **R-DESC-05** → si hay error "no autorizado" / "not authorized" o solicitud de permisos para un módulo/URL específico y el usuario **sí** logra loguearse.
-31. **R-DESC-02** → si es solicitud de **asignación de rol** a usuario (sin error técnico) y la cuenta **no** tiene tag azul.
-32. **R-DESC-10** → si pide **asignar / cambiar / quitar un valor de atributo** (CAD, facility, atributo operativo) sin error técnico, y no matchea R-DESC-03 / R-DESC-06 / R-DESC-07.
+31. **R-DESC-02** ⚡ → si es solicitud de **asignación de rol** a usuario (sin error técnico) y la cuenta **no** tiene tag azul.
+32. **R-DESC-10** ⚡ → si pide **asignar / cambiar / quitar un valor de atributo** (CAD, facility, atributo operativo) sin error técnico, y no matchea R-DESC-03 / R-DESC-06 / R-DESC-07.
 33. **R-DESC-18** → si el usuario no puede crear Labour Share para ninguno de sus HCs y la verificación confirma que tiene posición `analyst` (no `team_lead` ni `supervisor`).
 34. **R-DESC-01** → si proviene de **Opex Full / SMO** y fue derivado fuera de ventana (>15 días de aging al llegar a Groot, posterior a 2025-10-28).
-35. **R-DESC-11** → si el problema ocurre en un sistema externo a Groot/Kraken (ej. HCM Rostering) y no hay error en ninguna herramienta de Groot.
+35. **R-DESC-11** ⚡ → si el problema ocurre en un sistema externo a Groot/Kraken (ej. HCM Rostering) y no hay error en ninguna herramienta de Groot.
 36. **R-DESC-12** ⚠️ _[pendiente validación — clasificar como `REVISAR_MANUAL` hasta confirmar copy con Francisco Gonzalez]_ → si el reporte es una jerarquía que cambió automáticamente en LMS (sin solicitud manual) y el contexto apunta a un sync de Rostering, clasificar como `REVISAR_MANUAL` hasta validar el copy de descarte.
-37. **R-DESC-14** → si un usuario interno dado de baja en SSFF aparece inactivo en Groot y no puede reactivarse manualmente.
+37. **R-DESC-14** ⚡ → si un usuario interno dado de baja en SSFF aparece inactivo en Groot y no puede reactivarse manualmente.
 38. **R-DESC-15** → si roles previos no se restauran tras expirar un rol temporal **por incompatibilidades de roles que ya no se exceptúan** (regla de auditoría del 14 de marzo). ⚠️ **NO aplicar** si el rol temporal nunca impactó en la operación, el retorno no se ejecutó, o el proceso falló completamente — en esos casos el veredicto es `VALIDO_GROOT` (bug real del proceso de roles temporales).
 39. **R-DESC-16** → si el usuario reporta jerarquía/gestor incorrecto en Groot pero la verificación confirma que el valor coincide con SSFF (SuccessFactors).
 40. **R-DESC-17** → si el usuario reporta que no puede acceder a sistemas/tools cuyas URLs NO pertenecen al dominio de Groot (`envios.adminml.com/tools/auth/*`).
-41. **R-DESC-19** → si la solicitud pide ejecutar una operación estándar que la tool ya provee por autogestión, sin error técnico, y no matchea ninguna regla más específica anterior.
+41. **R-DESC-19** ⚡ → si la solicitud pide ejecutar una operación estándar que la tool ya provee por autogestión, sin error técnico, y no matchea ninguna regla más específica anterior.
 42. Si ninguna regla matchea → `VALIDO_GROOT` (si la categoría del ticket está en los runbooks de `runbooks.md`) o `REVISAR_MANUAL` (si no hay categoría clara).
 
 ---

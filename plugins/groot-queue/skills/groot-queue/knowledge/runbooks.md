@@ -53,7 +53,7 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 3. Si hay referencia circular → requiere corrección en BD, escalar a equipo dev Groot
 4. Si el botón de cambio de gestión está deshabilitado → verificar que el usuario que intenta hacer el cambio tiene permisos de TL o superior
 5. Si el cambio se hace pero revierte → verificar si hay un proceso de Rostering o Alfred Massive sobrescribiendo el cambio
-6. **Escalación**: Crear bug para equipo dev Groot con context_id del error si está disponible
+6. **Escalación**: Crear bug para equipo dev Groot con el error observado, URL y screenshot si aplica
 
 ---
 
@@ -108,7 +108,7 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 2. Intentar editar → si da error "alteração não salva" verificar si hay validación de negocio bloqueando
 3. Si es atributo crossdocking → verificar que el site soporta crossdocking
 4. Si es cambio masivo → usar Alfred Massive
-5. **Escalación**: Con el error code específico (`update_attribute_error`) y context_id
+5. **Escalación**: Con el error code específico (`update_attribute_error`)
 
 ---
 
@@ -144,11 +144,10 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 **Problema típico**: La UI de Groot muestra error, se queda cargando, o un botón desapareció.
 
 **Pasos**:
-1. Obtener el context_id del error si está disponible (aparece en la respuesta de error)
-2. Verificar si el error es reproducible con otro usuario/browser
-3. Si el botón desapareció → posible cambio de permisos reciente, verificar roles del usuario que opera
-4. Si "se queda cargando" → posible timeout de backend, verificar si el usuario target tiene muchos datos
-5. **Escalación**: Siempre escalar errores de UI con context_id, URL completa y screenshot
+1. Verificar si el error es reproducible con otro usuario/browser
+2. Si el botón desapareció → posible cambio de permisos reciente, verificar roles del usuario que opera
+3. Si "se queda cargando" → posible timeout de backend, verificar si el usuario target tiene muchos datos
+4. **Escalación**: Siempre escalar errores de UI con URL completa y screenshot
 
 ---
 
