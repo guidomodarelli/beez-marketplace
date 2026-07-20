@@ -422,7 +422,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola chicos, derivamos este caso para su analisis, no podemos resolver este ticket desde Groot"
 - **Fuente**: SSHP-1457833, 2026-06-02. Verificado contra el ticket real (summary PT "Nao consegue criar novo colaborador no Groot; erro tax_id already used", description EN con error literal "Tax_id has already been used", alta de un new hire): status `Resolved` y assignee `sup_iamcommerce_01` (IAM Soporte), lo que confirma la derivación.
 
-### R-DER-12 — Errores en la contabilidad de horas en Be a Rep → LMS (clasificación activa; automatización pendiente)
+### R-DER-12 — Errores en la contabilidad de horas en Be a Rep → LMS
 - **Señales**:
   - ES: "errores en la contabilidad de horas en Be a Rep", "horas mal contabilizadas en Be a Rep", "diferencia de horas en Be a Rep", "las horas de Be a Rep no coinciden en LMS".
   - PT: "erros na contabilização de horas no Be a Rep", "horas contabilizadas incorretamente no Be a Rep", "divergência de horas no Be a Rep", "horas do Be a Rep não batem no LMS".
@@ -432,12 +432,12 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Razón**: La contabilización y conciliación de horas en LMS queda fuera del dominio de Groot/Kraken. Groot puede exponer o consumir datos del flujo Be a Rep, pero los desvíos de horas deben ser revisados por el equipo dueño de LMS.
 - **Verificación previa**: Si el síntoma es devolución de roles en Be a Rep / Labour Share, verificar primero que el problema no sea una inconsistencia de snapshot resuelta por el equipo dev. Si el problema es una falla técnica de agendado, snapshot, permisos, CAD o rol dentro de Groot, no aplica esta regla y debe seguir el runbook correspondiente.
 - **Acción**: Derivar a **LMS**.
-- **Automatización**: No ejecutar derivación automática hasta completar el option id de LMS para `DERIVATION_DESTINATION_SQUAD_FIELD` y validar el copy de nota interna con un ticket real.
+- **Automatización**: Habilitada. Option id en `$SKILL_DIR/knowledge/jira-field-options.md`. Copy de nota interna pendiente de validación en ticket real — ajustar si hay feedback.
 - **Comentario sugerido provisional**:
   > "Hola, derivamos este caso al equipo de LMS porque el problema reportado corresponde a la contabilidad de horas de Be a Rep en LMS, fuera del alcance de soporte Groot/Kraken."
 - **Fuente**: Pedido directo del usuario, 2026-06-03. Regla agregada sin ticket real por instrucción explícita; pendiente de validar wording y copy contra un caso SSHP concreto.
 
-### R-DER-13 — Acceso denegado a xtools/Pidgey (chat interno / notificaciones outbound) → Equipo Chat Interno
+### R-DER-13 — Acceso denegado a xtools/Pidgey (chat interno / notificaciones outbound) → Helpdesk IA
 - **Señales**:
   - La URL afectada pertenece a `xtools.adminml.com/tools/pidgey/*`.
   - ES: "no autorizado en xtools", "no puede acceder a notificaciones de chat", "error en pidgey", "sin acceso a sección de notificaciones en xtools".
@@ -447,9 +447,9 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - El ticket puede llegar mal asignado a Groot o a WoWChat.
 - **Razón**: xtools/Pidgey (chat interno y notificaciones outbound) no pertenece al dominio de Groot ni de WoWChat. El equipo dueño es el de Chat Interno (Pidgey), que gestiona los permisos de acceso a esa sección.
 - **Verificación previa**: Confirmar que la URL reportada es `xtools.adminml.com/tools/pidgey/*`. Si el error es en otra sección de xtools que sí involucre configuración de usuario Groot (ej. perfil, facility, CAD) → no aplica, reclasificar a la categoría correspondiente.
-- **Acción**: Derivar a **Equipo Chat Interno (Pidgey)**.
+- **Acción**: Derivar a **Helpdesk IA** (ruteo al equipo Chat Interno / Pidgey).
 - **Comentario sugerido**:
-  > "Hola, este inconveniente corresponde al equipo de Chat Interno (Pidgey), que es el responsable de los permisos de acceso a las notificaciones en xtools. Derivamos para que continúen con la atención del caso."
+  > "Hola, este inconveniente corresponde al equipo de Chat Interno (Pidgey), responsable de los permisos de acceso a las notificaciones en xtools. Derivamos a Helpdesk IA para que enruten el caso con el equipo correspondiente."
 - **Fuente**: ticket SSHP-1413000 (2026-04-18).
 
 ### R-DER-14 — Alta/regularización de nodo o valor nuevo en Kraken → Helpdesk IA (platsec/randall o integradores)
@@ -541,6 +541,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Razón**: Si el usuario está correctamente configurado en Groot pero LMS muestra datos incorrectos o no carga, el problema es del sistema LMS. Groot Soporte no tiene herramientas para corregir inconsistencias internas de LMS.
 - **Verificación previa**: Confirmar que no es un problema de R-DER-12 (horas Be a Rep) ni de configuración faltante en Groot. Si al usuario le faltan roles en Groot → `VALIDO_GROOT`.
 - **Acción**: Derivar a **LMS** (equipo Labour Management).
+- **Automatización**: Habilitada. Option id en `$SKILL_DIR/knowledge/jira-field-options.md`.
 - **Comentario sugerido**:
   > "Hola, verificamos tu configuración en Groot y está correcta. El problema parece ser funcional de LMS. Derivamos al equipo de LMS para que puedan investigar."
 - **Fuente**: Análisis histórico (2 tickets: SSHP-1475187, SSHP-1470659).
@@ -553,7 +554,8 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - El reporte menciona una URL de `appsheet.com/start/...` con errores como "Something has gone wrong", "Internal Server Error" o la app no carga.
 - **Razón**: AppSheet SHE y GEMBA son aplicaciones externas mantenidas por otro equipo. Groot Soporte no tiene acceso ni herramientas para diagnosticar errores internos de AppSheet. El equipo de SHE gestiona estas apps.
 - **Verificación previa**: Confirmar que la URL reportada es de `appsheet.com` y el error NO está relacionado con permisos de usuario en Groot (si el usuario no puede loguearse → verificar primero en Groot).
-- **Acción**: Derivar a **Equipo SHE/AppSheet** (Salma Dermisache).
+- **Acción**: Derivar a **Equipo SHE/AppSheet**.
+- **Automatización**: Habilitada. Option id en `$SKILL_DIR/knowledge/jira-field-options.md`.
 - **Comentario sugerido**:
   > "Hola, el error reportado ocurre en AppSheet (plataforma externa). Groot Soporte no administra esa herramienta. Derivamos al equipo responsable de SHE/GEMBA para que puedan investigar."
 - **Fuente**: Análisis histórico (2 tickets: SSHP-1434223, SSHP-1435140).

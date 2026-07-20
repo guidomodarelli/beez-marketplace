@@ -12,6 +12,12 @@ triage-rules.md      Reglas transversales R-DESC-XX / R-DER-XX.
                      DERIVAR, VALIDO_GROOT, REVISAR_MANUAL).
                      Se consulta en /groot-queue list y /groot-queue classify.
 
+jira-field-options.md
+                     Fuente de verdad centralizada de option IDs de campos
+                     custom de Jira en SSHP (customfield_13781 squads destino,
+                     customfield_14924 motivos de derivación, etc.).
+                     Se consulta en /groot-queue derive.
+
 runbooks.md          Runbook procedural por categoría de problema
                      (Jerarquía, Warehouse, Roles, Atributos, CAD/Perfil, etc.)
                      Se consulta en /groot-queue solve.
