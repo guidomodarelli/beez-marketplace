@@ -2,6 +2,8 @@
 
 Referencia centralizada para todos los subcommands que usan el MCP de Atlassian.
 
+Documentación oficial: [Getting started with the Atlassian Remote MCP Server](https://support.atlassian.com/atlassian-rovo-mcp-server/docs/getting-started-with-the-atlassian-remote-mcp-server/)
+
 ---
 
 ## Instalación
