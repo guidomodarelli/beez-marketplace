@@ -332,7 +332,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Verificación previa**: Revisar roles/facility/atributos del usuario en Groot. Si todo está correcto → derivar. Si falta un rol Groot → `VALIDO_GROOT`.
 - **Acción**: Derivar a **Helpdesk IA** (ruteo al owner correcto).
 - **Comentario sugerido**:
-  > "Hola, el error corresponde a un componente externo a nuestro soporte Groot/Kraken. Esto debe ser revisado con el equipo de Platsec/Randall owner del componente. El usuario está correctamente configurado en Kraken."
+  > "Hola, este ticket no corresponde a Groot/Kraken Soporte. El usuario está correctamente configurado en Kraken y el error corresponde a un componente externo (Platsec/Randall) que está fuera de nuestro alcance. Derivamos a Helpdesk IA para que enruten el caso con el equipo owner del componente."
 - **Canal directo Slack**: `#help-authz-internal-admins`.
 - **Fuente**: Francisco Gonzalez, ticket SSHP-1412840 (2026-04-21).
 
@@ -463,7 +463,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Verificación previa**: Confirmar que el nodo/valor efectivamente no existe en Kraken. Si el nodo existe pero hay un error al intentar asociarlo → reclasificar como `VALIDO_GROOT` (error sistémico).
 - **Acción**: Derivar a **Helpdesk IA** (ruteo a platsec/randall o integradores).
 - **Comentario sugerido**:
-  > "Hola, desde soporte Groot/Kraken no tenemos opción para dar de alta valores nuevos. Estos deben llegar por los integradores o pedir ayuda al equipo de platsec/randall."
+  > "Hola, este ticket no corresponde a Groot/Kraken Soporte. El alta de nodos o valores nuevos en Kraken está fuera de nuestras herramientas; debe gestionarse con los integradores o el equipo de platsec/randall. Derivamos a Helpdesk IA para que enruten el caso con el equipo correspondiente."
 - **Fuente**: Francisco Gonzalez, ticket SSHP-1469338 (2026-07-07).
 
 ### R-DER-15 — Reactivación de usuario desactivado/expirado que Groot no puede resolver → IAM Soporte
@@ -503,7 +503,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Verificación previa**: Confirmar que el usuario **efectivamente tiene** los roles/bolhas/warehouse/atributos en Groot. Si la configuración en Groot es incorrecta o faltante → reclasificar como `VALIDO_GROOT` (ajustar permisos en Groot). Si todo en Groot está correcto → derivar sin demora, no intentar workarounds de cache ni troubleshooting de WMS: eso le compete al equipo WMS vía Helpdesk IA.
 - **Acción**: Derivar a **Helpdesk IA** (ruteo a WMS/Logistics).
 - **Comentario sugerido**:
-  > "Hola, verificamos la configuración del usuario en Groot y los permisos están correctos. El problema parece ser funcional de WMS/Logistics. Derivamos a Helpdesk IA para que enrute el caso con el equipo correspondiente."
+  > "Hola, este ticket no corresponde a Groot Soporte. Verificamos la configuración del usuario en Groot y los permisos están correctos (roles, bolhas y warehouse asignados). El problema es funcional de WMS/Logistics, fuera del alcance de Groot. Derivamos a Helpdesk IA para que enruten el caso con el equipo de WMS."
 - **Fuente**: Análisis histórico (9 tickets: SSHP-1508621, SSHP-1500233, SSHP-1495880, SSHP-1492695, SSHP-1486490, SSHP-1485607, SSHP-1484713, SSHP-1465825, SSHP-1486341). Reforzado con SSHP-1504561 (usuario regional limitado al CAD local en WMS solo en navegador normal; incógnito funciona correctamente).
 
 ### R-DER-18 — Solicitud operativa de WMS (gestión de paquetes/envíos, no de usuarios) → Helpdesk IA
@@ -516,7 +516,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Verificación previa**: Confirmar que el pedido es puramente operativo y no un error derivado de permisos faltantes del usuario.
 - **Acción**: Derivar a **Helpdesk IA** (ruteo a WMS/Operaciones).
 - **Comentario sugerido**:
-  > "Hola, desde Groot Soporte gestionamos usuarios y permisos. Tu solicitud es operativa (gestión de paquetes/envíos en WMS) y corresponde al equipo de WMS/Operaciones. Derivamos a Helpdesk IA para que enrute el caso con el equipo correspondiente."
+  > "Hola, este ticket no corresponde a Groot Soporte. Groot gestiona usuarios y permisos; las operaciones sobre paquetes/envíos en WMS están fuera de nuestro alcance. Derivamos a Helpdesk IA para que enruten el caso con el equipo de WMS/Operaciones."
 - **Fuente**: Análisis histórico (2 tickets: SSHP-1489984, SSHP-1489350).
 
 ### R-DER-20 — Pérdida de acceso o desincronización IAM↔WMS/LMS (usuario activo pierde permisos sin causa visible en Groot) → IAM Soporte
