@@ -312,12 +312,14 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Comentario sugerido**:
   > "Hola, derivo este caso porque no es un problema de configuración. El equipo de Randall ya está trabajando en conjunto con Process Dev Full para bajar un walk-around."
 
-### R-DER-03 — Vincular/desvincular cuenta o cambio de contraseña → IAM Commerce
+### R-DER-03 — Vincular/desvincular cuenta o cambio de contraseña → IAM Soporte
 - **Señales**:
   - Aparece como "cuenta Meli" y debería ser `ext_`, o al revés.
   - Pide cambio de contraseña que requiere flujo de autogestión.
-- **Razón**: Problemas de vinculación de cuenta los maneja **IAM Commerce** (`sup_iamcommerce`).
-- **Acción**: Derivar a IAM Commerce.
+- **Razón**: Problemas de vinculación de cuenta los maneja **IAM Soporte** (`57102`).
+- **Acción**: Derivar a IAM Soporte.
+- **Comentario sugerido**:
+  > "Hola, la vinculación o desvinculación de cuentas (cuenta MELI vs cuenta ext_) y cambios de contraseña requieren la intervención del equipo de IAM Soporte. Derivamos para que puedan ayudarte."
 - **Nota**: Este runbook también existe en `runbooks.md` (Runbook: Vincular/Desvincular). La regla lo formaliza como derivación directa cuando la señal es clara.
 
 ### R-DER-04 — Componente externo a Groot/Kraken (Platsec / Randall) → Helpdesk IA
@@ -464,28 +466,28 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola, desde soporte Groot/Kraken no tenemos opción para dar de alta valores nuevos. Estos deben llegar por los integradores o pedir ayuda al equipo de platsec/randall."
 - **Fuente**: Francisco Gonzalez, ticket SSHP-1469338 (2026-07-07).
 
-### R-DER-15 — Reactivación de usuario desactivado/expirado que Groot no puede resolver → IAM Commerce
+### R-DER-15 — Reactivación de usuario desactivado/expirado que Groot no puede resolver → IAM Soporte
 - **Señales**:
   - ES: "reactivar usuario desactivado", "cuenta desactivada", "expirada", "no se puede reactivar", "error al reactivar", "cuenta expirada", "usuario desactivado no puede ser reactivado".
   - PT: "reativar usuário desativado", "conta desativada", "expirada", "não pode ser reativado", "erro ao reativar", "conta expirada", "usuário desativado não pode ser reativado".
   - EN: "reactivate disabled user", "account disabled", "expired", "cannot reactivate", "error reactivating", "account expired", "disabled user cannot be reactivated".
   - El líder o el usuario reporta que una cuenta aparece como desactivada/expirada en Groot o MeliHelp y no hay opción para reactivarla desde la autogestión.
-- **Razón**: Cuando la desactivación involucra bloqueos de SuccessFactors, IAM o sincronización de HR, Groot Soporte no tiene herramientas para desbloquear. El equipo de IAM Commerce tiene acceso directo para resolver estos casos.
+- **Razón**: Cuando la desactivación involucra bloqueos de SuccessFactors, IAM o sincronización de HR, Groot Soporte no tiene herramientas para desbloquear. El equipo de IAM Soporte tiene acceso directo para resolver estos casos.
 - **Verificación previa**: Confirmar que el usuario realmente aparece como desativado/expirado en Groot. Si el usuario está activo pero con permisos faltantes → reclasificar como `VALIDO_GROOT`.
-- **Acción**: Derivar a **IAM Commerce** (sup_iamcommerce_01).
+- **Acción**: Derivar a **IAM Soporte** (`57102`).
 - **Comentario sugerido**:
   > "Hola, la reactivación de cuentas desactivadas/expiradas que no se resuelve por autogestión requiere intervención del equipo de IAM. Derivamos para que puedan ayudarte."
 - **Fuente**: Análisis histórico (5 tickets: SSHP-1508978, SSHP-1497366, SSHP-1498407, SSHP-1499951, SSHP-1458962).
 
-### R-DER-16 — Error de creación de usuario por fallo de SuccessFactors / datos inválidos → IAM Commerce
+### R-DER-16 — Error de creación de usuario por fallo de SuccessFactors / datos inválidos → IAM Soporte
 - **Señales**:
   - ES: "error al crear usuario", "datos no válidos", "no genera Groot ID", "error de identificador", "SuccessFactors no permite continuar", "error de datos en creación masiva".
   - PT: "erro ao criar usuário", "dados inválidos", "não gera Groot ID", "erro de identificador", "SuccessFactors não permite continuar", "erro de dados na criação", "falha no SuccessFactors".
   - EN: "error creating user", "invalid data", "does not generate Groot ID", "identifier error", "SuccessFactors does not allow to continue", "data error in creation".
   - El líder intenta crear uno o varios usuarios (internos o externos) desde Groot y recibe error del sistema que menciona SuccessFactors, datos inválidos, o identificador tributario (pero **no** es un documento duplicado — para eso ver R-DER-11).
-- **Razón**: Los errores sistémicos de integración con SuccessFactors requieren investigación del equipo IAM Commerce, que tiene acceso a los logs de integración y puede corregir datos en la fuente.
+- **Razón**: Los errores sistémicos de integración con SuccessFactors requieren investigación del equipo IAM Soporte, que tiene acceso a los logs de integración y puede corregir datos en la fuente.
 - **Verificación previa**: Confirmar que no es un caso de documento inválido (R-DER-09) ni documento duplicado (R-DER-11). Si el error menciona "identificador tributario inválido" / "Identificador tributario invalido" / "invalid tax id" → aplicar R-DER-09. Si menciona "tax_id has already been used" o "CPF já utilizado" → aplicar R-DER-11 en su lugar.
-- **Acción**: Derivar a **IAM Commerce** (sup_iamcommerce_01).
+- **Acción**: Derivar a **IAM Soporte** (`57102`).
 - **Comentario sugerido**:
   > "Hola, el error de creación está relacionado con la integración de SuccessFactors y requiere investigación del equipo de IAM. Derivamos para que puedan resolver el problema de datos."
 - **Fuente**: Análisis histórico (8+ tickets: SSHP-1482522, SSHP-1483624, SSHP-1483830, SSHP-1483831, SSHP-1483993, SSHP-1482546, SSHP-1482691, SSHP-1480290, SSHP-1482672).
@@ -517,15 +519,15 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   > "Hola, desde Groot Soporte gestionamos usuarios y permisos. Tu solicitud es operativa (gestión de paquetes/envíos en WMS) y corresponde al equipo de WMS/Operaciones. Derivamos para que puedan ayudarte."
 - **Fuente**: Análisis histórico (2 tickets: SSHP-1489984, SSHP-1489350).
 
-### R-DER-20 — Pérdida de acceso o desincronización IAM↔WMS/LMS (usuario activo pierde permisos sin causa visible en Groot) → IAM Commerce
+### R-DER-20 — Pérdida de acceso o desincronización IAM↔WMS/LMS (usuario activo pierde permisos sin causa visible en Groot) → IAM Soporte
 - **Señales**:
   - ES: "perdió acceso después de login", "sin acceso al warehouse por defecto", "troca de gestión en LMS", "acceso desapareció", "permisos se desasignaron solos".
   - PT: "perdeu acesso após login", "sem acesso ao warehouse padrão", "troca de gestão no LMS", "acesso sumiu", "permissões se desatribuíram sozinhas".
   - EN: "lost access after login", "no access to default warehouse", "management swap in LMS", "access disappeared", "permissions unassigned by themselves".
   - El usuario estaba activo y funcionando, pero **perdió acceso a WMS/LMS sin que nadie modificara su configuración en Groot**. La cuenta sigue activa, los roles parecen estar, pero el sistema downstream (WMS/LMS) dejó de reconocer sus permisos.
-- **Razón**: La sincronización entre IAM y los sistemas downstream (WMS, LMS) a veces falla o se corrompe sin intervención manual. El equipo IAM Commerce tiene acceso a los logs de sincronización y puede forzar re-sync o corregir inconsistencias.
+- **Razón**: La sincronización entre IAM y los sistemas downstream (WMS, LMS) a veces falla o se corrompe sin intervención manual. El equipo IAM Soporte tiene acceso a los logs de sincronización y puede forzar re-sync o corregir inconsistencias.
 - **Verificación previa**: Confirmar que el usuario está activo en Groot, tiene roles asignados, y el problema NO es configuración faltante en Groot (si le faltan roles → `VALIDO_GROOT`).
-- **Acción**: Derivar a **IAM Commerce** (sup_iamcommerce_01).
+- **Acción**: Derivar a **IAM Soporte** (`57102`).
 - **Comentario sugerido**:
   > "Hola, verificamos que tu configuración en Groot está correcta pero detectamos un problema de sincronización con el sistema. Derivamos al equipo de IAM para que puedan investigar y restaurar el acceso."
 - **Fuente**: Análisis histórico (3 tickets: SSHP-1493771, SSHP-1491358, SSHP-1482519).
