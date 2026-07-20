@@ -604,7 +604,7 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 6. **R-DER-11** → si al crear/dar de alta un colaborador el error es "Tax_id has already been used" / ES "tax id ya utilizado" / PT "tax_id já utilizado" (documento **válido** pero ya en uso; distinto de R-DER-09 que es tax id *inválido*).
 7. **R-DER-10** → si el usuario final ve un mensaje tipo "no perteneces a envíos" / "no pertence a envios" al intentar crear cuenta o desbloquearla (y por eso no puede conocer su LDAP).
 8. **R-DER-08** → si el pedido es **cambio de nombre** del usuario (first/last name), sin error técnico de Groot.
-9. **R-DER-13** _[asignación manual — célula interna Pidgey, sin squad Jira]_ → si la URL afectada es `xtools.adminml.com/tools/pidgey/*` (chat interno / notificaciones outbound) y el problema no involucra configuración de usuario en Groot.
+9. **R-DER-13** _[asignación automática vía shuffle — célula interna Pidgey, sin squad Jira]_ → si la URL afectada es `xtools.adminml.com/tools/pidgey/*` (chat interno / notificaciones outbound) y el problema no involucra configuración de usuario en Groot.
 10. **R-DER-14** → si la solicitud pide dar de **alta / crear / registrar** un nodo o valor nuevo que no existe en Kraken (ej. "alta de nodo NEX", "registrar nodo", "crear valor nuevo").
 11. **R-DER-15** → si un usuario está desactivado/expirado en Groot y no puede ser reactivado por autogestión (error al reactivar, cuenta expirada sin opción de recovery).
 12. **R-DER-16** → si la creación de usuario(s) falla con error de SuccessFactors / "datos inválidos" / "identificador tributario" (pero **no** es documento inválido — para eso R-DER-09 — ni documento duplicado — para eso R-DER-11).
