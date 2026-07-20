@@ -49,11 +49,7 @@ Buscar cualquier tool cuyo nombre contenga `slack` y exponga capacidad de postea
 1. Si **no existe ninguna tool de Slack** en el contexto → marcar `SLACK_MCP_AVAILABLE = false`. Los tickets SLACK_REDIRECT se procesarán como `MANUAL_REDIRECT` al final. Mostrar warning:
    ```
    ⚠️ Slack MCP no disponible — los tickets R-DER-05 quedarán como redirección manual.
-   Para habilitarlo, verificá que esté configurado en ~/.codex/config.toml:
-     [mcp_servers.SlackMCP]
-     command = "npx"
-     args = ["-y", "mcp-remote", "https://mcp.slack.com/v1/mcp"]
-   Reiniciá Codex y completá el flujo OAuth con /mcp.
+   Para habilitarlo, ver knowledge/slack-mcp.md § Instalación según tu proveedor.
    ```
 2. Si existe → autenticarse si aún no lo está.
    - Autenticación OK → `SLACK_MCP_AVAILABLE = true`.
