@@ -26,9 +26,29 @@ En los subcomandos, `$SKILL_DIR` refiere a ese directorio resuelto. No asumir un
 
 ## Dispatcher (importante)
 
-Al activarse la skill, parsear el primer token del input del usuario después de `/groot-queue` como subcomando:
+Al activarse la skill, parsear el primer token del input del usuario después de `/groot-queue` como subcomando.
 
-- Si el subcomando coincide con uno de la tabla → **leer `subcommands/<subcomando>.md` y seguir literalmente sus instrucciones**, pasando el resto del input como argumentos.
+**Paso 1 — resolver alias:** si el token coincide con un alias, reemplazarlo por el subcomando canónico antes de continuar.
+
+| Alias | Subcomando canónico |
+|-------|---------------------|
+| `cl` | `classify` |
+| `ls` | `list` |
+| `d` | `detail` |
+| `s` | `solve` |
+| `der` | `derive` |
+| `dis` | `discard` |
+| `aa` | `assign-unassigned` |
+| `assign` | `assign-unassigned` |
+| `ah` | `analyze-history` |
+| `history` | `analyze-history` |
+| `bf` | `backfill-guides` |
+| `backfill` | `backfill-guides` |
+| `ar` | `add-rule` |
+
+**Paso 2 — despachar:**
+
+- Si el subcomando (ya resuelto) coincide con uno de la tabla → **leer `subcommands/<subcomando>.md` y seguir literalmente sus instrucciones**, pasando el resto del input como argumentos.
 - Si el input contiene `--help`, igual debe tratarse como una consulta del subcomando: **no ejecutar Jira ni shell**, pero sí responder desde las instrucciones del archivo `subcommands/<subcomando>.md`.
 - Si el subcomando no existe o no se provee → **ejecutar `subcommands/start.md`** (equivalente a `/groot-queue start`).
 
@@ -51,24 +71,24 @@ Path resuelto: `$SKILL_DIR/subcommands/<nombre>.md`.
 
 ## Subcomandos disponibles
 
-| Subcomando | Acción |
-|------------|--------|
-| `start` | Mostrar banner de bienvenida, versión y catálogo de comandos con hints de uso |
-| `setup` | Verificar e instalar dependencias necesarias (ACLI, Atlassian MCP, Slack MCP, permisos) |
-| `list` | Listar todos los incidentes abiertos |
-| `classify` | Clasificar y agrupar por tipo de problema + urgencia |
-| `detail SSHP-XXXXXX` | Detalle completo de un ticket con clasificación y sugerencia |
-| `solve SSHP-XXXXXX` | Sugerir solución basada en runbooks + análisis |
-| `alerts [--dry-run]` | Detectar tickets vencidos y por vencer, agrupar por responsable del TEAM y enviar un resumen por Slack DM a cada uno |
-| `stats` | Estadísticas agregadas de la cola |
-| `assign-unassigned` | Asignar en Jira todos los tickets sin responsable repartiéndolos de forma equitativa entre el TEAM (stateless) |
-| `derive SSHP-XXXXXX` | Derivar un ticket al equipo correcto: detecta regla R-DER y, si hay MCP Atlassian compatible, postea nota interna y transiciona estado |
-| `discard SSHP-XXXXXX` | Descartar un ticket que no corresponde a Groot Soporte: detecta regla R-DESC y, si hay MCP Atlassian compatible, postea comentario público y cierra el ticket |
-| `save SSHP-XXXXXX <desc>` | Guardar la solución aplicada a un ticket en la knowledge base |
-| `add-rule` | Agregar una nueva regla de triage a la knowledge base |
-| `backfill-guides` | Postear guías de resolución (nota interna) en tickets abiertos y asignados que aún no tienen guía — backfill retroactivo idempotente |
-| `analyze-history [--limit N] [--since YYYY-MM-DD] [--force]` | Analizar tickets cerrados históricos y extraer patrones para la knowledge base |
-| _(sin argumento)_ | Ejecutar `start` (banner + catálogo de comandos) |
+| Subcomando | Alias | Acción |
+|------------|-------|--------|
+| `start` | — | Mostrar banner de bienvenida, versión y catálogo de comandos con hints de uso |
+| `setup` | — | Verificar e instalar dependencias necesarias (ACLI, Atlassian MCP, Slack MCP, permisos) |
+| `list` | `ls` | Listar todos los incidentes abiertos |
+| `classify` | `cl` | Clasificar y agrupar por tipo de problema + urgencia |
+| `detail SSHP-XXXXXX` | `d` | Detalle completo de un ticket con clasificación y sugerencia |
+| `solve SSHP-XXXXXX` | `s` | Sugerir solución basada en runbooks + análisis |
+| `alerts [--dry-run]` | — | Detectar tickets vencidos y por vencer, agrupar por responsable del TEAM y enviar un resumen por Slack DM a cada uno |
+| `stats` | — | Estadísticas agregadas de la cola |
+| `assign-unassigned` | `aa`, `assign` | Asignar en Jira todos los tickets sin responsable repartiéndolos de forma equitativa entre el TEAM (stateless) |
+| `derive SSHP-XXXXXX` | `der` | Derivar un ticket al equipo correcto: detecta regla R-DER y, si hay MCP Atlassian compatible, postea nota interna y transiciona estado |
+| `discard SSHP-XXXXXX` | `dis` | Descartar un ticket que no corresponde a Groot Soporte: detecta regla R-DESC y, si hay MCP Atlassian compatible, postea comentario público y cierra el ticket |
+| `save SSHP-XXXXXX <desc>` | — | Guardar la solución aplicada a un ticket en la knowledge base |
+| `add-rule` | `ar` | Agregar una nueva regla de triage a la knowledge base |
+| `backfill-guides` | `bf`, `backfill` | Postear guías de resolución (nota interna) en tickets abiertos y asignados que aún no tienen guía — backfill retroactivo idempotente |
+| `analyze-history [--limit N] [--since YYYY-MM-DD] [--force]` | `ah`, `history` | Analizar tickets cerrados históricos y extraer patrones para la knowledge base |
+| _(sin argumento)_ | — | Ejecutar `start` (banner + catálogo de comandos) |
 
 ---
 
