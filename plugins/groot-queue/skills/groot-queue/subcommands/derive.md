@@ -164,7 +164,22 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 
 - Si falla: registrar `✗ Nota interna` en el resultado de ese ticket, **no continuar con la transición de ese ticket**, pasar al siguiente.
 
-**4c. Transicionar estado** con MCP Atlassian en una llamada **separada**, después de que la nota retorne exitosamente:
+**4c. Transicionar estado / asignar responsable** con MCP Atlassian o ACLI en una llamada **separada**, después de que la nota retorne exitosamente:
+
+> ⚠️ **R-DER-13 (célula Pidgey): flujo especial — asignación en lugar de transición de squad.**
+> No existe squad en Jira para Pidgey. En lugar de la transición "Derivar a otro equipo" (ID 121):
+> 1. Leer la lista de emails de `$SKILL_DIR/knowledge/pidgey-team.md`.
+> 2. Generar un shuffle aleatorio de esa lista con entropía del sistema (no inventar el orden).
+> 3. Tomar el primer email del orden barajado.
+> 4. Asignar el ticket con ACLI:
+>    ```bash
+>    acli jira workitem assign --key SSHP-XXXXXX --assignee <email-pidgey> --yes
+>    ```
+> 5. Verificar que `Assignee` == `<email>` después de ejecutar. Si no coincide, reintentar una vez.
+> 6. Si falla: registrar `✗ Asignación` en el resultado. **No abortar** — la nota interna ya fue posteada. Continuar al siguiente ticket.
+> 7. Continuar con el paso 4d (labels) si la asignación fue exitosa.
+
+Para **todas las demás reglas R-DER** (no R-DER-13):
 
 - `cloudId`: valor validado en la pre-condición para `mercadolibre.atlassian.net`
 - `issueIdOrKey`: `"SSHP-XXXXXX"`
@@ -214,6 +229,7 @@ Mapeo de destino → slug de label:
 | Helpdesk IA | `groot-derive-to-helpdesk-ia` |
 | LMS | `groot-derive-to-lms` |
 | SHE | `groot-derive-to-she` |
+| Célula Pidgey | `groot-derive-to-pidgey` |
 
 > ⚠️ Las labels son kebab-case, todo en minúsculas, sin espacios. El slug de la regla es la regla matcheada en lowercase: `r-der-01`, `r-der-09`, etc.
 
