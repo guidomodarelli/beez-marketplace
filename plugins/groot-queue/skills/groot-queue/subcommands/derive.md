@@ -141,12 +141,12 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 
 > ⚠️ **R-DER-13 (célula Nexus): flujo especial — asignación en lugar de transición de squad.**
 > No existe squad en Jira para la célula Nexus. En lugar de la transición "Derivar a otro equipo" (ID 121):
-> 1. Leer la lista de emails de `$SKILL_DIR/knowledge/pidgey-team.md`.
+> 1. Leer la lista de emails de `$SKILL_DIR/knowledge/nexus-team.md`.
 > 2. Generar un shuffle aleatorio de esa lista con entropía del sistema (no inventar el orden).
 > 3. Tomar el primer email del orden barajado.
 > 4. Asignar el ticket con ACLI:
 >    ```bash
->    acli jira workitem assign --key SSHP-XXXXXX --assignee <email-pidgey> --yes
+>    acli jira workitem assign --key SSHP-XXXXXX --assignee <email-nexus> --yes
 >    ```
 > 5. Verificar que `Assignee` == `<email>` después de ejecutar. Si no coincide, reintentar una vez.
 > 6. Si falla: registrar `✗ Asignación` en el resultado. **No abortar** — la nota interna ya fue posteada. Continuar al siguiente ticket.
@@ -202,7 +202,7 @@ Mapeo de destino → slug de label:
 | Helpdesk IA | `groot-derive-to-helpdesk-ia` |
 | LMS | `groot-derive-to-lms` |
 | SHE | `groot-derive-to-she` |
-| Célula Nexus | `groot-derive-to-pidgey` <!-- label existente en Jira — no renombrar sin migración --> |
+| Célula Nexus | `groot-derive-to-nexus` |
 
 > ⚠️ Las labels son kebab-case, todo en minúsculas, sin espacios. El slug de la regla es la regla matcheada en lowercase: `r-der-01`, `r-der-09`, etc.
 
