@@ -36,7 +36,7 @@ Leer el `TEAM` desde `$SKILL_DIR/SKILL.md`. Si está vacío, abortar con mensaje
 
 El paso 11 postea una nota interna en cada ticket elegible después de filtrar derivables y descartables. Si el MCP de Atlassian no está disponible, la asignación (pasos 6a-6e) se ejecuta igual, pero el paso 11 se salta con un warning al inicio.
 
-Aplicar **modo DEGRADAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/atlassian-mcp.md`. Los mensajes de warning deben aclarar que "las notas internas de resolución no se postearán" y que "las asignaciones se realizarán normalmente". Cuando `MCP_AVAILABLE = false`: el paso 11 se salta automáticamente para todos los tickets; la tabla final muestra `— Skip` en la columna Nota.
+Aplicar **modo DEGRADAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/config/atlassian-mcp.md`. Los mensajes de warning deben aclarar que "las notas internas de resolución no se postearán" y que "las asignaciones se realizarán normalmente". Cuando `MCP_AVAILABLE = false`: el paso 11 se salta automáticamente para todos los tickets; la tabla final muestra `— Skip` en la columna Nota.
 
 ## Algoritmo
 

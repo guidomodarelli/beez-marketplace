@@ -30,7 +30,7 @@ Ejemplos válidos:
 
 **Verificar después de validar argumentos.** Si no hay ninguna key `SSHP-XXXXXX` válida, abortar con el mensaje de uso de la sección anterior sin intentar usar MCP.
 
-Aplicar **modo ABORTAR** (pasos A + B) de `$SKILL_DIR/knowledge/atlassian-mcp.md`. Omitir el paso C (este subcomando postea comentarios públicos, no notas internas). Usar `/groot-queue:discard` como nombre del subcomando en los mensajes de error. El `cloudId` obtenido en B se reutiliza en los pasos 5b y 5c.
+Aplicar **modo ABORTAR** (pasos A + B) de `$SKILL_DIR/knowledge/config/atlassian-mcp.md`. Omitir el paso C (este subcomando postea comentarios públicos, no notas internas). Usar `/groot-queue:discard` como nombre del subcomando en los mensajes de error. El `cloudId` obtenido en B se reutiliza en los pasos 5b y 5c.
 
 ## Algoritmo
 

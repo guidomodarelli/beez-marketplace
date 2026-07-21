@@ -60,7 +60,7 @@ Si la herramienta **no existe** en el contexto → abortar con:
 ❌ MCP Atlassian no disponible.
 
 /groot-queue:<subcomando> requiere el MCP de Atlassian para ejecutar esta acción.
-Instalalo según tu proveedor (ver knowledge/atlassian-mcp.md § Instalación) y
+Instalalo según tu proveedor (ver knowledge/config/atlassian-mcp.md § Instalación) y
 completá el flujo OAuth con /mcp.
 Podés verificar el entorno completo con /groot-queue setup.
 ```
@@ -72,7 +72,7 @@ Usar el resultado de la llamada anterior:
   ❌ MCP Atlassian no autenticado.
 
   Ejecutá /mcp y completá el flujo OAuth para mercadolibre.atlassian.net.
-  Ver knowledge/atlassian-mcp.md § Instalación para instrucciones por proveedor.
+  Ver knowledge/config/atlassian-mcp.md § Instalación para instrucciones por proveedor.
   ```
 - Si retorna recursos: elegir el que represente `mercadolibre.atlassian.net` y guardar su `cloudId`.
 - Si `mercadolibre.atlassian.net` **no aparece** en los recursos → abortar con:
@@ -105,7 +105,7 @@ Usar en subcommands donde el MCP es **opcional** y su ausencia degrada (pero no 
 **A. Disponibilidad de herramientas:**
 Intentar llamar `mcp__Atlassian__getAccessibleAtlassianResources` (o herramienta equivalente).
 
-- Si la herramienta **no existe** → marcar `MCP_AVAILABLE = false` y mostrar warning específico del subcomando. El warning debe incluir: "Para habilitarlo, ver `knowledge/atlassian-mcp.md § Instalación`."
+- Si la herramienta **no existe** → marcar `MCP_AVAILABLE = false` y mostrar warning específico del subcomando. El warning debe incluir: "Para habilitarlo, ver `knowledge/config/atlassian-mcp.md § Instalación`."
 - Si existe → continuar con B.
 
 **B. Autenticación y `cloudId`:**

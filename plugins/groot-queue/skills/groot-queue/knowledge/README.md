@@ -40,6 +40,13 @@ solutions/           Casos concretos resueltos, agrupados por categoría:
   link-unlink-account/     ← Vincular/Desvincular
   queue-management/        ← Descartes, derivaciones incorrectas y gestión de cola.
 
+config/              Documentación de prerequisitos de tooling externo:
+  atlassian-mcp.md     Instalación, pre-condiciones y uso del MCP de Atlassian.
+  slack-mcp.md         Instalación del MCP de Slack.
+
+teams/               Rosters operativos de equipos internos:
+  nexus-team.md        Miembros de la célula Nexus (R-DER-13).
+
 audit-log-<YYYY>.jsonl  Log de auditoría append-only (una línea JSON por evento),
                      **un archivo por año** (audit-log-2026.jsonl,
                      audit-log-2027.jsonl, ...) para que no crezca

@@ -38,7 +38,7 @@ Este gate tiene prioridad absoluta sobre MCP, ACLI y Jira:
 
 **Verificar únicamente después de que gate obligatorio confirme al menos una key `SSHP-XXXXXX` válida y antes de consultar o modificar Jira.**
 
-Aplicar **modo ABORTAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/atlassian-mcp.md`. Usar `/groot-queue:derive` como nombre del subcomando en los mensajes de error. El `cloudId` obtenido en B se reutiliza en los pasos 4b y 4c.
+Aplicar **modo ABORTAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/config/atlassian-mcp.md`. Usar `/groot-queue:derive` como nombre del subcomando en los mensajes de error. El `cloudId` obtenido en B se reutiliza en los pasos 4b y 4c.
 
 ## Pre-condición: Slack MCP (condicional — solo si hay tickets R-DER-05)
 
@@ -49,7 +49,7 @@ Buscar cualquier tool cuyo nombre contenga `slack` y exponga capacidad de postea
 1. Si **no existe ninguna tool de Slack** en el contexto → marcar `SLACK_MCP_AVAILABLE = false`. Los tickets SLACK_REDIRECT se procesarán como `MANUAL_REDIRECT` al final. Mostrar warning:
    ```
    ⚠️ Slack MCP no disponible — los tickets R-DER-05 quedarán como redirección manual.
-   Para habilitarlo, ver knowledge/slack-mcp.md § Instalación según tu proveedor.
+   Para habilitarlo, ver knowledge/config/slack-mcp.md § Instalación según tu proveedor.
    ```
 2. Si existe → autenticarse si aún no lo está.
    - Autenticación OK → `SLACK_MCP_AVAILABLE = true`.
@@ -141,7 +141,7 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 
 > ⚠️ **R-DER-13 (célula Nexus): flujo especial — asignación en lugar de transición de squad.**
 > No existe squad en Jira para la célula Nexus. En lugar de la transición "Derivar a otro equipo" (ID 121):
-> 1. Leer la lista de emails de `$SKILL_DIR/knowledge/nexus-team.md`.
+> 1. Leer la lista de emails de `$SKILL_DIR/knowledge/teams/nexus-team.md`.
 > 2. Generar un shuffle aleatorio de esa lista con entropía del sistema (no inventar el orden).
 > 3. Tomar el primer email del orden barajado.
 > 4. Asignar el ticket con ACLI:

@@ -17,7 +17,7 @@ Verificar e instalar todo lo necesario para usar la skill. Ejecutar en orden.
 
 ## 2. Atlassian MCP
 
-El subcomando `derive` usa el MCP de Atlassian para ejecutar la transición "Derivar a otro equipo" (requiere campos de pantalla que ACLI no puede proveer: Squad destino + comentario privado de traspaso). Ver `$SKILL_DIR/knowledge/atlassian-mcp.md` para la referencia canónica de instalación y mensajes de error.
+El subcomando `derive` usa el MCP de Atlassian para ejecutar la transición "Derivar a otro equipo" (requiere campos de pantalla que ACLI no puede proveer: Squad destino + comentario privado de traspaso). Ver `$SKILL_DIR/knowledge/config/atlassian-mcp.md` para la referencia canónica de instalación y mensajes de error.
 
 - Verificar si el contexto expone un MCP de Atlassian compatible. Si se instaló con el nombre `Atlassian`, las herramientas deben aparecer con prefijo `mcp__Atlassian__...` (por ejemplo `mcp__Atlassian__getAccessibleAtlassianResources`, `mcp__Atlassian__getTransitionsForJiraIssue`, `mcp__Atlassian__addCommentToJiraIssue` y `mcp__Atlassian__transitionJiraIssue`).
 - Si el proveedor actual no expone herramientas MCP de Atlassian, informar que `/groot-queue:derive` no puede ejecutar la transición automática desde ese proveedor y que se debe completar la derivación manualmente en Jira.

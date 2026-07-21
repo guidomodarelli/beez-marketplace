@@ -20,7 +20,7 @@ Analizar tickets cerrados (DERIVADO / DESCARTADO / RESUELTO) de la cola Groot (S
 
 ## Pre-requisitos
 
-Aplicar **modo ABORTAR** (pasos A + B) de `$SKILL_DIR/knowledge/atlassian-mcp.md`. Omitir el paso C (este subcomando no postea notas internas). Usar `/groot-queue:analyze-history` como nombre del subcomando en los mensajes de error. El MCP Atlassian es necesario para consultar tickets, leer changelogs y escribir labels.
+Aplicar **modo ABORTAR** (pasos A + B) de `$SKILL_DIR/knowledge/config/atlassian-mcp.md`. Omitir el paso C (este subcomando no postea notas internas). Usar `/groot-queue:analyze-history` como nombre del subcomando en los mensajes de error. El MCP Atlassian es necesario para consultar tickets, leer changelogs y escribir labels.
 
 ## Algoritmo
 

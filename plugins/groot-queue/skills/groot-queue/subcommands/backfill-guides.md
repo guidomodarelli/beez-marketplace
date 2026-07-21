@@ -12,7 +12,7 @@ Postear notas internas con guía de resolución en tickets **abiertos y asignado
 
 **Obligatorio.** Este subcomando requiere MCP Atlassian con capacidad de nota interna JSM. Si no está disponible, abortar.
 
-Aplicar **modo ABORTAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/atlassian-mcp.md`. Usar `/groot-queue:backfill-guides` como nombre del subcomando en los mensajes de error. El `cloudId` obtenido en B se reutiliza en el paso 5.
+Aplicar **modo ABORTAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/config/atlassian-mcp.md`. Usar `/groot-queue:backfill-guides` como nombre del subcomando en los mensajes de error. El `cloudId` obtenido en B se reutiliza en el paso 5.
 
 ## Algoritmo
 
