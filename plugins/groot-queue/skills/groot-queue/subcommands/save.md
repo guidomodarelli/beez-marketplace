@@ -9,7 +9,7 @@ Guardar la resolución real de un ticket en la knowledge base. Argumentos: la ke
 
 ## Algoritmo
 
-1. Leer la referencia de clasificación: `$SKILL_DIR/knowledge/classification.md` (especialmente Dimensión 1 y mapeo de carpetas).
+1. Leer la referencia de clasificación: `$SKILL_DIR/knowledge/config/classification.md` (especialmente Dimensión 1 y mapeo de carpetas).
 2. Obtener info del ticket:
    ```bash
    acli jira workitem view SSHP-XXXXXX

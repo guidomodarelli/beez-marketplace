@@ -20,14 +20,7 @@ Analizar tickets cerrados (DERIVADO / DESCARTADO / RESUELTO) de la cola Groot (S
 
 ## Pre-requisitos
 
-Verificar disponibilidad del **MCP Atlassian**: si no está disponible, informar al usuario y abortar.
-
-```
-El MCP Atlassian es necesario para consultar tickets, leer changelogs y escribir labels.
-Habilitarlo con:
-  claude mcp add --transport http "Atlassian" https://mcp.atlassian.com/v1/mcp
-Luego ejecutar /mcp y completar el flujo OAuth para mercadolibre.atlassian.net.
-```
+Aplicar **modo ABORTAR** (pasos A + B) de `$SKILL_DIR/knowledge/config/atlassian-mcp.md`. Omitir el paso C (este subcomando no postea notas internas). Usar `/groot-queue:analyze-history` como nombre del subcomando en los mensajes de error. El MCP Atlassian es necesario para consultar tickets, leer changelogs y escribir labels.
 
 ## Algoritmo
 

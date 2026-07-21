@@ -10,7 +10,7 @@ Sumar una nueva regla de triage a `triage-rules.md` mediante un flujo interactiv
 
 ## Algoritmo
 
-1. **Leer** `$SKILL_DIR/knowledge/triage-rules.md` completo. Identificar:
+1. **Leer** `$SKILL_DIR/knowledge/rules/triage-rules.md` completo. Identificar:
    - El último número usado por cada familia: `R-DESC-NN`, `R-DER-NN`, `R-FIX-NN`.
    - La sección "Algoritmo de triage" (lista numerada al final).
 

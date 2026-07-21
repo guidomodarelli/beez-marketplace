@@ -10,9 +10,9 @@ Mostrar el detalle completo de un ticket específico. Argumento: la key del tick
 ## Procedimiento
 
 1. Leer las referencias:
-   - `$SKILL_DIR/knowledge/classification.md`
-   - `$SKILL_DIR/knowledge/triage-rules.md`
-   - `$SKILL_DIR/knowledge/runbooks.md`
+   - `$SKILL_DIR/knowledge/config/classification.md`
+   - `$SKILL_DIR/knowledge/rules/triage-rules.md`
+   - `$SKILL_DIR/knowledge/rules/runbooks.md`
 2. Obtener el ticket: `acli jira workitem view SSHP-XXXXXX`
 3. Aplicar triage de veredicto sobre el ticket.
 4. Clasificar en Dimensión 1 (tipo) y Dimensión 2 (urgencia).

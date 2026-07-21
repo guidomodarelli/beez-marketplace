@@ -107,7 +107,7 @@ https://github.com/melisource/fury_groot-marketplace/blob/main/plugins/groot-que
 Reglas:
 
 - **Runbook**: solo incluir si la categoría tiene un runbook **específico** (no incluir para categoría "Otro"). Link completo al archivo + anchor si existe sección:
-  `📖 [Runbook: Jerarquía/Líder](https://github.com/melisource/fury_groot-marketplace/blob/main/plugins/groot-queue/skills/groot-queue/knowledge/runbooks.md#runbook-jerarqu%C3%ADal%C3%ADder)`
+  `📖 [Runbook: Jerarquía/Líder](https://github.com/melisource/fury_groot-marketplace/blob/main/plugins/groot-queue/skills/groot-queue/knowledge/rules/runbooks.md#runbook-jerarqu%C3%ADal%C3%ADder)`
 - **Caso similar**: solo incluir si se encontró uno. Link completo al archivo de solución:
   `📂 [Caso similar: SSHP-XXXXXX](https://github.com/melisource/fury_groot-marketplace/blob/main/plugins/groot-queue/skills/groot-queue/knowledge/solutions/<categoria-slug>/<archivo>.md)`
 - **Herramientas**: URLs directas con ícono:

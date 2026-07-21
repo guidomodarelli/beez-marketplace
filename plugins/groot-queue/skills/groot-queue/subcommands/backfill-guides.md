@@ -12,42 +12,7 @@ Postear notas internas con guía de resolución en tickets **abiertos y asignado
 
 **Obligatorio.** Este subcomando requiere MCP Atlassian con capacidad de nota interna JSM. Si no está disponible, abortar.
 
-**A. Disponibilidad de herramientas:**
-Intentar llamar `mcp__Atlassian__getAccessibleAtlassianResources` (o herramienta equivalente).
-
-Si la herramienta **no existe** en el contexto → abortar con:
-```
-❌ MCP Atlassian no disponible.
-
-/groot-queue:backfill-guides requiere el MCP de Atlassian para postear notas internas.
-Instalalo con:
-  claude mcp add --transport http "Atlassian" https://mcp.atlassian.com/v1/mcp
-Luego completá el flujo OAuth con /mcp dentro de Claude Code.
-Podés verificar el entorno completo con /groot-queue setup.
-```
-
-**B. Autenticación y `cloudId`:**
-- Si retorna error de autenticación (401 / 403) → abortar con:
-  ```
-  ❌ MCP Atlassian no autenticado.
-
-  Ejecutá /mcp dentro de Claude Code y completá el flujo OAuth para mercadolibre.atlassian.net.
-  ```
-- Si retorna recursos: elegir el que represente `mercadolibre.atlassian.net` y guardar su `cloudId`.
-- Si `mercadolibre.atlassian.net` no aparece → abortar con error similar.
-
-**C. Capacidad de nota interna JSM:**
-Confirmar que el proveedor expone capacidad de crear **nota interna de Jira Service Management** (no solo comentario público). `addCommentToJiraIssue` por sí sola no alcanza si solo crea comentarios públicos.
-
-Si solo hay capacidad de comentario público y no nota interna → abortar con:
-```
-❌ El MCP de Atlassian disponible no expone capacidad de nota interna JSM.
-
-/groot-queue:backfill-guides no puede postear guías internas sin riesgo de publicar
-información interna al reporter. Esperá a tener un MCP compatible.
-```
-
-Solo continuar si A, B y C pasaron.
+Aplicar **modo ABORTAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/config/atlassian-mcp.md`. Usar `/groot-queue:backfill-guides` como nombre del subcomando en los mensajes de error. El `cloudId` obtenido en B se reutiliza en el paso 5.
 
 ## Algoritmo
 
@@ -79,7 +44,7 @@ Verificar si el output contiene el slug de detección automática:
 
 ### 3. Filtrar tickets derivables y descartables
 
-Leer `$SKILL_DIR/knowledge/triage-rules.md`.
+Leer `$SKILL_DIR/knowledge/rules/triage-rules.md`.
 
 Para cada ticket que pasó los filtros anteriores:
 - Aplicar reglas `R-DER` del algoritmo de triage. Si matchea → marcar como `DERIVABLE` y excluir.
@@ -130,12 +95,12 @@ Si hay tickets elegibles → pedir confirmación:
 
 ### 5. Generar y postear notas (procedimiento compartido con assign-unassigned paso 11)
 
-Para cada ticket elegible, ejecutar el **procedimiento de generación de nota interna de resolución** definido en `$SKILL_DIR/knowledge/assignment-note-template.md`:
+Para cada ticket elegible, ejecutar el **procedimiento de generación de nota interna de resolución** definido en `$SKILL_DIR/knowledge/templates/assignment-note-template.md`:
 
 1. Leer las referencias (reutilizar si ya fueron cargadas):
-   - `$SKILL_DIR/knowledge/classification.md`
-   - `$SKILL_DIR/knowledge/runbooks.md`
-   - `$SKILL_DIR/knowledge/assignment-note-template.md`
+   - `$SKILL_DIR/knowledge/config/classification.md`
+   - `$SKILL_DIR/knowledge/rules/runbooks.md`
+   - `$SKILL_DIR/knowledge/templates/assignment-note-template.md`
 2. Con el contenido del ticket (ya obtenido en el paso 2):
    - Clasificar el ticket en Dimensión 1 (categoría) y Dimensión 2 (urgencia).
    - Buscar el runbook de esa categoría en `runbooks.md`.
@@ -182,6 +147,6 @@ Resumen:
 
 - **Idempotencia dual**: label `groot-guide-posted` como filtro primario (JQL), slug `<!-- groot-auto-guide -->` como fallback al leer el ticket. Ambos previenen duplicados.
 - **No modificar la nota posteada**: contiene el slug de detección. Si se borra o modifica, la próxima corrida podría duplicar la guía (a menos que el label esté presente).
-- **Procedimiento compartido**: la generación de la nota es idéntica al paso 11 de `assign-unassigned.md`. Ambos referencian `$SKILL_DIR/knowledge/assignment-note-template.md` como fuente de verdad del formato.
+- **Procedimiento compartido**: la generación de la nota es idéntica al paso 11 de `assign-unassigned.md`. Ambos referencian `$SKILL_DIR/knowledge/templates/assignment-note-template.md` como fuente de verdad del formato.
 - **No modifica estado del ticket**: solo postea nota interna y agrega label. No transiciona, no reasigna, no cierra.
 - **Tickets derivables/descartables**: se detectan y reportan pero no se procesan — para eso están `derive` y `discard`.

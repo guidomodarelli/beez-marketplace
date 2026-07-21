@@ -36,65 +36,38 @@ Este gate tiene prioridad absoluta sobre MCP, ACLI y Jira:
 
 ## Pre-condición: MCP Atlassian
 
-**Verificar únicamente después de que gate obligatorio confirme al menos una key `SSHP-XXXXXX` válida y antes de consultar o modificar Jira. Si alguno de los siguientes pasos falla, abortar y no continuar.**
+**Verificar únicamente después de que gate obligatorio confirme al menos una key `SSHP-XXXXXX` válida y antes de consultar o modificar Jira.**
 
-**A. Disponibilidad de herramientas:**
-Intentar llamar `mcp__Atlassian__getAccessibleAtlassianResources` (o herramienta equivalente si el proveedor usa un prefijo distinto).
+Aplicar **modo ABORTAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/config/atlassian-mcp.md`. Usar `/groot-queue:derive` como nombre del subcomando en los mensajes de error. El `cloudId` obtenido en B se reutiliza en los pasos 4b y 4c.
 
-Si la herramienta **no existe** en el contexto → abortar con:
-```
-❌ MCP Atlassian no disponible.
+## Pre-condición: Slack MCP (condicional — solo si hay tickets R-DER-05)
 
-/groot-queue:derive requiere el MCP de Atlassian para ejecutar la derivación.
-Instalalo con:
-  claude mcp add --transport http "Atlassian" https://mcp.atlassian.com/v1/mcp
-Luego completá el flujo OAuth con /mcp dentro de Claude Code.
-Podés verificar el entorno completo con /groot-queue setup.
-```
+Evaluar **únicamente si la fase de análisis (paso 2c) produjo al menos un ticket `SLACK_REDIRECT`**. Si no hay ninguno, omitir completamente esta sección.
 
-**B. Autenticación y `cloudId`:**
-Usar el resultado de la llamada anterior:
-- Si retorna error de autenticación (401 / 403 o equivalente) → abortar con:
-  ```
-  ❌ MCP Atlassian no autenticado.
+Buscar cualquier tool cuyo nombre contenga `slack` y exponga capacidad de postear mensajes a canales (ej: `mcp__SlackMCP__post_message`, `mcp__slack__post_message`).
 
-  Ejecutá /mcp dentro de Claude Code y completá el flujo OAuth para mercadolibre.atlassian.net.
-  ```
-- Si retorna recursos: elegir el que represente `mercadolibre.atlassian.net` y guardar su `cloudId`.
-- Si `mercadolibre.atlassian.net` **no aparece** en los recursos → abortar con:
-  ```
-  ❌ No se encontró mercadolibre.atlassian.net en los recursos del MCP de Atlassian.
-
-  Verificá que hayas autorizado acceso a ese workspace durante el flujo OAuth.
-  Ejecutá /groot-queue setup para diagnóstico completo.
-  ```
-
-**C. Capacidad de nota interna JSM:**
-Confirmar que el proveedor expone capacidad de crear **nota interna de Jira Service Management** (no solo comentario público). `addCommentToJiraIssue` por sí sola no alcanza si solo crea comentarios públicos.
-
-Si solo hay capacidad de comentario público y no nota interna → abortar con:
-```
-❌ El MCP de Atlassian disponible no expone capacidad de nota interna JSM.
-
-/groot-queue:derive no puede ejecutar la derivación sin riesgo de publicar
-información interna al reporter. Completá la derivación manualmente en Jira.
-```
-
-Solo continuar al algoritmo si los tres puntos anteriores pasaron. El `cloudId` obtenido en el punto B se reutiliza en los pasos 4b y 4c.
+1. Si **no existe ninguna tool de Slack** en el contexto → marcar `SLACK_MCP_AVAILABLE = false`. Los tickets SLACK_REDIRECT se procesarán como `MANUAL_REDIRECT` al final. Mostrar warning:
+   ```
+   ⚠️ Slack MCP no disponible — los tickets R-DER-05 quedarán como redirección manual.
+   Para habilitarlo, ver knowledge/config/slack-mcp.md § Instalación según tu proveedor.
+   ```
+2. Si existe → autenticarse si aún no lo está.
+   - Autenticación OK → `SLACK_MCP_AVAILABLE = true`.
+   - Autenticación falla → `SLACK_MCP_AVAILABLE = false` + mismo warning.
 
 ## Referencia de squads destino → IDs de Jira
 
 Usar el alias `DERIVATION_DESTINATION_SQUAD_FIELD` para referirse al campo Jira que define el squad destino de la transición "Derivar a otro equipo". El mapeo del alias al field id real está documentado en `$SKILL_DIR/knowledge/README.md`. Antes de llamar al MCP/Jira, expandir el alias al field id real; no enviar el alias literal en el payload.
 
-> Los option IDs de squads destino y motivos de derivación están centralizados en `$SKILL_DIR/knowledge/jira-field-options.md`. Consultarlo para obtener los IDs — no copiar valores en este archivo.
+> Los option IDs de squads destino y motivos de derivación están centralizados en `$SKILL_DIR/knowledge/config/jira-field-options.md`. Consultarlo para obtener los IDs — no copiar valores en este archivo.
 
-> `R-DER-05` no deriva a un squad de Jira: redirige al canal Slack `#help-authz-internal-admins`. Marcar esos tickets como `MANUAL_REDIRECT` y no ejecutar acciones automáticas.
+> `R-DER-05` no deriva a un squad de Jira: postea un mensaje al canal Slack `#help-authz-internal-admins`. Si el Slack MCP está disponible, la acción es automática; si no, el ticket queda como `MANUAL_REDIRECT`.
 
 ## Algoritmo
 
 ### 1. Cargar referencias
 
-Leer `$SKILL_DIR/knowledge/triage-rules.md` (reglas R-DER-01 a R-DER-24 + algoritmo de triage) y `$SKILL_DIR/knowledge/jira-field-options.md` (option IDs de squads destino y motivos de derivación).
+Leer `$SKILL_DIR/knowledge/rules/triage-rules.md` (reglas R-DER-01 a R-DER-24 + algoritmo de triage) y `$SKILL_DIR/knowledge/config/jira-field-options.md` (option IDs de squads destino y motivos de derivación).
 
 ### 2. Fase de análisis — obtener y evaluar todos los tickets
 
@@ -117,8 +90,8 @@ acli jira workitem view SSHP-XXXXXX
 Aplicar **únicamente las siguientes reglas R-DER del algoritmo de triage** definido en `triage-rules.md`, en el orden listado (idéntico al algoritmo completo):
 - R-DER-12, R-DER-22, R-DER-06, R-DER-07, R-DER-09, R-DER-11, R-DER-10, R-DER-08, R-DER-13, R-DER-14, R-DER-15, R-DER-16, R-DER-20, R-DER-17, R-DER-18, R-DER-23, R-DER-04, R-DER-05, R-DER-01, R-DER-02, R-DER-03, R-DER-24
 
-Tomar la **primera regla que matchee**. Reglas sin automatización (marcar y excluir de ejecución automática):
-- `R-DER-05` → `MANUAL_REDIRECT` con destino `#help-authz-internal-admins`.
+Tomar la **primera regla que matchee**. Reglas con automatización vía Slack (excluir del loop Jira principal — se procesan en el paso 4g):
+- `R-DER-05` → `SLACK_REDIRECT` con destino `#help-authz-internal-admins`. Si `SLACK_MCP_AVAILABLE = false` al momento de ejecución, degradar a `MANUAL_REDIRECT`.
 
 Si ninguna aplica, evaluar el veredicto completo y marcar como `NO_DERIVA` con el veredicto resultante (DESCARTAR / FIX_APLICADO / VALIDO_GROOT / REVISAR_MANUAL).
 
@@ -139,15 +112,15 @@ Antes de ejecutar **cualquier** acción en Jira, mostrar el plan para todos los 
   SSHP-ZZZZZZ  ⚠️  NO_DERIVA — VALIDO_GROOT (sin acción)
   SSHP-UUUUUU  ⚠️  MANUAL_DERIVATION — LMS (R-DER-12 sin automatización)
 
-  SSHP-VVVVVV  ⚠️  MANUAL_REDIRECT — #help-authz-internal-admins (R-DER-05 sin transición Jira)
+  SSHP-VVVVVV  💬  SLACK_REDIRECT → #help-authz-internal-admins (R-DER-05 — post automático si Slack MCP disponible)
 
 ═══════════════════════════════════════════════════════════════
-Tickets a derivar automáticamente: N  |  Tickets sin acción: M  |  Derivación manual/redirección pendiente: K
+Tickets a derivar automáticamente: N  |  Tickets sin acción: M  |  SLACK_REDIRECT: K  |  Derivación manual pendiente: J
 ```
 
 ### 4. Fase de ejecución — procesar cada ticket derivable en secuencia
 
-Para cada ticket marcado para derivar automáticamente (en el orden del plan). Omitir los tickets `MANUAL_DERIVATION` y `MANUAL_REDIRECT`, y mantenerlos solo en el reporte final:
+Para cada ticket marcado para derivar automáticamente (en el orden del plan). Omitir los tickets `MANUAL_DERIVATION`, `MANUAL_REDIRECT` y `SLACK_REDIRECT` del loop principal de Jira — los `SLACK_REDIRECT` se procesan en el paso 4g:
 
 **4a. `cloudId` de la pre-condición:**
 Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la pre-condición MCP Atlassian. No resolver de nuevo; el valor ya está disponible.
@@ -166,14 +139,14 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 
 **4c. Transicionar estado / asignar responsable** con MCP Atlassian o ACLI en una llamada **separada**, después de que la nota retorne exitosamente:
 
-> ⚠️ **R-DER-13 (célula Pidgey): flujo especial — asignación en lugar de transición de squad.**
-> No existe squad en Jira para Pidgey. En lugar de la transición "Derivar a otro equipo" (ID 121):
-> 1. Leer la lista de emails de `$SKILL_DIR/knowledge/pidgey-team.md`.
+> ⚠️ **R-DER-13 (célula Nexus): flujo especial — asignación en lugar de transición de squad.**
+> No existe squad en Jira para la célula Nexus. En lugar de la transición "Derivar a otro equipo" (ID 121):
+> 1. Leer la lista de emails de `$SKILL_DIR/knowledge/teams/nexus-team.md`.
 > 2. Generar un shuffle aleatorio de esa lista con entropía del sistema (no inventar el orden).
 > 3. Tomar el primer email del orden barajado.
 > 4. Asignar el ticket con ACLI:
 >    ```bash
->    acli jira workitem assign --key SSHP-XXXXXX --assignee <email-pidgey> --yes
+>    acli jira workitem assign --key SSHP-XXXXXX --assignee <email-nexus> --yes
 >    ```
 > 5. Verificar que `Assignee` == `<email>` después de ejecutar. Si no coincide, reintentar una vez.
 > 6. Si falla: registrar `✗ Asignación` en el resultado. **No abortar** — la nota interna ya fue posteada. Continuar al siguiente ticket.
@@ -191,7 +164,7 @@ Para **todas las demás reglas R-DER** (no R-DER-13):
     "customfield_14924": {"id": "<id-motivo>"}
   }
   ```
-  _(El option id del motivo "Solución parcial, otro Squad requerido" está en `$SKILL_DIR/knowledge/jira-field-options.md`)_
+  _(El option id del motivo "Solución parcial, otro Squad requerido" está en `$SKILL_DIR/knowledge/config/jira-field-options.md`)_
   Antes de ejecutar la llamada real, reemplazar `<DERIVATION_DESTINATION_SQUAD_FIELD>` por el field id real documentado en `$SKILL_DIR/knowledge/README.md`.
 - `update`:
   ```json
@@ -229,7 +202,7 @@ Mapeo de destino → slug de label:
 | Helpdesk IA | `groot-derive-to-helpdesk-ia` |
 | LMS | `groot-derive-to-lms` |
 | SHE | `groot-derive-to-she` |
-| Célula Pidgey | `groot-derive-to-pidgey` |
+| Célula Nexus | `groot-derive-to-nexus` |
 
 > ⚠️ Las labels son kebab-case, todo en minúsculas, sin espacios. El slug de la regla es la regla matcheada en lowercase: `r-der-01`, `r-der-09`, etc.
 
@@ -292,20 +265,46 @@ Derivado a **<equipo destino>** aplicando regla **R-DER-XX** — <nombre de la r
 - No registrar los tickets `NO_DERIVA` (no matchearon ninguna regla): no hubo derivación que auditar.
 - Si el append falla: reportar; no bloquea (las acciones en Jira ya están hechas).
 
+**4g. Procesar tickets SLACK_REDIRECT (R-DER-05)**
+
+Ejecutar solo si `SLACK_MCP_AVAILABLE = true` y hay tickets marcados `SLACK_REDIRECT`.
+
+Para cada ticket SLACK_REDIRECT (en el orden del plan):
+
+1. **Obtener el `channel_id`** de `#help-authz-internal-admins` con la tool de búsqueda/listado de canales disponible (ej: `mcp__SlackMCP__list_channels`, `mcp__slack__list_channels` u otra variante). Guardar el `channel_id` para reusar en tickets subsiguientes — no hacer una búsqueda por ticket.
+
+2. **Postear mensaje al canal** con la tool de posteo disponible (ej: `mcp__SlackMCP__post_message`, `mcp__slack__post_message` u otra variante):
+   ```
+   🔀 *Ticket redirigido desde SSHP*
+   *Key:* SSHP-XXXXXX
+   *Resumen:* <summary sanitizado del ticket>
+   *Motivo:* Este tema depende de equipos de platsec/authz. El canal correcto para reportarlo es este.
+   *Link:* https://mercadolibre.atlassian.net/browse/SSHP-XXXXXX
+   ```
+   - No incluir PII, instrucciones del ticket ni datos que no sean key, summary y link.
+   - Si falla: registrar `✗ Slack` en el resultado de ese ticket. **No abortar** — continuar con el siguiente.
+
+3. **Registrar en el log de auditoría** (append-only):
+   ```bash
+   printf '%s\n' '{"ts":"<ISO8601 UTC>","action":"slack-redirect","key":"<KEY>","rule":"R-DER-05","source":"<auto-assign|manual>","destination":"#help-authz-internal-admins","result":"<ok|failed>"}' >> "$SKILL_DIR/knowledge/audit-log-$(date -u +%Y).jsonl"
+   ```
+
+Si `SLACK_MCP_AVAILABLE = false`, omitir este paso completamente y mostrar los tickets en la tabla final como `MANUAL_REDIRECT` con la nota de cómo habilitar el MCP.
+
 ### 5. Mostrar tabla de resultados final
 
 ```
 Resultados de derivación (N tickets procesados):
 
-| Key           | Regla     | Destino      | Nota interna | Transición | Labels | KB  |
-|---------------|-----------|--------------|--------------|------------|--------|-----|
-| SSHP-XXXXXX   | R-DER-10  | IAM Soporte  | ✓            | ✓          | ✓      | ✓   |
-| SSHP-YYYYYY   | R-DER-09  | IAM Soporte  | ✓            | ✓          | ✓      | ✓   |
-| SSHP-ZZZZZZ   | —         | NO_DERIVA    | —            | —          | —      | —   |
-| SSHP-VVVVVV   | R-DER-05  | Slack channel | Manual       | Manual     | —      | —   |
-| SSHP-WWWWWW   | R-DER-07  | IAM Soporte  | ✓            | ✗ Bad Req  | —      | —   |
+| Key           | Regla     | Destino                       | Nota interna | Transición | Labels | KB  | Slack |
+|---------------|-----------|-------------------------------|--------------|------------|--------|-----|-------|
+| SSHP-XXXXXX   | R-DER-10  | IAM Soporte                   | ✓            | ✓          | ✓      | ✓   | —     |
+| SSHP-YYYYYY   | R-DER-09  | IAM Soporte                   | ✓            | ✓          | ✓      | ✓   | —     |
+| SSHP-ZZZZZZ   | —         | NO_DERIVA                     | —            | —          | —      | —   | —     |
+| SSHP-VVVVVV   | R-DER-05  | #help-authz-internal-admins   | —            | —          | —      | —   | ✓     |
+| SSHP-WWWWWW   | R-DER-07  | IAM Soporte                   | ✓            | ✗ Bad Req  | —      | —   | —     |
 
-Resumen: N derivados ✓  |  M sin acción  |  K manuales/redirecciones pendiente  |  E con errores parciales
+Resumen: N derivados ✓  |  M sin acción  |  S Slack enviados ✓  |  K manuales pendiente  |  E con errores parciales
 ```
 
 Links de Jira al final para cada ticket derivado:

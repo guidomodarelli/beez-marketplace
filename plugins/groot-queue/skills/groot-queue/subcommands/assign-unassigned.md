@@ -34,39 +34,9 @@ Leer el `TEAM` desde `$SKILL_DIR/SKILL.md`. Si está vacío, abortar con mensaje
 
 ## Pre-condición: MCP Atlassian (para nota interna de resolución)
 
-El paso 11 postea una nota interna en cada ticket elegible después de filtrar derivables y descartables. Si el MCP de Atlassian no está disponible, la asignación (pasos 6a-6e) se ejecuta igual, pero el paso 11 se salta con un warning al inicio:
+El paso 11 postea una nota interna en cada ticket elegible después de filtrar derivables y descartables. Si el MCP de Atlassian no está disponible, la asignación (pasos 6a-6e) se ejecuta igual, pero el paso 11 se salta con un warning al inicio.
 
-**A. Disponibilidad de herramientas:**
-Intentar llamar `mcp__Atlassian__getAccessibleAtlassianResources` (o herramienta equivalente).
-
-- Si la herramienta **no existe** en el contexto → mostrar warning y marcar `MCP_AVAILABLE = false`:
-  ```
-  ⚠️ MCP Atlassian no disponible — las notas internas de resolución no se postearán.
-  Las asignaciones se realizarán normalmente. Para habilitar notas, instalá el MCP:
-    claude mcp add --transport http "Atlassian" https://mcp.atlassian.com/v1/mcp
-  ```
-- Si existe → continuar con B.
-
-**B. Autenticación y `cloudId`:**
-- Si retorna error de autenticación → marcar `MCP_AVAILABLE = false` y mostrar:
-  ```
-  ⚠️ MCP Atlassian no autenticado — las notas internas de resolución no se postearán.
-  Ejecutá /mcp para completar el flujo OAuth.
-  ```
-- Si retorna recursos: elegir el que represente `mercadolibre.atlassian.net` y guardar su `cloudId`. Marcar `MCP_AVAILABLE = true`.
-- Si `mercadolibre.atlassian.net` no aparece → marcar `MCP_AVAILABLE = false` con warning similar.
-
-**C. Capacidad de nota interna JSM:**
-Confirmar que el proveedor expone capacidad de crear **nota interna de Jira Service Management** (no solo comentario público). `addCommentToJiraIssue` por sí sola no alcanza si solo crea comentarios públicos.
-
-- Si solo hay capacidad de comentario público y no nota interna → marcar `MCP_AVAILABLE = false` y mostrar:
-  ```
-  ⚠️ El MCP de Atlassian disponible no expone capacidad de nota interna JSM — las notas internas de resolución no se postearán.
-  Las asignaciones se realizarán normalmente para evitar publicar información interna al reporter.
-  ```
-- Solo marcar `MCP_AVAILABLE = true` cuando pasaron A, B y esta verificación de capacidad de nota interna.
-
-**D. Si `MCP_AVAILABLE = false`:** el paso 11 se salta automáticamente para todos los tickets (no se intenta postear la nota). La tabla final del paso 12 muestra `— Skip` en la columna Nota para todos los tickets.
+Aplicar **modo DEGRADAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/config/atlassian-mcp.md`. Los mensajes de warning deben aclarar que "las notas internas de resolución no se postearán" y que "las asignaciones se realizarán normalmente". Cuando `MCP_AVAILABLE = false`: el paso 11 se salta automáticamente para todos los tickets; la tabla final muestra `— Skip` en la columna Nota.
 
 ## Algoritmo
 
@@ -78,7 +48,7 @@ Confirmar que el proveedor expone capacidad de crear **nota interna de Jira Serv
 
 Si no hay tickets sin assignee, mostrar: "✅ No hay tickets sin assignee en la cola." y terminar.
 
-3. Leer `$SKILL_DIR/knowledge/triage-rules.md` y obtener el contenido de **todos** los tickets filtrados (en paralelo si es posible):
+3. Leer `$SKILL_DIR/knowledge/rules/triage-rules.md` y obtener el contenido de **todos** los tickets filtrados (en paralelo si es posible):
    ```bash
    acli jira workitem view <KEY>
    ```
@@ -275,9 +245,9 @@ Ejecutar este paso solo para los tickets clasificados como `ASIGNAR` en el paso 
 **Procedimiento por ticket elegible:**
 
 1. Leer las referencias (reutilizar si ya fueron cargadas en pasos anteriores):
-   - `$SKILL_DIR/knowledge/classification.md`
-   - `$SKILL_DIR/knowledge/runbooks.md`
-   - `$SKILL_DIR/knowledge/assignment-note-template.md`
+   - `$SKILL_DIR/knowledge/config/classification.md`
+   - `$SKILL_DIR/knowledge/rules/runbooks.md`
+   - `$SKILL_DIR/knowledge/templates/assignment-note-template.md`
 2. Obtener el contenido actualizado del ticket en una llamada separada antes de analizarlo:
    ```bash
    acli jira workitem view <KEY>
