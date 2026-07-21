@@ -44,7 +44,7 @@ Verificar si el output contiene el slug de detección automática:
 
 ### 3. Filtrar tickets derivables y descartables
 
-Leer `$SKILL_DIR/knowledge/triage-rules.md`.
+Leer `$SKILL_DIR/knowledge/rules/triage-rules.md`.
 
 Para cada ticket que pasó los filtros anteriores:
 - Aplicar reglas `R-DER` del algoritmo de triage. Si matchea → marcar como `DERIVABLE` y excluir.
@@ -95,12 +95,12 @@ Si hay tickets elegibles → pedir confirmación:
 
 ### 5. Generar y postear notas (procedimiento compartido con assign-unassigned paso 11)
 
-Para cada ticket elegible, ejecutar el **procedimiento de generación de nota interna de resolución** definido en `$SKILL_DIR/knowledge/assignment-note-template.md`:
+Para cada ticket elegible, ejecutar el **procedimiento de generación de nota interna de resolución** definido en `$SKILL_DIR/knowledge/templates/assignment-note-template.md`:
 
 1. Leer las referencias (reutilizar si ya fueron cargadas):
-   - `$SKILL_DIR/knowledge/classification.md`
-   - `$SKILL_DIR/knowledge/runbooks.md`
-   - `$SKILL_DIR/knowledge/assignment-note-template.md`
+   - `$SKILL_DIR/knowledge/config/classification.md`
+   - `$SKILL_DIR/knowledge/rules/runbooks.md`
+   - `$SKILL_DIR/knowledge/templates/assignment-note-template.md`
 2. Con el contenido del ticket (ya obtenido en el paso 2):
    - Clasificar el ticket en Dimensión 1 (categoría) y Dimensión 2 (urgencia).
    - Buscar el runbook de esa categoría en `runbooks.md`.
@@ -147,6 +147,6 @@ Resumen:
 
 - **Idempotencia dual**: label `groot-guide-posted` como filtro primario (JQL), slug `<!-- groot-auto-guide -->` como fallback al leer el ticket. Ambos previenen duplicados.
 - **No modificar la nota posteada**: contiene el slug de detección. Si se borra o modifica, la próxima corrida podría duplicar la guía (a menos que el label esté presente).
-- **Procedimiento compartido**: la generación de la nota es idéntica al paso 11 de `assign-unassigned.md`. Ambos referencian `$SKILL_DIR/knowledge/assignment-note-template.md` como fuente de verdad del formato.
+- **Procedimiento compartido**: la generación de la nota es idéntica al paso 11 de `assign-unassigned.md`. Ambos referencian `$SKILL_DIR/knowledge/templates/assignment-note-template.md` como fuente de verdad del formato.
 - **No modifica estado del ticket**: solo postea nota interna y agrega label. No transiciona, no reasigna, no cierra.
 - **Tickets derivables/descartables**: se detectan y reportan pero no se procesan — para eso están `derive` y `discard`.

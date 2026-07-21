@@ -432,7 +432,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Razón**: La contabilización y conciliación de horas en LMS queda fuera del dominio de Groot/Kraken. Groot puede exponer o consumir datos del flujo Be a Rep, pero los desvíos de horas deben ser revisados por el equipo dueño de LMS.
 - **Verificación previa**: Si el síntoma es devolución de roles en Be a Rep / Labour Share, verificar primero que el problema no sea una inconsistencia de snapshot resuelta por el equipo dev. Si el problema es una falla técnica de agendado, snapshot, permisos, CAD o rol dentro de Groot, no aplica esta regla y debe seguir el runbook correspondiente.
 - **Acción**: Derivar a **LMS**.
-- **Automatización**: Habilitada. Option id en `$SKILL_DIR/knowledge/jira-field-options.md`. Copy de nota interna pendiente de validación en ticket real — ajustar si hay feedback.
+- **Automatización**: Habilitada. Option id en `$SKILL_DIR/knowledge/config/jira-field-options.md`. Copy de nota interna pendiente de validación en ticket real — ajustar si hay feedback.
 - **Comentario sugerido provisional**:
   > "Hola, derivamos este caso al equipo de LMS porque el problema reportado corresponde a la contabilidad de horas de Be a Rep en LMS, fuera del alcance de soporte Groot/Kraken."
 - **Fuente**: Pedido directo del usuario, 2026-06-03. Regla agregada sin ticket real por instrucción explícita; pendiente de validar wording y copy contra un caso SSHP concreto.
@@ -541,7 +541,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Razón**: Si el usuario está correctamente configurado en Groot pero LMS muestra datos incorrectos o no carga, el problema es del sistema LMS. Groot Soporte no tiene herramientas para corregir inconsistencias internas de LMS.
 - **Verificación previa**: Confirmar que no es un problema de R-DER-12 (horas Be a Rep) ni de configuración faltante en Groot. Si al usuario le faltan roles en Groot → `VALIDO_GROOT`.
 - **Acción**: Derivar a **LMS** (equipo Labour Management).
-- **Automatización**: Habilitada. Option id en `$SKILL_DIR/knowledge/jira-field-options.md`.
+- **Automatización**: Habilitada. Option id en `$SKILL_DIR/knowledge/config/jira-field-options.md`.
 - **Comentario sugerido**:
   > "Hola, verificamos tu configuración en Groot y está correcta. El problema parece ser funcional de LMS. Derivamos al equipo de LMS para que puedan investigar."
 - **Fuente**: Análisis histórico (2 tickets: SSHP-1475187, SSHP-1470659).
@@ -555,7 +555,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Razón**: AppSheet SHE y GEMBA son aplicaciones externas mantenidas por otro equipo. Groot Soporte no tiene acceso ni herramientas para diagnosticar errores internos de AppSheet. El equipo de SHE gestiona estas apps.
 - **Verificación previa**: Confirmar que la URL reportada es de `appsheet.com` y el error NO está relacionado con permisos de usuario en Groot (si el usuario no puede loguearse → verificar primero en Groot).
 - **Acción**: Derivar a **Equipo SHE/AppSheet**.
-- **Automatización**: Habilitada. Option id en `$SKILL_DIR/knowledge/jira-field-options.md`.
+- **Automatización**: Habilitada. Option id en `$SKILL_DIR/knowledge/config/jira-field-options.md`.
 - **Comentario sugerido**:
   > "Hola, el error reportado ocurre en AppSheet (plataforma externa). Groot Soporte no administra esa herramienta. Derivamos al equipo responsable de SHE/GEMBA para que puedan investigar."
 - **Fuente**: Análisis histórico (2 tickets: SSHP-1434223, SSHP-1435140).

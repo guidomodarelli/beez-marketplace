@@ -50,8 +50,8 @@ El nombre de las herramientas Slack varía según el proveedor y la configuraci�
 ### 1. Obtener tickets abiertos asignados
 
 Leer las referencias:
-- `$SKILL_DIR/knowledge/classification.md`
-- `$SKILL_DIR/knowledge/triage-rules.md`
+- `$SKILL_DIR/knowledge/config/classification.md`
+- `$SKILL_DIR/knowledge/rules/triage-rules.md`
 
 Ejecutar el JQL base:
 ```bash

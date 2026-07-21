@@ -36,7 +36,7 @@ Aplicar **modo ABORTAR** (pasos A + B) de `$SKILL_DIR/knowledge/config/atlassian
 
 ### 1. Cargar reglas de triage
 
-Leer `$SKILL_DIR/knowledge/triage-rules.md` (reglas R-DESC-01 a R-DESC-12 + algoritmo de triage completo).
+Leer `$SKILL_DIR/knowledge/rules/triage-rules.md` (reglas R-DESC-01 a R-DESC-12 + algoritmo de triage completo).
 
 ### 2. Fase de análisis — obtener y evaluar todos los tickets
 

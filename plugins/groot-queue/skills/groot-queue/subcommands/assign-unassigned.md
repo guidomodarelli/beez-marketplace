@@ -48,7 +48,7 @@ Aplicar **modo DEGRADAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/config/atla
 
 Si no hay tickets sin assignee, mostrar: "✅ No hay tickets sin assignee en la cola." y terminar.
 
-3. Leer `$SKILL_DIR/knowledge/triage-rules.md` y obtener el contenido de **todos** los tickets filtrados (en paralelo si es posible):
+3. Leer `$SKILL_DIR/knowledge/rules/triage-rules.md` y obtener el contenido de **todos** los tickets filtrados (en paralelo si es posible):
    ```bash
    acli jira workitem view <KEY>
    ```
@@ -245,9 +245,9 @@ Ejecutar este paso solo para los tickets clasificados como `ASIGNAR` en el paso 
 **Procedimiento por ticket elegible:**
 
 1. Leer las referencias (reutilizar si ya fueron cargadas en pasos anteriores):
-   - `$SKILL_DIR/knowledge/classification.md`
-   - `$SKILL_DIR/knowledge/runbooks.md`
-   - `$SKILL_DIR/knowledge/assignment-note-template.md`
+   - `$SKILL_DIR/knowledge/config/classification.md`
+   - `$SKILL_DIR/knowledge/rules/runbooks.md`
+   - `$SKILL_DIR/knowledge/templates/assignment-note-template.md`
 2. Obtener el contenido actualizado del ticket en una llamada separada antes de analizarlo:
    ```bash
    acli jira workitem view <KEY>

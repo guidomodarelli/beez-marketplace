@@ -59,7 +59,7 @@ Buscar cualquier tool cuyo nombre contenga `slack` y exponga capacidad de postea
 
 Usar el alias `DERIVATION_DESTINATION_SQUAD_FIELD` para referirse al campo Jira que define el squad destino de la transición "Derivar a otro equipo". El mapeo del alias al field id real está documentado en `$SKILL_DIR/knowledge/README.md`. Antes de llamar al MCP/Jira, expandir el alias al field id real; no enviar el alias literal en el payload.
 
-> Los option IDs de squads destino y motivos de derivación están centralizados en `$SKILL_DIR/knowledge/jira-field-options.md`. Consultarlo para obtener los IDs — no copiar valores en este archivo.
+> Los option IDs de squads destino y motivos de derivación están centralizados en `$SKILL_DIR/knowledge/config/jira-field-options.md`. Consultarlo para obtener los IDs — no copiar valores en este archivo.
 
 > `R-DER-05` no deriva a un squad de Jira: postea un mensaje al canal Slack `#help-authz-internal-admins`. Si el Slack MCP está disponible, la acción es automática; si no, el ticket queda como `MANUAL_REDIRECT`.
 
@@ -67,7 +67,7 @@ Usar el alias `DERIVATION_DESTINATION_SQUAD_FIELD` para referirse al campo Jira 
 
 ### 1. Cargar referencias
 
-Leer `$SKILL_DIR/knowledge/triage-rules.md` (reglas R-DER-01 a R-DER-24 + algoritmo de triage) y `$SKILL_DIR/knowledge/jira-field-options.md` (option IDs de squads destino y motivos de derivación).
+Leer `$SKILL_DIR/knowledge/rules/triage-rules.md` (reglas R-DER-01 a R-DER-24 + algoritmo de triage) y `$SKILL_DIR/knowledge/config/jira-field-options.md` (option IDs de squads destino y motivos de derivación).
 
 ### 2. Fase de análisis — obtener y evaluar todos los tickets
 
@@ -164,7 +164,7 @@ Para **todas las demás reglas R-DER** (no R-DER-13):
     "customfield_14924": {"id": "<id-motivo>"}
   }
   ```
-  _(El option id del motivo "Solución parcial, otro Squad requerido" está en `$SKILL_DIR/knowledge/jira-field-options.md`)_
+  _(El option id del motivo "Solución parcial, otro Squad requerido" está en `$SKILL_DIR/knowledge/config/jira-field-options.md`)_
   Antes de ejecutar la llamada real, reemplazar `<DERIVATION_DESTINATION_SQUAD_FIELD>` por el field id real documentado en `$SKILL_DIR/knowledge/README.md`.
 - `update`:
   ```json
