@@ -31,6 +31,8 @@ Responsable de la gestión directa de usuarios y las herramientas de operaciones
 - **Pidgey** — Notificaciones outbound (`xtools.adminml.com/tools/pidgey/*`)
 - **Alfred** — Operaciones masivas: tickets, aprobaciones, procesos bulk, CSV upload (`xtools.adminml.com/tools/alfred`)
 - **Chat Interno** — Comunicación interna entre operarios y líderes
+- **Kraken Menu** — Menú lateral genérico de las apps Groot: niveles, subniveles, favoritos, búsqueda, y visibilidad de entradas según permisos del usuario
+- **Godric** — (pendiente documentar alcance)
 
 ## Sistemas del equipo
 
@@ -38,9 +40,11 @@ Responsable de la gestión directa de usuarios y las herramientas de operaciones
 |---------|-------------|-------------|
 | `shipping-users-mgmt-api` (Groot) | Groot (ambas células) | API core de gestión de usuarios shipping |
 | Kraken (auth) | Kraken | Auth/roles/permisos |
+| Kraken Menu | Nexus | Menú lateral genérico de apps Groot |
 | Pidgey | Nexus | Notificaciones |
 | Alfred | Nexus | Operaciones masivas |
 | Chat Interno | Nexus | Comunicación interna |
+| Godric | Nexus | (pendiente documentar) |
 
 ## Sistemas externos relacionados
 
@@ -48,7 +52,7 @@ Responsable de la gestión directa de usuarios y las herramientas de operaciones
 - **LMS**: Labour Management System
 - **Kioske**: Terminal de autoservicio para reps
 - **xtools** (xtools.adminml.com): Plataforma de herramientas internas de shipping. **Las rutas `/tools/alfred`, `/tools/pidgey/*` y autogestión de perfil son productos Nexus/Groot** (ver arriba) — tickets sobre esas rutas son internos del equipo, no escalaciones externas.
-- **SSFF**: Shipping Fulfillment Frontend
+- **SSFF**: Success Factors
 
 ## Nota importante
 
