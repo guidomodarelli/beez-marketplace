@@ -31,13 +31,14 @@ Ver [`nexus-team.md`](./nexus-team.md) para detalle completo: dominio, productos
 | Alfred | Nexus | Operaciones masivas |
 | Chat Interno | Nexus | Comunicación interna |
 | Godric | Nexus | (pendiente documentar) |
+| Autogestión de perfil | Kraken | Autogestión de CAD/atributos vía xtools (`/tools/profile/mercadoenvios`) |
 
 ## Plataformas con ownership parcial de Groot
 
 - **xtools** (xtools.adminml.com): Plataforma de herramientas internas de shipping. La plataforma es externa, pero **rutas específicas son productos Groot**:
   - `/tools/pidgey/*` → Nexus (notificaciones)
   - `/tools/alfred` → Nexus (operaciones masivas)
-  - `/tools/profile/mercadoenvios` → Groot core (autogestión de perfil)
+  - `/tools/profile/mercadoenvios` → Kraken (autogestión de perfil)
   - Tickets sobre estas rutas son **internos del equipo**, no escalaciones externas.
 
 ## Sistemas externos (sin ownership de Groot)
