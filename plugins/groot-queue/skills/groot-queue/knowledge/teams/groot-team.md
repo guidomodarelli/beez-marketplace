@@ -1,6 +1,6 @@
 # Equipo Groot
 
-Groot es el equipo de desarrollo responsable del sistema de gestión de usuarios de shipping en Mercado Libre (`shipping-users-mgmt-api`). Administra usuarios de warehouse/fulfillment, roles, permisos, atributos, jerarquía organizacional, badges, credenciales y Labour Share entre sites.
+Groot es el equipo de desarrollo responsable del sistema de gestión de usuarios de shipping en Mercado Libre. Administra usuarios de warehouse/fulfillment, roles, permisos, atributos, jerarquía organizacional, badges, credenciales y Labour Share entre sites.
 
 ## Células
 
@@ -51,7 +51,7 @@ Responsable de la gestión directa de usuarios y las herramientas de operaciones
 - **WMS** (wms.adminml.com): Warehouse management system
 - **LMS**: Labour Management System
 - **Kioske**: Terminal de autoservicio para reps
-- **xtools** (xtools.adminml.com): Plataforma de herramientas internas de shipping. **Las rutas `/tools/alfred`, `/tools/pidgey/*` y autogestión de perfil son productos Nexus/Groot** (ver arriba) — tickets sobre esas rutas son internos del equipo, no escalaciones externas.
+- **xtools** (xtools.adminml.com): Plataforma de herramientas internas de shipping. **Las rutas `/tools/alfred` y `/tools/pidgey/*` son productos Nexus** (ver Productos a cargo). **Autogestión de perfil** es funcionalidad de Groot core expuesta a través de xtools — tickets sobre autogestión son internos del equipo, no escalaciones externas.
 - **SSFF**: Success Factors
 
 ## Nota importante
