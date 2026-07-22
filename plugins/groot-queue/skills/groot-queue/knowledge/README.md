@@ -30,7 +30,8 @@ teams/               Rosters operativos de equipos internos:
   groot-team.md        Identidad del equipo Groot: células (Kraken y Nexus),
                        sistemas a cargo, sistemas externos relacionados.
                        Fuente de verdad de quiénes somos.
-  nexus-team.md        Miembros de la célula Nexus (R-DER-13).
+  nexus-team.md        Célula Nexus completa: dominio, productos, miembros
+                       y criterio de asignación (R-DER-13).
 
 templates/           Templates operativos reutilizables:
   assignment-note-template.md

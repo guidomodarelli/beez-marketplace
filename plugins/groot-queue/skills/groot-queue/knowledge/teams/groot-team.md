@@ -18,21 +18,7 @@ Responsable de autenticación, autorización y gestión de roles (BISO roles). M
 
 ### Nexus — Gestión de usuarios shipping & herramientas internas
 
-Responsable de la gestión directa de usuarios y las herramientas de operaciones internas.
-
-**Dominio**:
-- Administración de usuarios (alta, baja, edición)
-- Atributos de usuario (warehouse, facility, crossdocking)
-- Jerarquía organizacional (líder directo, gestión)
-- Badges y credenciales
-- Labour Share entre sites
-
-**Productos a cargo**:
-- **Pidgey** — Notificaciones outbound (`xtools.adminml.com/tools/pidgey/*`)
-- **Alfred** — Operaciones masivas: tickets, aprobaciones, procesos bulk, CSV upload (`xtools.adminml.com/tools/alfred`)
-- **Chat Interno** — Comunicación interna entre operarios y líderes
-- **Kraken Menu** — Menú lateral genérico de las apps Groot: niveles, subniveles, favoritos, búsqueda, y visibilidad de entradas según permisos del usuario
-- **Godric** — (pendiente documentar alcance)
+Ver [`nexus-team.md`](./nexus-team.md) para detalle completo: dominio, productos, miembros y criterio de asignación.
 
 ## Sistemas del equipo
 

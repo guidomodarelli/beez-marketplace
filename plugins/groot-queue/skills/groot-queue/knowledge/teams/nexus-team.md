@@ -1,13 +1,29 @@
-# Célula Nexus — Chat Interno / Notificaciones Outbound / Alfred
+# Célula Nexus — Gestión de usuarios shipping & herramientas internas
 
 > Célula del equipo Groot. Ver [`groot-team.md`](./groot-team.md) para contexto completo del equipo.
 
-Célula interna de Groot responsable de Chat Interno, xtools/Pidgey (`xtools.adminml.com/tools/pidgey/*`) y xtools/Alfred (`xtools.adminml.com/tools/alfred/*`). Pidgey gestiona notificaciones; Alfred gestiona tickets, aprobaciones y procesos masivos. Los tickets de acceso denegado a estas secciones se asignan automáticamente via shuffle a un miembro de esta célula (no existe squad en Jira).
+Responsable de la gestión directa de usuarios y las herramientas de operaciones internas.
 
-## Miembros del equipo
+## Dominio
+
+- Administración de usuarios (alta, baja, edición)
+- Atributos de usuario (warehouse, facility, crossdocking)
+- Jerarquía organizacional (líder directo, gestión)
+- Badges y credenciales
+- Labour Share entre sites
+
+## Productos a cargo
+
+- **Pidgey** — Notificaciones outbound (`xtools.adminml.com/tools/pidgey/*`)
+- **Alfred** — Operaciones masivas: tickets, aprobaciones, procesos bulk, CSV upload (`xtools.adminml.com/tools/alfred`)
+- **Chat Interno** — Comunicación interna entre operarios y líderes
+- **Kraken Menu** — Menú lateral genérico de las apps Groot: niveles, subniveles, favoritos, búsqueda, y visibilidad de entradas según permisos del usuario
+- **Godric** — (pendiente documentar alcance)
+
+## Miembros
 
 ```
-PIDGEY_TEAM:
+NEXUS_TEAM:
   - name: Gonzalo Greco
     email: gonzalojavier.greco@mercadolibre.com
   - name: Damian Zmijanovich
@@ -26,7 +42,7 @@ PIDGEY_TEAM:
 
 ## Criterio de asignación (R-DER-13)
 
-- Hacer un **shuffle aleatorio** de la lista de emails al momento de asignar.
+- Shuffle aleatorio de la lista de emails al momento de asignar.
 - Tomar el primero del orden barajado.
 - Usar `acli jira workitem assign --key <KEY> --assignee <email> --yes`.
-- Dejar nota interna indicando que se trata de acceso a xtools/Pidgey (ver comentario sugerido en R-DER-13).
+- Dejar nota interna indicando acceso a xtools/Pidgey (ver comentario sugerido en R-DER-13).

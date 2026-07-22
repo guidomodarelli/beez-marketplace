@@ -447,7 +447,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - El ticket puede llegar mal asignado a Groot o a WoWChat.
 - **Razón**: Pidgey, Alfred y Chat Interno son responsabilidad de la **célula Nexus**, que es una célula interna de Groot. No existe squad de Jira para derivación automática: el ticket debe asignarse directamente a un miembro de la célula.
 - **Verificación previa**: Confirmar que la URL reportada es `xtools.adminml.com/tools/pidgey/*`, `xtools.adminml.com/tools/alfred/*` o la URL de Chat Interno. Si el error es en otra sección de xtools que sí involucre configuración de usuario Groot (ej. perfil, facility, CAD) → no aplica, reclasificar a la categoría correspondiente.
-- **Acción**: Asignación automática vía shuffle a un miembro de la célula Nexus. Ver `$SKILL_DIR/knowledge/teams/nexus-team.md` para la lista de emails. No hay squad en Jira — se usa `acli jira workitem assign` en lugar de la transición "Derivar a otro equipo".
+- **Acción**: Asignación automática vía shuffle a un miembro de la célula Nexus. Ver `$SKILL_DIR/knowledge/teams/nexus-team.md` para la lista de emails y criterio de asignación. No hay squad en Jira — se usa `acli jira workitem assign` en lugar de la transición "Derivar a otro equipo".
 - **Comentario sugerido** (nota interna al asignar):
   > "Derivado a célula Nexus — acceso denegado a xtools/Pidgey (notificaciones), xtools/Alfred (tickets, aprobaciones, procesos masivos) o Chat Interno. La configuración del usuario en Groot no está involucrada."
 - **Fuente**: ticket SSHP-1413000 (2026-04-18).
