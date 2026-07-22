@@ -16,28 +16,9 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 
 ## Contexto de Groot
 
-> Para detalle completo del equipo, células y sistemas, ver [`teams/groot-team.md`](../teams/groot-team.md).
-
-**Nosotros somos el equipo Groot**, compuesto por dos células:
-- **Kraken** — Auth/roles: gestiona permisos y roles de usuario (BISO roles)
-- **Nexus** — Gestión de usuarios shipping, Pidgey (notificaciones), Alfred (operaciones masivas), Chat Interno
-
-**Groot** es el sistema de gestión de usuarios de shipping en Mercado Libre. Administra:
-- Usuarios de warehouse/fulfillment (reps, team leaders, managers)
-- Roles y permisos (BISO roles via Kraken)
-- Atributos de usuario (warehouse, facility, crossdocking, etc.)
-- Jerarquía organizacional (líder directo, gestión)
-- Badges y credenciales
-- Labour Share entre sites
-
-**Sistemas externos relacionados**:
-- **WMS** (wms.adminml.com): Warehouse Management System
-- **LMS**: Labour Management System
-- **Kioske**: Terminal de autoservicio para reps
-- **xtools** (xtools.adminml.com): Plataforma de herramientas shipping. Las rutas `/tools/alfred` y `/tools/pidgey/*` son productos Nexus (internos). Autogestión de perfil también es Groot.
-- **SSFF**: Success Factors
-
-> Para detalle de productos Nexus (Alfred, Pidgey, Chat Interno), ver [`teams/groot-team.md` §Productos a cargo](../teams/groot-team.md).
+> **Fuente de verdad**: [`teams/groot-team.md`](../teams/groot-team.md) — definición del equipo, células (Kraken / Nexus), productos, sistemas internos y externos.
+>
+> Leer ese archivo antes de diagnosticar un ticket para entender ownership y alcance.
 
 **Error codes conocidos del sistema**:
 - `user_rollback_error`: Error haciendo rollback de cambios en usuario
