@@ -18,6 +18,7 @@ rules/               Reglas de negocio y procedimientos de resolución:
 
 config/              Configuración de tooling externo y opciones de Jira:
   atlassian-mcp.md     Instalación, pre-condiciones y uso del MCP de Atlassian.
+                       Fuente de verdad de `commentVisibility` (nota interna).
   slack-mcp.md         Instalación del MCP de Slack.
   classification.md    JQL base y lógica de clasificación compartida entre commands.
   jira-field-options.md
@@ -25,6 +26,9 @@ config/              Configuración de tooling externo y opciones de Jira:
                        custom de Jira en SSHP (customfield_13781 squads destino,
                        customfield_14924 motivos de derivación, etc.).
                        Se consulta en /groot-queue derive.
+  shared-procedures.md Procedimientos compartidos entre subcommands: labels en
+                       Jira, evaluación de novedad KB, log de auditoría.
+  untrusted-content.md Regla de aislamiento de contenido no confiable de tickets.
 
 teams/               Rosters operativos de equipos internos:
   groot-team.md        Identidad del equipo Groot: células (Kraken y Nexus),
