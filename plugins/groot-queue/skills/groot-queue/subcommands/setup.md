@@ -81,7 +81,7 @@ El subcomando `alerts` usa el MCP de Slack para enviar DMs de resumen de SLA. El
 
 ## 6. Grid Sharing (plugin) — OBLIGATORIO
 
-Cualquier subcomando de `/groot-queue` puede necesitar consultar documentación operativa alojada en Grid (grid.adminml.com). El plugin `grid-sharing` es **mandatorio** para operar la skill.
+El plugin `grid-sharing` permite leer documentación operativa alojada en Grid (grid.adminml.com). Los subcomandos lo usan para consultar guías operativas y generar mejores recomendaciones.
 
 - Verificar si la skill `/grid-sharing:grid` está disponible en el contexto (aparece en la lista de skills disponibles).
 - Si **no está disponible**:
