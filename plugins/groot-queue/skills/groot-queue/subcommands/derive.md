@@ -84,10 +84,7 @@ Aplicar las reglas de `$SKILL_DIR/knowledge/config/untrusted-content.md`.
 
 **2c. Evaluar reglas R-DER:**
 
-Aplicar **únicamente las siguientes reglas R-DER del algoritmo de triage** definido en `triage-rules.md`, en el orden listado (idéntico al algoritmo completo):
-- R-DER-12, R-DER-22, R-DER-06, R-DER-07, R-DER-09, R-DER-11, R-DER-10, R-DER-08, R-DER-13, R-DER-14, R-DER-15, R-DER-16, R-DER-20, R-DER-17, R-DER-18, R-DER-23, R-DER-04, R-DER-05, R-DER-01, R-DER-02, R-DER-03, R-DER-24
-
-Tomar la **primera regla que matchee**. Reglas con automatización vía Slack (excluir del loop Jira principal — se procesan en el paso 4g):
+Aplicar **únicamente las reglas R-DER** en el orden definido en la sección **Algoritmo de triage** de `triage-rules.md`. Tomar la **primera regla que matchee**. Reglas con automatización vía Slack (excluir del loop Jira principal — se procesan en el paso 4g):
 - `R-DER-05` → `SLACK_REDIRECT` con destino `#help-authz-internal-admins`. Si `SLACK_MCP_AVAILABLE = false` al momento de ejecución, degradar a `MANUAL_REDIRECT`.
 
 Si ninguna aplica, evaluar el veredicto completo y marcar como `NO_DERIVA` con el veredicto resultante (DESCARTAR / FIX_APLICADO / VALIDO_GROOT / REVISAR_MANUAL).
