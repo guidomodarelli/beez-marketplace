@@ -38,7 +38,7 @@ Responsable de la gestión directa de usuarios y las herramientas de operaciones
 
 | Sistema | Responsable | Descripción |
 |---------|-------------|-------------|
-| `shipping-users-mgmt-api` (Groot) | Groot (ambas células) | API core de gestión de usuarios shipping |
+| Groot | Groot (ambas células) | API core de gestión de usuarios shipping |
 | Kraken (auth) | Kraken | Auth/roles/permisos |
 | Kraken Menu | Nexus | Menú lateral genérico de apps Groot |
 | Pidgey | Nexus | Notificaciones |

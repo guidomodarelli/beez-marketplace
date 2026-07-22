@@ -22,7 +22,7 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 - **Kraken** — Auth/roles: gestiona permisos y roles de usuario (BISO roles)
 - **Nexus** — Gestión de usuarios shipping, Pidgey (notificaciones), Alfred (operaciones masivas), Chat Interno
 
-**Groot** es el sistema de gestión de usuarios de shipping en Mercado Libre (`shipping-users-mgmt-api`). Administra:
+**Groot** es el sistema de gestión de usuarios de shipping en Mercado Libre. Administra:
 - Usuarios de warehouse/fulfillment (reps, team leaders, managers)
 - Roles y permisos (BISO roles via Kraken)
 - Atributos de usuario (warehouse, facility, crossdocking, etc.)
