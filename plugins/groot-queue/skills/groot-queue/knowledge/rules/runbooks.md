@@ -147,7 +147,7 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 2. Si aparece como cuenta Meli pero debería ser ext_ → posible error de vinculación en el onboarding
 3. Para cambio de contraseña → el usuario debe usar el flujo de autogestión, no Groot
 4. Si el usuario no puede acceder a autogestión → verificar que tiene CAD activo
-5. **Escalación**: Problemas de vinculación de cuenta requieren IAM Soporte (`57102`)
+5. **Escalación**: Problemas de vinculación de cuenta requieren IAM Soporte (ver `config/jira-field-options.md` para option ID)
 
 ---
 

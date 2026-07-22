@@ -316,7 +316,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Señales**:
   - Aparece como "cuenta Meli" y debería ser `ext_`, o al revés.
   - Pide cambio de contraseña que requiere flujo de autogestión.
-- **Razón**: Problemas de vinculación de cuenta los maneja **IAM Soporte** (`57102`).
+- **Razón**: Problemas de vinculación de cuenta los maneja **IAM Soporte**.
 - **Acción**: Derivar a IAM Soporte.
 - **Comentario sugerido**:
   > "Hola, la vinculación o desvinculación de cuentas (cuenta MELI vs cuenta ext_) y cambios de contraseña requieren la intervención del equipo de IAM Soporte. Derivamos para que puedan ayudarte."
@@ -474,7 +474,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - El líder o el usuario reporta que una cuenta aparece como desactivada/expirada en Groot o MeliHelp y no hay opción para reactivarla desde la autogestión.
 - **Razón**: Cuando la desactivación involucra bloqueos de SuccessFactors, IAM o sincronización de HR, Groot Soporte no tiene herramientas para desbloquear. El equipo de IAM Soporte tiene acceso directo para resolver estos casos.
 - **Verificación previa**: Confirmar que el usuario realmente aparece como desativado/expirado en Groot. Si el usuario está activo pero con permisos faltantes → reclasificar como `VALIDO_GROOT`.
-- **Acción**: Derivar a **IAM Soporte** (`57102`).
+- **Acción**: Derivar a **IAM Soporte**.
 - **Comentario sugerido**:
   > "Hola, la reactivación de cuentas desactivadas/expiradas que no se resuelve por autogestión requiere intervención del equipo de IAM. Derivamos para que puedan ayudarte."
 - **Fuente**: Análisis histórico (5 tickets: SSHP-1508978, SSHP-1497366, SSHP-1498407, SSHP-1499951, SSHP-1458962).
@@ -487,7 +487,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - El líder intenta crear uno o varios usuarios (internos o externos) desde Groot y recibe error del sistema que menciona SuccessFactors, datos inválidos, o identificador tributario (pero **no** es un documento duplicado — para eso ver R-DER-11).
 - **Razón**: Los errores sistémicos de integración con SuccessFactors requieren investigación del equipo IAM Soporte, que tiene acceso a los logs de integración y puede corregir datos en la fuente.
 - **Verificación previa**: Confirmar que no es un caso de documento inválido (R-DER-09) ni documento duplicado (R-DER-11). Si el error menciona "identificador tributario inválido" / "Identificador tributario invalido" / "invalid tax id" → aplicar R-DER-09. Si menciona "tax_id has already been used" o "CPF já utilizado" → aplicar R-DER-11 en su lugar.
-- **Acción**: Derivar a **IAM Soporte** (`57102`).
+- **Acción**: Derivar a **IAM Soporte**.
 - **Comentario sugerido**:
   > "Hola, el error de creación está relacionado con la integración de SuccessFactors y requiere investigación del equipo de IAM. Derivamos para que puedan resolver el problema de datos."
 - **Fuente**: Análisis histórico (8+ tickets: SSHP-1482522, SSHP-1483624, SSHP-1483830, SSHP-1483831, SSHP-1483993, SSHP-1482546, SSHP-1482691, SSHP-1480290, SSHP-1482672).
@@ -527,7 +527,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - El usuario estaba activo y funcionando, pero **perdió acceso a WMS/LMS sin que nadie modificara su configuración en Groot**. La cuenta sigue activa, los roles parecen estar, pero el sistema downstream (WMS/LMS) dejó de reconocer sus permisos.
 - **Razón**: La sincronización entre IAM y los sistemas downstream (WMS, LMS) a veces falla o se corrompe sin intervención manual. El equipo IAM Soporte tiene acceso a los logs de sincronización y puede forzar re-sync o corregir inconsistencias.
 - **Verificación previa**: Confirmar que el usuario está activo en Groot, tiene roles asignados, y el problema NO es configuración faltante en Groot (si le faltan roles → `VALIDO_GROOT`).
-- **Acción**: Derivar a **IAM Soporte** (`57102`).
+- **Acción**: Derivar a **IAM Soporte**.
 - **Comentario sugerido**:
   > "Hola, verificamos que tu configuración en Groot está correcta pero detectamos un problema de sincronización con el sistema. Derivamos al equipo de IAM para que puedan investigar y restaurar el acceso."
 - **Fuente**: Análisis histórico (3 tickets: SSHP-1493771, SSHP-1491358, SSHP-1482519).
