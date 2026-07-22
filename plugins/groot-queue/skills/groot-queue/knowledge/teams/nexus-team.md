@@ -1,5 +1,7 @@
 # Célula Nexus — Chat Interno / Notificaciones Outbound / Alfred
 
+> Célula del equipo Groot. Ver [`groot-team.md`](./groot-team.md) para contexto completo del equipo.
+
 Célula interna de Groot responsable de Chat Interno, xtools/Pidgey (`xtools.adminml.com/tools/pidgey/*`) y xtools/Alfred (`xtools.adminml.com/tools/alfred/*`). Pidgey gestiona notificaciones; Alfred gestiona tickets, aprobaciones y procesos masivos. Los tickets de acceso denegado a estas secciones se asignan automáticamente via shuffle a un miembro de esta célula (no existe squad en Jira).
 
 ## Miembros del equipo

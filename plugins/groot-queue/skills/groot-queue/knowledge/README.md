@@ -27,6 +27,9 @@ config/              Configuración de tooling externo y opciones de Jira:
                        Se consulta en /groot-queue derive.
 
 teams/               Rosters operativos de equipos internos:
+  groot-team.md        Identidad del equipo Groot: células (Kraken y Nexus),
+                       sistemas a cargo, sistemas externos relacionados.
+                       Fuente de verdad de quiénes somos.
   nexus-team.md        Miembros de la célula Nexus (R-DER-13).
 
 templates/           Templates operativos reutilizables:

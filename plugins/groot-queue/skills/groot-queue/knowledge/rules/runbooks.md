@@ -16,6 +16,12 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 
 ## Contexto de Groot
 
+> Para detalle completo del equipo, células y sistemas, ver [`teams/groot-team.md`](../teams/groot-team.md).
+
+**Nosotros somos el equipo Groot**, compuesto por dos células:
+- **Kraken** — Auth/roles: gestiona permisos y roles de usuario (BISO roles)
+- **Nexus** — Gestión de usuarios shipping, Pidgey (notificaciones), Alfred (operaciones masivas), Chat Interno
+
 **Groot** es el sistema de gestión de usuarios de shipping en Mercado Libre (`shipping-users-mgmt-api`). Administra:
 - Usuarios de warehouse/fulfillment (reps, team leaders, managers)
 - Roles y permisos (BISO roles via Kraken)
@@ -24,9 +30,7 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 - Badges y credenciales
 - Labour Share entre sites
 
-**Sistemas relacionados**:
-- **Kraken**: Auth/roles — gestiona permisos y roles de usuario
-- **Alfred**: Operaciones masivas (CSV upload para cambios bulk)
+**Sistemas externos relacionados**:
 - **WMS** (wms.adminml.com): Sistema de warehouse management
 - **LMS**: Labour Management System
 - **Kioske**: Terminal de autoservicio para reps
