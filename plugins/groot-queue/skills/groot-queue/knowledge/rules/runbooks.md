@@ -34,8 +34,10 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 - **WMS** (wms.adminml.com): Sistema de warehouse management
 - **LMS**: Labour Management System
 - **Kioske**: Terminal de autoservicio para reps
-- **xtools**: Herramientas de autogestión de perfil
+- **xtools** (xtools.adminml.com): Plataforma de herramientas shipping. Las rutas `/tools/alfred` y `/tools/pidgey/*` son productos Nexus (internos). Autogestión de perfil también es Groot.
 - **SSFF**: Shipping Fulfillment Frontend
+
+> Para detalle de productos Nexus (Alfred, Pidgey, Chat Interno), ver [`teams/groot-team.md` §Productos a cargo](../teams/groot-team.md).
 
 **Error codes conocidos del sistema**:
 - `user_rollback_error`: Error haciendo rollback de cambios en usuario
