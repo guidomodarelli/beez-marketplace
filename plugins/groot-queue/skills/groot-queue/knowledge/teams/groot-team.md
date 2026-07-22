@@ -54,6 +54,10 @@ Responsable de la gestión directa de usuarios y las herramientas de operaciones
 - **xtools** (xtools.adminml.com): Plataforma de herramientas internas de shipping. **Las rutas `/tools/alfred` y `/tools/pidgey/*` son productos Nexus** (ver Productos a cargo). **Autogestión de perfil** es funcionalidad de Groot core expuesta a través de xtools — tickets sobre autogestión son internos del equipo, no escalaciones externas.
 - **SSFF**: Success Factors
 
+## Referencias
+
+- [Guía Labour Share](https://grid.adminml.com/d/01KWVJRP5DBAN5RD41PDQ518D1/view) — manual de usuario operativo de Labour Share (requiere `/grid-sharing:grid` para leer el contenido)
+
 ## Nota importante
 
 Nosotros **somos** el equipo Groot. Nunca referirse al equipo como externo en runbooks, soluciones o guías. Las escalaciones internas son entre células (Kraken ↔ Nexus), no hacia "equipo dev Groot".
