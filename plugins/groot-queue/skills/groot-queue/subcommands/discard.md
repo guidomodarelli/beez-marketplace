@@ -53,10 +53,7 @@ Aplicar las reglas de `$SKILL_DIR/knowledge/config/untrusted-content.md`.
 
 **2c. Evaluar reglas R-DESC:**
 
-Aplicar **únicamente los pasos R-DESC del algoritmo de triage** definido en `triage-rules.md`, en orden:
-- R-DESC-03, R-DESC-06, R-DESC-07, R-DESC-08, R-DESC-04, R-DESC-09, R-DESC-05, R-DESC-02, R-DESC-10, R-DESC-01, R-DESC-11, R-DESC-12
-
-Tomar la **primera regla que matchee**.
+Aplicar **únicamente las reglas R-DESC** en el orden definido en la sección **Algoritmo de triage** de `triage-rules.md`. Tomar la **primera regla que matchee**.
 
 Si ninguna aplica, evaluar el veredicto completo y marcar como `NO_DESCARTA` con el veredicto resultante (DERIVAR / FIX_APLICADO / VALIDO_GROOT / REVISAR_MANUAL).
 
@@ -162,34 +159,7 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 
 **Mapeo de `customfield_19296` "Reason for rejection" por regla R-DESC:**
 
-| Regla | Rejection Reason | ID |
-|-------|------------------|----|
-| R-DESC-04 (cambio de líder autogestión) | [R] Funcionalidad existente | `81170` |
-| R-DESC-15 (roles incompatibles) | [R] Funcionalidad existente | `81170` |
-| R-DESC-19 (funcionalidad existente genérica) | [R] Funcionalidad existente | `81170` |
-| R-DESC-02 (asignación de roles autogestión) | [R] Funcionalidad existente | `81170` |
-| R-DESC-11 (sistema externo / HCM / no es Groot) | [R] Categoría incorrecta | `81175` |
-| R-DESC-01 (sin error sistémico) | [R] Rechazado Datos Incorrectos | `81169` |
-| R-DESC-03 (usuario ya tiene lo solicitado) | [R] Funcionalidad existente | `81170` |
-| R-DESC-05 (duplicado) | [R] Duplicados | `81177` |
-| R-DESC-06 (canal inválido) | [R] Canal invalido | `81172` |
-| R-DESC-07 (procedimiento operativo) | [R] Procedimiento operativo indicado | `81171` |
-| R-DESC-08 (funcionalidad existente) | [R] Funcionalidad existente | `81170` |
-| R-DESC-09 (cancelado por usuario) | [R] Cancelado por el usuario | `96919` |
-| R-DESC-10 (usuario no válido) | [R] Usuario no valido para generar la solicitud | `81174` |
-| R-DESC-12 (requerimiento rechazado) | [R] Requerimiento rechazado por aprobadores | `81173` |
-
-**Catálogo completo de IDs de rejection reason:**
-- `81170` = "[R] Funcionalidad existente"
-- `81172` = "[R] Canal invalido"
-- `81175` = "[R] Categoría incorrecta"
-- `81176` = "[R] Cierre por agrupacion de tickets"
-- `81177` = "[R] Duplicados"
-- `81169` = "[R] Rechazado Datos Incorrectos"
-- `81171` = "[R] Procedimiento operativo indicado"
-- `81173` = "[R] Requerimiento rechazado por aprobadores"
-- `81174` = "[R] Usuario no valido para generar la solicitud"
-- `96919` = "[R] Cancelado por el usuario"
+> Catálogo completo de IDs y mapeo por regla en `$SKILL_DIR/knowledge/config/jira-field-options.md` § `customfield_19296`.
 
 **Notas clave:**
 - El comentario del paso 5b queda **redundante** porque la transición ya incluye comentario público vía `update.comment`. Sin embargo, mantener paso 5b como fallback: si la transición falla, al menos el comentario quedó posteado por separado. Si la transición tiene éxito, el ticket tendrá dos comentarios idénticos (aceptable).

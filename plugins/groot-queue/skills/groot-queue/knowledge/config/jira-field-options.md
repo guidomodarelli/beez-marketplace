@@ -31,3 +31,43 @@ Campo usado en la misma transición `121`.
 | Asignación incorrecta | `20879` |
 | Procedimiento no resuelve el incidente | `20881` |
 | Validado NO Crítico | `96238` |
+
+---
+
+## `customfield_19296` — Reason for rejection
+
+Campo obligatorio en la transición `101` "Descartar" (pantalla JSM).
+
+### Catálogo completo
+
+| Razón | option id |
+|-------|-----------|
+| [R] Funcionalidad existente | `81170` |
+| [R] Canal invalido | `81172` |
+| [R] Categoría incorrecta | `81175` |
+| [R] Cierre por agrupacion de tickets | `81176` |
+| [R] Duplicados | `81177` |
+| [R] Rechazado Datos Incorrectos | `81169` |
+| [R] Procedimiento operativo indicado | `81171` |
+| [R] Requerimiento rechazado por aprobadores | `81173` |
+| [R] Usuario no valido para generar la solicitud | `81174` |
+| [R] Cancelado por el usuario | `96919` |
+
+### Mapeo por regla R-DESC
+
+| Regla | Rejection Reason | ID |
+|-------|------------------|----|
+| R-DESC-01 (sin error sistémico) | [R] Rechazado Datos Incorrectos | `81169` |
+| R-DESC-02 (asignación de roles autogestión) | [R] Funcionalidad existente | `81170` |
+| R-DESC-03 (usuario ya tiene lo solicitado) | [R] Funcionalidad existente | `81170` |
+| R-DESC-04 (cambio de líder autogestión) | [R] Funcionalidad existente | `81170` |
+| R-DESC-05 (duplicado) | [R] Duplicados | `81177` |
+| R-DESC-06 (canal inválido) | [R] Canal invalido | `81172` |
+| R-DESC-07 (procedimiento operativo) | [R] Procedimiento operativo indicado | `81171` |
+| R-DESC-08 (funcionalidad existente) | [R] Funcionalidad existente | `81170` |
+| R-DESC-09 (cancelado por usuario) | [R] Cancelado por el usuario | `96919` |
+| R-DESC-10 (usuario no válido) | [R] Usuario no valido para generar la solicitud | `81174` |
+| R-DESC-11 (sistema externo / HCM / no es Groot) | [R] Categoría incorrecta | `81175` |
+| R-DESC-12 (requerimiento rechazado) | [R] Requerimiento rechazado por aprobadores | `81173` |
+| R-DESC-15 (roles incompatibles) | [R] Funcionalidad existente | `81170` |
+| R-DESC-19 (funcionalidad existente genérica) | [R] Funcionalidad existente | `81170` |
