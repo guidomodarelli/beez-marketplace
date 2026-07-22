@@ -94,19 +94,14 @@ Path resuelto: `$SKILL_DIR/subcommands/<nombre>.md`.
 
 ## Resumen Operativo De `analyze-history`
 
-Este resumen existe para consultas rápidas de ayuda. Para ejecutar o explicar detalles no cubiertos acá, leer `subcommands/analyze-history.md`.
+Para detalles completos, leer `subcommands/analyze-history.md`.
 
-- Requiere MCP Atlassian para consultar tickets cerrados, leer changelog/comentarios y escribir labels. Si no está disponible, abortar con instrucciones para habilitar `https://mcp.atlassian.com/v1/mcp` y completar OAuth.
-- Por defecto procesa como máximo `20` tickets. `--limit N` cambia ese máximo.
-- Consulta tickets cerrados con JQL sobre `project = SSHP`, `Squad = Groot`, `type = Incident`, `statusCategory = Done`.
-- La idempotencia vive en Jira: el JQL base incluye tickets sin labels con `labels IS EMPTY` y excluye tickets con `groot-kb-analyzed` o `groot-kb-manual-review`.
-- `--force` permite re-analizar tickets con `groot-kb-analyzed`, pero los tickets con `groot-kb-manual-review` siguen excluidos.
-- `--since YYYY-MM-DD` agrega un filtro de fecha al JQL: `updated >= "YYYY-MM-DD"`.
-- Clasifica cada ticket cerrado como `DERIVADO`, `DESCARTADO` o `RESUELTO` usando la última transición de cierre del `changelog`, la resolución y el comentario clave previo a esa transición.
-- Si no puede extraer el comentario clave, no hay visibilidad suficiente de notas internas o el desenlace es ambiguo, marca el ticket con `groot-kb-manual-review` y continúa.
-- Las señales para reglas se derivan de `summary` y `description`; deben cubrir ES + PT + EN y partir del wording real del ticket.
-- Si el usuario confirma materialización: `DESCARTADO` y `DERIVADO` delegan en `add-rule` para escribir `triage-rules.md` (`R-DESC` / `R-DER`) con campos pre-poblados; `RESUELTO` delega en `save` para crear una solución.
-- El resumen final muestra conteos de procesados, materializados, descartados, saltados, manual review, reglas agregadas (`R-DESC` / `R-DER`) y soluciones guardadas.
+- Requiere MCP Atlassian para consultar tickets cerrados, leer changelog/comentarios y escribir labels.
+- Por defecto procesa máximo `20` tickets (`--limit N` cambia ese máximo).
+- Idempotencia vía labels en Jira: `groot-kb-analyzed` / `groot-kb-manual-review`.
+- `--force` re-analiza tickets con `groot-kb-analyzed` (no `groot-kb-manual-review`).
+- `--since YYYY-MM-DD` filtra por fecha de actualización.
+- `--only derivados|descartados|resueltos` filtra por tipo de desenlace.
 
 ---
 
@@ -152,27 +147,35 @@ Lista de miembros entre los que se reparten los tickets. Editá esta lista para 
 TEAM:
   - username: frgonzalez
     email: francisco.gonzalez@mercadolibre.com
+    accountId: 5cd4929cc9167e0d6ea2312d
     name: Francisco Gonzalez
   - username: maescobar
     email: matias.escobar@mercadolibre.com
+    accountId: 600061b51051d10075eac0b8
     name: Matias Joel Escobar
   - username: jgibelli
     email: julian.gibelli@mercadolibre.com
+    accountId: "712020:43d9d55a-f958-4256-b2b7-9a0485c717ff"
     name: Julian Nicolas Gibelli
   - username: nicogutierre
     email: nicolasj.gutierrez@mercadolibre.com
+    accountId: "712020:13bb4a44-bc51-4ee3-b443-8d8cc17acc7b"
     name: Julio Nicolas Gutierrez
   - username: hfurs
     email: hectoranibal.furs@mercadolibre.com
+    accountId: 5ea6e12306a3eb0b7ec96e32
     name: Hector Furs
   - username: gsosa
     email: gustavo.sosa@mercadolibre.com
+    accountId: 609eebec2614ec006877ad99
     name: Gustavo Gabriel Sosa Sotelo
   - username: levillanueva
     email: leonardo.villanueva@mercadolibre.com
+    accountId: 62cf1c0f10fcc6f7ae3ea200
     name: Leonardo Manuel Villanueva
   - username: gmodarelli
     email: guido.modarelli@mercadolibre.com
+    accountId: "712020:8300527c-0cb7-4412-8303-0306dac20649"
     name: Guido Modarelli
 ```
 
