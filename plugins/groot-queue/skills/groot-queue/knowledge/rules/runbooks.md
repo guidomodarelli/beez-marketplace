@@ -31,11 +31,11 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 - Labour Share entre sites
 
 **Sistemas externos relacionados**:
-- **WMS** (wms.adminml.com): Sistema de warehouse management
+- **WMS** (wms.adminml.com): Warehouse Management System
 - **LMS**: Labour Management System
 - **Kioske**: Terminal de autoservicio para reps
 - **xtools** (xtools.adminml.com): Plataforma de herramientas shipping. Las rutas `/tools/alfred` y `/tools/pidgey/*` son productos Nexus (internos). Autogestión de perfil también es Groot.
-- **SSFF**: Shipping Fulfillment Frontend
+- **SSFF**: Success Factors
 
 > Para detalle de productos Nexus (Alfred, Pidgey, Chat Interno), ver [`teams/groot-team.md` §Productos a cargo](../teams/groot-team.md).
 
