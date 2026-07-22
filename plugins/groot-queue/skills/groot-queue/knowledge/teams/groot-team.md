@@ -37,7 +37,7 @@ Ver [`nexus-team.md`](./nexus-team.md) para detalle completo: dominio, productos
 
 - **xtools** (xtools.adminml.com): Plataforma de herramientas internas de shipping. La plataforma es externa, pero **rutas específicas son productos Groot**:
   - `/tools/pidgey/*` → Nexus (notificaciones)
-  - `/tools/alfred` → Nexus (operaciones masivas)
+  - `/tools/alfred/*` → Nexus (operaciones masivas)
   - `/tools/profile/mercadoenvios` → Kraken (autogestión de perfil)
   - Tickets sobre estas rutas son **internos del equipo**, no escalaciones externas.
 

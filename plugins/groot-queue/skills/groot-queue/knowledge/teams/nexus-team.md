@@ -15,7 +15,7 @@ Responsable de la gestión directa de usuarios y las herramientas de operaciones
 ## Productos a cargo
 
 - **Pidgey** — Notificaciones outbound (`xtools.adminml.com/tools/pidgey/*`)
-- **Alfred** — Operaciones masivas: tickets, aprobaciones, procesos bulk, CSV upload (`xtools.adminml.com/tools/alfred`)
+- **Alfred** — Operaciones masivas: tickets, aprobaciones, procesos bulk, CSV upload (`xtools.adminml.com/tools/alfred/*`)
 - **Chat Interno** — Comunicación interna entre operarios y líderes
 - **Kraken Menu** — Menú lateral genérico de las apps Groot: niveles, subniveles, favoritos, búsqueda, y visibilidad de entradas según permisos del usuario
 - **Godric** — (pendiente documentar alcance)
