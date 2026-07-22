@@ -16,22 +16,9 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 
 ## Contexto de Groot
 
-**Groot** es el sistema de gestión de usuarios de shipping en Mercado Libre (`shipping-users-mgmt-api`). Administra:
-- Usuarios de warehouse/fulfillment (reps, team leaders, managers)
-- Roles y permisos (BISO roles via Kraken)
-- Atributos de usuario (warehouse, facility, crossdocking, etc.)
-- Jerarquía organizacional (líder directo, gestión)
-- Badges y credenciales
-- Labour Share entre sites
-
-**Sistemas relacionados**:
-- **Kraken**: Auth/roles — gestiona permisos y roles de usuario
-- **Alfred**: Operaciones masivas (CSV upload para cambios bulk)
-- **WMS** (wms.adminml.com): Sistema de warehouse management
-- **LMS**: Labour Management System
-- **Kioske**: Terminal de autoservicio para reps
-- **xtools**: Herramientas de autogestión de perfil
-- **SSFF**: Shipping Fulfillment Frontend
+> **Fuente de verdad**: [`teams/groot-team.md`](../teams/groot-team.md) — definición del equipo, células (Kraken / Nexus), productos, sistemas internos y externos.
+>
+> Leer ese archivo antes de diagnosticar un ticket para entender ownership y alcance.
 
 **Error codes conocidos del sistema**:
 - `user_rollback_error`: Error haciendo rollback de cambios en usuario
@@ -160,7 +147,7 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 2. Si aparece como cuenta Meli pero debería ser ext_ → posible error de vinculación en el onboarding
 3. Para cambio de contraseña → el usuario debe usar el flujo de autogestión, no Groot
 4. Si el usuario no puede acceder a autogestión → verificar que tiene CAD activo
-5. **Escalación**: Problemas de vinculación de cuenta requieren IAM Soporte (`57102`)
+5. **Escalación**: Problemas de vinculación de cuenta requieren IAM Soporte (ver `config/jira-field-options.md` para option ID)
 
 ---
 

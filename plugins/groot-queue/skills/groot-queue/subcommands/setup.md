@@ -79,6 +79,19 @@ El subcomando `alerts` usa el MCP de Slack para enviar DMs de resumen de SLA. El
 - Leer la sección TEAM del SKILL.md (`$SKILL_DIR/SKILL.md`)
 - Si está vacía: advertir que `/groot-queue:assign-unassigned` no funcionará hasta configurarlo
 
+## 6. Grid Sharing (plugin) — OBLIGATORIO
+
+El plugin `grid-sharing` permite leer documentación operativa alojada en Grid (grid.adminml.com). Los subcomandos lo usan para consultar guías operativas y generar mejores recomendaciones.
+
+- Verificar si la skill `/grid-sharing:grid` está disponible en el contexto (aparece en la lista de skills disponibles).
+- Si **no está disponible**:
+  ```
+  ❌  Plugin grid-sharing no detectado.
+  Instalá con: /plugins (en Claude Code).
+  /groot-queue NO puede operar sin este plugin.
+  ```
+- Si está disponible → ✅.
+
 ## Output esperado
 
 Renderizar una tabla de estado con el resultado **real** de cada check (no valores de ejemplo). Reemplazar cada `<...>` con lo que se obtuvo en tiempo de ejecución:
@@ -95,6 +108,7 @@ Renderizar una tabla de estado con el resultado **real** de cada check (no valor
 | Slack MCP                     | <✅/❌/⚠️> | <disponible y autenticado / no detectado> |
 | Permiso Bash(acli jira *)     | <✅/❌> | .claude/settings.local.json              |
 | TEAM configurado              | <✅/⚠️> | <N miembros / vacío>                      |
+| Grid Sharing plugin           | <✅/❌> | <disponible / no detectado>              |
 ```
 
 - `✅` = OK · `❌` = falta y es bloqueante para algún subcomando · `⚠️` = degradado o no verificable en este proveedor.

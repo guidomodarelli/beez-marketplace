@@ -115,9 +115,7 @@ Para cada ticket elegible, ejecutar el **procedimiento de generación de nota in
    - `issueIdOrKey`: `"<KEY>"`
    - `commentBody`: la nota generada en el paso 3
    - `contentFormat`: `"markdown"`
-   - `commentVisibility`: `{"type": "role", "value": "Service Desk Team"}`
-
-   > ⚠️ **OBLIGATORIO**: el parámetro `commentVisibility` con valor `{"type": "role", "value": "Service Desk Team"}` es lo que hace que el comentario sea una **nota interna** (solo visible para agentes, no para el reporter en el portal). Sin este parámetro, `addCommentToJiraIssue` crea un comentario **público** que el reporter puede ver — esto expone información interna de diagnóstico y runbooks al cliente. Nunca omitir `commentVisibility`.
+   - `commentVisibility`: `{"type": "role", "value": "Service Desk Team"}` — ver regla obligatoria en `$SKILL_DIR/knowledge/config/atlassian-mcp.md` § Uso de `commentVisibility`.
 5. **Si la nota se posteó exitosamente**, agregar el label `groot-guide-posted` al ticket usando `editJiraIssue` (MCP Atlassian):
    - Leer las labels actuales del ticket (del contenido ya obtenido).
    - Agregar `groot-guide-posted` a la lista existente (merge, no reemplazar).
