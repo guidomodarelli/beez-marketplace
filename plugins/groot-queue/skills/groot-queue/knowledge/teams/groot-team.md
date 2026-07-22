@@ -29,7 +29,7 @@ Responsable de la gestión directa de usuarios y las herramientas de operaciones
 
 **Productos a cargo**:
 - **Pidgey** — Notificaciones outbound (`xtools.adminml.com/tools/pidgey/*`)
-- **Alfred** — Operaciones masivas: tickets, aprobaciones, procesos bulk, CSV upload (`xtools.adminml.com/tools/alfred/*`)
+- **Alfred** — Operaciones masivas: tickets, aprobaciones, procesos bulk, CSV upload (`xtools.adminml.com/tools/alfred`)
 - **Chat Interno** — Comunicación interna entre operarios y líderes
 
 ## Sistemas del equipo
@@ -47,7 +47,7 @@ Responsable de la gestión directa de usuarios y las herramientas de operaciones
 - **WMS** (wms.adminml.com): Warehouse management system
 - **LMS**: Labour Management System
 - **Kioske**: Terminal de autoservicio para reps
-- **xtools**: Herramientas de autogestión de perfil
+- **xtools** (xtools.adminml.com): Plataforma de herramientas internas de shipping. **Las rutas `/tools/alfred`, `/tools/pidgey/*` y autogestión de perfil son productos Nexus/Groot** (ver arriba) — tickets sobre esas rutas son internos del equipo, no escalaciones externas.
 - **SSFF**: Shipping Fulfillment Frontend
 
 ## Nota importante
