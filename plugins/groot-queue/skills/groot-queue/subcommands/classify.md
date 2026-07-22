@@ -47,10 +47,7 @@ Mostrar tickets agrupados por categoría, ordenados por urgencia descendente den
 ...
 ```
 
-Indicadores de urgencia:
-- 1-2: `🟢`
-- 3: `🟡`
-- 4-5: `🔴`
+Indicadores de urgencia: ver `$SKILL_DIR/knowledge/config/classification.md` § Dimensión 2.
 
 Siempre incluir link a Jira: `https://mercadolibre.atlassian.net/browse/SSHP-XXXXXX`.
 
