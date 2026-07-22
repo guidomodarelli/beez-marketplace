@@ -46,7 +46,7 @@ Ver [`nexus-team.md`](./nexus-team.md) para detalle completo: dominio, productos
 - **WMS** (wms.adminml.com): Warehouse management system
 - **LMS**: Labour Management System
 - **Kioske**: Terminal de autoservicio para reps
-- **SSFF**: Success Factors
+- **SSFF** (SuccessFactors): Plataforma de RRHH corporativa. Fuente de verdad para jerarquía organizacional, gestores y estado de usuarios internos. Groot sincroniza datos desde SSFF — cambios de jerarquía/gestor deben hacerse en SSFF, no en Groot.
 
 ## Referencias
 
