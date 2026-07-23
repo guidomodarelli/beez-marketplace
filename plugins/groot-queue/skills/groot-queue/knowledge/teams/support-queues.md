@@ -92,13 +92,12 @@ Equipo de **gestión de usuarios**. Brinda herramientas de configuración de usu
 
 ## Guía de desambiguación
 
-| Síntoma reportado | Equipo real probable | Razón |
-|-------------------|---------------------|-------|
-| "No puedo acceder a WMS" + permisos OK en Groot | FBM (WMS) o Logistics | Problema funcional de WMS, no de permisos |
-| "Productividad mal medida" + menciona WMS | LMS | El dominio es productividad, no warehouse |
-| "Error en HCM" o "External Person" | Time & Attendance | HCM es su producto |
-| "No puedo crear cuenta" + tax id / flag shipping | IAM Soporte | Identidad y credenciales |
-| "Rol no se asigna" + error sistémico en la tool | Groot | Bug de la herramienta |
-| "Rol no se asigna" + sin error (solo pide que lo hagan) | No corresponde a soporte | Autogestión del gestor de operación |
-| "App de fulfillment no carga" + permisos OK | FBM / Logistics / FOS (Helpdesk IA rutea) | App operativa, no de usuarios |
-| "Horas de Be a Rep mal contabilizadas en LMS" | LMS | Dominio de productividad/horas |
+Para resolver casos donde el operador menciona un sistema pero el problema pertenece a otro equipo, consultar el **algoritmo de triage** en `$SKILL_DIR/knowledge/rules/triage-rules.md` § "Algoritmo de triage". Las reglas relevantes para desambiguación cross-equipo:
+
+- **R-DER-12** — Horas de Be a Rep → LMS (no WMS ni Groot)
+- **R-DER-17** — Error funcional de WMS/Logistics con permisos OK en Groot → Helpdesk IA
+- **R-DER-18** — Solicitud operativa de WMS (paquetes/envíos) → Helpdesk IA
+- **R-DER-22** — Errores funcionales de LMS (pantalla en blanco, CAD incorrecto) → LMS
+- **R-DER-23** — Errores en AppSheet (SHE, GEMBA) → Equipo SHE/AppSheet
+
+**Principio general**: el sistema que el operador nombra en el ticket **puede estar equivocado** (por desconocimiento, confusión de nombres o error). Nunca confiar ciegamente en el sistema mencionado — verificar el *dominio real* del problema (productividad, warehouse management, identidad, gestión de usuarios) según las definiciones de este archivo y clasificar por el dominio, no por lo que el operador dice que es.
