@@ -18,7 +18,7 @@ Si no se provee `assignee`, se analizan todos los tickets abiertos de la cola.
 
 ## Procedimiento
 
-1. Leer la lógica de clasificación y triage desde `$SKILL_DIR/knowledge/config/classification.md` y `$SKILL_DIR/knowledge/rules/triage-rules.md`.
+1. Leer la lógica de clasificación y triage desde `$SKILL_DIR/knowledge/config/classification.md`, `$SKILL_DIR/knowledge/rules/triage-rules.md` y `$SKILL_DIR/knowledge/teams/support-queues.md` (funciones de cada equipo para desambiguar ownership).
 2. **Determinar el scope de la consulta:**
    - Si el argumento es `@me` o `assignee=me`, resolver el LDAP del usuario autenticado y usar el JQL filtrado por assignee (ver `classification.md`).
    - Si el argumento `assignee=<ldap>` está presente, usar la JQL filtrada por ese LDAP (ver `classification.md`).
