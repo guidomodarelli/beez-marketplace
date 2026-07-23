@@ -56,31 +56,17 @@ Equipo encargado de **controlar la asistencia y los turnos** de una operación. 
 
 ---
 
-## Logistics
+## Logistics / FOS
 
-Equipo **cross-shipping** encargado de apps de operaciones de:
-
-- Fulfillment
-- XD (Cross-Docking)
-- SVC (Service Centers)
-
-**Dominio**: similar a WMS pero orientado a las operaciones logísticas transversales entre tipos de nodo.
-
-**Criterio de derivación**: si el problema es funcional en una app de operaciones logísticas (no de permisos de usuario), y el contexto es cross-shipping (XD, SVC, fulfillment transversal), corresponde a este equipo.
-
----
-
-## FOS
-
-Equipo **cross-shipping** encargado de apps de operaciones de:
+Dos equipos distintos (**Logistics** y **FOS** — Field Operations Support) que comparten el mismo dominio **cross-shipping** de apps de operaciones de:
 
 - Fulfillment
 - XD (Cross-Docking)
 - SVC (Service Centers)
 
-**Dominio**: similar a WMS y Logistics, orientado a operaciones de fulfillment, XD y SVC.
+**Dominio**: apps operativas transversales entre tipos de nodo (fulfillment, XD, SVC). Similar a WMS pero orientado a la capa logística cross-shipping.
 
-**Criterio de derivación**: si el problema es funcional en una app de operaciones y el contexto es de FOS (Field Operations Support), corresponde a este equipo.
+**Criterio de derivación**: si el problema es funcional en una app de operaciones logísticas cross-shipping (no de permisos de usuario) y no corresponde al dominio específico de FBM/WMS → derivar a **Helpdesk IA** para que rutee internamente al equipo correcto (Logistics o FOS). Desde Groot no tenemos señales para distinguir entre ambos.
 
 ---
 
@@ -110,5 +96,5 @@ Equipo de **gestión de usuarios**. Brinda herramientas de configuración de usu
 | "No puedo crear cuenta" + tax id / flag shipping | IAM Soporte | Identidad y credenciales |
 | "Rol no se asigna" + error sistémico en la tool | Groot | Bug de la herramienta |
 | "Rol no se asigna" + sin error (solo pide que lo hagan) | No corresponde a soporte | Autogestión del gestor de operación |
-| "App de fulfillment no carga" + permisos OK | FBM / Logistics / FOS | App operativa, no de usuarios |
+| "App de fulfillment no carga" + permisos OK | FBM / Logistics / FOS (Helpdesk IA rutea) | App operativa, no de usuarios |
 | "Horas de Be a Rep mal contabilizadas en LMS" | LMS | Dominio de productividad/horas |
