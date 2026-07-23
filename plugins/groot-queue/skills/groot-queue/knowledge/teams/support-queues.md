@@ -52,7 +52,11 @@ Equipo encargado de **controlar la asistencia y los turnos** de una operación. 
 
 **Criterio de derivación**: cualquier ticket que referencie problemas en HCM, External Person, gestión de turnos, control de asistencia o scheduling de workforce corresponde a esta cola.
 
-**Señales**: menciones a "HCM", "External Person", "Rostering", "turnos", "asistencia", "attendance", "scheduling".
+**Señales**:
+- Universales (sin variante idiomática): "HCM", "External Person", "Rostering".
+- ES: "turnos", "asistencia", "control de asistencia", "gestión de turnos", "planificación de turnos".
+- PT: "turnos", "asistência", "controle de ponto", "controle de frequência", "gestão de turnos", "planejamento de turnos".
+- EN: "shifts", "attendance", "attendance control", "shift management", "shift planning", "scheduling".
 
 ---
 
