@@ -14,10 +14,10 @@ Antes de cualquier tool o lectura adicional, inspeccionar los argumentos. Si con
 
 ## 1. ACLI (Atlassian CLI)
 
-- Verificar: `acli --version`.
-- Si no está instalado, mostrar instrucciones para `brew install acli` o https://acli.atlassian.com; no instalarlo automáticamente.
-- Si está instalado, verificar autenticación con `acli jira serverinfo`.
-  - Si falla, mostrar `acli jira auth login --web` y pedir seleccionar `https://mercadolibre.atlassian.net`.
+- Verificar `acli --version`.
+- Si ACLI no está disponible, marcar el check como fallido y remitir al anchor canónico `$SKILL_DIR/knowledge/config/installation.md#1-prerrequisitos-en-macos`; no duplicar comandos ni instalar automáticamente.
+- Si está disponible, verificar autenticación con `acli jira auth status`.
+- Si la autenticación falla o corresponde a otro sitio, marcar el check como fallido y remitir al mismo anchor canónico; no ejecutar login automáticamente.
 
 ## 2. Atlassian MCP
 
@@ -26,7 +26,7 @@ El subcomando `derive` usa el MCP de Atlassian para ejecutar la transición "Der
 - Verificar si el contexto expone un MCP de Atlassian compatible.
 - Si el provider no expone esas tools, informar que la derivación automática debe completarse manualmente en Jira.
 - Si solo permite comentarios públicos y no notas internas de Jira Service Management, no automatizar la derivación.
-- Si no está disponible, mostrar las opciones de configuración de la referencia canónica; no instalar ni habilitar nada sin autorización explícita.
+- Si no está disponible o la autenticación falla, marcar el check según el contrato y remitir al anchor canónico `$SKILL_DIR/knowledge/config/installation.md#4-atlassian-mcp`; no duplicar comandos ni instalar, habilitar o autenticar automáticamente.
 - Si está disponible, verificar autenticación y resolver el `cloudId` con las tools del provider actual. No hardcodearlo.
 
 ## 3. Slack MCP
@@ -34,15 +34,17 @@ El subcomando `derive` usa el MCP de Atlassian para ejecutar la transición "Der
 El subcomando `alerts` usa Slack MCP para enviar DMs de SLA. Los nombres de las tools varían según provider y configuración.
 
 - Buscar capacidades compatibles para localizar usuarios y enviar mensajes, sin depender de un nombre exacto de tool.
-- Si no existen, informar que `alerts` solo puede ejecutarse con `--dry-run` y mostrar la remediación correspondiente al provider.
-- Si existen pero no están autenticadas, indicar el flujo de login disponible.
+- Si no existen, informar que `alerts` solo puede ejecutarse con `--dry-run` y remitir al anchor canónico `$SKILL_DIR/knowledge/config/installation.md#5-slack-mcp`.
+- Si existen pero no están autenticadas, mantener el modo degradado y remitir al mismo anchor; no duplicar comandos ni iniciar OAuth automáticamente.
 - Si están autenticadas, marcar el check como listo.
 
 ## 4. Permisos ACLI en settings
 
-- Verificar que `.claude/` existe en el directorio actual.
-- Verificar que `.claude/settings.local.json` contiene `"Bash(acli jira *)"` en `permissions.allow`.
-- Si falta, explicar el cambio mínimo y pedir autorización antes de crear o modificar el archivo.
+Aplicar este check según el provider activo, sin cambiar el readiness shell/runtime:
+
+- **Claude Code**: verificar que `.claude/settings.local.json` sea JSON válido y contenga el permiso amplio `"Bash(acli jira *)"` o el perfil read-only completo definido en `$SKILL_DIR/knowledge/config/installation.md#3-permisos-acli-en-claude-code`. Si faltan ambos perfiles, marcar el check base como crítico. Si existe solo el perfil granular, marcar lectura/diagnóstico como listos y advertir que asignaciones, transiciones y ediciones pedirán autorización. No crear ni modificar el archivo sin aprobación explícita.
+- **Codex**: mostrar el check como no aplicable y remitir a `$SKILL_DIR/knowledge/config/installation.md#anexo-codex` para la guía del provider.
+- **GitHub Copilot CLI**: mostrar el check como no aplicable y remitir a `$SKILL_DIR/knowledge/config/installation.md#alcance-y-providers`; no intentar adaptar permisos de Claude.
 
 ## 5. Verificación del TEAM
 
@@ -61,7 +63,7 @@ Este diagnóstico es propio de `setup` y se ejecuta independientemente de cualqu
 
 La fase shell solo está lista con exit code `0`, `schema_version: 2`, `scope: "shell"`, `ok: true` y `exit_code: 0`. La presencia textual de una skill, plugin o declaración MCP no reemplaza ninguna capa del checker.
 
-Si la fase shell falla, no instalar, habilitar, configurar ni actualizar nada. Mostrar cada failure code seguro y la remediación en español asociada a su exit code en el contrato central. Cualquier instalación, habilitación, configuración o actualización requiere autorización explícita del usuario antes de ejecutarse.
+Si la fase shell falla, no instalar, habilitar, configurar ni actualizar nada. Mostrar cada failure code seguro y la remediación en español asociada a su exit code en el contrato central. Para fallos de Grid Sharing o sus permisos/red, remitir además a `$SKILL_DIR/knowledge/config/installation.md#6-grid-sharing-y-vpn`; para fallos de Fury Services/FuryDocs, remitir a `$SKILL_DIR/knowledge/config/installation.md#7-fury-services-y-furydocs`. No duplicar allí comandos de remediación. Cualquier acción mutable requiere aprobación explícita del usuario antes de ejecutarse.
 
 ## 7. Fase runtime MCP — diagnóstico independiente
 
@@ -72,7 +74,7 @@ Ejecutar este diagnóstico después del intento shell incluso cuando la fase she
 3. Si la respuesta es válida, exigir un componente cuyo `name` sea exactamente `furydocs`.
 4. Si el componente existe, invocar **solo** `list_tools` con `component="furydocs"`. Exigir los nombres exactos `get_doc_structure` y `get_doc_file`; permitir tools adicionales.
 5. No invocar `get_doc_structure`, `get_doc_file` ni ninguna otra tool documental.
-6. Si las tools de discovery no están disponibles o una capa falla, registrar el check y failure code exactos definidos en `$SKILL_DIR/knowledge/config/groot-queue-readiness.md`; continuar armando el diagnóstico sin presentar la fase como exitosa.
+6. Si las tools de discovery no están disponibles o una capa falla, registrar el check y failure code exactos definidos en `$SKILL_DIR/knowledge/config/groot-queue-readiness.md`, remitir a `$SKILL_DIR/knowledge/config/installation.md#7-fury-services-y-furydocs` y continuar armando el diagnóstico sin presentar la fase como exitosa. No duplicar comandos ni instalar o configurar componentes automáticamente.
 
 Esta fase es independiente y no serializable: no escribir su estado en archivos ni variables de entorno y no inferirla desde el JSON shell.
 
@@ -90,7 +92,7 @@ Renderizar una tabla con el resultado real de cada check. No conservar placehold
 | ACLI autenticado                   | <resultado> | <sitio o estado> |
 | Atlassian MCP + cloudId            | <resultado> | <validado o no verificable> |
 | Slack MCP                          | <resultado> | <autenticado, limitado o ausente> |
-| Permiso Bash(acli jira *)          | <resultado> | <archivo o estado> |
+| Permisos ACLI Claude               | <resultado> | <perfil amplio, read-only o no aplicable> |
 | TEAM configurado                   | <resultado> | <cantidad o vacío> |
 | Provider inventory                 | <resultado> | <provider + failure code si aplica> |
 | Grid Sharing plugin                | <resultado> | <check real> |
@@ -126,7 +128,7 @@ Si una capa no corrió, mostrarla como no ejecutada con su failure code seguro; 
 
 ### Cierre
 
-- Considerar críticos locales: ACLI instalado y autenticado, y permiso `Bash(acli jira *)`. Un TEAM vacío limita `assign-unassigned`, pero no bloquea el resto del readiness.
+- Considerar críticos locales en todos los providers soportados: ACLI instalado y autenticado. En Claude Code, considerar crítico que exista el permiso amplio o el perfil read-only completo de la guía; el perfil granular deja operaciones mutables sujetas a autorización. En Codex o GitHub Copilot CLI debe figurar como no aplicable. Un TEAM vacío limita `assign-unassigned`, pero no bloquea el resto del readiness.
 - Mostrar `✅ Setup completo. Podés usar /groot-queue list para empezar.` únicamente cuando los críticos locales estén listos, la fase shell esté lista y todos los checks runtime estén listos.
 - En cualquier otro caso, mostrar `⚠️ Setup incompleto`, listar cada limitación comprobada y su remediación en español, y no afirmar que los comandos operativos están disponibles mientras cualquiera de las dos fases obligatorias no haya pasado.
 - No instalar, habilitar, configurar ni actualizar componentes durante `setup` sin aprobación explícita del usuario.

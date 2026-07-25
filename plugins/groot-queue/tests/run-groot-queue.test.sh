@@ -353,6 +353,25 @@ assert_contains "$CHILD_LOG" 'legacy_preflight=unset' "setup child must not trus
 assert_contains "$CHILD_LOG" 'fury_global_install=0' "Codex setup must disable global Fury MCP installation"
 printf 'ok - setup bypasses launcher gate and strips legacy readiness variables\n'
 
+PARENT_READINESS_RESULT_FILE="$TEMP_DIRECTORY/untrusted-setup-help-readiness.json"
+PARENT_GRID_PREFLIGHT_RESULT_FILE="$TEMP_DIRECTORY/untrusted-setup-help-preflight.json"
+printf '%s\n' '{"ok":true}' > "$PARENT_READINESS_RESULT_FILE"
+printf '%s\n' '{"ok":true}' > "$PARENT_GRID_PREFLIGHT_RESULT_FILE"
+run_runner --provider codex setup --help
+unset PARENT_READINESS_RESULT_FILE PARENT_GRID_PREFLIGHT_RESULT_FILE
+assert_equal 0 "$LAST_STATUS" "setup help should invoke Codex successfully"
+assert_empty_file "$INVENTORY_LOG" "setup help must not invoke checker inventory"
+assert_empty_file "$MCP_LOG" "setup help must not inspect Fury MCP"
+assert_empty_file "$CURL_LOG" "setup help must not invoke Grid"
+assert_equal 1 "$(grep -c '^codex child args=' "$CHILD_LOG")" "setup help should invoke exactly one Codex child"
+assert_equal 1 "$(grep -Ec '^(claude|codex|copilot) child args=' "$CHILD_LOG")" \
+  "setup help must not invoke any additional provider child"
+assert_contains "$CHILD_LOG" '/groot-queue setup --help' "setup help prompt was not forwarded"
+assert_contains "$CHILD_LOG" 'readiness=unset' "setup help child must not receive parent readiness"
+assert_contains "$CHILD_LOG" 'legacy_preflight=unset' "setup help child must not receive legacy preflight"
+assert_contains "$CHILD_LOG" 'fury_global_install=0' "Codex setup help must disable global Fury MCP installation"
+printf 'ok - setup help launches one sanitized Codex child without probes\n'
+
 PARENT_READINESS_RESULT_FILE="$TEMP_DIRECTORY/untrusted-help-readiness.json"
 PARENT_GRID_PREFLIGHT_RESULT_FILE="$TEMP_DIRECTORY/untrusted-help-preflight.json"
 printf '%s\n' '{"ok":true}' > "$PARENT_READINESS_RESULT_FILE"

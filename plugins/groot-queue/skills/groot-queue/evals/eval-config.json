@@ -23,16 +23,163 @@
       ]
     },
     {
-      "id": "setup-command",
-      "description": "setup subcommand verifies dependencies",
-      "input": "/groot-queue setup",
+      "id": "manual-install-claude-first-from-scratch",
+      "description": "La respuesta cubre onboarding manual completo de /groot-queue con Claude Code desde una máquina limpia",
+      "input": "Quiero instalar `/groot-queue` manualmente en una máquina macOS limpia usando Claude Code como provider principal. Consultá la guía bundled y explicá el recorrido completo hasta el primer setup: Claude Code, plugin Groot Queue, ACLI, permiso mínimo, Atlassian, Slack, Grid/VPN, Fury Services/FuryDocs, TEAM, reload/restart y validación. No invoques Bash, MCP, Jira, Slack ni servicios externos y no hagas cambios.",
       "assertions": [
         {
           "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
           "values": [
-            "ACLI",
-            "acli",
-            "setup"
+            "claude --version",
+            "claude doctor",
+            "claude-code"
+          ]
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "groot-queue@groot-marketplace"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "acli jira auth status"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "Bash(acli jira *)"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "Atlassian"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "OAuth"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "Slack"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "Grid Sharing"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "VPN"
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "Fury Services",
+            "fury-services"
+          ]
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "FuryDocs"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "TEAM"
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "/reload-plugins",
+            "reinici"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "/groot-queue:setup",
+            "/groot-queue setup"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-missing-dependencies-safe-diagnosis",
+      "description": "Setup informa dependencias faltantes y remite al onboarding sin mutar el entorno",
+      "input": "Escenario documental de `/groot-queue setup`: faltan dependencias locales como ACLI y jq. Consultá las referencias bundled y explicá el resultado visible, la remediación manual y si setup instala, habilita, configura o actualiza algo sin aprobación explícita. No invoques Bash, MCP, Jira, Slack ni servicios externos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "Setup incompleto",
+            "setup incompleto",
+            "dependencias faltantes",
+            "check fallido"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "guía canónica",
+            "README.md",
+            "Prerrequisitos en macOS",
+            "onboarding"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no instala",
+            "no instalará",
+            "sin instalar"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no habilita",
+            "no habilitará",
+            "sin habilitar"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no configura",
+            "no configurará",
+            "sin configurar"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no actualiza",
+            "no actualizará",
+            "sin actualizar"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "aprobación explícita",
+            "autorización explícita",
+            "sin tu aprobación"
           ]
         }
       ]
@@ -1358,32 +1505,49 @@
     },
     {
       "id": "setup-help-uses-no-tools",
-      "description": "setup help returns before shell or runtime diagnostics",
-      "input": "Answer from bundled groot-queue metadata and help contract. For setup --help, explain what setup verifies and whether help executes checker, discovery tools, installations, or configuration changes. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "description": "Setup help describe el diagnóstico y la guía canónica sin ejecutar tools ni cambiar el entorno",
+      "input": "Respondé `/groot-queue setup --help` usando metadata y onboarding bundled. Resumí qué verifica setup, nombrá la guía canónica y explicá qué no ejecuta o modifica. No invoques Bash, MCP, Jira, Slack ni servicios externos.",
       "assertions": [
         {
-          "type": "contains_any",
-          "values": [
-            "Grid Sharing",
-            "FuryDocs"
-          ]
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "Grid Sharing"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "FuryDocs"
         },
         {
           "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
           "values": [
             "no ejecuta el checker",
             "sin ejecutar el checker",
             "no corre el checker",
-            "no ejecutar tools",
-            "sin tools"
+            "no ejecuta tools",
+            "sin tools",
+            "no ejecuta diagnósticos"
           ]
         },
         {
           "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
           "values": [
             "no instala",
             "no modifica",
+            "no realiza cambios",
             "sin autorización explícita"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "guía canónica",
+            "README.md",
+            "guía de instalación",
+            "onboarding"
           ]
         }
       ]
@@ -1421,40 +1585,121 @@
       ]
     },
     {
-      "id": "fury-plugin-missing-safe-remediation",
-      "description": "missing Fury plugin blocks with remediation and no automatic installation or configuration",
-      "input": "Documentation-only contract question. Read bundled readiness references if needed. Assume shell readiness returns FURY_PLUGIN_NOT_INSTALLED before list. State visible remediation, whether dispatch continues, and whether groot-queue may install, enable, or configure Fury automatically. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "id": "grid-fury-atlassian-safe-remediation",
+      "description": "Fallas combinadas de Grid, Fury y Atlassian bloquean operaciones y muestran remediación manual segura",
+      "input": "Escenario documental de `/groot-queue setup`: fallan identidad/VPN o acceso Grid, Fury Services/FuryDocs y OAuth Atlassian. Consultá readiness/onboarding bundled y explicá el bloqueo y próximos pasos manuales seguros. Indicá si corresponde usar tokens/headers para Grid, reconstruir transporte Fury o hardcodear cloudId. No invoques Bash, MCP, Jira, Slack ni servicios externos y no cambies configuración.",
       "assertions": [
         {
-          "type": "contains",
-          "value": "FURY_PLUGIN_NOT_INSTALLED"
-        },
-        {
           "type": "contains_any",
-          "values": [
-            "fury-services",
-            "Fury Services",
-            "plugin Fury"
-          ]
-        },
-        {
-          "type": "contains_any",
-          "description": "remediation remains manual until explicit authorization",
-          "values": [
-            "no instalar",
-            "no habilitar",
-            "no configurar",
-            "sin autorización explícita",
-            "requiere autorización explícita"
-          ]
-        },
-        {
-          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
           "values": [
             "bloquear",
-            "detener",
+            "bloqueado",
             "no ejecutar",
-            "setup"
+            "no continuar",
+            "Setup incompleto"
+          ]
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "VPN"
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "Fury Services",
+            "fury-services"
+          ]
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "FuryDocs"
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "/reload-plugins",
+            "reinici"
+          ]
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "Atlassian"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "OAuth"
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no agregues headers",
+            "no uses headers",
+            "sin headers",
+            "no reconstruyas headers"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no uses tokens",
+            "no pegar tokens",
+            "sin tokens",
+            "no agregues tokens"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no sustituye la VPN",
+            "no reemplaza la VPN",
+            "no saltear la VPN",
+            "no omitir la VPN"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no reconstruyas",
+            "no copies argumentos",
+            "no crear otra entrada",
+            "no agregues una segunda declaración"
+          ]
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "cloudId"
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no hardcode",
+            "nunca lo hardcodees",
+            "resolverlo dinámicamente",
+            "resolvé el cloudId dinámicamente"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "pasos manuales",
+            "remediación manual",
+            "aprobación explícita",
+            "autorización explícita",
+            "no modifica"
           ]
         }
       ]

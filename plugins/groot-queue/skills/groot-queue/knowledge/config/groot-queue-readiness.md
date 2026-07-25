@@ -4,6 +4,8 @@ Contrato central para verificar que `groot-queue` puede usar Grid Sharing y Fury
 
 La configuración máquina-legible es `knowledge/config/groot-queue-readiness.json`. El checker shell es `scripts/check-groot-queue-readiness.sh`. Este documento no replica endpoints, identificadores, URLs ni timeouts: esos valores se leen siempre desde el JSON.
 
+Para onboarding y remediaciones orientadas a personas, consultar el [troubleshooting de la guía de Groot Queue](installation.md#troubleshooting). Esta referencia no modifica los checks, failure codes ni el gate definido aquí.
+
 ## Gate global de dos fases
 
 El readiness es un gate global, read-only y bloqueante con dos fases complementarias:

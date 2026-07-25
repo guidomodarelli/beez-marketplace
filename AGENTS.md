@@ -148,7 +148,7 @@ description: <same as skill table>
 argument-hint: <if applicable>
 ---
 
-Leé y seguí literalmente las instrucciones de `~/.claude/skills/<plugin>/subcommands/<name>.md`, aplicándolas a `$ARGUMENTS`.
+Leé y seguí literalmente las instrucciones de `${CLAUDE_PLUGIN_ROOT}/skills/<plugin>/subcommands/<name>.md`, aplicándolas a `$ARGUMENTS`.
 ```
 
 **Invocation matrix**:

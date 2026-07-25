@@ -2,6 +2,6 @@
 description: Muestra estadísticas agregadas de la cola de soporte (totales, sin asignar, riesgo SLA, edad, por categoría/urgencia/veredicto).
 ---
 
-Leé y aplicá `~/.claude/skills/groot-queue/knowledge/config/command-entrypoint.md` para el subcomando canónico `stats`, los argumentos `$ARGUMENTS` y el provider `claude`.
+Leé y aplicá `${CLAUDE_PLUGIN_ROOT}/skills/groot-queue/knowledge/config/command-entrypoint.md` para el subcomando canónico `stats`, los argumentos `$ARGUMENTS` y el provider `claude`.
 
-Solo si el entrypoint habilita la ejecución, leé y seguí literalmente `~/.claude/skills/groot-queue/subcommands/stats.md`, aplicándolo a `$ARGUMENTS` y conservando el estado combinado de readiness validado cuando corresponda.
+Solo si el entrypoint habilita la ejecución, leé y seguí literalmente `${CLAUDE_PLUGIN_ROOT}/skills/groot-queue/subcommands/stats.md`, aplicándolo a `$ARGUMENTS` y conservando el estado combinado de readiness validado cuando corresponda.

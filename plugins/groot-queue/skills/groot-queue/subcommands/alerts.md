@@ -37,9 +37,8 @@ El nombre de las herramientas Slack varía según el proveedor y la configuraci�
    - Si **no existe ninguna** → abortar con:
      ```
      ⚠️ Slack MCP no disponible.
-     Para Claude Code: claude mcp add slack
-     Para Codex: configurar el MCP de Slack en .codex/mcp.json
-     O usá --dry-run para ver el reporte sin enviar mensajes.
+     Seguí la sección "Slack MCP" de la guía canónica de Groot Queue
+     o usá --dry-run para ver el reporte sin enviar mensajes.
      ```
 2. Si existe → autenticarse usando la tool de autenticación de Slack disponible (si no lo está ya).
 

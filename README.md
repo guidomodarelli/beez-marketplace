@@ -71,11 +71,19 @@ Cada registro luego referencia la ruta del subdirectorio de su proveedor (ej. `.
 
 ## 📦 Instalar este marketplace
 
-| Proveedor | Comando |
-|-----------|---------|
-| **Claude Code** (CLI) | `fury ai assets marketplace install --name <marketplace-slug>` |
-| **Claude Code** (plugin) | `/plugin marketplace add melisource/<your-repo-name>` |
-| **Codex** | `fury ai assets marketplace install --name <marketplace-slug> --codex` |
+Los nombres disponibles viven en `.claude-plugin/marketplace.json` y `.agents/plugins/marketplace.json`. Instalá el marketplace y reemplazá `<plugin-name>` por el plugin elegido:
+
+```bash
+# Claude Code
+claude plugin marketplace add --scope user git@github.com:melisource/fury_groot-marketplace.git
+claude plugin install --scope user <plugin-name>@groot-marketplace
+
+# Codex
+codex plugin marketplace add git@github.com:melisource/fury_groot-marketplace.git
+codex plugin add <plugin-name>@groot-marketplace
+```
+
+Para `groot-queue`, consultá la [guía completa de instalación, configuración y diagnóstico](plugins/groot-queue/README.md), fuente canónica para sus prerrequisitos, MCPs, Grid Sharing, Fury Services/FuryDocs y troubleshooting.
 
 ---
 

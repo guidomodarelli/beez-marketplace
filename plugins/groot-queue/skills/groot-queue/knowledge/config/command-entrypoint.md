@@ -21,7 +21,7 @@ Aplicar este orden sin adelantar lecturas, tools ni acciones del subcomando.
 Si cualquier argumento es exactamente `--help` o `-h`:
 
 - No ejecutar el gate, shell, MCP, Jira, Slack ni ninguna acción del subcomando.
-- Para `setup`, responder directamente: `setup` verifica ACLI, MCPs, permisos, TEAM y el readiness completo de Grid Sharing y FuryDocs; no instala ni modifica nada sin autorización explícita.
+- Para `setup`, responder directamente que diagnostica ACLI, integraciones, permisos, Grid Sharing y Fury Services/FuryDocs sin instalar ni modificar nada sin autorización explícita, y remitir a `$SKILL_DIR/knowledge/config/installation.md#9-recargar-y-validar` como guía canónica; no duplicar sus pasos.
 - Para cualquier otro subcomando, leer únicamente `$SKILL_DIR/subcommands/<subcomando-canónico>.md` y responder su ayuda sin ejecutar sus acciones.
 - No tratar como ayuda coincidencias parciales como `--help=true` ni texto que solo contenga esas cadenas.
 - Deshabilitar la ejecución y detener la invocación después de responder.

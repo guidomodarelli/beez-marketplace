@@ -15,10 +15,12 @@ Esta skill funciona como **índice + dispatcher** de subcomandos. La lógica con
 
 Antes de leer o escribir archivos del skill, resolver una variable conceptual `SKILL_DIR`:
 
-1. Si existe la variable de entorno `GROOT_QUEUE_SKILL_DIR`, usar ese valor.
-2. Si no existe y está disponible `~/.codex/skills/groot-queue/SKILL.md`, usar `~/.codex/skills/groot-queue`.
-3. Si no existe y está disponible `~/.claude/skills/groot-queue/SKILL.md`, usar `~/.claude/skills/groot-queue`.
-4. Si se está trabajando dentro del repositorio marketplace, usar `plugins/groot-queue/skills/groot-queue`.
+1. Si existe `GROOT_QUEUE_SKILL_DIR` y contiene `SKILL.md`, usar ese valor.
+2. Si Claude Code cargó el plugin y `${CLAUDE_PLUGIN_ROOT}/skills/groot-queue/SKILL.md` existe, usar `${CLAUDE_PLUGIN_ROOT}/skills/groot-queue`.
+3. Si `GROOT_QUEUE_ACTIVE_PROVIDER=codex` y `~/.codex/skills/groot-queue/SKILL.md` existe, usar `~/.codex/skills/groot-queue`.
+4. Si `GROOT_QUEUE_ACTIVE_PROVIDER=claude` y `~/.claude/skills/groot-queue/SKILL.md` existe, usar `~/.claude/skills/groot-queue`.
+5. Fuera del launcher, usar el directorio desde el cual el provider cargó esta skill; no seleccionar el árbol de otro provider por mera existencia.
+6. Si se está trabajando dentro del repositorio marketplace, usar `plugins/groot-queue/skills/groot-queue`.
 
 En los subcomandos, `$SKILL_DIR` refiere a ese directorio resuelto. No asumir un path exclusivo de Claude o Codex. Si se usa `GROOT_QUEUE_SKILL_DIR` desde `.zshrc`, debe estar exportada en el entorno que inicia el agente; los shells `bash` invocados después solo heredan variables ya exportadas. Cuando un snippet Bash use `$SKILL_DIR` y la variable no esté en el entorno, definirla en la misma llamada Bash con el path resuelto.
 
@@ -80,7 +82,7 @@ Ejemplos:
 | Subcomando | Alias | Acción |
 |------------|-------|--------|
 | `start` | — | Mostrar banner de bienvenida, versión y catálogo de comandos con hints de uso |
-| `setup` | — | Verificar dependencias, integraciones, permisos y Grid Sharing sin realizar cambios sin autorización explícita |
+| `setup` | — | Diagnosticar dependencias, integraciones, permisos y readiness de Grid Sharing + Fury Services/FuryDocs; no instala ni modifica componentes sin aprobación explícita |
 | `list` | `ls` | Listar todos los incidentes abiertos |
 | `classify` | `cl` | Clasificar y agrupar por tipo de problema + urgencia |
 | `detail SSHP-XXXXXX` | `d` | Detalle completo de un ticket con clasificación y sugerencia |
@@ -196,25 +198,9 @@ El orden de la lista **no** define el turno: en cada corrida, `assign-unassigned
 
 ---
 
-## Inicialización del entorno de desarrollo
+## Onboarding y diagnóstico
 
-- [ ] **Primer paso**: tener instalado acli:
-   ```bash
-   brew tap atlassian-labs/acli
-   brew install acli
-   ```
-- [ ] **Segundo paso**: configurar acli con tus credenciales de Atlassian:
-   ```bash
-   acli jira auth login --web
-   ```
-   y seleccionar https://mercadolibre.atlassian.net.
-- [ ] **Tercer paso**: habilitar el MCP de Atlassian en Claude Code:
-   ```bash
-   claude mcp add --transport http "Atlassian" https://mcp.atlassian.com/v1/mcp
-   ```
-   Luego ejecutar `/mcp` dentro de Claude Code y completar el flujo OAuth para `mercadolibre.atlassian.net`.
-   Requerido para que `/groot-queue:derive` pueda ejecutar la transición "Derivar a otro equipo".
-- [ ] **Cuarto paso**: correr el subcomando `setup` para verificar e instalar el resto del entorno.
+La [guía completa de Groot Queue](knowledge/config/installation.md) es la fuente canónica para instalar, configurar, diagnosticar, actualizar y desinstalar el entorno. El subcomando `setup` solo diagnostica y propone remediaciones; no instala, autentica, habilita, configura ni actualiza componentes sin aprobación explícita.
 
 ---
 
