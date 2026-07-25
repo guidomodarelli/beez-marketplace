@@ -16,15 +16,15 @@ GROOT_MARKETPLACE_EVAL_REASONING_EFFORT="${GROOT_MARKETPLACE_EVAL_REASONING_EFFO
 GROOT_MARKETPLACE_EVAL_PROVIDER="${GROOT_MARKETPLACE_EVAL_PROVIDER:-auto}"
 RESOLVED_EVAL_PROVIDER=""
 SKILL_CWD=""
-PREFLIGHT_RESULT_FILE=""
-LAST_PREFLIGHT_EXIT_CODE=0
-LAST_PREFLIGHT_FAILURE_CODES=""
+READINESS_RESULT_FILE=""
+LAST_READINESS_EXIT_CODE=0
+LAST_READINESS_FAILURE_CODES=""
 
-unset GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE GROOT_QUEUE_ACTIVE_PROVIDER
+unset GROOT_QUEUE_READINESS_RESULT_FILE GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE GROOT_QUEUE_ACTIVE_PROVIDER
 
 SCRIPT_DIRECTORY="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 SKILL_PATH="$SCRIPT_DIRECTORY/../skills/groot-queue"
-GRID_PREFLIGHT_CHECKER="$SKILL_PATH/scripts/check-groot-queue-readiness.sh"
+READINESS_CHECKER="$SKILL_PATH/scripts/check-groot-queue-readiness.sh"
 
 usage() {
     printf '%b\n' "${BLUE}════════════════════════════════════════${NC}"
@@ -94,7 +94,7 @@ create_skill_cwd() {
     return 1
 }
 
-resolve_provider_without_preflight() {
+resolve_provider_without_readiness() {
     local candidate_provider
 
     if [ "$GROOT_MARKETPLACE_EVAL_PROVIDER" != "auto" ]; then
@@ -112,7 +112,7 @@ resolve_provider_without_preflight() {
     return 1
 }
 
-read_preflight_failure_codes() {
+read_readiness_failure_codes() {
     local failure_codes=""
 
     if ! command -v jq >/dev/null 2>&1; then
@@ -126,38 +126,38 @@ read_preflight_failure_codes() {
         | unique
         | join(", ")
         | select(length > 0)
-    ' "$PREFLIGHT_RESULT_FILE" 2>/dev/null || true)"
+    ' "$READINESS_RESULT_FILE" 2>/dev/null || true)"
 
-    printf '%s' "${failure_codes:-PREFLIGHT_RESULT_INVALID}"
+    printf '%s' "${failure_codes:-READINESS_RESULT_INVALID}"
 }
 
-run_preflight() {
+run_readiness() {
     local requested_provider="$1"
     local checker_status=0
 
-    : > "$PREFLIGHT_RESULT_FILE"
-    chmod 600 "$PREFLIGHT_RESULT_FILE"
+    : > "$READINESS_RESULT_FILE"
+    chmod 600 "$READINESS_RESULT_FILE"
 
-    if bash "$GRID_PREFLIGHT_CHECKER" --provider "$requested_provider" > "$PREFLIGHT_RESULT_FILE" 2>/dev/null; then
+    if bash "$READINESS_CHECKER" --provider "$requested_provider" > "$READINESS_RESULT_FILE" 2>/dev/null; then
         checker_status=0
     else
         checker_status=$?
     fi
 
-    LAST_PREFLIGHT_EXIT_CODE="$checker_status"
-    LAST_PREFLIGHT_FAILURE_CODES="$(read_preflight_failure_codes)"
+    LAST_READINESS_EXIT_CODE="$checker_status"
+    LAST_READINESS_FAILURE_CODES="$(read_readiness_failure_codes)"
 
     if [ "$checker_status" -eq 0 ] \
         && command -v jq >/dev/null 2>&1 \
         && jq -e --arg provider "$requested_provider" \
-            '.ok == true and .exit_code == 0 and .provider == $provider' \
-            "$PREFLIGHT_RESULT_FILE" >/dev/null 2>&1; then
-        LAST_PREFLIGHT_FAILURE_CODES=""
+            '.schema_version == 2 and .scope == "shell" and .ok == true and .exit_code == 0 and .provider == $provider' \
+            "$READINESS_RESULT_FILE" >/dev/null 2>&1; then
+        LAST_READINESS_FAILURE_CODES=""
         return 0
     fi
 
     if [ "$checker_status" -eq 0 ]; then
-        LAST_PREFLIGHT_EXIT_CODE=70
+        LAST_READINESS_EXIT_CODE=70
     fi
 
     return 1
@@ -169,31 +169,31 @@ resolve_operational_provider() {
     local failure_summaries=()
 
     if [ "$GROOT_MARKETPLACE_EVAL_PROVIDER" != "auto" ]; then
-        if run_preflight "$GROOT_MARKETPLACE_EVAL_PROVIDER"; then
+        if run_readiness "$GROOT_MARKETPLACE_EVAL_PROVIDER"; then
             RESOLVED_EVAL_PROVIDER="$GROOT_MARKETPLACE_EVAL_PROVIDER"
             return 0
         fi
 
-        printf '%bEl preflight de Grid Sharing bloqueó la ejecución.%b\n' "$RED" "$NC" >&2
+        printf '%bEl readiness de groot-queue bloqueó la ejecución.%b\n' "$RED" "$NC" >&2
         printf 'Provider %s: %s (exit %s).\n' \
             "$GROOT_MARKETPLACE_EVAL_PROVIDER" \
-            "$LAST_PREFLIGHT_FAILURE_CODES" \
-            "$LAST_PREFLIGHT_EXIT_CODE" >&2
+            "$LAST_READINESS_FAILURE_CODES" \
+            "$LAST_READINESS_EXIT_CODE" >&2
         printf 'Ejecutá run-groot-queue setup con este provider para diagnosticar el entorno.\n' >&2
         return 1
     fi
 
     for candidate_provider in copilot codex claude; do
-        if run_preflight "$candidate_provider"; then
+        if run_readiness "$candidate_provider"; then
             RESOLVED_EVAL_PROVIDER="$candidate_provider"
             return 0
         fi
 
-        candidate_summary="$candidate_provider: $LAST_PREFLIGHT_FAILURE_CODES (exit $LAST_PREFLIGHT_EXIT_CODE)"
+        candidate_summary="$candidate_provider: $LAST_READINESS_FAILURE_CODES (exit $LAST_READINESS_EXIT_CODE)"
         failure_summaries+=("$candidate_summary")
     done
 
-    printf '%bNingún provider superó el preflight de Grid Sharing.%b\n' "$RED" "$NC" >&2
+    printf '%bNingún provider superó el readiness de groot-queue.%b\n' "$RED" "$NC" >&2
     for candidate_summary in "${failure_summaries[@]}"; do
         printf '  - %s\n' "$candidate_summary" >&2
     done
@@ -314,13 +314,13 @@ if [ "$COMMAND_NAME" = 'setup' ] || [ "$COMMAND_REQUESTS_HELP" = 'true' ]; then
 fi
 
 if [ "$OPERATIONAL_COMMAND" = 'true' ]; then
-    PREFLIGHT_RESULT_FILE="$SKILL_CWD/grid-sharing-preflight-result.json"
+    READINESS_RESULT_FILE="$SKILL_CWD/readiness-result.json"
 
     if ! resolve_operational_provider; then
         exit 1
     fi
 else
-    if ! resolve_provider_without_preflight; then
+    if ! resolve_provider_without_readiness; then
         printf '%bError:%b no se encontró ningún CLI de provider disponible.\n' "$RED" "$NC" >&2
         exit 2
     fi
@@ -347,7 +347,10 @@ fi
 
 CHILD_ENVIRONMENT=("GROOT_QUEUE_ACTIVE_PROVIDER=$RESOLVED_EVAL_PROVIDER")
 if [ "$OPERATIONAL_COMMAND" = 'true' ]; then
-    CHILD_ENVIRONMENT+=("GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE=$PREFLIGHT_RESULT_FILE")
+    CHILD_ENVIRONMENT+=("GROOT_QUEUE_READINESS_RESULT_FILE=$READINESS_RESULT_FILE")
+fi
+if [ "$RESOLVED_EVAL_PROVIDER" = 'codex' ]; then
+    CHILD_ENVIRONMENT+=("FURY_CODEX_MCP_GLOBAL_INSTALL=0")
 fi
 
 printf '%bProvider:%b %s\n' "$BLUE" "$NC" "$RESOLVED_EVAL_PROVIDER" >&2

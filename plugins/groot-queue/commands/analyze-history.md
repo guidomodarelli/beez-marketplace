@@ -5,4 +5,4 @@ argument-hint: [--limit N] [--since YYYY-MM-DD] [--force]
 
 Leé y aplicá `~/.claude/skills/groot-queue/knowledge/config/command-entrypoint.md` para el subcomando canónico `analyze-history`, los argumentos `$ARGUMENTS` y el provider `claude`.
 
-Solo si el entrypoint habilita la ejecución, leé y seguí literalmente `~/.claude/skills/groot-queue/subcommands/analyze-history.md`, aplicándolo a `$ARGUMENTS` y conservando el resultado validado de Grid cuando corresponda.
+Solo si el entrypoint habilita la ejecución, leé y seguí literalmente `~/.claude/skills/groot-queue/subcommands/analyze-history.md`, aplicándolo a `$ARGUMENTS` y conservando el estado combinado de readiness validado cuando corresponda.

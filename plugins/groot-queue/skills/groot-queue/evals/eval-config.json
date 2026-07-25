@@ -5,7 +5,7 @@
   "test_cases": [
     {
       "id": "help-no-args",
-      "description": "Invoking /groot-queue without arguments shows help",
+      "description": "Invoking /groot-queue without arguments resolves to start and shows the gated command catalog",
       "input": "/groot-queue",
       "assertions": [
         {
@@ -1126,6 +1126,335 @@
             "Veredicto: DESCARTAR",
             "Veredicto: `DESCARTAR`",
             "⛔ DESCARTAR"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-discovery-tools-unavailable",
+      "description": "operational commands fail closed when Fury discovery tools are not unequivocally available",
+      "input": "Documentation-only contract question. Read the bundled groot-queue readiness reference files if needed. Assume shell readiness passed, but the provider does not expose both Fury list_components and list_tools discovery tools. State the exact failure code, gate decision, and whether any discovery tool is invoked. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "FURY_RUNTIME_DISCOVERY_TOOLS_UNAVAILABLE"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "bloquear",
+            "detener",
+            "no ejecutar",
+            "no continuar"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "no discovery tool is invoked when the required pair is absent",
+          "values": [
+            "sin invocar",
+            "no invocar ninguna tool",
+            "no se invoca ninguna tool",
+            "no llamar"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-list-components-failure",
+      "description": "list_components failure blocks the operational subcommand",
+      "input": "Documentation-only contract question. Read the bundled groot-queue readiness reference files if needed. Assume shell readiness passed and both Fury discovery tools exist, but list_components fails while gating stats. State the exact failure code and whether stats may run. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "FURY_COMPONENT_DISCOVERY_FAILED"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no ejecutar",
+            "no puede continuar",
+            "bloque",
+            "detener"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-furydocs-component-missing",
+      "description": "missing furydocs component blocks before tool discovery",
+      "input": "Documentation-only contract question. Read the bundled groot-queue readiness reference files if needed. Assume list_components succeeds but has no component named exactly furydocs. State the exact failure code, gate decision for list, and whether list_tools is called. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "FURYDOCS_COMPONENT_UNAVAILABLE"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no invocar list_tools",
+            "no se invoca list_tools",
+            "sin llamar list_tools",
+            "bloquear",
+            "detener"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-list-tools-failure",
+      "description": "list_tools failure blocks the operational subcommand",
+      "input": "Documentation-only contract question. Read the bundled groot-queue readiness reference files if needed. Assume list_components finds furydocs but list_tools(component=\"furydocs\") fails. State the exact failure code and gate decision. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "FURY_TOOL_DISCOVERY_FAILED"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "bloquear",
+            "detener",
+            "no ejecutar",
+            "no continuar"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-get-doc-structure-missing",
+      "description": "furydocs without get_doc_structure remains unavailable",
+      "input": "Documentation-only contract question. Read the bundled groot-queue readiness reference files if needed. Assume list_tools for furydocs returns get_doc_file plus extras but not get_doc_structure, and every unrelated command prerequisite already passed. State the exact failure code and whether classify is dispatched. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "FURYDOCS_REQUIRED_TOOLS_UNAVAILABLE"
+        },
+        {
+          "type": "contains",
+          "value": "get_doc_structure"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no se habilita",
+            "no ejecutar",
+            "bloquear",
+            "detener"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-get-doc-file-missing",
+      "description": "furydocs without get_doc_file remains unavailable",
+      "input": "Documentation-only contract question. Read the bundled groot-queue readiness reference files if needed. Assume list_tools for furydocs returns get_doc_structure plus extras but not get_doc_file, and every unrelated command prerequisite already passed. State the exact failure code and whether solve is dispatched. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "FURYDOCS_REQUIRED_TOOLS_UNAVAILABLE"
+        },
+        {
+          "type": "contains",
+          "value": "get_doc_file"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no se habilita",
+            "no ejecutar",
+            "bloquear",
+            "detener"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-required-tools-enable-command",
+      "description": "both required furydocs tools enable the operational subcommand after shell success",
+      "input": "Documentation-only contract question. Read the bundled groot-queue readiness reference files if needed. Assume shell readiness and every unrelated command prerequisite passed, list_components returns furydocs, and list_tools returns get_doc_structure, get_doc_file, plus an extra tool. State whether the readiness entrypoint enables dispatch of list. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "get_doc_structure"
+        },
+        {
+          "type": "contains",
+          "value": "get_doc_file"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "habilitar",
+            "habilitado",
+            "puede continuar",
+            "puede ejecutar",
+            "se ejecuta"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-discovery-does-not-call-document-tools",
+      "description": "runtime readiness discovers capabilities without invoking documentation tools",
+      "input": "Documentation-only contract question. Read the bundled groot-queue readiness reference files if needed. After shell readiness succeeds, which Fury discovery tools may the runtime gate call, and may it invoke get_doc_structure or get_doc_file before dispatch? Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "list_components"
+        },
+        {
+          "type": "contains",
+          "value": "list_tools"
+        },
+        {
+          "type": "contains_any",
+          "description": "documentation tools are checked by name but never invoked by readiness",
+          "values": [
+            "no invocar get_doc_structure",
+            "no invoca get_doc_structure",
+            "no debe invocar get_doc_structure",
+            "sin invocar get_doc_structure"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "get_doc_file"
+        }
+      ]
+    },
+    {
+      "id": "setup-runs-fresh-independent-readiness",
+      "description": "setup runs fresh shell and independent runtime diagnostics even after prior readiness",
+      "input": "Documentation-only contract question. Read bundled setup/readiness references if needed. Assume GROOT_QUEUE_READINESS_RESULT_FILE points to a previous shell success but fresh setup shell diagnosis now fails. Explain reuse behavior, whether independent Fury runtime diagnosis still runs, and final setup status. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "no reutiliza",
+            "sin reutilizar",
+            "diagnóstico fresco",
+            "fresh"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "aunque la fase shell falle",
+            "incluso si la fase shell falla",
+            "independiente",
+            "debe continuar el diagnóstico runtime"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Setup incompleto",
+            "setup incompleto",
+            "no está completo"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-help-uses-no-tools",
+      "description": "setup help returns before shell or runtime diagnostics",
+      "input": "Answer from bundled groot-queue metadata and help contract. For setup --help, explain what setup verifies and whether help executes checker, discovery tools, installations, or configuration changes. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "Grid Sharing",
+            "FuryDocs"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no ejecuta el checker",
+            "sin ejecutar el checker",
+            "no corre el checker",
+            "no ejecutar tools",
+            "sin tools"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no instala",
+            "no modifica",
+            "sin autorización explícita"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-reuses-combined-readiness",
+      "description": "start displays Grid and FuryDocs health without repeating readiness work",
+      "input": "Documentation-only contract question. Read bundled start/readiness references if needed. Assume dispatcher already validated shell schema 2 and Fury runtime during this invocation. State the separate health entries and whether start repeats checker, discovery, probes, or documentation calls. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "Grid Sharing"
+        },
+        {
+          "type": "contains",
+          "value": "FuryDocs"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no repetir",
+            "no repite",
+            "no vuelve a ejecutar",
+            "sin repetir"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "checker",
+            "discovery",
+            "probes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fury-plugin-missing-safe-remediation",
+      "description": "missing Fury plugin blocks with remediation and no automatic installation or configuration",
+      "input": "Documentation-only contract question. Read bundled readiness references if needed. Assume shell readiness returns FURY_PLUGIN_NOT_INSTALLED before list. State visible remediation, whether dispatch continues, and whether groot-queue may install, enable, or configure Fury automatically. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "FURY_PLUGIN_NOT_INSTALLED"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "fury-services",
+            "Fury Services",
+            "plugin Fury"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "remediation remains manual until explicit authorization",
+          "values": [
+            "no instalar",
+            "no habilitar",
+            "no configurar",
+            "sin autorización explícita",
+            "requiere autorización explícita"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "bloquear",
+            "detener",
+            "no ejecutar",
+            "setup"
           ]
         }
       ]

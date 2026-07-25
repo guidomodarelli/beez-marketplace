@@ -50,7 +50,7 @@ Ver [`nexus-team.md`](./nexus-team.md) para detalle completo: dominio, productos
 
 ## Referencias
 
-- **Guía Labour Share** — manual operativo alojado en Grid Sharing. Su nombre, identificador y URL canónicos se leen desde [`knowledge/config/grid-sharing.json`](../config/grid-sharing.json), sin duplicarlos en esta descripción del equipo.
+- **Guía Labour Share** — manual operativo alojado en Grid Sharing. Su nombre, identificador y URL canónicos se leen desde [`knowledge/config/groot-queue-readiness.json`](../config/groot-queue-readiness.json), sin duplicarlos en esta descripción del equipo.
 
 ## Nota importante
 

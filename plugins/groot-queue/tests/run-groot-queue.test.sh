@@ -11,42 +11,128 @@ trap 'rm -rf -- "$TEMP_DIRECTORY"' EXIT HUP INT TERM
 chmod 700 "$TEMP_DIRECTORY"
 
 FAKE_BIN="$TEMP_DIRECTORY/bin"
-PLUGIN_DIRECTORY="$TEMP_DIRECTORY/grid-sharing-plugin"
+GRID_PLUGIN_DIRECTORY="$TEMP_DIRECTORY/grid-sharing-plugin"
+FURY_PLUGIN_DIRECTORY="$TEMP_DIRECTORY/fury-services-plugin"
 INVENTORY_LOG="$TEMP_DIRECTORY/inventory.log"
+MCP_LOG="$TEMP_DIRECTORY/mcp.log"
 CHILD_LOG="$TEMP_DIRECTORY/child.log"
 CURL_LOG="$TEMP_DIRECTORY/curl.log"
 STDOUT_FILE="$TEMP_DIRECTORY/stdout.log"
 STDERR_FILE="$TEMP_DIRECTORY/stderr.log"
-mkdir -p "$FAKE_BIN" "$PLUGIN_DIRECTORY/skills/grid"
-printf '%s\n' '# Grid runner fixture' > "$PLUGIN_DIRECTORY/skills/grid/SKILL.md"
+mkdir -p \
+  "$FAKE_BIN" \
+  "$GRID_PLUGIN_DIRECTORY/skills/grid" \
+  "$FURY_PLUGIN_DIRECTORY/.claude-plugin" \
+  "$FURY_PLUGIN_DIRECTORY/.codex-plugin" \
+  "$FURY_PLUGIN_DIRECTORY/skills/fury-services-documentation"
+printf '%s\n' '# Grid runner fixture' > "$GRID_PLUGIN_DIRECTORY/skills/grid/SKILL.md"
+printf '%s\n' '# Fury services documentation runner fixture' > \
+  "$FURY_PLUGIN_DIRECTORY/skills/fury-services-documentation/SKILL.md"
 ln -s "$REAL_JQ" "$FAKE_BIN/jq"
+
+cat > "$FURY_PLUGIN_DIRECTORY/.claude-plugin/plugin.json" <<'JSON'
+{
+  "name": "fury-services",
+  "version": "1.4.0",
+  "description": "Fury services fixture"
+}
+JSON
+
+cat > "$FURY_PLUGIN_DIRECTORY/.codex-plugin/plugin.json" <<'JSON'
+{
+  "name": "fury-services",
+  "version": "1.4.0",
+  "description": "Fury services fixture",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}
+JSON
+
+cat > "$FURY_PLUGIN_DIRECTORY/.mcp.json" <<'JSON'
+{
+  "mcpServers": {
+    "fury": {
+      "command": "mcp-remote-proxy",
+      "args": [
+        "https://mcp-services-gateway.furycloud.io/v1/servers/fury",
+        "--headers",
+        "x-origin",
+        "fury-services-plugin",
+        "--timeout",
+        "300"
+      ]
+    }
+  }
+}
+JSON
 
 cat > "$FAKE_BIN/claude" <<'STUB'
 #!/bin/bash
 set -euo pipefail
-if [ "${1:-}" = "plugin" ] && [ "${2:-}" = "list" ]; then
-  printf 'claude inventory\n' >> "$INVENTORY_LOG"
-  if [ "${CLAUDE_INVENTORY:-success}" = "success" ]; then
-    jq -nc --arg path "$FAKE_PLUGIN_INSTALL_PATH" '[{id:"grid-sharing@tech-plugins-marketplace",enabled:true,version:"1.2.3",installPath:$path}]'
-  else
-    printf '%s\n' '[]'
-  fi
+
+if [ "${1:-}" = "plugin" ] && [ "${2:-}" = "list" ] && [ "${3:-}" = "--json" ] && [ "$#" -eq 3 ]; then
+  printf '%s\n' 'claude inventory' >> "$INVENTORY_LOG"
+  case "${CLAUDE_INVENTORY:-success}" in
+    command-failure) exit 9 ;;
+    fury-missing)
+      jq -nc --arg grid_path "$FAKE_GRID_PLUGIN_INSTALL_PATH" \
+        '[{id:"grid-sharing@tech-plugins-marketplace",enabled:true,version:"1.2.3",installPath:$grid_path}]'
+      ;;
+    *)
+      jq -nc --arg grid_path "$FAKE_GRID_PLUGIN_INSTALL_PATH" --arg fury_path "$FAKE_FURY_PLUGIN_INSTALL_PATH" \
+        '[
+          {id:"grid-sharing@tech-plugins-marketplace",enabled:true,version:"1.2.3",installPath:$grid_path},
+          {id:"fury-services@tech-plugins-marketplace",enabled:true,version:"1.4.0",installPath:$fury_path}
+        ]'
+      ;;
+  esac
+  exit 0
+fi
+
+if [ "${1:-}" = "mcp" ] && [ "${2:-}" = "list" ] && [ "$#" -eq 2 ]; then
+  printf '%s\n' 'claude mcp' >> "$MCP_LOG"
+  printf '%s\n' 'plugin:fury-services:fury: mcp-remote-proxy https://mcp-services-gateway.furycloud.io/v1/servers/fury --headers x-origin fury-services-plugin --timeout 300 - ✔ Connected'
   exit 0
 fi
 
 printf 'claude child args=%s\n' "$*" >> "$CHILD_LOG"
 printf 'provider=%s\n' "${GROOT_QUEUE_ACTIVE_PROVIDER:-unset}" >> "$CHILD_LOG"
-printf 'preflight=%s\n' "${GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE:-unset}" >> "$CHILD_LOG"
-if [ -n "${GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE:-}" ]; then
+printf 'readiness=%s\n' "${GROOT_QUEUE_READINESS_RESULT_FILE:-unset}" >> "$CHILD_LOG"
+printf 'legacy_preflight=%s\n' "${GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE:-unset}" >> "$CHILD_LOG"
+printf 'fury_global_install=%s\n' "${FURY_CODEX_MCP_GLOBAL_INSTALL:-unset}" >> "$CHILD_LOG"
+if [ -n "${GROOT_QUEUE_READINESS_RESULT_FILE:-}" ]; then
   mode=""
-  if stat -f '%Lp' "$GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE" >/dev/null 2>&1; then
-    mode="$(stat -f '%Lp' "$GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE")"
+  if stat -f '%Lp' "$GROOT_QUEUE_READINESS_RESULT_FILE" >/dev/null 2>&1; then
+    mode="$(stat -f '%Lp' "$GROOT_QUEUE_READINESS_RESULT_FILE")"
   else
-    mode="$(stat -c '%a' "$GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE")"
+    mode="$(stat -c '%a' "$GROOT_QUEUE_READINESS_RESULT_FILE")"
   fi
-  jq -e '.ok == true and .exit_code == 0 and .provider == "claude"' "$GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE" >/dev/null
+  jq -e '
+    .schema_version == 2 and
+    .scope == "shell" and
+    .provider == "claude" and
+    .ok == true and
+    .exit_code == 0 and
+    (.checks | map(.name)) == [
+      "dependencies",
+      "configuration",
+      "provider_inventory",
+      "grid_plugin",
+      "grid_required_skill",
+      "fury_plugin",
+      "fury_required_skill",
+      "fury_manifest",
+      "fury_mcp_declaration",
+      "fury_mcp_cli",
+      "ping",
+      "skill_version",
+      "identity",
+      "general_read",
+      "required_document"
+    ]
+  ' "$GROOT_QUEUE_READINESS_RESULT_FILE" >/dev/null
   [ "$mode" = "600" ]
-  printf 'preflight_valid=true mode=%s\n' "$mode" >> "$CHILD_LOG"
+  printf 'readiness_valid=true mode=%s checks=15\n' "$mode" >> "$CHILD_LOG"
 fi
 printf 'claude child complete\n'
 STUB
@@ -54,29 +140,56 @@ STUB
 cat > "$FAKE_BIN/codex" <<'STUB'
 #!/bin/bash
 set -euo pipefail
-if [ "${1:-}" = "plugin" ] && [ "${2:-}" = "list" ]; then
-  printf 'codex inventory\n' >> "$INVENTORY_LOG"
-  if [ "${CODEX_INVENTORY:-success}" = "success" ]; then
-    jq -nc --arg path "$FAKE_PLUGIN_INSTALL_PATH" '{installed:[{pluginId:"grid-sharing@tech-plugins-marketplace",installed:true,enabled:true,version:"1.2.3",source:{path:$path}}]}'
-  else
-    printf '%s\n' '{"installed":[]}'
-  fi
+
+if [ "${1:-}" = "plugin" ] && [ "${2:-}" = "list" ] \
+  && [ "${3:-}" = "--marketplace" ] && [ "${4:-}" = "tech-plugins-marketplace" ] \
+  && [ "${5:-}" = "--json" ] && [ "$#" -eq 5 ]; then
+  printf '%s\n' 'codex inventory' >> "$INVENTORY_LOG"
+  case "${CODEX_INVENTORY:-success}" in
+    command-failure) exit 9 ;;
+    fury-missing)
+      jq -nc --arg grid_path "$FAKE_GRID_PLUGIN_INSTALL_PATH" \
+        '{installed:[{pluginId:"grid-sharing@tech-plugins-marketplace",installed:true,enabled:true,version:"1.2.3",source:{path:$grid_path}}]}'
+      ;;
+    *)
+      jq -nc --arg grid_path "$FAKE_GRID_PLUGIN_INSTALL_PATH" --arg fury_path "$FAKE_FURY_PLUGIN_INSTALL_PATH" \
+        '{installed:[
+          {pluginId:"grid-sharing@tech-plugins-marketplace",installed:true,enabled:true,version:"1.2.3",source:{path:$grid_path}},
+          {pluginId:"fury-services@tech-plugins-marketplace",installed:true,enabled:true,version:"1.4.0",source:{path:$fury_path}}
+        ]}'
+      ;;
+  esac
+  exit 0
+fi
+
+if [ "${1:-}" = "mcp" ] && [ "${2:-}" = "list" ] && [ "${3:-}" = "--json" ] && [ "$#" -eq 3 ]; then
+  printf '%s\n' 'codex mcp' >> "$MCP_LOG"
+  jq -nc '[{name:"fury",enabled:true,disabled_reason:null,transport:{type:"stdio",command:"mcp-remote-proxy",args:["https://mcp-services-gateway.furycloud.io/v1/servers/fury","--headers","x-origin","fury-services-plugin","--timeout","300"]}}]'
   exit 0
 fi
 
 printf 'codex child args=%s\n' "$*" >> "$CHILD_LOG"
 printf 'provider=%s\n' "${GROOT_QUEUE_ACTIVE_PROVIDER:-unset}" >> "$CHILD_LOG"
-printf 'preflight=%s\n' "${GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE:-unset}" >> "$CHILD_LOG"
-if [ -n "${GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE:-}" ]; then
+printf 'readiness=%s\n' "${GROOT_QUEUE_READINESS_RESULT_FILE:-unset}" >> "$CHILD_LOG"
+printf 'legacy_preflight=%s\n' "${GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE:-unset}" >> "$CHILD_LOG"
+printf 'fury_global_install=%s\n' "${FURY_CODEX_MCP_GLOBAL_INSTALL:-unset}" >> "$CHILD_LOG"
+if [ -n "${GROOT_QUEUE_READINESS_RESULT_FILE:-}" ]; then
   mode=""
-  if stat -f '%Lp' "$GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE" >/dev/null 2>&1; then
-    mode="$(stat -f '%Lp' "$GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE")"
+  if stat -f '%Lp' "$GROOT_QUEUE_READINESS_RESULT_FILE" >/dev/null 2>&1; then
+    mode="$(stat -f '%Lp' "$GROOT_QUEUE_READINESS_RESULT_FILE")"
   else
-    mode="$(stat -c '%a' "$GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE")"
+    mode="$(stat -c '%a' "$GROOT_QUEUE_READINESS_RESULT_FILE")"
   fi
-  jq -e '.ok == true and .exit_code == 0 and .provider == "codex"' "$GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE" >/dev/null
+  jq -e '
+    .schema_version == 2 and
+    .scope == "shell" and
+    .provider == "codex" and
+    .ok == true and
+    .exit_code == 0 and
+    (.checks | length) == 15
+  ' "$GROOT_QUEUE_READINESS_RESULT_FILE" >/dev/null
   [ "$mode" = "600" ]
-  printf 'preflight_valid=true mode=%s\n' "$mode" >> "$CHILD_LOG"
+  printf 'readiness_valid=true mode=%s checks=15\n' "$mode" >> "$CHILD_LOG"
 fi
 printf 'codex child complete\n'
 STUB
@@ -85,6 +198,9 @@ cat > "$FAKE_BIN/copilot" <<'STUB'
 #!/bin/bash
 set -euo pipefail
 printf 'copilot child args=%s\n' "$*" >> "$CHILD_LOG"
+printf 'provider=%s\n' "${GROOT_QUEUE_ACTIVE_PROVIDER:-unset}" >> "$CHILD_LOG"
+printf 'readiness=%s\n' "${GROOT_QUEUE_READINESS_RESULT_FILE:-unset}" >> "$CHILD_LOG"
+printf 'legacy_preflight=%s\n' "${GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE:-unset}" >> "$CHILD_LOG"
 printf 'copilot child complete\n'
 STUB
 
@@ -139,6 +255,18 @@ fail() {
     printf '%s\n' '--- captured stderr ---' >&2
     /bin/cat "$STDERR_FILE" >&2
   fi
+  if [ -f "$INVENTORY_LOG" ]; then
+    printf '%s\n' '--- inventory log ---' >&2
+    /bin/cat "$INVENTORY_LOG" >&2
+  fi
+  if [ -f "$MCP_LOG" ]; then
+    printf '%s\n' '--- MCP log ---' >&2
+    /bin/cat "$MCP_LOG" >&2
+  fi
+  if [ -f "$CHILD_LOG" ]; then
+    printf '%s\n' '--- child log ---' >&2
+    /bin/cat "$CHILD_LOG" >&2
+  fi
   exit 1
 }
 
@@ -173,6 +301,7 @@ assert_not_contains() {
 
 reset_run_state() {
   : > "$INVENTORY_LOG"
+  : > "$MCP_LOG"
   : > "$CHILD_LOG"
   : > "$CURL_LOG"
   : > "$STDOUT_FILE"
@@ -184,11 +313,15 @@ run_runner() {
   set +e
   PATH="$TEST_PATH" \
     INVENTORY_LOG="$INVENTORY_LOG" \
+    MCP_LOG="$MCP_LOG" \
     CHILD_LOG="$CHILD_LOG" \
     CURL_LOG="$CURL_LOG" \
-    FAKE_PLUGIN_INSTALL_PATH="$PLUGIN_DIRECTORY" \
+    FAKE_GRID_PLUGIN_INSTALL_PATH="$GRID_PLUGIN_DIRECTORY" \
+    FAKE_FURY_PLUGIN_INSTALL_PATH="$FURY_PLUGIN_DIRECTORY" \
     CLAUDE_INVENTORY="${CLAUDE_INVENTORY_SCENARIO:-success}" \
     CODEX_INVENTORY="${CODEX_INVENTORY_SCENARIO:-success}" \
+    GROOT_QUEUE_READINESS_RESULT_FILE="${PARENT_READINESS_RESULT_FILE:-}" \
+    GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE="${PARENT_GRID_PREFLIGHT_RESULT_FILE:-}" \
     bash "$RUNNER" "$@" > "$STDOUT_FILE" 2> "$STDERR_FILE"
   LAST_STATUS=$?
   set -e
@@ -197,66 +330,100 @@ run_runner() {
 run_runner --help
 assert_equal 0 "$LAST_STATUS" "global help should succeed"
 assert_empty_file "$INVENTORY_LOG" "global help must not invoke checker inventory"
+assert_empty_file "$MCP_LOG" "global help must not inspect Fury MCP"
 assert_empty_file "$CURL_LOG" "global help must not invoke Grid"
 assert_empty_file "$CHILD_LOG" "global help must not invoke a provider"
 assert_contains "$STDOUT_FILE" 'run-groot-queue' "global help should render launcher usage"
-printf 'ok - global help bypasses checker and providers\n'
+printf 'ok - global help bypasses checker, MCP, and providers\n'
 
-run_runner --provider claude setup
-assert_equal 0 "$LAST_STATUS" "setup should invoke provider successfully"
+PARENT_READINESS_RESULT_FILE="$TEMP_DIRECTORY/untrusted-parent-readiness.json"
+PARENT_GRID_PREFLIGHT_RESULT_FILE="$TEMP_DIRECTORY/untrusted-legacy-preflight.json"
+printf '%s\n' '{"ok":true}' > "$PARENT_READINESS_RESULT_FILE"
+printf '%s\n' '{"ok":true}' > "$PARENT_GRID_PREFLIGHT_RESULT_FILE"
+run_runner --provider codex setup
+unset PARENT_READINESS_RESULT_FILE PARENT_GRID_PREFLIGHT_RESULT_FILE
+assert_equal 0 "$LAST_STATUS" "setup should invoke Codex successfully"
 assert_empty_file "$INVENTORY_LOG" "setup must not invoke checker inventory"
-assert_empty_file "$CURL_LOG" "setup must not invoke Grid preflight in launcher"
-assert_contains "$CHILD_LOG" 'claude child args=' "setup should invoke Claude"
+assert_empty_file "$MCP_LOG" "setup launcher must not inspect Fury MCP"
+assert_empty_file "$CURL_LOG" "setup must not invoke Grid in the launcher"
+assert_contains "$CHILD_LOG" 'codex child args=' "setup should invoke Codex"
 assert_contains "$CHILD_LOG" '/groot-queue setup' "setup prompt was not forwarded"
-assert_contains "$CHILD_LOG" 'preflight=unset' "setup child must not receive a reusable preflight file"
-printf 'ok - setup bypasses checker and forwards prompt\n'
+assert_contains "$CHILD_LOG" 'readiness=unset' "setup child must not receive parent or reusable readiness"
+assert_contains "$CHILD_LOG" 'legacy_preflight=unset' "setup child must not trust the legacy preflight variable"
+assert_contains "$CHILD_LOG" 'fury_global_install=0' "Codex setup must disable global Fury MCP installation"
+printf 'ok - setup bypasses launcher gate and strips legacy readiness variables\n'
 
+PARENT_READINESS_RESULT_FILE="$TEMP_DIRECTORY/untrusted-help-readiness.json"
+PARENT_GRID_PREFLIGHT_RESULT_FILE="$TEMP_DIRECTORY/untrusted-help-preflight.json"
+printf '%s\n' '{"ok":true}' > "$PARENT_READINESS_RESULT_FILE"
+printf '%s\n' '{"ok":true}' > "$PARENT_GRID_PREFLIGHT_RESULT_FILE"
 run_runner --provider codex list --help
-assert_equal 0 "$LAST_STATUS" "subcommand help should invoke provider successfully"
+unset PARENT_READINESS_RESULT_FILE PARENT_GRID_PREFLIGHT_RESULT_FILE
+assert_equal 0 "$LAST_STATUS" "subcommand help should invoke Codex successfully"
 assert_empty_file "$INVENTORY_LOG" "subcommand help must not invoke checker inventory"
+assert_empty_file "$MCP_LOG" "subcommand help must not inspect Fury MCP"
 assert_empty_file "$CURL_LOG" "subcommand help must not invoke Grid"
 assert_contains "$CHILD_LOG" 'codex child args=' "list help should invoke Codex"
 assert_contains "$CHILD_LOG" '/groot-queue list --help' "list help prompt was not forwarded"
-assert_contains "$CHILD_LOG" 'preflight=unset' "help child must not receive a reusable preflight file"
-printf 'ok - subcommand help bypasses checker and forwards help prompt\n'
+assert_contains "$CHILD_LOG" 'readiness=unset' "help child must not receive parent readiness"
+assert_contains "$CHILD_LOG" 'legacy_preflight=unset' "help child must not receive legacy preflight"
+assert_contains "$CHILD_LOG" 'fury_global_install=0' "Codex help must disable global Fury MCP installation"
+printf 'ok - subcommand help bypasses launcher gate and disables global Codex install\n'
 
-CLAUDE_INVENTORY_SCENARIO=missing
+CLAUDE_INVENTORY_SCENARIO=fury-missing
 run_runner --provider claude list
-assert_equal 1 "$LAST_STATUS" "failed operational preflight should block runner"
-assert_contains "$INVENTORY_LOG" 'claude inventory' "operational preflight should inspect explicit provider"
-assert_empty_file "$CHILD_LOG" "failed operational preflight must not launch provider prompt"
-printf 'ok - failed preflight blocks provider prompt\n'
 unset CLAUDE_INVENTORY_SCENARIO
+assert_equal 1 "$LAST_STATUS" "explicit provider missing Fury should be blocked"
+assert_contains "$INVENTORY_LOG" 'claude inventory' "explicit Claude should inspect its inventory"
+assert_not_contains "$INVENTORY_LOG" 'codex inventory' "explicit provider must not fall back to Codex"
+assert_empty_file "$MCP_LOG" "missing Fury must block before MCP CLI inspection"
+assert_empty_file "$CHILD_LOG" "failed explicit provider must not launch a child"
+assert_contains "$STDERR_FILE" 'FURY_PLUGIN_NOT_INSTALLED' "runner should expose the safe Fury failure code"
+printf 'ok - explicit provider missing Fury blocks before child without fallback\n'
 
+PARENT_READINESS_RESULT_FILE="$TEMP_DIRECTORY/untrusted-operational-readiness.json"
+PARENT_GRID_PREFLIGHT_RESULT_FILE="$TEMP_DIRECTORY/untrusted-operational-preflight.json"
+printf '%s\n' '{"ok":true}' > "$PARENT_READINESS_RESULT_FILE"
+printf '%s\n' '{"ok":true}' > "$PARENT_GRID_PREFLIGHT_RESULT_FILE"
 run_runner --provider claude list
-assert_equal 0 "$LAST_STATUS" "successful operational preflight should continue"
-assert_contains "$INVENTORY_LOG" 'claude inventory' "successful operational preflight should inspect provider"
-assert_equal 1 "$(grep -c '^claude child args=' "$CHILD_LOG")" "provider child should launch exactly once"
+unset PARENT_READINESS_RESULT_FILE PARENT_GRID_PREFLIGHT_RESULT_FILE
+assert_equal 0 "$LAST_STATUS" "successful Claude readiness should continue"
+assert_contains "$INVENTORY_LOG" 'claude inventory' "Claude readiness should inspect plugin inventory"
+assert_contains "$MCP_LOG" 'claude mcp' "Claude readiness should inspect Fury MCP CLI"
+assert_equal 1 "$(grep -c '^claude child args=' "$CHILD_LOG")" "Claude child should launch exactly once"
 assert_contains "$CHILD_LOG" '/groot-queue list' "operational prompt was not forwarded"
 assert_contains "$CHILD_LOG" 'provider=claude' "child should receive active provider"
-assert_contains "$CHILD_LOG" 'preflight_valid=true mode=600' "child should receive a mode-600 valid JSON preflight result"
-printf 'ok - successful preflight launches provider once with reusable result\n'
+assert_contains "$CHILD_LOG" 'legacy_preflight=unset' "operational child must not receive legacy preflight"
+assert_contains "$CHILD_LOG" 'readiness_valid=true mode=600 checks=15' \
+  "child should receive a mode-600 schema 2 readiness result with 15 checks"
+printf 'ok - Claude success launches child with private schema 2 readiness\n'
 
-CODEX_INVENTORY_SCENARIO=missing
-run_runner --provider codex list
-assert_equal 1 "$LAST_STATUS" "explicit provider failure should block runner"
-assert_contains "$INVENTORY_LOG" 'codex inventory' "explicit Codex should be inspected"
-assert_not_contains "$INVENTORY_LOG" 'claude inventory' "explicit provider must not fall back to Claude"
-assert_empty_file "$CHILD_LOG" "explicit provider failure must not launch another provider"
-printf 'ok - explicit provider never falls back\n'
-unset CODEX_INVENTORY_SCENARIO
-
-CODEX_INVENTORY_SCENARIO=missing
+CODEX_INVENTORY_SCENARIO=fury-missing
 run_runner list
-assert_equal 0 "$LAST_STATUS" "auto provider selection should reach Claude"
+unset CODEX_INVENTORY_SCENARIO
+assert_equal 0 "$LAST_STATUS" "auto provider selection should reach complete Claude"
 assert_contains "$INVENTORY_LOG" 'codex inventory' "auto mode should evaluate Codex after unsupported Copilot"
-assert_contains "$INVENTORY_LOG" 'claude inventory' "auto mode should evaluate Claude after Codex failure"
+assert_contains "$INVENTORY_LOG" 'claude inventory' "auto mode should evaluate Claude after incomplete Codex"
+assert_not_contains "$MCP_LOG" 'codex mcp' "Codex missing Fury must not reach MCP CLI inspection"
+assert_contains "$MCP_LOG" 'claude mcp' "complete Claude should inspect Fury MCP"
 assert_not_contains "$CHILD_LOG" 'copilot child' "unsupported Copilot must not be selected"
-assert_not_contains "$CHILD_LOG" 'codex child args=' "failed Codex must not receive the prompt"
+assert_not_contains "$CHILD_LOG" 'codex child args=' "incomplete Codex must not receive the prompt"
 assert_equal 1 "$(grep -c '^claude child args=' "$CHILD_LOG")" "Claude should be selected exactly once"
 assert_contains "$CHILD_LOG" 'provider=claude' "auto mode should expose Claude as active provider"
-printf 'ok - auto mode skips Copilot, rejects Codex, and selects Claude\n'
-unset CODEX_INVENTORY_SCENARIO
+printf 'ok - auto skips Copilot, rejects Fury-missing Codex, and selects Claude\n'
+
+run_runner --provider codex stats
+assert_equal 0 "$LAST_STATUS" "complete explicit Codex should launch"
+assert_contains "$INVENTORY_LOG" 'codex inventory' "Codex readiness should inspect plugin inventory"
+assert_contains "$MCP_LOG" 'codex mcp' "Codex readiness should inspect Fury MCP CLI"
+assert_not_contains "$INVENTORY_LOG" 'claude inventory' "explicit Codex must not inspect Claude"
+assert_equal 1 "$(grep -c '^codex child args=' "$CHILD_LOG")" "Codex child should launch exactly once"
+assert_contains "$CHILD_LOG" 'provider=codex' "Codex child should receive active provider"
+assert_contains "$CHILD_LOG" 'readiness_valid=true mode=600 checks=15' \
+  "Codex child should validate the complete readiness file"
+assert_contains "$CHILD_LOG" 'fury_global_install=0' \
+  "operational Codex must disable global Fury MCP installation"
+printf 'ok - explicit complete Codex launches with private readiness and global install disabled\n'
 
 run_invalid_case() {
   local description="$1"
@@ -264,6 +431,7 @@ run_invalid_case() {
   run_runner "$@"
   assert_equal 2 "$LAST_STATUS" "$description should fail with exit 2"
   assert_empty_file "$INVENTORY_LOG" "$description must fail before checker inventory"
+  assert_empty_file "$MCP_LOG" "$description must fail before MCP inspection"
   assert_empty_file "$CURL_LOG" "$description must fail before Grid"
   assert_empty_file "$CHILD_LOG" "$description must fail before provider invocation"
 }

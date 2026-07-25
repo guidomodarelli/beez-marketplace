@@ -58,7 +58,7 @@ Antes de leer el archivo del subcomando, leer y aplicar `$SKILL_DIR/knowledge/co
 
 ### Paso 3 — Despachar
 
-Solo si el entrypoint habilita la ejecución, leer `$SKILL_DIR/subcommands/<subcomando-resuelto>.md`, seguir literalmente sus instrucciones y pasarle los argumentos restantes junto con el resultado de Grid ya validado cuando corresponda.
+Solo si el entrypoint habilita la ejecución, leer `$SKILL_DIR/subcommands/<subcomando-resuelto>.md`, seguir literalmente sus instrucciones y pasarle los argumentos restantes junto con el estado combinado de readiness ya validado cuando corresponda.
 
 Ejemplos:
 

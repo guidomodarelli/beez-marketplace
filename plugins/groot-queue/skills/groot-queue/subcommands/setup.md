@@ -1,5 +1,5 @@
 ---
-description: Verifica dependencias, integraciones, permisos y el preflight completo de Grid Sharing para usar groot-queue.
+description: Verifica dependencias, integraciones, permisos y el readiness completo de Grid Sharing y FuryDocs para usar groot-queue.
 ---
 
 # Subcomando: setup
@@ -10,7 +10,7 @@ description: Verifica dependencias, integraciones, permisos y el preflight compl
 
 ## Ayuda sin tools
 
-Antes de cualquier tool o lectura adicional, inspeccionar los argumentos. Si contienen el token exacto `--help` o `-h`, explicar brevemente qué verifica `setup`, que Grid Sharing es obligatorio para completar el setup y que no se realizan instalaciones ni cambios sin autorización explícita. Detenerse después de responder la ayuda.
+Antes de cualquier tool o lectura adicional, inspeccionar los argumentos. Si contienen el token exacto `--help` o `-h`, explicar brevemente qué verifica `setup`, que Grid Sharing y FuryDocs son obligatorios para completar el setup y que no se realizan instalaciones ni cambios sin autorización explícita. Detenerse después de responder la ayuda.
 
 ## 1. ACLI (Atlassian CLI)
 
@@ -49,19 +49,32 @@ El subcomando `alerts` usa Slack MCP para enviar DMs de SLA. Los nombres de las 
 - Leer la sección TEAM de `$SKILL_DIR/SKILL.md`.
 - Si está vacía, advertir que `assign-unassigned` no funcionará hasta configurarla.
 
-## 6. Grid Sharing — diagnóstico completo obligatorio
+## 6. Fase shell — diagnóstico fresco obligatorio
 
-Este diagnóstico es propio de `setup` y se ejecuta independientemente de cualquier gate previo. No reutilizar un estado en memoria ni `GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE`: ejecutar un preflight fresco para que la tabla refleje el entorno actual.
+Este diagnóstico es propio de `setup` y se ejecuta independientemente de cualquier gate previo. No reutilizar un estado en memoria ni `GROOT_QUEUE_READINESS_RESULT_FILE`.
 
-1. Leer y aplicar `$SKILL_DIR/knowledge/config/grid-sharing-preflight.md`.
+1. Leer y aplicar `$SKILL_DIR/knowledge/config/groot-queue-readiness.md` y usar `$SKILL_DIR/knowledge/config/groot-queue-readiness.json` como configuración máquina-legible.
 2. Identificar el provider activo como `claude`, `codex` o `copilot`. Usar `GROOT_QUEUE_ACTIVE_PROVIDER` solo si contiene uno de esos valores; en otro caso usar el provider que ejecuta la skill. Usar `auto` únicamente cuando no sea posible distinguirlo.
 3. Ejecutar `$SKILL_DIR/scripts/check-groot-queue-readiness.sh --provider <provider>` sin `--reuse-result`.
 4. Capturar tanto el exit code como el único objeto JSON de stdout. No imprimir el objeto completo, bodies, identidad, tokens ni paths de instalación.
-5. Usar exclusivamente `checks`, `failures`, `provider`, `ok` y `exit_code` para completar las filas de Grid.
+5. Exigir `schema_version: 2` y `scope: "shell"`. Usar exclusivamente `checks`, `failures`, `provider`, `ok` y `exit_code` para completar las filas shell.
 
-`ok: true` junto con exit code `0` es un requisito crítico para declarar el setup completo. La presencia textual de la skill o del plugin no reemplaza ninguna capa del checker.
+La fase shell solo está lista con exit code `0`, `schema_version: 2`, `scope: "shell"`, `ok: true` y `exit_code: 0`. La presencia textual de una skill, plugin o declaración MCP no reemplaza ninguna capa del checker.
 
-Si Grid falla, no instalar, habilitar ni actualizar el plugin. Mostrar cada failure code seguro y la remediación en español asociada a su exit code en el contrato central. Cualquier instalación, habilitación o actualización requiere autorización explícita del usuario antes de ejecutarse.
+Si la fase shell falla, no instalar, habilitar, configurar ni actualizar nada. Mostrar cada failure code seguro y la remediación en español asociada a su exit code en el contrato central. Cualquier instalación, habilitación, configuración o actualización requiere autorización explícita del usuario antes de ejecutarse.
+
+## 7. Fase runtime MCP — diagnóstico independiente
+
+Ejecutar este diagnóstico después del intento shell incluso cuando la fase shell haya fallado. No reutilizar un resultado runtime anterior.
+
+1. Detectar únicamente tools de discovery inequívocamente pertenecientes al server MCP `fury` del provider actual. En Claude Code, preferir `mcp__plugin_fury-services_fury__list_components` y `mcp__plugin_fury-services_fury__list_tools`; aceptar solo equivalentes exactos del mismo server.
+2. Si ambas tools están disponibles, invocar **solo** `list_components` sin argumentos. No mostrar el payload completo.
+3. Si la respuesta es válida, exigir un componente cuyo `name` sea exactamente `furydocs`.
+4. Si el componente existe, invocar **solo** `list_tools` con `component="furydocs"`. Exigir los nombres exactos `get_doc_structure` y `get_doc_file`; permitir tools adicionales.
+5. No invocar `get_doc_structure`, `get_doc_file` ni ninguna otra tool documental.
+6. Si las tools de discovery no están disponibles o una capa falla, registrar el check y failure code exactos definidos en `$SKILL_DIR/knowledge/config/groot-queue-readiness.md`; continuar armando el diagnóstico sin presentar la fase como exitosa.
+
+Esta fase es independiente y no serializable: no escribir su estado en archivos ni variables de entorno y no inferirla desde el JSON shell.
 
 ## Output esperado
 
@@ -71,24 +84,41 @@ Renderizar una tabla con el resultado real de cada check. No conservar placehold
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔧 Setup — Groot Queue
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-| Check                              | Estado     | Detalle seguro |
-|------------------------------------|------------|----------------|
+| Check                              | Estado      | Detalle seguro |
+|------------------------------------|-------------|----------------|
 | ACLI instalado                     | <resultado> | <versión o estado> |
 | ACLI autenticado                   | <resultado> | <sitio o estado> |
 | Atlassian MCP + cloudId            | <resultado> | <validado o no verificable> |
 | Slack MCP                          | <resultado> | <autenticado, limitado o ausente> |
 | Permiso Bash(acli jira *)          | <resultado> | <archivo o estado> |
 | TEAM configurado                   | <resultado> | <cantidad o vacío> |
-| Grid provider inventory + plugin   | <resultado> | <provider + failure code si aplica> |
-| Grid required skill                | <resultado> | <check real> |
+| Provider inventory                 | <resultado> | <provider + failure code si aplica> |
+| Grid Sharing plugin                | <resultado> | <check real> |
+| Grid Sharing skill                 | <resultado> | <check real> |
+| Fury plugin                        | <resultado> | <check real> |
+| Fury skill                         | <resultado> | <check real> |
+| Fury manifest                      | <resultado> | <check real> |
+| Fury MCP declaration              | <resultado> | <check real> |
+| Fury MCP CLI                       | <resultado> | <check real> |
 | Grid network + ping                | <resultado> | <check real> |
 | Grid plugin version                | <resultado> | <check real> |
 | Grid identity + VPN                | <resultado> | <check real> |
 | Grid general read                  | <resultado> | <check real> |
 | Grid required document             | <resultado> | <check real> |
+| Fury runtime discovery             | <resultado> | <check real> |
+| FuryDocs component                 | <resultado> | <check real> |
+| FuryDocs required tools            | <resultado> | <check real> |
 ```
 
-Para las filas de Grid, mapear respectivamente los checks `provider_inventory`, `required_skill`, `ping`, `skill_version`, `identity`, `general_read` y `required_document`. Si una capa no corrió, mostrarla como no ejecutada con su failure code seguro; no presentarla como exitosa.
+Mapear las filas shell respectivamente a `provider_inventory`, `grid_plugin`, `grid_required_skill`, `fury_plugin`, `fury_required_skill`, `fury_manifest`, `fury_mcp_declaration`, `fury_mcp_cli`, `ping`, `skill_version`, `identity`, `general_read` y `required_document`.
+
+Mapear las filas runtime a los checks conceptuales del contrato:
+
+- `Fury runtime discovery`: `fury_runtime_discovery_tools` y `fury_component_discovery`.
+- `FuryDocs component`: `furydocs_component`.
+- `FuryDocs required tools`: `fury_tool_discovery` y `furydocs_required_tools`.
+
+Si una capa no corrió, mostrarla como no ejecutada con su failure code seguro; no presentarla como exitosa.
 
 - `✅` = check verificado.
 - `❌` = check crítico fallido.
@@ -96,5 +126,7 @@ Para las filas de Grid, mapear respectivamente los checks `provider_inventory`, 
 
 ### Cierre
 
-- Mostrar `✅ Setup completo. Podés usar /groot-queue list para empezar.` únicamente cuando los checks críticos locales estén listos y Grid termine con exit code `0` y `ok: true`.
-- En cualquier otro caso, mostrar `⚠️ Setup incompleto`, listar cada limitación comprobada y su remediación en español, y no afirmar que los comandos operativos están disponibles mientras Grid no haya pasado.
+- Considerar críticos locales: ACLI instalado y autenticado, y permiso `Bash(acli jira *)`. Un TEAM vacío limita `assign-unassigned`, pero no bloquea el resto del readiness.
+- Mostrar `✅ Setup completo. Podés usar /groot-queue list para empezar.` únicamente cuando los críticos locales estén listos, la fase shell esté lista y todos los checks runtime estén listos.
+- En cualquier otro caso, mostrar `⚠️ Setup incompleto`, listar cada limitación comprobada y su remediación en español, y no afirmar que los comandos operativos están disponibles mientras cualquiera de las dos fases obligatorias no haya pasado.
+- No instalar, habilitar, configurar ni actualizar componentes durante `setup` sin aprobación explícita del usuario.

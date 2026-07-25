@@ -3,7 +3,7 @@
 set -euo pipefail
 umask 077
 
-readonly FALLBACK_SCHEMA_VERSION=1
+readonly FALLBACK_SCHEMA_VERSION=2
 readonly MAX_RETRY_AFTER_SECONDS=86400
 
 OUTPUT_EMITTED=false
@@ -29,7 +29,8 @@ on_exit() {
   local shell_status=$?
 
   if [ "$OUTPUT_EMITTED" != "true" ]; then
-    printf '%s\n' '{"schema_version":1,"provider":null,"ok":false,"exit_code":70,"active_context":null,"source":"fresh","checked_at_epoch":null,"checks":[{"name":"internal_contract","ok":false,"status":"failed","failure_code":"INTERNAL_CONTRACT_FAILED","attempts":null,"http_status":null,"retry_after_seconds":null}],"failures":[{"code":"INTERNAL_CONTRACT_FAILED","check":"internal_contract","exit_code":70}]}'
+    printf '%s\n' '{"schema_version":2,"scope":"shell","provider":null,"ok":false,"exit_code":70,"active_context":null,"source":"fresh","checked_at_epoch":null,"checks":[{"name":"internal_contract","ok":false,"status":"failed","failure_code":"INTERNAL_CONTRACT_FAILED","attempts":null,"http_status":null,"retry_after_seconds":null}],"failures":[{"code":"INTERNAL_CONTRACT_FAILED","check":"internal_contract","exit_code":70}]}'
+    shell_status=70
   fi
 
   cleanup
@@ -49,7 +50,7 @@ emit_constant_failure() {
   local check_name="$3"
 
   OUTPUT_EMITTED=true
-  printf '{"schema_version":1,"provider":null,"ok":false,"exit_code":%s,"active_context":null,"source":"fresh","checked_at_epoch":null,"checks":[{"name":"%s","ok":false,"status":"failed","failure_code":"%s","attempts":null,"http_status":null,"retry_after_seconds":null}],"failures":[{"code":"%s","check":"%s","exit_code":%s}]}\n' \
+  printf '{"schema_version":2,"scope":"shell","provider":null,"ok":false,"exit_code":%s,"active_context":null,"source":"fresh","checked_at_epoch":null,"checks":[{"name":"%s","ok":false,"status":"failed","failure_code":"%s","attempts":null,"http_status":null,"retry_after_seconds":null}],"failures":[{"code":"%s","check":"%s","exit_code":%s}]}\n' \
     "$exit_code" "$check_name" "$failure_code" "$failure_code" "$check_name" "$exit_code"
   exit "$exit_code"
 }
@@ -130,6 +131,7 @@ emit_result() {
 
   result_json="$(jq -nc \
     --argjson schema_version "$SCHEMA_VERSION" \
+    --arg scope "shell" \
     --arg provider "$RESOLVED_PROVIDER" \
     --argjson ok "$result_ok" \
     --argjson exit_code "$SELECTED_EXIT_CODE" \
@@ -139,6 +141,7 @@ emit_result() {
     --argjson failures "$FAILURES_JSON" \
     '{
       schema_version: $schema_version,
+      scope: $scope,
       provider: (if $provider == "" then null else $provider end),
       ok: $ok,
       exit_code: $exit_code,
@@ -196,53 +199,97 @@ parse_arguments() {
 }
 
 validate_configuration() {
-  jq -e '
+  local config_json="$1"
+
+  printf '%s' "$config_json" | jq -e '
     . as $config |
     type == "object" and
-    ($config.schema_version | type == "number") and
-    ($config.schema_version == ($config.schema_version | floor)) and
-    ($config.schema_version >= 1) and
-    ($config.plugin.id | type == "string") and
-    ($config.plugin.id | test("^[a-z0-9-]+@[a-z0-9-]+$")) and
-    ($config.plugin.required_skill_path | type == "string") and
-    ($config.plugin.required_skill_path | test("^[A-Za-z0-9._/-]+$")) and
-    (($config.plugin.required_skill_path | startswith("/")) | not) and
-    (($config.plugin.required_skill_path | split("/") | index("..")) == null) and
-    ($config.api.base_url | type == "string") and
-    ($config.api.base_url | test("^https://[A-Za-z0-9.-]+$")) and
-    ($config.api.endpoints | type == "object") and
-    (($config.api.endpoints | keys | sort) == ["documents", "identity", "ping", "skill_version"]) and
-    all($config.api.endpoints[]; (type == "string") and test("^/[A-Za-z0-9/_-]+$")) and
-    ($config.required_document.name | type == "string") and
-    ($config.required_document.id | type == "string") and
-    ($config.required_document.id | test("^[A-Z0-9]+$")) and
-    ($config.required_document.viewer_url | type == "string") and
-    ($config.required_document.viewer_url | test("^https://[A-Za-z0-9.-]+/d/[A-Z0-9]+/view$")) and
-    ($config.required_document.viewer_url | endswith("/d/" + $config.required_document.id + "/view")) and
-    ($config.network.connect_timeout_seconds | type == "number") and
-    ($config.network.connect_timeout_seconds == ($config.network.connect_timeout_seconds | floor)) and
-    ($config.network.connect_timeout_seconds > 0) and
-    ($config.network.connect_timeout_seconds <= 60) and
-    ($config.network.max_time_seconds | type == "number") and
-    ($config.network.max_time_seconds == ($config.network.max_time_seconds | floor)) and
-    ($config.network.max_time_seconds >= $config.network.connect_timeout_seconds) and
-    ($config.network.max_time_seconds <= 120) and
-    ($config.network.max_retries | type == "number") and
-    ($config.network.max_retries == ($config.network.max_retries | floor)) and
-    (($config.network.max_retries == 0) or ($config.network.max_retries == 1)) and
+    (($config | keys | sort) == ["fury_runtime", "fury_services", "grid_sharing", "reuse_result", "schema_version"]) and
+    ($config.schema_version == 2) and
+
+    ($config.grid_sharing | type == "object") and
+    (($config.grid_sharing | keys | sort) == ["api", "network", "plugin", "required_document"]) and
+    ($config.grid_sharing.plugin | type == "object") and
+    (($config.grid_sharing.plugin | keys | sort) == ["id", "required_skill_path"]) and
+    ($config.grid_sharing.plugin.id == "grid-sharing@tech-plugins-marketplace") and
+    ($config.grid_sharing.plugin.required_skill_path == "skills/grid/SKILL.md") and
+    ($config.grid_sharing.api | type == "object") and
+    (($config.grid_sharing.api | keys | sort) == ["base_url", "endpoints"]) and
+    ($config.grid_sharing.api.base_url == "https://grid.melioffice.com") and
+    ($config.grid_sharing.api.endpoints | type == "object") and
+    (($config.grid_sharing.api.endpoints | keys | sort) == ["documents", "identity", "ping", "skill_version"]) and
+    ($config.grid_sharing.api.endpoints.ping == "/ping") and
+    ($config.grid_sharing.api.endpoints.skill_version == "/skill/version") and
+    ($config.grid_sharing.api.endpoints.identity == "/api/v1/me") and
+    ($config.grid_sharing.api.endpoints.documents == "/api/v1/documents") and
+    ($config.grid_sharing.required_document | type == "object") and
+    (($config.grid_sharing.required_document | keys | sort) == ["id", "name", "viewer_url"]) and
+    ($config.grid_sharing.required_document.name | type == "string") and
+    ($config.grid_sharing.required_document.name | length > 0) and
+    (($config.grid_sharing.required_document.name | test("[[:cntrl:]]")) | not) and
+    ($config.grid_sharing.required_document.id | type == "string") and
+    ($config.grid_sharing.required_document.id | test("^[A-Z0-9]+$")) and
+    ($config.grid_sharing.required_document.viewer_url | type == "string") and
+    ($config.grid_sharing.required_document.viewer_url | test("^https://grid\\.adminml\\.com/d/[A-Z0-9]+/view$")) and
+    ($config.grid_sharing.required_document.viewer_url | endswith("/d/" + $config.grid_sharing.required_document.id + "/view")) and
+    ($config.grid_sharing.network | type == "object") and
+    (($config.grid_sharing.network | keys | sort) == ["connect_timeout_seconds", "max_retries", "max_time_seconds"]) and
+    ($config.grid_sharing.network.connect_timeout_seconds | type == "number") and
+    ($config.grid_sharing.network.connect_timeout_seconds == ($config.grid_sharing.network.connect_timeout_seconds | floor)) and
+    ($config.grid_sharing.network.connect_timeout_seconds > 0) and
+    ($config.grid_sharing.network.connect_timeout_seconds <= 60) and
+    ($config.grid_sharing.network.max_time_seconds | type == "number") and
+    ($config.grid_sharing.network.max_time_seconds == ($config.grid_sharing.network.max_time_seconds | floor)) and
+    ($config.grid_sharing.network.max_time_seconds >= $config.grid_sharing.network.connect_timeout_seconds) and
+    ($config.grid_sharing.network.max_time_seconds <= 120) and
+    ($config.grid_sharing.network.max_retries | type == "number") and
+    ($config.grid_sharing.network.max_retries == ($config.grid_sharing.network.max_retries | floor)) and
+    (($config.grid_sharing.network.max_retries == 0) or ($config.grid_sharing.network.max_retries == 1)) and
+
+    ($config.fury_services | type == "object") and
+    (($config.fury_services | keys | sort) == ["expected_mcp_server", "mcp_manifest_path", "plugin", "provider_manifest_paths"]) and
+    ($config.fury_services.plugin | type == "object") and
+    (($config.fury_services.plugin | keys | sort) == ["id", "required_skill_path"]) and
+    ($config.fury_services.plugin.id == "fury-services@tech-plugins-marketplace") and
+    ($config.fury_services.plugin.required_skill_path == "skills/fury-services-documentation/SKILL.md") and
+    ($config.fury_services.provider_manifest_paths | type == "object") and
+    (($config.fury_services.provider_manifest_paths | keys | sort) == ["claude", "codex"]) and
+    ($config.fury_services.provider_manifest_paths.claude == ".claude-plugin/plugin.json") and
+    ($config.fury_services.provider_manifest_paths.codex == ".codex-plugin/plugin.json") and
+    ($config.fury_services.mcp_manifest_path == ".mcp.json") and
+    ($config.fury_services.expected_mcp_server | type == "object") and
+    (($config.fury_services.expected_mcp_server | keys | sort) == ["args", "command", "name"]) and
+    ($config.fury_services.expected_mcp_server.name == "fury") and
+    ($config.fury_services.expected_mcp_server.command == "mcp-remote-proxy") and
+    ($config.fury_services.expected_mcp_server.args == [
+      "https://mcp-services-gateway.furycloud.io/v1/servers/fury",
+      "--headers",
+      "x-origin",
+      "fury-services-plugin",
+      "--timeout",
+      "300"
+    ]) and
+
+    ($config.fury_runtime | type == "object") and
+    (($config.fury_runtime | keys | sort) == ["component", "required_tools"]) and
+    ($config.fury_runtime.component == "furydocs") and
+    ($config.fury_runtime.required_tools == ["get_doc_structure", "get_doc_file"]) and
+
+    ($config.reuse_result | type == "object") and
+    (($config.reuse_result | keys | sort) == ["max_age_seconds"]) and
     ($config.reuse_result.max_age_seconds | type == "number") and
     ($config.reuse_result.max_age_seconds == ($config.reuse_result.max_age_seconds | floor)) and
     ($config.reuse_result.max_age_seconds > 0) and
     ($config.reuse_result.max_age_seconds <= 3600)
-  ' "$CONFIG_FILE" >/dev/null 2>&1
+  ' >/dev/null 2>&1
 }
 
 create_temp_directory() {
-  if TEMP_DIRECTORY="$(mktemp -d -t groot-grid-preflight.XXXXXX 2>/dev/null)"; then
+  if TEMP_DIRECTORY="$(mktemp -d -t groot-readiness.XXXXXX 2>/dev/null)"; then
     return 0
   fi
 
-  if TEMP_DIRECTORY="$(mktemp -d /tmp/groot-grid-preflight.XXXXXX 2>/dev/null)"; then
+  if TEMP_DIRECTORY="$(mktemp -d /tmp/groot-readiness.XXXXXX 2>/dev/null)"; then
     return 0
   fi
 
@@ -305,7 +352,7 @@ reuse_file_is_secure() {
   esac
 
   file_mode_decimal=$((8#$file_mode))
-  if [ $((file_mode_decimal & 36)) -ne 0 ]; then
+  if [ $((file_mode_decimal & 63)) -ne 0 ]; then
     return 1
   fi
 
@@ -334,7 +381,9 @@ try_reuse_result() {
     --argjson max_age_seconds "$REUSE_RESULT_MAX_AGE_SECONDS" '
       . as $result |
       ($result | type == "object") and
+      (($result | keys | sort) == ["active_context", "checked_at_epoch", "checks", "exit_code", "failures", "ok", "provider", "schema_version", "scope", "source"]) and
       ($result.schema_version == $schema_version) and
+      ($result.scope == "shell") and
       (($result.provider == "claude") or ($result.provider == "codex")) and
       ((($requested_provider == "auto") and (($result.provider == "claude") or ($result.provider == "codex"))) or ($result.provider == $requested_provider)) and
       ($result.ok == true) and
@@ -347,9 +396,10 @@ try_reuse_result() {
       (($current_epoch - $result.checked_at_epoch) <= $max_age_seconds) and
       ($result.failures == []) and
       ($result.checks | type == "array") and
-      (($result.checks | map(.name)) == ["dependencies", "configuration", "provider_inventory", "required_skill", "ping", "skill_version", "identity", "general_read", "required_document"]) and
+      (($result.checks | map(.name)) == ["dependencies", "configuration", "provider_inventory", "grid_plugin", "grid_required_skill", "fury_plugin", "fury_required_skill", "fury_manifest", "fury_mcp_declaration", "fury_mcp_cli", "ping", "skill_version", "identity", "general_read", "required_document"]) and
       all($result.checks[];
         (type == "object") and
+        ((keys | sort) == ["attempts", "failure_code", "http_status", "name", "ok", "retry_after_seconds", "status"]) and
         (.ok == true) and
         (.status == "passed") and
         (.failure_code == null) and
@@ -389,80 +439,133 @@ is_strict_semver() {
   ' >/dev/null 2>&1
 }
 
-reset_inventory_state() {
-  INVENTORY_OK=false
-  REQUIRED_SKILL_OK=false
-  INVENTORY_FAILURE_CODE=""
-  INVENTORY_EXIT_CODE=10
-  PLUGIN_VERSION=""
-  PLUGIN_INSTALL_PATH=""
+reset_provider_state() {
+  PROVIDER_INVENTORY_OK=false
+  PROVIDER_INVENTORY_FAILURE_CODE=""
+  PROVIDER_INVENTORY_EXIT_CODE=10
+  PROVIDER_INVENTORY_FILE=""
+
+  GRID_PLUGIN_OK=false
+  GRID_PLUGIN_FAILURE_CODE=""
+  GRID_REQUIRED_SKILL_OK=false
+  GRID_PLUGIN_VERSION=""
+  GRID_PLUGIN_INSTALL_PATH=""
+
+  FURY_PLUGIN_OK=false
+  FURY_PLUGIN_FAILURE_CODE=""
+  FURY_REQUIRED_SKILL_OK=false
+  FURY_PLUGIN_VERSION=""
+  FURY_PLUGIN_INSTALL_PATH=""
+
+  FURY_MANIFEST_OK=false
+  FURY_MANIFEST_FAILURE_CODE=""
+  FURY_MCP_DECLARATION_OK=false
+  FURY_MCP_DECLARATION_FAILURE_CODE=""
+  FURY_MCP_CLI_OK=false
+  FURY_MCP_CLI_FAILURE_CODE=""
 }
 
-inspect_provider_inventory() {
-  local provider="$1"
-  local inventory_file="$TEMP_DIRECTORY/${provider}-inventory.json"
-  local normalized_inventory_file="$TEMP_DIRECTORY/${provider}-plugin.json"
-  local plugin_count
-  local plugin_installed
-  local plugin_enabled
-  local plugin_values
-  local required_skill_file
+set_plugin_failure() {
+  local plugin_kind="$1"
+  local failure_code="$2"
 
-  reset_inventory_state
+  case "$plugin_kind" in
+    grid) GRID_PLUGIN_FAILURE_CODE="$failure_code" ;;
+    fury) FURY_PLUGIN_FAILURE_CODE="$failure_code" ;;
+  esac
+}
+
+load_provider_inventory() {
+  local provider="$1"
+
+  PROVIDER_INVENTORY_FILE="$TEMP_DIRECTORY/${provider}-inventory.json"
 
   if [ "$provider" = "copilot" ]; then
-    INVENTORY_FAILURE_CODE="PROVIDER_INVENTORY_UNSUPPORTED"
-    INVENTORY_EXIT_CODE=2
+    PROVIDER_INVENTORY_FAILURE_CODE="PROVIDER_INVENTORY_UNSUPPORTED"
+    PROVIDER_INVENTORY_EXIT_CODE=2
     return 0
   fi
 
   if ! command -v "$provider" >/dev/null 2>&1; then
-    INVENTORY_FAILURE_CODE="PROVIDER_CLI_UNAVAILABLE"
-    INVENTORY_EXIT_CODE=2
+    PROVIDER_INVENTORY_FAILURE_CODE="PROVIDER_CLI_UNAVAILABLE"
+    PROVIDER_INVENTORY_EXIT_CODE=2
     return 0
   fi
 
   case "$provider" in
     claude)
-      if ! claude plugin list --json > "$inventory_file" 2>/dev/null; then
-        INVENTORY_FAILURE_CODE="PROVIDER_INVENTORY_FAILED"
+      if ! claude plugin list --json > "$PROVIDER_INVENTORY_FILE" 2>/dev/null; then
+        PROVIDER_INVENTORY_FAILURE_CODE="PROVIDER_INVENTORY_FAILED"
         return 0
       fi
-      if ! jq -e 'type == "array" and all(.[]; type == "object")' "$inventory_file" >/dev/null 2>&1; then
-        INVENTORY_FAILURE_CODE="PROVIDER_INVENTORY_INVALID"
+      if ! jq -e 'type == "array" and all(.[]; type == "object")' "$PROVIDER_INVENTORY_FILE" >/dev/null 2>&1; then
+        PROVIDER_INVENTORY_FAILURE_CODE="PROVIDER_INVENTORY_INVALID"
         return 0
       fi
-      plugin_count="$(jq -r --arg plugin_id "$PLUGIN_ID" '[.[] | select(.id == $plugin_id)] | length' "$inventory_file")"
-      jq -ec --arg plugin_id "$PLUGIN_ID" '
-        [.[] | select(.id == $plugin_id)][0]
-        | {installed: true, enabled: (.enabled == true), version, path: .installPath}
-      ' "$inventory_file" > "$normalized_inventory_file"
       ;;
     codex)
-      if ! codex plugin list --marketplace tech-plugins-marketplace --json > "$inventory_file" 2>/dev/null; then
-        INVENTORY_FAILURE_CODE="PROVIDER_INVENTORY_FAILED"
+      if ! codex plugin list --marketplace tech-plugins-marketplace --json > "$PROVIDER_INVENTORY_FILE" 2>/dev/null; then
+        PROVIDER_INVENTORY_FAILURE_CODE="PROVIDER_INVENTORY_FAILED"
         return 0
       fi
-      if ! jq -e 'type == "object" and (.installed | type == "array") and all(.installed[]; type == "object")' "$inventory_file" >/dev/null 2>&1; then
-        INVENTORY_FAILURE_CODE="PROVIDER_INVENTORY_INVALID"
+      if ! jq -e 'type == "object" and (.installed | type == "array") and all(.installed[]; type == "object")' "$PROVIDER_INVENTORY_FILE" >/dev/null 2>&1; then
+        PROVIDER_INVENTORY_FAILURE_CODE="PROVIDER_INVENTORY_INVALID"
         return 0
       fi
-      plugin_count="$(jq -r --arg plugin_id "$PLUGIN_ID" '[.installed[] | select(.pluginId == $plugin_id)] | length' "$inventory_file")"
-      jq -ec --arg plugin_id "$PLUGIN_ID" '
-        [.installed[] | select(.pluginId == $plugin_id)][0]
-        | {installed: (.installed == true), enabled: (.enabled == true), version, path: .source.path}
-      ' "$inventory_file" > "$normalized_inventory_file"
+      ;;
+  esac
+
+  PROVIDER_INVENTORY_OK=true
+}
+
+inspect_inventory_plugin() {
+  local provider="$1"
+  local plugin_kind="$2"
+  local plugin_id="$3"
+  local not_installed_code="$4"
+  local disabled_code="$5"
+  local ambiguous_code="$6"
+  local invalid_code="$7"
+  local normalized_inventory_file="$TEMP_DIRECTORY/${provider}-${plugin_kind}-plugin.json"
+  local plugin_count
+  local plugin_installed
+  local plugin_enabled
+  local plugin_version
+  local plugin_install_path
+  local plugin_values
+
+  case "$provider" in
+    claude)
+      plugin_count="$(jq -r --arg plugin_id "$plugin_id" '[.[] | select(.id == $plugin_id)] | length' "$PROVIDER_INVENTORY_FILE")"
+      ;;
+    codex)
+      plugin_count="$(jq -r --arg plugin_id "$plugin_id" '[.installed[] | select(.pluginId == $plugin_id)] | length' "$PROVIDER_INVENTORY_FILE")"
       ;;
   esac
 
   if [ "$plugin_count" -eq 0 ]; then
-    INVENTORY_FAILURE_CODE="PLUGIN_NOT_INSTALLED"
+    set_plugin_failure "$plugin_kind" "$not_installed_code"
     return 0
   fi
   if [ "$plugin_count" -ne 1 ]; then
-    INVENTORY_FAILURE_CODE="PLUGIN_INVENTORY_AMBIGUOUS"
+    set_plugin_failure "$plugin_kind" "$ambiguous_code"
     return 0
   fi
+
+  case "$provider" in
+    claude)
+      jq -ec --arg plugin_id "$plugin_id" '
+        [.[] | select(.id == $plugin_id)][0]
+        | {installed: true, enabled, version, path: .installPath}
+      ' "$PROVIDER_INVENTORY_FILE" > "$normalized_inventory_file"
+      ;;
+    codex)
+      jq -ec --arg plugin_id "$plugin_id" '
+        [.installed[] | select(.pluginId == $plugin_id)][0]
+        | {installed, enabled, version, path: .source.path}
+      ' "$PROVIDER_INVENTORY_FILE" > "$normalized_inventory_file"
+      ;;
+  esac
 
   if ! plugin_values="$(jq -er '
     select(
@@ -471,6 +574,7 @@ inspect_provider_inventory() {
       (.enabled | type == "boolean") and
       (.version | type == "string") and
       (.version | length > 0) and
+      ((.version | test("[[:cntrl:]]")) | not) and
       (.path | type == "string") and
       (.path | startswith("/")) and
       ((.path | test("[[:cntrl:]]")) | not)
@@ -478,82 +582,321 @@ inspect_provider_inventory() {
     | [.installed, .enabled, .version, .path]
     | @tsv
   ' "$normalized_inventory_file")"; then
-    INVENTORY_FAILURE_CODE="PLUGIN_INVENTORY_INVALID"
+    set_plugin_failure "$plugin_kind" "$invalid_code"
     return 0
   fi
 
-  IFS=$'\t' read -r plugin_installed plugin_enabled PLUGIN_VERSION PLUGIN_INSTALL_PATH <<EOF
+  IFS=$'\t' read -r plugin_installed plugin_enabled plugin_version plugin_install_path <<EOF
 $plugin_values
 EOF
+
   if [ "$plugin_installed" != "true" ]; then
-    INVENTORY_FAILURE_CODE="PLUGIN_NOT_INSTALLED"
+    set_plugin_failure "$plugin_kind" "$not_installed_code"
     return 0
   fi
   if [ "$plugin_enabled" != "true" ]; then
-    INVENTORY_FAILURE_CODE="PLUGIN_DISABLED"
+    set_plugin_failure "$plugin_kind" "$disabled_code"
     return 0
   fi
 
-  INVENTORY_OK=true
-  required_skill_file="${PLUGIN_INSTALL_PATH%/}/$REQUIRED_SKILL_PATH"
-  if [ -f "$required_skill_file" ] && [ -r "$required_skill_file" ]; then
-    REQUIRED_SKILL_OK=true
+  case "$plugin_kind" in
+    grid)
+      GRID_PLUGIN_OK=true
+      GRID_PLUGIN_VERSION="$plugin_version"
+      GRID_PLUGIN_INSTALL_PATH="$plugin_install_path"
+      ;;
+    fury)
+      if ! is_strict_semver "$plugin_version"; then
+        FURY_PLUGIN_FAILURE_CODE="$invalid_code"
+        return 0
+      fi
+      FURY_PLUGIN_OK=true
+      FURY_PLUGIN_VERSION="$plugin_version"
+      FURY_PLUGIN_INSTALL_PATH="$plugin_install_path"
+      ;;
+  esac
+}
+
+inspect_required_skills() {
+  local grid_required_skill_file
+  local fury_required_skill_file
+
+  if [ "$GRID_PLUGIN_OK" = "true" ]; then
+    grid_required_skill_file="${GRID_PLUGIN_INSTALL_PATH%/}/$GRID_REQUIRED_SKILL_PATH"
+    if [ ! -L "$grid_required_skill_file" ] && [ -f "$grid_required_skill_file" ] && [ -r "$grid_required_skill_file" ]; then
+      GRID_REQUIRED_SKILL_OK=true
+    fi
   fi
+
+  if [ "$FURY_PLUGIN_OK" = "true" ]; then
+    fury_required_skill_file="${FURY_PLUGIN_INSTALL_PATH%/}/$FURY_REQUIRED_SKILL_PATH"
+    if [ ! -L "$fury_required_skill_file" ] && [ -f "$fury_required_skill_file" ] && [ -r "$fury_required_skill_file" ]; then
+      FURY_REQUIRED_SKILL_OK=true
+    fi
+  fi
+}
+
+inspect_fury_manifest() {
+  local provider="$1"
+  local provider_manifest_path
+  local provider_manifest_file
+
+  case "$provider" in
+    claude) provider_manifest_path="$FURY_CLAUDE_MANIFEST_PATH" ;;
+    codex) provider_manifest_path="$FURY_CODEX_MANIFEST_PATH" ;;
+    *) return 0 ;;
+  esac
+
+  provider_manifest_file="${FURY_PLUGIN_INSTALL_PATH%/}/$provider_manifest_path"
+  if [ -L "$provider_manifest_file" ] || [ ! -f "$provider_manifest_file" ] || [ ! -r "$provider_manifest_file" ]; then
+    FURY_MANIFEST_FAILURE_CODE="FURY_MANIFEST_UNAVAILABLE"
+    return 0
+  fi
+
+  case "$provider" in
+    claude)
+      if ! jq -e \
+        --arg version "$FURY_PLUGIN_VERSION" \
+        --arg mcp_manifest_path "./$FURY_MCP_MANIFEST_PATH" '
+          type == "object" and
+          (.name == "fury-services") and
+          (.version == $version) and
+          ((has("mcpServers") | not) or (.mcpServers == $mcp_manifest_path))
+        ' "$provider_manifest_file" >/dev/null 2>&1; then
+        FURY_MANIFEST_FAILURE_CODE="FURY_MANIFEST_INVALID"
+        return 0
+      fi
+      ;;
+    codex)
+      if ! jq -e \
+        --arg version "$FURY_PLUGIN_VERSION" \
+        --arg mcp_manifest_path "./$FURY_MCP_MANIFEST_PATH" '
+          type == "object" and
+          (.name == "fury-services") and
+          (.version == $version) and
+          (.skills == "./skills/") and
+          (.mcpServers == $mcp_manifest_path)
+        ' "$provider_manifest_file" >/dev/null 2>&1; then
+        FURY_MANIFEST_FAILURE_CODE="FURY_MANIFEST_INVALID"
+        return 0
+      fi
+      ;;
+  esac
+
+  FURY_MANIFEST_OK=true
+}
+
+inspect_fury_mcp_declaration() {
+  local mcp_manifest_file="${FURY_PLUGIN_INSTALL_PATH%/}/$FURY_MCP_MANIFEST_PATH"
+
+  if [ -L "$mcp_manifest_file" ] || [ ! -f "$mcp_manifest_file" ] || [ ! -r "$mcp_manifest_file" ]; then
+    FURY_MCP_DECLARATION_FAILURE_CODE="FURY_MCP_DECLARATION_UNAVAILABLE"
+    return 0
+  fi
+
+  if ! jq -e \
+    --arg server_name "$FURY_MCP_SERVER_NAME" \
+    --arg expected_command "$FURY_MCP_COMMAND" \
+    --argjson expected_args "$FURY_MCP_ARGS_JSON" '
+      type == "object" and
+      ((keys | sort) == ["mcpServers"]) and
+      (.mcpServers | type == "object") and
+      ((.mcpServers | keys) == [$server_name]) and
+      (.mcpServers[$server_name] | type == "object") and
+      ((.mcpServers[$server_name] | keys | sort) == ["args", "command"]) and
+      (.mcpServers[$server_name].command == $expected_command) and
+      (.mcpServers[$server_name].args == $expected_args)
+    ' "$mcp_manifest_file" >/dev/null 2>&1; then
+    FURY_MCP_DECLARATION_FAILURE_CODE="FURY_MCP_DECLARATION_INVALID"
+    return 0
+  fi
+
+  FURY_MCP_DECLARATION_OK=true
+}
+
+inspect_claude_mcp_cli() {
+  local mcp_output_file="$TEMP_DIRECTORY/claude-mcp-list.txt"
+  local server_prefix="plugin:fury-services:$FURY_MCP_SERVER_NAME:"
+  local expected_configuration="$server_prefix $FURY_MCP_COMMAND $FURY_MCP_ARG_GATEWAY $FURY_MCP_ARG_HEADERS_FLAG $FURY_MCP_ARG_HEADER_NAME $FURY_MCP_ARG_HEADER_VALUE $FURY_MCP_ARG_TIMEOUT_FLAG $FURY_MCP_ARG_TIMEOUT_VALUE"
+  local expected_connected_line="$expected_configuration - ✔ Connected"
+  local legacy_connected_line="$expected_configuration - ✓ Connected"
+  local matching_server_count=0
+  local configuration_matches=false
+  local connected_matches=false
+  local output_line
+
+  if ! claude mcp list > "$mcp_output_file" 2>/dev/null; then
+    FURY_MCP_CLI_FAILURE_CODE="FURY_MCP_CLI_CHECK_FAILED"
+    return 0
+  fi
+
+  while IFS= read -r output_line || [ -n "$output_line" ]; do
+    case "$output_line" in
+      "$server_prefix"*)
+        matching_server_count=$((matching_server_count + 1))
+        if [ "$output_line" = "$expected_connected_line" ] || [ "$output_line" = "$legacy_connected_line" ]; then
+          connected_matches=true
+        fi
+        case "$output_line" in
+          "$expected_configuration - "*) configuration_matches=true ;;
+          *) ;;
+        esac
+        ;;
+      *) ;;
+    esac
+  done < "$mcp_output_file"
+
+  if [ "$matching_server_count" -eq 0 ]; then
+    FURY_MCP_CLI_FAILURE_CODE="FURY_MCP_NOT_CONFIGURED"
+  elif [ "$matching_server_count" -ne 1 ]; then
+    FURY_MCP_CLI_FAILURE_CODE="FURY_MCP_CLI_RESPONSE_INVALID"
+  elif [ "$connected_matches" = "true" ]; then
+    FURY_MCP_CLI_OK=true
+  elif [ "$configuration_matches" = "true" ]; then
+    FURY_MCP_CLI_FAILURE_CODE="FURY_MCP_CONNECTION_UNAVAILABLE"
+  else
+    FURY_MCP_CLI_FAILURE_CODE="FURY_MCP_CLI_RESPONSE_INVALID"
+  fi
+}
+
+inspect_codex_mcp_cli() {
+  local mcp_output_file="$TEMP_DIRECTORY/codex-mcp-list.json"
+  local server_count
+
+  if ! codex mcp list --json > "$mcp_output_file" 2>/dev/null; then
+    FURY_MCP_CLI_FAILURE_CODE="FURY_MCP_CLI_CHECK_FAILED"
+    return 0
+  fi
+
+  if ! jq -e 'type == "array" and all(.[]; (type == "object") and (.name | type == "string"))' "$mcp_output_file" >/dev/null 2>&1; then
+    FURY_MCP_CLI_FAILURE_CODE="FURY_MCP_CLI_RESPONSE_INVALID"
+    return 0
+  fi
+
+  server_count="$(jq -r --arg server_name "$FURY_MCP_SERVER_NAME" '[.[] | select(.name == $server_name)] | length' "$mcp_output_file")"
+  if [ "$server_count" -eq 0 ]; then
+    FURY_MCP_CLI_FAILURE_CODE="FURY_MCP_NOT_CONFIGURED"
+    return 0
+  fi
+  if [ "$server_count" -ne 1 ]; then
+    FURY_MCP_CLI_FAILURE_CODE="FURY_MCP_CLI_RESPONSE_INVALID"
+    return 0
+  fi
+
+  if jq -e \
+    --arg server_name "$FURY_MCP_SERVER_NAME" \
+    '[.[] | select(.name == $server_name)][0] | (.enabled == false)' \
+    "$mcp_output_file" >/dev/null 2>&1; then
+    FURY_MCP_CLI_FAILURE_CODE="FURY_MCP_CONNECTION_UNAVAILABLE"
+    return 0
+  fi
+
+  if ! jq -e \
+    --arg server_name "$FURY_MCP_SERVER_NAME" \
+    --arg expected_command "$FURY_MCP_COMMAND" \
+    --argjson expected_args "$FURY_MCP_ARGS_JSON" '
+      [.[] | select(.name == $server_name)][0] |
+      (.enabled == true) and
+      (.disabled_reason == null) and
+      (.transport | type == "object") and
+      (.transport.type == "stdio") and
+      (.transport.command == $expected_command) and
+      (.transport.args == $expected_args)
+    ' "$mcp_output_file" >/dev/null 2>&1; then
+    FURY_MCP_CLI_FAILURE_CODE="FURY_MCP_CLI_RESPONSE_INVALID"
+    return 0
+  fi
+
+  FURY_MCP_CLI_OK=true
+}
+
+inspect_fury_mcp_cli() {
+  local provider="$1"
+
+  case "$provider" in
+    claude) inspect_claude_mcp_cli ;;
+    codex) inspect_codex_mcp_cli ;;
+  esac
+}
+
+inspect_provider_readiness() {
+  local provider="$1"
+
+  reset_provider_state
+  load_provider_inventory "$provider"
+  if [ "$PROVIDER_INVENTORY_OK" != "true" ]; then
+    return 0
+  fi
+
+  inspect_inventory_plugin \
+    "$provider" \
+    "grid" \
+    "$GRID_PLUGIN_ID" \
+    "PLUGIN_NOT_INSTALLED" \
+    "PLUGIN_DISABLED" \
+    "PLUGIN_INVENTORY_AMBIGUOUS" \
+    "PLUGIN_INVENTORY_INVALID"
+  inspect_inventory_plugin \
+    "$provider" \
+    "fury" \
+    "$FURY_PLUGIN_ID" \
+    "FURY_PLUGIN_NOT_INSTALLED" \
+    "FURY_PLUGIN_DISABLED" \
+    "FURY_PLUGIN_INVENTORY_AMBIGUOUS" \
+    "FURY_PLUGIN_INVENTORY_INVALID"
+  inspect_required_skills
+
+  if [ "$FURY_PLUGIN_OK" = "true" ] && [ "$FURY_REQUIRED_SKILL_OK" = "true" ]; then
+    inspect_fury_manifest "$provider"
+  fi
+  if [ "$FURY_MANIFEST_OK" = "true" ]; then
+    inspect_fury_mcp_declaration
+  fi
+  if [ "$FURY_MCP_DECLARATION_OK" = "true" ]; then
+    inspect_fury_mcp_cli "$provider"
+  fi
+}
+
+provider_shell_readiness_ok() {
+  [ "$PROVIDER_INVENTORY_OK" = "true" ] &&
+    [ "$GRID_PLUGIN_OK" = "true" ] &&
+    [ "$GRID_REQUIRED_SKILL_OK" = "true" ] &&
+    is_strict_semver "$GRID_PLUGIN_VERSION" &&
+    [ "$FURY_PLUGIN_OK" = "true" ] &&
+    [ "$FURY_REQUIRED_SKILL_OK" = "true" ] &&
+    [ "$FURY_MANIFEST_OK" = "true" ] &&
+    [ "$FURY_MCP_DECLARATION_OK" = "true" ] &&
+    [ "$FURY_MCP_CLI_OK" = "true" ]
 }
 
 resolve_provider() {
   local candidate_provider
   local provider_command_available=false
-  local fallback_provider=""
-  local fallback_version=""
-  local fallback_install_path=""
 
   if [ "$REQUESTED_PROVIDER" != "auto" ]; then
     RESOLVED_PROVIDER="$REQUESTED_PROVIDER"
-    inspect_provider_inventory "$RESOLVED_PROVIDER"
+    inspect_provider_readiness "$RESOLVED_PROVIDER"
     return 0
   fi
 
+  RESOLVED_PROVIDER=""
   for candidate_provider in codex claude; do
     if ! command -v "$candidate_provider" >/dev/null 2>&1; then
       continue
     fi
 
     provider_command_available=true
-    inspect_provider_inventory "$candidate_provider"
-
-    if [ "$INVENTORY_OK" = "true" ] && [ "$REQUIRED_SKILL_OK" = "true" ]; then
-      if is_strict_semver "$PLUGIN_VERSION"; then
-        RESOLVED_PROVIDER="$candidate_provider"
-        return 0
-      fi
-
-      if [ -z "$fallback_provider" ]; then
-        fallback_provider="$candidate_provider"
-        fallback_version="$PLUGIN_VERSION"
-        fallback_install_path="$PLUGIN_INSTALL_PATH"
-      fi
+    inspect_provider_readiness "$candidate_provider"
+    if provider_shell_readiness_ok; then
+      RESOLVED_PROVIDER="$candidate_provider"
+      return 0
     fi
   done
 
-  if [ -n "$fallback_provider" ]; then
-    RESOLVED_PROVIDER="$fallback_provider"
-    INVENTORY_OK=true
-    REQUIRED_SKILL_OK=true
-    INVENTORY_FAILURE_CODE=""
-    INVENTORY_EXIT_CODE=10
-    PLUGIN_VERSION="$fallback_version"
-    PLUGIN_INSTALL_PATH="$fallback_install_path"
-    return 0
-  fi
-
-  reset_inventory_state
-  if [ "$provider_command_available" = "true" ]; then
-    INVENTORY_FAILURE_CODE="NO_VERIFIABLE_PROVIDER"
-    INVENTORY_EXIT_CODE=10
-  else
-    INVENTORY_FAILURE_CODE="PROVIDER_CLI_UNAVAILABLE"
-    INVENTORY_EXIT_CODE=2
+  if [ "$provider_command_available" != "true" ]; then
+    reset_provider_state
+    PROVIDER_INVENTORY_FAILURE_CODE="PROVIDER_CLI_UNAVAILABLE"
+    PROVIDER_INVENTORY_EXIT_CODE=2
   fi
 }
 
@@ -895,33 +1238,50 @@ RESULT_CHECKED_AT_EPOCH="$(date +%s)"
 append_check "dependencies" true "passed"
 
 SCRIPT_DIRECTORY="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-CONFIG_FILE="$SCRIPT_DIRECTORY/../knowledge/config/grid-sharing.json"
+CONFIG_FILE="$SCRIPT_DIRECTORY/../knowledge/config/groot-queue-readiness.json"
+CONFIG_JSON=""
 
-if [ ! -f "$CONFIG_FILE" ] || [ ! -r "$CONFIG_FILE" ] || ! validate_configuration; then
+if [ -L "$CONFIG_FILE" ] || [ ! -f "$CONFIG_FILE" ] || [ ! -r "$CONFIG_FILE" ] \
+  || ! CONFIG_JSON="$(jq -ce '.' "$CONFIG_FILE" 2>/dev/null)" \
+  || ! validate_configuration "$CONFIG_JSON"; then
   append_check "configuration" false "failed" "CONFIGURATION_INVALID"
   record_failure "CONFIGURATION_INVALID" "configuration" 70
   emit_result
 fi
 
-CONFIG_VALUES="$(jq -er '[
+CONFIG_VALUES="$(printf '%s' "$CONFIG_JSON" | jq -er '[
   .schema_version,
-  .plugin.id,
-  .plugin.required_skill_path,
-  .api.base_url,
-  .api.endpoints.ping,
-  .api.endpoints.skill_version,
-  .api.endpoints.identity,
-  .api.endpoints.documents,
-  .required_document.id,
-  .network.connect_timeout_seconds,
-  .network.max_time_seconds,
-  .network.max_retries,
+  .grid_sharing.plugin.id,
+  .grid_sharing.plugin.required_skill_path,
+  .grid_sharing.api.base_url,
+  .grid_sharing.api.endpoints.ping,
+  .grid_sharing.api.endpoints.skill_version,
+  .grid_sharing.api.endpoints.identity,
+  .grid_sharing.api.endpoints.documents,
+  .grid_sharing.required_document.id,
+  .grid_sharing.network.connect_timeout_seconds,
+  .grid_sharing.network.max_time_seconds,
+  .grid_sharing.network.max_retries,
+  .fury_services.plugin.id,
+  .fury_services.plugin.required_skill_path,
+  .fury_services.provider_manifest_paths.claude,
+  .fury_services.provider_manifest_paths.codex,
+  .fury_services.mcp_manifest_path,
+  .fury_services.expected_mcp_server.name,
+  .fury_services.expected_mcp_server.command,
+  .fury_services.expected_mcp_server.args[0],
+  .fury_services.expected_mcp_server.args[1],
+  .fury_services.expected_mcp_server.args[2],
+  .fury_services.expected_mcp_server.args[3],
+  .fury_services.expected_mcp_server.args[4],
+  .fury_services.expected_mcp_server.args[5],
   .reuse_result.max_age_seconds
-] | @tsv' "$CONFIG_FILE")"
+] | @tsv')"
+FURY_MCP_ARGS_JSON="$(printf '%s' "$CONFIG_JSON" | jq -ce '.fury_services.expected_mcp_server.args')"
 IFS=$'\t' read -r \
   SCHEMA_VERSION \
-  PLUGIN_ID \
-  REQUIRED_SKILL_PATH \
+  GRID_PLUGIN_ID \
+  GRID_REQUIRED_SKILL_PATH \
   API_BASE_URL \
   PING_ENDPOINT \
   SKILL_VERSION_ENDPOINT \
@@ -931,6 +1291,19 @@ IFS=$'\t' read -r \
   CONNECT_TIMEOUT_SECONDS \
   MAX_TIME_SECONDS \
   MAX_RETRIES \
+  FURY_PLUGIN_ID \
+  FURY_REQUIRED_SKILL_PATH \
+  FURY_CLAUDE_MANIFEST_PATH \
+  FURY_CODEX_MANIFEST_PATH \
+  FURY_MCP_MANIFEST_PATH \
+  FURY_MCP_SERVER_NAME \
+  FURY_MCP_COMMAND \
+  FURY_MCP_ARG_GATEWAY \
+  FURY_MCP_ARG_HEADERS_FLAG \
+  FURY_MCP_ARG_HEADER_NAME \
+  FURY_MCP_ARG_HEADER_VALUE \
+  FURY_MCP_ARG_TIMEOUT_FLAG \
+  FURY_MCP_ARG_TIMEOUT_VALUE \
   REUSE_RESULT_MAX_AGE_SECONDS <<EOF
 $CONFIG_VALUES
 EOF
@@ -944,38 +1317,114 @@ fi
 
 try_reuse_result || true
 
-reset_inventory_state
+reset_provider_state
 resolve_provider
 
-if [ "$INVENTORY_OK" = "true" ]; then
+if [ "$PROVIDER_INVENTORY_OK" = "true" ]; then
   append_check "provider_inventory" true "passed"
 else
-  append_check "provider_inventory" false "failed" "$INVENTORY_FAILURE_CODE"
-  record_failure "$INVENTORY_FAILURE_CODE" "provider_inventory" "$INVENTORY_EXIT_CODE"
+  append_check "provider_inventory" false "failed" "$PROVIDER_INVENTORY_FAILURE_CODE"
+  record_failure "$PROVIDER_INVENTORY_FAILURE_CODE" "provider_inventory" "$PROVIDER_INVENTORY_EXIT_CODE"
 fi
 
-if [ "$INVENTORY_OK" != "true" ]; then
-  append_check "required_skill" false "not_run" "PLUGIN_INVENTORY_UNAVAILABLE"
-elif [ "$REQUIRED_SKILL_OK" = "true" ]; then
-  append_check "required_skill" true "passed"
+if [ "$PROVIDER_INVENTORY_OK" != "true" ]; then
+  append_check "grid_plugin" false "not_run" "$PROVIDER_INVENTORY_FAILURE_CODE"
+elif [ "$GRID_PLUGIN_OK" = "true" ]; then
+  append_check "grid_plugin" true "passed"
 else
-  append_check "required_skill" false "failed" "REQUIRED_SKILL_UNAVAILABLE"
-  record_failure "REQUIRED_SKILL_UNAVAILABLE" "required_skill" 10
+  append_check "grid_plugin" false "failed" "$GRID_PLUGIN_FAILURE_CODE"
+  record_failure "$GRID_PLUGIN_FAILURE_CODE" "grid_plugin" 10
 fi
 
-PLUGIN_VERSION_VALID=false
-ENCODED_PLUGIN_VERSION=""
-if [ -n "$PLUGIN_VERSION" ] && is_strict_semver "$PLUGIN_VERSION"; then
-  PLUGIN_VERSION_VALID=true
-  ENCODED_PLUGIN_VERSION="$(jq -nr --arg version "$PLUGIN_VERSION" '$version | @uri')"
+if [ "$PROVIDER_INVENTORY_OK" != "true" ]; then
+  append_check "grid_required_skill" false "not_run" "$PROVIDER_INVENTORY_FAILURE_CODE"
+elif [ "$GRID_PLUGIN_OK" != "true" ]; then
+  append_check "grid_required_skill" false "not_run" "$GRID_PLUGIN_FAILURE_CODE"
+elif [ "$GRID_REQUIRED_SKILL_OK" = "true" ]; then
+  append_check "grid_required_skill" true "passed"
+else
+  append_check "grid_required_skill" false "failed" "REQUIRED_SKILL_UNAVAILABLE"
+  record_failure "REQUIRED_SKILL_UNAVAILABLE" "grid_required_skill" 10
+fi
+
+if [ "$PROVIDER_INVENTORY_OK" != "true" ]; then
+  append_check "fury_plugin" false "not_run" "$PROVIDER_INVENTORY_FAILURE_CODE"
+elif [ "$FURY_PLUGIN_OK" = "true" ]; then
+  append_check "fury_plugin" true "passed"
+else
+  append_check "fury_plugin" false "failed" "$FURY_PLUGIN_FAILURE_CODE"
+  record_failure "$FURY_PLUGIN_FAILURE_CODE" "fury_plugin" 10
+fi
+
+if [ "$PROVIDER_INVENTORY_OK" != "true" ]; then
+  append_check "fury_required_skill" false "not_run" "$PROVIDER_INVENTORY_FAILURE_CODE"
+elif [ "$FURY_PLUGIN_OK" != "true" ]; then
+  append_check "fury_required_skill" false "not_run" "$FURY_PLUGIN_FAILURE_CODE"
+elif [ "$FURY_REQUIRED_SKILL_OK" = "true" ]; then
+  append_check "fury_required_skill" true "passed"
+else
+  append_check "fury_required_skill" false "failed" "FURY_REQUIRED_SKILL_UNAVAILABLE"
+  record_failure "FURY_REQUIRED_SKILL_UNAVAILABLE" "fury_required_skill" 10
+fi
+
+if [ "$PROVIDER_INVENTORY_OK" != "true" ]; then
+  append_check "fury_manifest" false "not_run" "$PROVIDER_INVENTORY_FAILURE_CODE"
+elif [ "$FURY_PLUGIN_OK" != "true" ]; then
+  append_check "fury_manifest" false "not_run" "$FURY_PLUGIN_FAILURE_CODE"
+elif [ "$FURY_REQUIRED_SKILL_OK" != "true" ]; then
+  append_check "fury_manifest" false "not_run" "FURY_REQUIRED_SKILL_UNAVAILABLE"
+elif [ "$FURY_MANIFEST_OK" = "true" ]; then
+  append_check "fury_manifest" true "passed"
+else
+  append_check "fury_manifest" false "failed" "$FURY_MANIFEST_FAILURE_CODE"
+  record_failure "$FURY_MANIFEST_FAILURE_CODE" "fury_manifest" 10
+fi
+
+if [ "$PROVIDER_INVENTORY_OK" != "true" ]; then
+  append_check "fury_mcp_declaration" false "not_run" "$PROVIDER_INVENTORY_FAILURE_CODE"
+elif [ "$FURY_PLUGIN_OK" != "true" ]; then
+  append_check "fury_mcp_declaration" false "not_run" "$FURY_PLUGIN_FAILURE_CODE"
+elif [ "$FURY_REQUIRED_SKILL_OK" != "true" ]; then
+  append_check "fury_mcp_declaration" false "not_run" "FURY_REQUIRED_SKILL_UNAVAILABLE"
+elif [ "$FURY_MANIFEST_OK" != "true" ]; then
+  append_check "fury_mcp_declaration" false "not_run" "$FURY_MANIFEST_FAILURE_CODE"
+elif [ "$FURY_MCP_DECLARATION_OK" = "true" ]; then
+  append_check "fury_mcp_declaration" true "passed"
+else
+  append_check "fury_mcp_declaration" false "failed" "$FURY_MCP_DECLARATION_FAILURE_CODE"
+  record_failure "$FURY_MCP_DECLARATION_FAILURE_CODE" "fury_mcp_declaration" 10
+fi
+
+if [ "$PROVIDER_INVENTORY_OK" != "true" ]; then
+  append_check "fury_mcp_cli" false "not_run" "$PROVIDER_INVENTORY_FAILURE_CODE"
+elif [ "$FURY_PLUGIN_OK" != "true" ]; then
+  append_check "fury_mcp_cli" false "not_run" "$FURY_PLUGIN_FAILURE_CODE"
+elif [ "$FURY_REQUIRED_SKILL_OK" != "true" ]; then
+  append_check "fury_mcp_cli" false "not_run" "FURY_REQUIRED_SKILL_UNAVAILABLE"
+elif [ "$FURY_MANIFEST_OK" != "true" ]; then
+  append_check "fury_mcp_cli" false "not_run" "$FURY_MANIFEST_FAILURE_CODE"
+elif [ "$FURY_MCP_DECLARATION_OK" != "true" ]; then
+  append_check "fury_mcp_cli" false "not_run" "$FURY_MCP_DECLARATION_FAILURE_CODE"
+elif [ "$FURY_MCP_CLI_OK" = "true" ]; then
+  append_check "fury_mcp_cli" true "passed"
+else
+  append_check "fury_mcp_cli" false "failed" "$FURY_MCP_CLI_FAILURE_CODE"
+  record_failure "$FURY_MCP_CLI_FAILURE_CODE" "fury_mcp_cli" 10
+fi
+
+GRID_PLUGIN_VERSION_VALID=false
+ENCODED_GRID_PLUGIN_VERSION=""
+if [ -n "$GRID_PLUGIN_VERSION" ] && is_strict_semver "$GRID_PLUGIN_VERSION"; then
+  GRID_PLUGIN_VERSION_VALID=true
+  ENCODED_GRID_PLUGIN_VERSION="$(jq -nr --arg version "$GRID_PLUGIN_VERSION" '$version | @uri')"
 fi
 
 run_probe "ping" "$API_BASE_URL$PING_ENDPOINT"
 
 if [ "$LAST_PROBE_OK" != "true" ]; then
-  if [ "$PLUGIN_VERSION_VALID" = "true" ]; then
+  if [ "$GRID_PLUGIN_VERSION_VALID" = "true" ]; then
     append_not_run_check "skill_version" "$LAST_PROBE_FAILURE_CODE"
-  elif [ -n "$PLUGIN_VERSION" ]; then
+  elif [ -n "$GRID_PLUGIN_VERSION" ]; then
     append_check "skill_version" false "failed" "PLUGIN_VERSION_INVALID"
     record_failure "PLUGIN_VERSION_INVALID" "skill_version" 21
   else
@@ -987,10 +1436,10 @@ if [ "$LAST_PROBE_OK" != "true" ]; then
   emit_result
 fi
 
-if [ "$PLUGIN_VERSION_VALID" = "true" ]; then
-  run_probe "skill_version" "$API_BASE_URL$SKILL_VERSION_ENDPOINT?current_version=$ENCODED_PLUGIN_VERSION"
+if [ "$GRID_PLUGIN_VERSION_VALID" = "true" ]; then
+  run_probe "skill_version" "$API_BASE_URL$SKILL_VERSION_ENDPOINT?current_version=$ENCODED_GRID_PLUGIN_VERSION"
 else
-  if [ -n "$PLUGIN_VERSION" ]; then
+  if [ -n "$GRID_PLUGIN_VERSION" ]; then
     append_check "skill_version" false "failed" "PLUGIN_VERSION_INVALID"
     record_failure "PLUGIN_VERSION_INVALID" "skill_version" 21
   else
