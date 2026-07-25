@@ -402,15 +402,16 @@ CODEX_INVENTORY_SCENARIO=fury-missing
 run_runner list
 unset CODEX_INVENTORY_SCENARIO
 assert_equal 0 "$LAST_STATUS" "auto provider selection should reach complete Claude"
-assert_contains "$INVENTORY_LOG" 'codex inventory' "auto mode should evaluate Codex after unsupported Copilot"
+assert_contains "$INVENTORY_LOG" 'codex inventory' "auto mode should evaluate Codex first"
 assert_contains "$INVENTORY_LOG" 'claude inventory' "auto mode should evaluate Claude after incomplete Codex"
 assert_not_contains "$MCP_LOG" 'codex mcp' "Codex missing Fury must not reach MCP CLI inspection"
 assert_contains "$MCP_LOG" 'claude mcp' "complete Claude should inspect Fury MCP"
+assert_equal 2 "$(grep -c '/ping$' "$CURL_LOG")" "operational auto must not run readiness probes for unsupported Copilot"
 assert_not_contains "$CHILD_LOG" 'copilot child' "unsupported Copilot must not be selected"
 assert_not_contains "$CHILD_LOG" 'codex child args=' "incomplete Codex must not receive the prompt"
 assert_equal 1 "$(grep -c '^claude child args=' "$CHILD_LOG")" "Claude should be selected exactly once"
 assert_contains "$CHILD_LOG" 'provider=claude' "auto mode should expose Claude as active provider"
-printf 'ok - auto skips Copilot, rejects Fury-missing Codex, and selects Claude\n'
+printf 'ok - auto avoids Copilot readiness, rejects Fury-missing Codex, and selects Claude\n'
 
 run_runner --provider codex stats
 assert_equal 0 "$LAST_STATUS" "complete explicit Codex should launch"

@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # run-groot-queue.sh — Execute groot-queue commands using the configured provider.
-# Provider auto-detection order: copilot > codex > claude.
+# Non-operational auto order: copilot > codex > claude.
+# Operational auto order: codex > claude (Copilot has no readiness inventory API).
 
 set -euo pipefail
 umask 077
@@ -53,7 +54,7 @@ usage() {
     printf '  --reasoning-effort E, -e E         Sobrescribir esfuerzo (low/medium/high/max)\n'
     printf '  --provider P                       Usar provider (auto/copilot/codex/claude)\n'
     printf '  --help, -h                         Mostrar esta ayuda antes del subcomando\n\n'
-    printf 'En modo auto se evalúan copilot, codex y claude en ese orden.\n'
+    printf 'En comandos operativos, auto evalúa codex y claude; setup/help también admite copilot.\n'
 }
 
 fail() {
@@ -183,7 +184,7 @@ resolve_operational_provider() {
         return 1
     fi
 
-    for candidate_provider in copilot codex claude; do
+    for candidate_provider in codex claude; do
         if run_readiness "$candidate_provider"; then
             RESOLVED_EVAL_PROVIDER="$candidate_provider"
             return 0
