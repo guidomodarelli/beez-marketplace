@@ -63,9 +63,7 @@ append_check() {
   local http_status="${6:-}"
   local retry_after_seconds="${7:-}"
 
-  CHECKS_JSON="$({
-    printf '%s' "$CHECKS_JSON"
-  } | jq -c \
+  CHECKS_JSON="$(printf '%s' "$CHECKS_JSON" | jq -c \
     --arg name "$check_name" \
     --argjson ok "$check_ok" \
     --arg status "$check_status" \
@@ -105,9 +103,7 @@ record_failure() {
   local exit_code="$3"
   local priority
 
-  FAILURES_JSON="$({
-    printf '%s' "$FAILURES_JSON"
-  } | jq -c \
+  FAILURES_JSON="$(printf '%s' "$FAILURES_JSON" | jq -c \
     --arg code "$failure_code" \
     --arg check "$check_name" \
     --argjson exit_code "$exit_code" \
@@ -122,17 +118,10 @@ record_failure() {
 
 emit_result() {
   local result_ok=false
-  local provider_json
   local result_json
 
   if [ "$SELECTED_EXIT_CODE" -eq 0 ]; then
     result_ok=true
-  fi
-
-  if [ -n "$RESOLVED_PROVIDER" ]; then
-    provider_json="$(jq -nc --arg provider "$RESOLVED_PROVIDER" '$provider')"
-  else
-    provider_json='null'
   fi
 
   if [ -z "$RESULT_CHECKED_AT_EPOCH" ]; then
@@ -141,7 +130,7 @@ emit_result() {
 
   result_json="$(jq -nc \
     --argjson schema_version "$SCHEMA_VERSION" \
-    --argjson provider "$provider_json" \
+    --arg provider "$RESOLVED_PROVIDER" \
     --argjson ok "$result_ok" \
     --argjson exit_code "$SELECTED_EXIT_CODE" \
     --arg source "$RESULT_SOURCE" \
@@ -150,7 +139,7 @@ emit_result() {
     --argjson failures "$FAILURES_JSON" \
     '{
       schema_version: $schema_version,
-      provider: $provider,
+      provider: (if $provider == "" then null else $provider end),
       ok: $ok,
       exit_code: $exit_code,
       active_context: null,
@@ -222,7 +211,7 @@ validate_configuration() {
     ($config.api.base_url | type == "string") and
     ($config.api.base_url | test("^https://[A-Za-z0-9.-]+$")) and
     ($config.api.endpoints | type == "object") and
-    (($config.api.endpoints | keys | sort) == ["document", "documents", "identity", "ping", "skill_version"]) and
+    (($config.api.endpoints | keys | sort) == ["documents", "identity", "ping", "skill_version"]) and
     all($config.api.endpoints[]; (type == "string") and test("^/[A-Za-z0-9/_-]+$")) and
     ($config.required_document.name | type == "string") and
     ($config.required_document.id | type == "string") and
@@ -262,14 +251,11 @@ create_temp_directory() {
 
 get_file_owner() {
   local file_path="$1"
+  local file_owner
 
-  if stat -f '%u' "$file_path" >/dev/null 2>&1; then
-    stat -f '%u' "$file_path" 2>/dev/null
-    return 0
-  fi
-
-  if stat -c '%u' "$file_path" >/dev/null 2>&1; then
-    stat -c '%u' "$file_path" 2>/dev/null
+  if file_owner="$(stat -f '%u' "$file_path" 2>/dev/null)" \
+    || file_owner="$(stat -c '%u' "$file_path" 2>/dev/null)"; then
+    printf '%s' "$file_owner"
     return 0
   fi
 
@@ -278,14 +264,11 @@ get_file_owner() {
 
 get_file_mode() {
   local file_path="$1"
+  local file_mode
 
-  if stat -f '%Lp' "$file_path" >/dev/null 2>&1; then
-    stat -f '%Lp' "$file_path" 2>/dev/null
-    return 0
-  fi
-
-  if stat -c '%a' "$file_path" >/dev/null 2>&1; then
-    stat -c '%a' "$file_path" 2>/dev/null
+  if file_mode="$(stat -f '%Lp' "$file_path" 2>/dev/null)" \
+    || file_mode="$(stat -c '%a' "$file_path" 2>/dev/null)"; then
+    printf '%s' "$file_mode"
     return 0
   fi
 
@@ -418,9 +401,11 @@ reset_inventory_state() {
 inspect_provider_inventory() {
   local provider="$1"
   local inventory_file="$TEMP_DIRECTORY/${provider}-inventory.json"
+  local normalized_inventory_file="$TEMP_DIRECTORY/${provider}-plugin.json"
   local plugin_count
-  local plugin_enabled
   local plugin_installed
+  local plugin_enabled
+  local plugin_values
   local required_skill_file
 
   reset_inventory_state
@@ -443,91 +428,71 @@ inspect_provider_inventory() {
         INVENTORY_FAILURE_CODE="PROVIDER_INVENTORY_FAILED"
         return 0
       fi
-
       if ! jq -e 'type == "array" and all(.[]; type == "object")' "$inventory_file" >/dev/null 2>&1; then
         INVENTORY_FAILURE_CODE="PROVIDER_INVENTORY_INVALID"
         return 0
       fi
-
       plugin_count="$(jq -r --arg plugin_id "$PLUGIN_ID" '[.[] | select(.id == $plugin_id)] | length' "$inventory_file")"
-      if [ "$plugin_count" -eq 0 ]; then
-        INVENTORY_FAILURE_CODE="PLUGIN_NOT_INSTALLED"
-        return 0
-      fi
-      if [ "$plugin_count" -ne 1 ]; then
-        INVENTORY_FAILURE_CODE="PLUGIN_INVENTORY_AMBIGUOUS"
-        return 0
-      fi
-
-      plugin_enabled="$(jq -r --arg plugin_id "$PLUGIN_ID" '[.[] | select(.id == $plugin_id)][0].enabled' "$inventory_file")"
-      if [ "$plugin_enabled" != "true" ]; then
-        INVENTORY_FAILURE_CODE="PLUGIN_DISABLED"
-        return 0
-      fi
-
-      if ! jq -e --arg plugin_id "$PLUGIN_ID" '
-        [.[] | select(.id == $plugin_id)][0] as $plugin |
-        ($plugin.version | type == "string") and
-        ($plugin.version | length > 0) and
-        ($plugin.installPath | type == "string") and
-        ($plugin.installPath | startswith("/")) and
-        (($plugin.installPath | test("[[:cntrl:]]")) | not)
-      ' "$inventory_file" >/dev/null 2>&1; then
-        INVENTORY_FAILURE_CODE="PLUGIN_INVENTORY_INVALID"
-        return 0
-      fi
-
-      PLUGIN_VERSION="$(jq -er --arg plugin_id "$PLUGIN_ID" '[.[] | select(.id == $plugin_id)][0].version' "$inventory_file")"
-      PLUGIN_INSTALL_PATH="$(jq -er --arg plugin_id "$PLUGIN_ID" '[.[] | select(.id == $plugin_id)][0].installPath' "$inventory_file")"
+      jq -ec --arg plugin_id "$PLUGIN_ID" '
+        [.[] | select(.id == $plugin_id)][0]
+        | {installed: true, enabled: (.enabled == true), version, path: .installPath}
+      ' "$inventory_file" > "$normalized_inventory_file"
       ;;
     codex)
       if ! codex plugin list --marketplace tech-plugins-marketplace --json > "$inventory_file" 2>/dev/null; then
         INVENTORY_FAILURE_CODE="PROVIDER_INVENTORY_FAILED"
         return 0
       fi
-
       if ! jq -e 'type == "object" and (.installed | type == "array") and all(.installed[]; type == "object")' "$inventory_file" >/dev/null 2>&1; then
         INVENTORY_FAILURE_CODE="PROVIDER_INVENTORY_INVALID"
         return 0
       fi
-
       plugin_count="$(jq -r --arg plugin_id "$PLUGIN_ID" '[.installed[] | select(.pluginId == $plugin_id)] | length' "$inventory_file")"
-      if [ "$plugin_count" -eq 0 ]; then
-        INVENTORY_FAILURE_CODE="PLUGIN_NOT_INSTALLED"
-        return 0
-      fi
-      if [ "$plugin_count" -ne 1 ]; then
-        INVENTORY_FAILURE_CODE="PLUGIN_INVENTORY_AMBIGUOUS"
-        return 0
-      fi
-
-      plugin_installed="$(jq -r --arg plugin_id "$PLUGIN_ID" '[.installed[] | select(.pluginId == $plugin_id)][0].installed' "$inventory_file")"
-      plugin_enabled="$(jq -r --arg plugin_id "$PLUGIN_ID" '[.installed[] | select(.pluginId == $plugin_id)][0].enabled' "$inventory_file")"
-      if [ "$plugin_installed" != "true" ]; then
-        INVENTORY_FAILURE_CODE="PLUGIN_NOT_INSTALLED"
-        return 0
-      fi
-      if [ "$plugin_enabled" != "true" ]; then
-        INVENTORY_FAILURE_CODE="PLUGIN_DISABLED"
-        return 0
-      fi
-
-      if ! jq -e --arg plugin_id "$PLUGIN_ID" '
-        [.installed[] | select(.pluginId == $plugin_id)][0] as $plugin |
-        ($plugin.version | type == "string") and
-        ($plugin.version | length > 0) and
-        ($plugin.source.path | type == "string") and
-        ($plugin.source.path | startswith("/")) and
-        (($plugin.source.path | test("[[:cntrl:]]")) | not)
-      ' "$inventory_file" >/dev/null 2>&1; then
-        INVENTORY_FAILURE_CODE="PLUGIN_INVENTORY_INVALID"
-        return 0
-      fi
-
-      PLUGIN_VERSION="$(jq -er --arg plugin_id "$PLUGIN_ID" '[.installed[] | select(.pluginId == $plugin_id)][0].version' "$inventory_file")"
-      PLUGIN_INSTALL_PATH="$(jq -er --arg plugin_id "$PLUGIN_ID" '[.installed[] | select(.pluginId == $plugin_id)][0].source.path' "$inventory_file")"
+      jq -ec --arg plugin_id "$PLUGIN_ID" '
+        [.installed[] | select(.pluginId == $plugin_id)][0]
+        | {installed: (.installed == true), enabled: (.enabled == true), version, path: .source.path}
+      ' "$inventory_file" > "$normalized_inventory_file"
       ;;
   esac
+
+  if [ "$plugin_count" -eq 0 ]; then
+    INVENTORY_FAILURE_CODE="PLUGIN_NOT_INSTALLED"
+    return 0
+  fi
+  if [ "$plugin_count" -ne 1 ]; then
+    INVENTORY_FAILURE_CODE="PLUGIN_INVENTORY_AMBIGUOUS"
+    return 0
+  fi
+
+  if ! plugin_values="$(jq -er '
+    select(
+      type == "object" and
+      (.installed | type == "boolean") and
+      (.enabled | type == "boolean") and
+      (.version | type == "string") and
+      (.version | length > 0) and
+      (.path | type == "string") and
+      (.path | startswith("/")) and
+      ((.path | test("[[:cntrl:]]")) | not)
+    )
+    | [.installed, .enabled, .version, .path]
+    | @tsv
+  ' "$normalized_inventory_file")"; then
+    INVENTORY_FAILURE_CODE="PLUGIN_INVENTORY_INVALID"
+    return 0
+  fi
+
+  IFS=$'\t' read -r plugin_installed plugin_enabled PLUGIN_VERSION PLUGIN_INSTALL_PATH <<EOF
+$plugin_values
+EOF
+  if [ "$plugin_installed" != "true" ]; then
+    INVENTORY_FAILURE_CODE="PLUGIN_NOT_INSTALLED"
+    return 0
+  fi
+  if [ "$plugin_enabled" != "true" ]; then
+    INVENTORY_FAILURE_CODE="PLUGIN_DISABLED"
+    return 0
+  fi
 
   INVENTORY_OK=true
   required_skill_file="${PLUGIN_INSTALL_PATH%/}/$REQUIRED_SKILL_PATH"
@@ -639,12 +604,10 @@ request_http() {
   HTTP_RETRY_AFTER_SECONDS=""
   HTTP_BODY_FILE="$TEMP_DIRECTORY/http-body"
   HTTP_HEADERS_FILE="$TEMP_DIRECTORY/http-headers"
-  local curl_error_file="$TEMP_DIRECTORY/curl-error"
 
   while [ "$attempt" -le "$max_attempts" ]; do
     : > "$HTTP_BODY_FILE"
     : > "$HTTP_HEADERS_FILE"
-    : > "$curl_error_file"
     curl_succeeded=false
 
     if HTTP_STATUS="$(curl \
@@ -660,7 +623,7 @@ request_http() {
       --output "$HTTP_BODY_FILE" \
       --write-out '%{http_code}' \
       --url "$url" \
-      2> "$curl_error_file")"; then
+      2>/dev/null)"; then
       curl_succeeded=true
     fi
 
@@ -795,15 +758,64 @@ validate_response_contract() {
 run_probe() {
   local check_name="$1"
   local url="$2"
-  local response_contract="$3"
-  local default_exit_code="$4"
-  local default_failure_code="$5"
-  local forbidden_failure_code="$6"
-  local not_found_failure_code="$7"
-  local invalid_json_failure_code="$8"
-  local identity_on_unauthorized="$9"
+  local response_contract
+  local default_exit_code
+  local default_failure_code
+  local forbidden_failure_code
+  local not_found_failure_code
+  local invalid_json_failure_code
+  local identity_on_unauthorized
   local failure_code=""
-  local failure_exit_code="$default_exit_code"
+  local failure_exit_code
+
+  case "$check_name" in
+    ping)
+      response_contract="ping"
+      default_exit_code=20
+      default_failure_code="GRID_PING_FAILED"
+      forbidden_failure_code="GRID_PING_FORBIDDEN"
+      not_found_failure_code="GRID_PING_NOT_FOUND"
+      invalid_json_failure_code="GRID_PING_RESPONSE_INVALID"
+      identity_on_unauthorized=false
+      ;;
+    skill_version)
+      response_contract="skill_version"
+      default_exit_code=21
+      default_failure_code="PLUGIN_VERSION_INCOMPATIBLE"
+      forbidden_failure_code="PLUGIN_VERSION_FORBIDDEN"
+      not_found_failure_code="PLUGIN_VERSION_ENDPOINT_NOT_FOUND"
+      invalid_json_failure_code="PLUGIN_VERSION_RESPONSE_INVALID"
+      identity_on_unauthorized=true
+      ;;
+    identity)
+      response_contract="identity"
+      default_exit_code=22
+      default_failure_code="GRID_IDENTITY_UNAVAILABLE"
+      forbidden_failure_code="GRID_IDENTITY_FORBIDDEN"
+      not_found_failure_code="GRID_IDENTITY_ENDPOINT_NOT_FOUND"
+      invalid_json_failure_code="GRID_IDENTITY_RESPONSE_INVALID"
+      identity_on_unauthorized=true
+      ;;
+    general_read)
+      response_contract="general_read"
+      default_exit_code=23
+      default_failure_code="GENERAL_READ_FAILED"
+      forbidden_failure_code="GENERAL_READ_FORBIDDEN"
+      not_found_failure_code="GENERAL_READ_ENDPOINT_NOT_FOUND"
+      invalid_json_failure_code="GENERAL_READ_RESPONSE_INVALID"
+      identity_on_unauthorized=true
+      ;;
+    required_document)
+      response_contract="required_document"
+      default_exit_code=24
+      default_failure_code="REQUIRED_DOCUMENT_READ_FAILED"
+      forbidden_failure_code="REQUIRED_DOCUMENT_FORBIDDEN"
+      not_found_failure_code="REQUIRED_DOCUMENT_NOT_FOUND"
+      invalid_json_failure_code="REQUIRED_DOCUMENT_RESPONSE_INVALID"
+      identity_on_unauthorized=true
+      ;;
+  esac
+  failure_exit_code="$default_exit_code"
 
   LAST_PROBE_OK=false
   LAST_PROBE_FAILURE_CODE=""
@@ -891,20 +903,37 @@ if [ ! -f "$CONFIG_FILE" ] || [ ! -r "$CONFIG_FILE" ] || ! validate_configuratio
   emit_result
 fi
 
-SCHEMA_VERSION="$(jq -er '.schema_version' "$CONFIG_FILE")"
-PLUGIN_ID="$(jq -er '.plugin.id' "$CONFIG_FILE")"
-REQUIRED_SKILL_PATH="$(jq -er '.plugin.required_skill_path' "$CONFIG_FILE")"
-API_BASE_URL="$(jq -er '.api.base_url' "$CONFIG_FILE")"
-PING_ENDPOINT="$(jq -er '.api.endpoints.ping' "$CONFIG_FILE")"
-SKILL_VERSION_ENDPOINT="$(jq -er '.api.endpoints.skill_version' "$CONFIG_FILE")"
-IDENTITY_ENDPOINT="$(jq -er '.api.endpoints.identity' "$CONFIG_FILE")"
-DOCUMENTS_ENDPOINT="$(jq -er '.api.endpoints.documents' "$CONFIG_FILE")"
-DOCUMENT_ENDPOINT="$(jq -er '.api.endpoints.document' "$CONFIG_FILE")"
-REQUIRED_DOCUMENT_ID="$(jq -er '.required_document.id' "$CONFIG_FILE")"
-CONNECT_TIMEOUT_SECONDS="$(jq -er '.network.connect_timeout_seconds' "$CONFIG_FILE")"
-MAX_TIME_SECONDS="$(jq -er '.network.max_time_seconds' "$CONFIG_FILE")"
-MAX_RETRIES="$(jq -er '.network.max_retries' "$CONFIG_FILE")"
-REUSE_RESULT_MAX_AGE_SECONDS="$(jq -er '.reuse_result.max_age_seconds' "$CONFIG_FILE")"
+CONFIG_VALUES="$(jq -er '[
+  .schema_version,
+  .plugin.id,
+  .plugin.required_skill_path,
+  .api.base_url,
+  .api.endpoints.ping,
+  .api.endpoints.skill_version,
+  .api.endpoints.identity,
+  .api.endpoints.documents,
+  .required_document.id,
+  .network.connect_timeout_seconds,
+  .network.max_time_seconds,
+  .network.max_retries,
+  .reuse_result.max_age_seconds
+] | @tsv' "$CONFIG_FILE")"
+IFS=$'\t' read -r \
+  SCHEMA_VERSION \
+  PLUGIN_ID \
+  REQUIRED_SKILL_PATH \
+  API_BASE_URL \
+  PING_ENDPOINT \
+  SKILL_VERSION_ENDPOINT \
+  IDENTITY_ENDPOINT \
+  DOCUMENTS_ENDPOINT \
+  REQUIRED_DOCUMENT_ID \
+  CONNECT_TIMEOUT_SECONDS \
+  MAX_TIME_SECONDS \
+  MAX_RETRIES \
+  REUSE_RESULT_MAX_AGE_SECONDS <<EOF
+$CONFIG_VALUES
+EOF
 append_check "configuration" true "passed"
 
 if ! create_temp_directory; then
@@ -915,12 +944,7 @@ fi
 
 try_reuse_result || true
 
-INVENTORY_OK=false
-REQUIRED_SKILL_OK=false
-INVENTORY_FAILURE_CODE=""
-INVENTORY_EXIT_CODE=10
-PLUGIN_VERSION=""
-PLUGIN_INSTALL_PATH=""
+reset_inventory_state
 resolve_provider
 
 if [ "$INVENTORY_OK" = "true" ]; then
@@ -946,16 +970,7 @@ if [ -n "$PLUGIN_VERSION" ] && is_strict_semver "$PLUGIN_VERSION"; then
   ENCODED_PLUGIN_VERSION="$(jq -nr --arg version "$PLUGIN_VERSION" '$version | @uri')"
 fi
 
-run_probe \
-  "ping" \
-  "$API_BASE_URL$PING_ENDPOINT" \
-  "ping" \
-  20 \
-  "GRID_PING_FAILED" \
-  "GRID_PING_FORBIDDEN" \
-  "GRID_PING_NOT_FOUND" \
-  "GRID_PING_RESPONSE_INVALID" \
-  "false"
+run_probe "ping" "$API_BASE_URL$PING_ENDPOINT"
 
 if [ "$LAST_PROBE_OK" != "true" ]; then
   if [ "$PLUGIN_VERSION_VALID" = "true" ]; then
@@ -973,16 +988,7 @@ if [ "$LAST_PROBE_OK" != "true" ]; then
 fi
 
 if [ "$PLUGIN_VERSION_VALID" = "true" ]; then
-  run_probe \
-    "skill_version" \
-    "$API_BASE_URL$SKILL_VERSION_ENDPOINT?current_version=$ENCODED_PLUGIN_VERSION" \
-    "skill_version" \
-    21 \
-    "PLUGIN_VERSION_INCOMPATIBLE" \
-    "PLUGIN_VERSION_FORBIDDEN" \
-    "PLUGIN_VERSION_ENDPOINT_NOT_FOUND" \
-    "PLUGIN_VERSION_RESPONSE_INVALID" \
-    "true"
+  run_probe "skill_version" "$API_BASE_URL$SKILL_VERSION_ENDPOINT?current_version=$ENCODED_PLUGIN_VERSION"
 else
   if [ -n "$PLUGIN_VERSION" ]; then
     append_check "skill_version" false "failed" "PLUGIN_VERSION_INVALID"
@@ -1001,16 +1007,7 @@ if [ "$LAST_PROBE_FAILURE_CODE" = "GRID_RATE_LIMITED" ]; then
   emit_result
 fi
 
-run_probe \
-  "identity" \
-  "$API_BASE_URL$IDENTITY_ENDPOINT" \
-  "identity" \
-  22 \
-  "GRID_IDENTITY_UNAVAILABLE" \
-  "GRID_IDENTITY_FORBIDDEN" \
-  "GRID_IDENTITY_ENDPOINT_NOT_FOUND" \
-  "GRID_IDENTITY_RESPONSE_INVALID" \
-  "true"
+run_probe "identity" "$API_BASE_URL$IDENTITY_ENDPOINT"
 
 if [ "$LAST_PROBE_OK" != "true" ]; then
   append_not_run_check "general_read" "$LAST_PROBE_FAILURE_CODE"
@@ -1018,31 +1015,13 @@ if [ "$LAST_PROBE_OK" != "true" ]; then
   emit_result
 fi
 
-run_probe \
-  "general_read" \
-  "$API_BASE_URL$DOCUMENTS_ENDPOINT?scope=owned&limit=1" \
-  "general_read" \
-  23 \
-  "GENERAL_READ_FAILED" \
-  "GENERAL_READ_FORBIDDEN" \
-  "GENERAL_READ_ENDPOINT_NOT_FOUND" \
-  "GENERAL_READ_RESPONSE_INVALID" \
-  "true"
+run_probe "general_read" "$API_BASE_URL$DOCUMENTS_ENDPOINT?scope=owned&limit=1"
 
 if [ "$LAST_PROBE_FAILURE_CODE" = "GRID_RATE_LIMITED" ]; then
   append_not_run_check "required_document" "GRID_RATE_LIMITED"
   emit_result
 fi
 
-run_probe \
-  "required_document" \
-  "$API_BASE_URL$DOCUMENT_ENDPOINT/$REQUIRED_DOCUMENT_ID" \
-  "required_document" \
-  24 \
-  "REQUIRED_DOCUMENT_READ_FAILED" \
-  "REQUIRED_DOCUMENT_FORBIDDEN" \
-  "REQUIRED_DOCUMENT_NOT_FOUND" \
-  "REQUIRED_DOCUMENT_RESPONSE_INVALID" \
-  "true"
+run_probe "required_document" "$API_BASE_URL$DOCUMENTS_ENDPOINT/$REQUIRED_DOCUMENT_ID"
 
 emit_result

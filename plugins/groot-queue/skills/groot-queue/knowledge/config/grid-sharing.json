@@ -10,8 +10,7 @@
       "ping": "/ping",
       "skill_version": "/skill/version",
       "identity": "/api/v1/me",
-      "documents": "/api/v1/documents",
-      "document": "/api/v1/documents"
+      "documents": "/api/v1/documents"
     }
   },
   "required_document": {

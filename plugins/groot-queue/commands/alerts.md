@@ -3,8 +3,6 @@ description: Detecta tickets vencidos y por vencer, agrupa por responsable y env
 argument-hint: [--dry-run]
 ---
 
-Si `$ARGUMENTS` contiene el token exacto `--help` o `-h`, leé el subcomando y respondé su ayuda sin ejecutar tools.
+Leé y aplicá `~/.claude/skills/groot-queue/knowledge/config/command-entrypoint.md` para el subcomando canónico `alerts`, los argumentos `$ARGUMENTS` y el provider `claude`.
 
-En otro caso, antes de leer el subcomando, leé y aplicá `~/.claude/skills/groot-queue/knowledge/config/grid-sharing-preflight.md`. Ejecutá el checker con provider `claude`; si existe `GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE`, pasalo mediante `--reuse-result` para que el checker lo valide. Continuá solo con exit code `0` y JSON `ok: true`, y conservá ese resultado validado durante toda la invocación sin repetir el gate.
-
-Luego leé y seguí literalmente `~/.claude/skills/groot-queue/subcommands/alerts.md`, aplicándolo a `$ARGUMENTS`.
+Solo si el entrypoint habilita la ejecución, leé y seguí literalmente `~/.claude/skills/groot-queue/subcommands/alerts.md`, aplicándolo a `$ARGUMENTS` y conservando el resultado validado de Grid cuando corresponda.

@@ -50,23 +50,15 @@ Parsear el primer token después de `/groot-queue`. Si coincide con un alias, re
 
 Si el token resuelto no corresponde a un subcomando disponible, o si no hay token, resolver la invocación a `start`. La entrada vacía y la desconocida no son ayuda ni están exentas del gate.
 
-### Paso 2 — Detectar ayuda antes de usar tools
+### Paso 2 — Resolver provider y aplicar el entrypoint
 
-Inspeccionar los tokens completos de la invocación. Si alguno es exactamente `--help` o `-h`, no ejecutar el gate, shell, Jira, Slack ni ninguna otra tool. Para `setup`, responder directamente desde su descripción del índice: verifica ACLI, MCPs, permisos, TEAM y el preflight completo de Grid Sharing, sin instalar ni modificar nada sin autorización explícita. Para los demás comandos, responder la ayuda correspondiente al subcomando resuelto. No considerar coincidencias parciales como `--help=true` o texto que solo contenga esas cadenas.
+Identificar el provider activo como `claude`, `codex` o `copilot`. Usar `GROOT_QUEUE_ACTIVE_PROVIDER` cuando el launcher lo haya definido con uno de esos valores; en otro caso usar el provider que ejecuta esta skill. Usar `auto` solamente cuando el contexto no permita distinguirlo.
 
-### Paso 3 — Aplicar el gate global
+Antes de leer el archivo del subcomando, leer y aplicar `$SKILL_DIR/knowledge/config/command-entrypoint.md` con el subcomando canónico resuelto, los tokens completos de la invocación y el provider. Si el entrypoint deshabilita la ejecución, detenerse.
 
-`setup` está exento del gate global porque ejecuta su propio diagnóstico completo. Para cualquier otro subcomando, incluido `start`:
+### Paso 3 — Despachar
 
-1. Antes de leer el archivo del subcomando, Jira, Slack o realizar escrituras, leer y aplicar `$SKILL_DIR/knowledge/config/grid-sharing-preflight.md`.
-2. Identificar el provider activo como `claude`, `codex` o `copilot`. Usar `GROOT_QUEUE_ACTIVE_PROVIDER` cuando el launcher lo haya definido con uno de esos valores; en otro caso usar el provider que ejecuta esta skill. Usar `auto` solamente cuando el contexto no permita distinguirlo.
-3. Ejecutar `$SKILL_DIR/scripts/check-groot-queue-readiness.sh --provider <provider>`. Si existe `GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE`, pasar además `--reuse-result "$GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE"`; nunca confiar directamente en la variable ni leer el archivo por cuenta propia.
-4. Continuar solo si el checker termina con exit code `0` y su JSON contiene `ok: true`. Ante cualquier otro resultado, detener la invocación y presentar en español la remediación correspondiente a sus failure codes según el contrato central, sin exponer bodies, identidad, tokens ni paths de instalación.
-5. Conservar el JSON exitoso como resultado validado de Grid durante toda la invocación. Compartir ese estado con el subcomando y con cualquier delegación interna; no volver a ejecutar probes ni el checker dentro de la misma invocación.
-
-### Paso 4 — Despachar
-
-Leer `$SKILL_DIR/subcommands/<subcomando-resuelto>.md`, seguir literalmente sus instrucciones y pasarle los argumentos restantes junto con el resultado de Grid ya validado cuando corresponda.
+Solo si el entrypoint habilita la ejecución, leer `$SKILL_DIR/subcommands/<subcomando-resuelto>.md`, seguir literalmente sus instrucciones y pasarle los argumentos restantes junto con el resultado de Grid ya validado cuando corresponda.
 
 Ejemplos:
 

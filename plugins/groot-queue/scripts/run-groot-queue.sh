@@ -120,15 +120,15 @@ read_preflight_failure_codes() {
         return 0
     fi
 
-    if jq -e 'type == "object" and (.failures | type == "array")' "$PREFLIGHT_RESULT_FILE" >/dev/null 2>&1; then
-        failure_codes="$(jq -r '[.failures[].code | select(type == "string")] | unique | join(", ")' "$PREFLIGHT_RESULT_FILE" 2>/dev/null || true)"
-    fi
+    failure_codes="$(jq -er '
+        select(type == "object" and (.failures | type == "array"))
+        | [.failures[].code | select(type == "string")]
+        | unique
+        | join(", ")
+        | select(length > 0)
+    ' "$PREFLIGHT_RESULT_FILE" 2>/dev/null || true)"
 
-    if [ -z "$failure_codes" ]; then
-        failure_codes='PREFLIGHT_RESULT_INVALID'
-    fi
-
-    printf '%s' "$failure_codes"
+    printf '%s' "${failure_codes:-PREFLIGHT_RESULT_INVALID}"
 }
 
 run_preflight() {
@@ -315,8 +315,6 @@ fi
 
 if [ "$OPERATIONAL_COMMAND" = 'true' ]; then
     PREFLIGHT_RESULT_FILE="$SKILL_CWD/grid-sharing-preflight-result.json"
-    : > "$PREFLIGHT_RESULT_FILE"
-    chmod 600 "$PREFLIGHT_RESULT_FILE"
 
     if ! resolve_operational_provider; then
         exit 1
