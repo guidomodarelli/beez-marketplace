@@ -1,5 +1,7 @@
 ---
-description: Verifica e instala dependencias necesarias (ACLI, Atlassian MCP, Slack MCP, permisos) para usar la skill groot-queue.
+description: Verifica dependencias, integraciones, permisos y Grid Sharing para usar la skill groot-queue.
 ---
 
-Leé y seguí literalmente las instrucciones de `~/.claude/skills/groot-queue/subcommands/setup.md`.
+Si `$ARGUMENTS` contiene el token exacto `--help` o `-h`, respondé sin ejecutar tools ni leer archivos adicionales: `setup` verifica ACLI, MCPs, permisos, TEAM y el preflight completo de Grid Sharing; no instala ni modifica nada sin autorización explícita.
+
+`setup` está exento del gate global. Sin ejecutar el checker desde este wrapper, leé y seguí literalmente `~/.claude/skills/groot-queue/subcommands/setup.md`, que realiza su propio diagnóstico completo, aplicándolo a `$ARGUMENTS`.

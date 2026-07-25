@@ -8,6 +8,12 @@
 
 Al ejecutar este subcomando, realizar los siguientes pasos **en orden**:
 
+### Paso 0: Exigir el resultado validado de Grid
+
+Consumir el resultado de Grid validado por el dispatcher o wrapper durante esta misma invocación. Debe provenir de una ejecución o reutilización verificada por `check-groot-queue-readiness.sh`, haber terminado con exit code `0` y contener `ok: true`.
+
+No confiar en la mera presencia de `GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE`, no leer ese archivo directamente y no repetir el checker ni ningún probe. Si el resultado validado no está disponible, detenerse antes del banner, de leer la versión, de ejecutar health-checks y de consultar Jira. Informar en español que el gate de Grid no fue validado y pedir ejecutar `/groot-queue setup` para diagnosticar el entorno antes de reintentar `start`.
+
 ### Paso 1: Resolver datos dinámicos
 
 Ejecutar **en paralelo** (para minimizar latencia):
@@ -20,6 +26,7 @@ Ejecutar **en paralelo** (para minimizar latencia):
 2. **Nombre del usuario**: Ejecutar `git config user.name`. Si falla, usar `"developer"`.
 
 3. **Health-check del entorno** (cada check es independiente):
+   - **Grid Sharing**: usar el resultado ya validado del Paso 0 → `✅ Grid Sharing`. No ejecutar ningún probe adicional.
    - **ACLI**: Ejecutar `which acli`. Si retorna 0 → `✅ ACLI`. Si falla → `❌ ACLI`.
    - **MCP Atlassian**: Verificar si existe MCP Atlassian configurado (buscar en la config del agente o con `claude mcp list 2>/dev/null | grep -i atlassian`). Si existe → `✅ Atlassian MCP`. Si no → `❌ Atlassian MCP`.
    - **MCP Slack**: Verificar si existe MCP Slack configurado (`claude mcp list 2>/dev/null | grep -i slack`). Si existe → `✅ Slack MCP`. Si no → `❌ Slack MCP`.
@@ -96,6 +103,7 @@ Antes de responder, verificar que stdout copiado contiene tanto `🟢 **/groot-q
 
 ## Reglas
 
+- El health-check debe incluir `✅ Grid Sharing` desde el resultado validado de la misma invocación; nunca repetir el checker ni probes de Grid.
 - Si ACLI no está disponible, **no fallar** — simplemente omitir la sección de conteo y marcar ACLI como ❌ en el health-check.
 - Si `claude mcp list` no está disponible (ej: Codex), marcar MCP checks como `⚠️ (no verificable)`.
 - Si el usuario responde con un comando válido después del prompt, dispatchar al subcomando correspondiente.

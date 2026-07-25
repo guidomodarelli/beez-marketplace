@@ -26,9 +26,11 @@ En los subcomandos, `$SKILL_DIR` refiere a ese directorio resuelto. No asumir un
 
 ## Dispatcher (importante)
 
-Al activarse la skill, parsear el primer token del input del usuario después de `/groot-queue` como subcomando.
+Al activarse la skill, aplicar este orden sin adelantar lecturas, tools ni acciones del subcomando.
 
-**Paso 1 — resolver alias:** si el token coincide con un alias, reemplazarlo por el subcomando canónico antes de continuar.
+### Paso 1 — Resolver comando y alias
+
+Parsear el primer token después de `/groot-queue`. Si coincide con un alias, reemplazarlo por el subcomando canónico:
 
 | Alias | Subcomando canónico |
 |-------|---------------------|
@@ -46,11 +48,25 @@ Al activarse la skill, parsear el primer token del input del usuario después de
 | `backfill` | `backfill-guides` |
 | `ar` | `add-rule` |
 
-**Paso 2 — despachar:**
+Si el token resuelto no corresponde a un subcomando disponible, o si no hay token, resolver la invocación a `start`. La entrada vacía y la desconocida no son ayuda ni están exentas del gate.
 
-- Si el subcomando (ya resuelto) coincide con uno de la tabla → **leer `subcommands/<subcomando>.md` y seguir literalmente sus instrucciones**, pasando el resto del input como argumentos.
-- Si el input contiene `--help`, igual debe tratarse como una consulta del subcomando: **no ejecutar Jira ni shell**, pero sí responder desde las instrucciones del archivo `subcommands/<subcomando>.md`.
-- Si el subcomando no existe o no se provee → **ejecutar `subcommands/start.md`** (equivalente a `/groot-queue start`).
+### Paso 2 — Detectar ayuda antes de usar tools
+
+Inspeccionar los tokens completos de la invocación. Si alguno es exactamente `--help` o `-h`, no ejecutar el gate, shell, Jira, Slack ni ninguna otra tool. Para `setup`, responder directamente desde su descripción del índice: verifica ACLI, MCPs, permisos, TEAM y el preflight completo de Grid Sharing, sin instalar ni modificar nada sin autorización explícita. Para los demás comandos, responder la ayuda correspondiente al subcomando resuelto. No considerar coincidencias parciales como `--help=true` o texto que solo contenga esas cadenas.
+
+### Paso 3 — Aplicar el gate global
+
+`setup` está exento del gate global porque ejecuta su propio diagnóstico completo. Para cualquier otro subcomando, incluido `start`:
+
+1. Antes de leer el archivo del subcomando, Jira, Slack o realizar escrituras, leer y aplicar `$SKILL_DIR/knowledge/config/grid-sharing-preflight.md`.
+2. Identificar el provider activo como `claude`, `codex` o `copilot`. Usar `GROOT_QUEUE_ACTIVE_PROVIDER` cuando el launcher lo haya definido con uno de esos valores; en otro caso usar el provider que ejecuta esta skill. Usar `auto` solamente cuando el contexto no permita distinguirlo.
+3. Ejecutar `$SKILL_DIR/scripts/check-groot-queue-readiness.sh --provider <provider>`. Si existe `GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE`, pasar además `--reuse-result "$GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE"`; nunca confiar directamente en la variable ni leer el archivo por cuenta propia.
+4. Continuar solo si el checker termina con exit code `0` y su JSON contiene `ok: true`. Ante cualquier otro resultado, detener la invocación y presentar en español la remediación correspondiente a sus failure codes según el contrato central, sin exponer bodies, identidad, tokens ni paths de instalación.
+5. Conservar el JSON exitoso como resultado validado de Grid durante toda la invocación. Compartir ese estado con el subcomando y con cualquier delegación interna; no volver a ejecutar probes ni el checker dentro de la misma invocación.
+
+### Paso 4 — Despachar
+
+Leer `$SKILL_DIR/subcommands/<subcomando-resuelto>.md`, seguir literalmente sus instrucciones y pasarle los argumentos restantes junto con el resultado de Grid ya validado cuando corresponda.
 
 Ejemplos:
 
@@ -63,9 +79,7 @@ Ejemplos:
 | `/groot-queue analyze-history --help` | `subcommands/analyze-history.md` | `--help` |
 | `/groot-queue` | `subcommands/start.md` | — |
 
-Path resuelto: `$SKILL_DIR/subcommands/<nombre>.md`.
-
-**Nota para Claude Code**: si el usuario invoca `/groot-queue:<nombre>` (sintaxis de slash command de plugin), Claude carga directamente `commands/<nombre>.md` del plugin — un wrapper que apunta al mismo `subcommands/<nombre>.md`. La fuente de verdad es la misma; el dispatcher de esta skill solo se ejecuta cuando se entra por la skill (Codex o Claude tipeando `/groot-queue` sin `:`).
+**Nota para Claude Code**: si el usuario invoca `/groot-queue:<nombre>`, Claude carga directamente `commands/<nombre>.md`. Esos wrappers aplican el mismo contrato central con provider `claude` y luego apuntan al mismo archivo de subcomando.
 
 ---
 
@@ -74,7 +88,7 @@ Path resuelto: `$SKILL_DIR/subcommands/<nombre>.md`.
 | Subcomando | Alias | Acción |
 |------------|-------|--------|
 | `start` | — | Mostrar banner de bienvenida, versión y catálogo de comandos con hints de uso |
-| `setup` | — | Verificar e instalar dependencias necesarias (ACLI, Atlassian MCP, Slack MCP, permisos) |
+| `setup` | — | Verificar dependencias, integraciones, permisos y Grid Sharing sin realizar cambios sin autorización explícita |
 | `list` | `ls` | Listar todos los incidentes abiertos |
 | `classify` | `cl` | Clasificar y agrupar por tipo de problema + urgencia |
 | `detail SSHP-XXXXXX` | `d` | Detalle completo de un ticket con clasificación y sugerencia |

@@ -50,7 +50,7 @@ Ver [`nexus-team.md`](./nexus-team.md) para detalle completo: dominio, productos
 
 ## Referencias
 
-- [Guía Labour Share](https://grid.adminml.com/d/01KWVJRP5DBAN5RD41PDQ518D1/view) — manual de usuario operativo de Labour Share (requiere `/grid-sharing:grid` para leer el contenido)
+- **Guía Labour Share** — manual operativo alojado en Grid Sharing. Su nombre, identificador y URL canónicos se leen desde [`knowledge/config/grid-sharing.json`](../config/grid-sharing.json), sin duplicarlos en esta descripción del equipo.
 
 ## Nota importante
 
