@@ -406,7 +406,7 @@ assert_contains "$INVENTORY_LOG" 'codex inventory' "auto mode should evaluate Co
 assert_contains "$INVENTORY_LOG" 'claude inventory' "auto mode should evaluate Claude after incomplete Codex"
 assert_not_contains "$MCP_LOG" 'codex mcp' "Codex missing Fury must not reach MCP CLI inspection"
 assert_contains "$MCP_LOG" 'claude mcp' "complete Claude should inspect Fury MCP"
-assert_equal 2 "$(grep -c '/ping$' "$CURL_LOG")" "operational auto must not run readiness probes for unsupported Copilot"
+assert_equal 1 "$(grep -c '/ping$' "$CURL_LOG")" "operational auto must probe Grid only for selected Claude"
 assert_not_contains "$CHILD_LOG" 'copilot child' "unsupported Copilot must not be selected"
 assert_not_contains "$CHILD_LOG" 'codex child args=' "incomplete Codex must not receive the prompt"
 assert_equal 1 "$(grep -c '^claude child args=' "$CHILD_LOG")" "Claude should be selected exactly once"

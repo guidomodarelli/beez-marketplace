@@ -1419,6 +1419,26 @@ if [ -n "$GRID_PLUGIN_VERSION" ] && is_strict_semver "$GRID_PLUGIN_VERSION"; the
   ENCODED_GRID_PLUGIN_VERSION="$(jq -nr --arg version "$GRID_PLUGIN_VERSION" '$version | @uri')"
 fi
 
+if ! provider_shell_readiness_ok; then
+  LOCAL_READINESS_FAILURE_CODE="$(printf '%s' "$FAILURES_JSON" | jq -er '.[0].code // empty' 2>/dev/null || true)"
+  if [ -z "$LOCAL_READINESS_FAILURE_CODE" ]; then
+    LOCAL_READINESS_FAILURE_CODE="PLUGIN_VERSION_INVALID"
+  fi
+
+  append_not_run_check "ping" "$LOCAL_READINESS_FAILURE_CODE"
+  if [ "$GRID_PLUGIN_OK" = "true" ] && [ "$GRID_REQUIRED_SKILL_OK" = "true" ] \
+    && [ "$GRID_PLUGIN_VERSION_VALID" != "true" ]; then
+    append_check "skill_version" false "failed" "PLUGIN_VERSION_INVALID"
+    record_failure "PLUGIN_VERSION_INVALID" "skill_version" 21
+  else
+    append_not_run_check "skill_version" "$LOCAL_READINESS_FAILURE_CODE"
+  fi
+  append_not_run_check "identity" "$LOCAL_READINESS_FAILURE_CODE"
+  append_not_run_check "general_read" "$LOCAL_READINESS_FAILURE_CODE"
+  append_not_run_check "required_document" "$LOCAL_READINESS_FAILURE_CODE"
+  emit_result
+fi
+
 run_probe "ping" "$API_BASE_URL$PING_ENDPOINT"
 
 if [ "$LAST_PROBE_OK" != "true" ]; then

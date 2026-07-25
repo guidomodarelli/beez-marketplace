@@ -551,7 +551,8 @@ assert_failure 10 FURY_PLUGIN_NOT_INSTALLED
 assert_json 'all(.checks[] | select(.name == "fury_required_skill" or .name == "fury_manifest" or .name == "fury_mcp_declaration" or .name == "fury_mcp_cli"); .status == "not_run" and .failure_code == "FURY_PLUGIN_NOT_INSTALLED")' \
   "missing Fury plugin must block all dependent Fury checks"
 assert_provider_calls claude 1 0
-printf 'ok - missing Fury plugin fails closed before MCP CLI\n'
+assert_empty_file "$CURL_LOG" "missing Fury plugin must short-circuit before Grid HTTP probes"
+printf 'ok - missing Fury plugin fails closed before MCP CLI and Grid probes\n'
 
 run_checker claude fury-disabled success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
 assert_failure 10 FURY_PLUGIN_DISABLED
@@ -640,7 +641,8 @@ printf 'ok - Codex invalid MCP response is reported\n'
 run_checker copilot success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
 assert_failure 2 PROVIDER_INVENTORY_UNSUPPORTED
 assert_empty_file "$PROVIDER_LOG" "Copilot inventory must not be inferred from CLI execution"
-printf 'ok - Copilot inventory is unsupported\n'
+assert_empty_file "$CURL_LOG" "unsupported Copilot must short-circuit before Grid HTTP probes"
+printf 'ok - Copilot inventory is unsupported and skips Grid probes\n'
 
 run_checker claude success success identity-401 "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
 assert_failure 22 GRID_IDENTITY_UNAVAILABLE
@@ -779,7 +781,8 @@ assert_json '.provider == "claude" and .ok == true and .schema_version == 2' \
   "auto should reject Grid-only Codex and select complete Claude"
 assert_provider_calls codex 1 0
 assert_provider_calls claude 1 1
-printf 'ok - auto rejects Grid-ready Fury-missing Codex and selects Claude\n'
+assert_equal 1 "$(grep -c '/ping$' "$CURL_LOG")" "auto must run Grid HTTP probes only for selected Claude"
+printf 'ok - auto short-circuits incomplete Codex and probes selected Claude only\n'
 
 run_checker claude command-failure success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
 assert_failure 10 PROVIDER_INVENTORY_FAILED
@@ -794,6 +797,7 @@ assert_json 'all(.checks[] | select(
 ); .status == "not_run" and .failure_code == "PROVIDER_INVENTORY_FAILED")' \
   "provider inventory failure must propagate to every dependent not-run check"
 assert_provider_calls claude 1 0
-printf 'ok - provider inventory failure propagates to all dependent checks\n'
+assert_empty_file "$CURL_LOG" "provider inventory failure must short-circuit before Grid HTTP probes"
+printf 'ok - provider inventory failure propagates and skips Grid probes\n'
 
 printf 'All check-groot-queue-readiness tests passed.\n'
