@@ -163,6 +163,8 @@ Leé y seguí literalmente las instrucciones de `${CLAUDE_PLUGIN_ROOT}/skills/<p
 
 ## Local Testing
 
+Run the canonical shell test commands documented in [`README.md` → “Correr tests shell localmente”](README.md#-correr-tests-shell-localmente). Keep the real setup E2E opt-in.
+
 ```bash
 # One-time setup: install the eval runner (provider-agnostic)
 cd skill-eval-runner && ./install.sh

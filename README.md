@@ -177,6 +177,29 @@ Cada pull request es validado automáticamente por el Release Process (RP) usand
 
 ---
 
+## 🧪 Correr tests shell localmente
+
+Las suites shell usan [bats-core](https://github.com/bats-core/bats-core) con versión y dependencias fijadas en `package-lock.json`.
+
+```bash
+# Instalación reproducible
+npm ci
+
+# Suites aisladas: Groot Queue y contrato del eval runner
+npm test
+
+# E2E real de setup (se reporta como skipped sin el flag)
+npm run test:e2e
+RUN_GROOT_QUEUE_E2E=1 npm run test:e2e
+
+# Suites aisladas + E2E
+npm run test:all
+```
+
+El E2E real requiere Claude autenticado, plugins Grid Sharing y Fury Services, MCP Fury operativo y acceso de red correspondiente. No se ejecuta durante `npm test`.
+
+---
+
 ## 🧪 Correr evals localmente
 
 ```bash
