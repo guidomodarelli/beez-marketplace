@@ -296,34 +296,11 @@ create_temp_directory() {
   return 1
 }
 
-get_file_owner() {
+snapshot_reuse_file() {
   local file_path="$1"
-  local file_owner
-
-  if file_owner="$(stat -f '%u' "$file_path" 2>/dev/null)" \
-    || file_owner="$(stat -c '%u' "$file_path" 2>/dev/null)"; then
-    printf '%s' "$file_owner"
-    return 0
-  fi
-
-  return 1
-}
-
-get_file_mode() {
-  local file_path="$1"
-  local file_mode
-
-  if file_mode="$(stat -f '%Lp' "$file_path" 2>/dev/null)" \
-    || file_mode="$(stat -c '%a' "$file_path" 2>/dev/null)"; then
-    printf '%s' "$file_mode"
-    return 0
-  fi
-
-  return 1
-}
-
-reuse_file_is_secure() {
-  local file_path="$1"
+  local snapshot_file="$2"
+  local descriptor_metadata
+  local file_type
   local file_owner
   local file_mode
   local file_mode_decimal
@@ -333,41 +310,79 @@ reuse_file_is_secure() {
     return 1
   fi
 
-  if ! file_owner="$(get_file_owner "$file_path")"; then
+  if ! exec 9< "$file_path"; then
     return 1
   fi
+
+  if [ -L "$file_path" ]; then
+    exec 9<&-
+    return 1
+  fi
+
+  local perl_binary
+  if ! perl_binary="$(command -v perl)" || [ -z "$perl_binary" ]; then
+    exec 9<&-
+    return 1
+  fi
+  if ! descriptor_metadata="$("$perl_binary" -e '
+    my @metadata = stat(STDIN);
+    exit 1 unless @metadata;
+    my $type = (($metadata[2] & 0170000) == 0100000) ? "regular file" : "other";
+    printf "%s|%d|%o", $type, $metadata[4], ($metadata[2] & 0777);
+  ' <&9 2>/dev/null)"; then
+    exec 9<&-
+    return 1
+  fi
+  IFS='|' read -r file_type file_owner file_mode <<EOF
+$descriptor_metadata
+EOF
+
+  case "$file_type" in
+    "Regular File"|"regular file") ;;
+    *)
+      exec 9<&-
+      return 1
+      ;;
+  esac
 
   current_user_id="$(id -u)"
   if [ "$file_owner" != "$current_user_id" ]; then
-    return 1
-  fi
-
-  if ! file_mode="$(get_file_mode "$file_path")"; then
+    exec 9<&-
     return 1
   fi
 
   case "$file_mode" in
-    ''|*[!0-7]*) return 1 ;;
-    *) ;;
+    ''|*[!0-7]*)
+      exec 9<&-
+      return 1
+      ;;
   esac
 
   file_mode_decimal=$((8#$file_mode))
   if [ $((file_mode_decimal & 63)) -ne 0 ]; then
+    exec 9<&-
     return 1
   fi
 
-  return 0
+  if ! /bin/cat <&9 > "$snapshot_file"; then
+    exec 9<&-
+    return 1
+  fi
+  exec 9<&-
+  chmod 600 "$snapshot_file"
+  [ -s "$snapshot_file" ]
 }
 
 try_reuse_result() {
   local current_epoch
   local reused_provider
+  local reuse_snapshot_file="$TEMP_DIRECTORY/reuse-result-snapshot.json"
 
   if [ -z "$REUSE_RESULT_FILE" ]; then
     return 1
   fi
 
-  if ! reuse_file_is_secure "$REUSE_RESULT_FILE"; then
+  if ! snapshot_reuse_file "$REUSE_RESULT_FILE" "$reuse_snapshot_file"; then
     append_check "reuse_result" false "failed" "REUSE_RESULT_FILE_UNSAFE"
     record_failure "REUSE_RESULT_FILE_UNSAFE" "reuse_result" 70
     emit_result
@@ -407,15 +422,15 @@ try_reuse_result() {
         ((.http_status == null) or ((.http_status | type == "number") and (.http_status >= 100) and (.http_status <= 599))) and
         ((.retry_after_seconds == null) or ((.retry_after_seconds | type == "number") and (.retry_after_seconds >= 0) and (.retry_after_seconds <= 86400)))
       )
-    ' < "$REUSE_RESULT_FILE" >/dev/null 2>&1; then
+    ' < "$reuse_snapshot_file" >/dev/null 2>&1; then
     printf '%s\n' 'check-groot-queue-readiness: REUSE_RESULT_REJECTED; running a fresh preflight.' >&2
     return 1
   fi
 
-  reused_provider="$(jq -er '.provider' < "$REUSE_RESULT_FILE")"
+  reused_provider="$(jq -er '.provider' < "$reuse_snapshot_file")"
   RESOLVED_PROVIDER="$reused_provider"
   RESULT_SOURCE="reused"
-  RESULT_CHECKED_AT_EPOCH="$(jq -er '.checked_at_epoch' < "$REUSE_RESULT_FILE")"
+  RESULT_CHECKED_AT_EPOCH="$(jq -er '.checked_at_epoch' < "$reuse_snapshot_file")"
   CHECKS_JSON="$(jq -c '[.checks[] | {
     name,
     ok,
@@ -424,7 +439,7 @@ try_reuse_result() {
     attempts,
     http_status,
     retry_after_seconds
-  }]' < "$REUSE_RESULT_FILE")"
+  }]' < "$reuse_snapshot_file")"
   FAILURES_JSON='[]'
   SELECTED_EXIT_CODE=0
   SELECTED_EXIT_PRIORITY=999

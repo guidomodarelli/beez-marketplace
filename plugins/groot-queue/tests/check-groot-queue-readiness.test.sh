@@ -6,6 +6,7 @@ umask 077
 SCRIPT_DIRECTORY="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 CHECKER="$SCRIPT_DIRECTORY/../skills/groot-queue/scripts/check-groot-queue-readiness.sh"
 REAL_JQ="$(command -v jq)"
+REAL_PERL="$(command -v perl)"
 TEMP_DIRECTORY="$(mktemp -d -t check-groot-queue-readiness-test.XXXXXX)"
 trap 'rm -rf -- "$TEMP_DIRECTORY"' EXIT HUP INT TERM
 chmod 700 "$TEMP_DIRECTORY"
@@ -771,6 +772,35 @@ if [ "$(id -u)" -eq 0 ]; then
 else
   printf 'ok - unsafe reuse owner skipped (requires portable owner change)\n'
 fi
+
+RACE_REUSE_FILE="$TEMP_DIRECTORY/race-reuse-result.json"
+RACE_MALICIOUS_FILE="$TEMP_DIRECTORY/race-malicious-result.json"
+RACE_MARKER_FILE="$TEMP_DIRECTORY/race-triggered"
+cp "$REUSE_FILE" "$RACE_REUSE_FILE"
+jq '.provider = "codex"' "$REUSE_FILE" > "$RACE_MALICIOUS_FILE"
+chmod 600 "$RACE_REUSE_FILE" "$RACE_MALICIOUS_FILE"
+cat > "$FAKE_BIN/perl" <<'STUB'
+#!/bin/bash
+set -euo pipefail
+if [ -n "${RACE_REUSE_FILE:-}" ] && [ ! -e "$RACE_MARKER_FILE" ]; then
+  rm -f -- "$RACE_REUSE_FILE"
+  ln -s "$RACE_MALICIOUS_FILE" "$RACE_REUSE_FILE"
+  : > "$RACE_MARKER_FILE"
+fi
+exec "$REAL_PERL" "$@"
+STUB
+chmod 700 "$FAKE_BIN/perl"
+export REAL_PERL RACE_REUSE_FILE RACE_MALICIOUS_FILE RACE_MARKER_FILE
+run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY" --reuse-result "$RACE_REUSE_FILE"
+unset RACE_REUSE_FILE RACE_MALICIOUS_FILE RACE_MARKER_FILE
+rm -f -- "$FAKE_BIN/perl"
+assert_equal 0 "$LAST_STATUS" "path replacement after FD open must not change reused result"
+assert_json '.provider == "claude" and .source == "reused" and .ok == true' \
+  "checker must consume the original descriptor snapshot"
+[ -L "$TEMP_DIRECTORY/race-reuse-result.json" ] || fail "race fixture did not replace original path"
+assert_empty_file "$PROVIDER_LOG" "descriptor snapshot reuse must not call provider inventory"
+assert_empty_file "$CURL_LOG" "descriptor snapshot reuse must not call Grid"
+printf 'ok - path replacement after FD open cannot alter reused snapshot\n'
 
 CODEX_INVENTORY_SCENARIO_OVERRIDE=fury-missing
 CLAUDE_INVENTORY_SCENARIO_OVERRIDE=success
