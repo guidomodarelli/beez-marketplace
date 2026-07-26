@@ -276,6 +276,20 @@ if [ -z "$COMMAND_NAME" ]; then
     exit 2
 fi
 
+case "$COMMAND_NAME" in
+    start|setup|list|classify|detail|solve|alerts|stats|assign-unassigned|derive|discard|save|add-rule|backfill-guides|analyze-history) ;;
+    *) fail "subcomando inválido: $COMMAND_NAME" ;;
+esac
+
+if [ "${#COMMAND_ARGUMENTS[@]}" -gt 0 ]; then
+    for command_argument in "${COMMAND_ARGUMENTS[@]}"; do
+        case "$command_argument" in
+            *$'\n'*|*$'\r'*) fail "argumento inválido: no se permiten saltos de línea." ;;
+            *) ;;
+        esac
+    done
+fi
+
 case "$GROOT_MARKETPLACE_EVAL_PROVIDER" in
     auto|copilot|codex|claude) ;;
     *) fail "provider inválido: $GROOT_MARKETPLACE_EVAL_PROVIDER. Usá auto, copilot, codex o claude." ;;
