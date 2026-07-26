@@ -80,23 +80,24 @@ Las llamadas HTTP usan únicamente la configuración central, HTTPS, método `GE
 
 ### Reutilización del resultado shell
 
-`--reuse-result FILE` permite reutilizar exclusivamente un resultado shell exitoso producido durante la misma invocación de alto nivel.
+`--reuse-result FILE` permite reutilizar un resultado shell exitoso. El launcher garantiza que el resultado provenga de la misma invocación de alto nivel al crearlo dentro de su directorio temporal privado; el checker valida el archivo recibido, pero no demuestra por sí solo esa identidad de invocación.
 
 Antes de leerlo, el checker exige:
 
 - path absoluto compuesto solo por caracteres permitidos;
-- archivo regular, sin symlink y legible;
-- owner igual al usuario actual cuando `stat` permite verificarlo;
-- ningún permiso de lectura para group u other;
+- directorio padre inmediato real, sin symlink, con owner igual al usuario actual y sin permisos para group u other;
+- archivo regular, sin symlink, legible, con owner igual al usuario actual y sin permisos para group u other;
 - `schema_version: 2` y `scope: "shell"`;
 - provider compatible con el solicitado;
 - `ok: true`, `exit_code: 0`, `active_context: null` y ausencia de fallos;
 - todos los checks shell obligatorios presentes y exitosos;
 - antigüedad no negativa y dentro de la ventana definida en la configuración central.
 
-El checker sanitiza el objeto antes de volver a emitirlo y conserva su timestamp original; una cadena de reutilizaciones no renueva la vigencia. No confía en una variable de entorno ni en contenido adicional del archivo.
+El checker valida primero el directorio padre, abre el archivo, verifica sus atributos sobre el descriptor abierto y crea un snapshot privado desde ese mismo descriptor. Luego sanitiza el objeto antes de volver a emitirlo y conserva su timestamp original; una cadena de reutilizaciones no renueva la vigencia. No confía en una variable de entorno ni en contenido adicional del archivo.
 
-Si el archivo es seguro pero su contenido está vencido, incompleto, malformado o no corresponde al provider, se ignora y se ejecuta un readiness shell nuevo. Si el path o los atributos del archivo son inseguros, se devuelve `70` sin leer su contenido.
+El modo `0700` del directorio impide acceso de otros UID, pero no aísla procesos que ejecutan con el mismo UID. El gate reduce reemplazos desde directorios compartidos; no ofrece una garantía atómica contra procesos del mismo usuario ni contra todas las carreras de resolución de ancestros.
+
+Si el archivo es seguro pero su contenido está vencido, incompleto, malformado o no corresponde al provider, se ignora y se ejecuta un readiness shell nuevo. Si el path, el directorio padre o los atributos del archivo son inseguros, se devuelve `70` sin consumir su contenido.
 
 ### Contrato de salida shell
 

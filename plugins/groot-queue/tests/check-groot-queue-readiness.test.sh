@@ -766,6 +766,30 @@ assert_empty_file "$PROVIDER_LOG" "mode 0620 must fail before provider calls"
 assert_empty_file "$CURL_LOG" "mode 0620 must fail before Grid calls"
 printf 'ok - mode 0620 reuse fails closed before external calls\n'
 
+UNSAFE_PARENT_DIRECTORY="$TEMP_DIRECTORY/unsafe-parent"
+mkdir "$UNSAFE_PARENT_DIRECTORY"
+chmod 0770 "$UNSAFE_PARENT_DIRECTORY"
+cp "$REUSE_FILE" "$UNSAFE_PARENT_DIRECTORY/reusable-result.json"
+chmod 0600 "$UNSAFE_PARENT_DIRECTORY/reusable-result.json"
+run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY" --reuse-result "$UNSAFE_PARENT_DIRECTORY/reusable-result.json"
+assert_failure 70 REUSE_RESULT_FILE_UNSAFE
+assert_empty_file "$PROVIDER_LOG" "unsafe parent mode must fail before provider calls"
+assert_empty_file "$CURL_LOG" "unsafe parent mode must fail before Grid calls"
+printf 'ok - unsafe reuse parent mode maps to exit 70\n'
+
+PRIVATE_PARENT_DIRECTORY="$TEMP_DIRECTORY/private-parent"
+SYMLINKED_PARENT_DIRECTORY="$TEMP_DIRECTORY/symlinked-parent"
+mkdir "$PRIVATE_PARENT_DIRECTORY"
+chmod 0700 "$PRIVATE_PARENT_DIRECTORY"
+cp "$REUSE_FILE" "$PRIVATE_PARENT_DIRECTORY/reusable-result.json"
+chmod 0600 "$PRIVATE_PARENT_DIRECTORY/reusable-result.json"
+ln -s "$PRIVATE_PARENT_DIRECTORY" "$SYMLINKED_PARENT_DIRECTORY"
+run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY" --reuse-result "$SYMLINKED_PARENT_DIRECTORY/reusable-result.json"
+assert_failure 70 REUSE_RESULT_FILE_UNSAFE
+assert_empty_file "$PROVIDER_LOG" "symlinked parent must fail before provider calls"
+assert_empty_file "$CURL_LOG" "symlinked parent must fail before Grid calls"
+printf 'ok - symlinked reuse parent maps to exit 70\n'
+
 ln -s "$REUSE_FILE" "$TEMP_DIRECTORY/unsafe-link.json"
 run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY" --reuse-result "$TEMP_DIRECTORY/unsafe-link.json"
 assert_failure 70 REUSE_RESULT_FILE_UNSAFE
@@ -778,8 +802,21 @@ if [ "$(id -u)" -eq 0 ]; then
   run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY" --reuse-result "$TEMP_DIRECTORY/unsafe-owner.json"
   assert_failure 70 REUSE_RESULT_FILE_UNSAFE
   printf 'ok - unsafe reuse owner maps to exit 70\n'
+
+  UNSAFE_OWNER_PARENT_DIRECTORY="$TEMP_DIRECTORY/unsafe-owner-parent"
+  mkdir "$UNSAFE_OWNER_PARENT_DIRECTORY"
+  cp "$REUSE_FILE" "$UNSAFE_OWNER_PARENT_DIRECTORY/reusable-result.json"
+  chmod 0700 "$UNSAFE_OWNER_PARENT_DIRECTORY"
+  chmod 0600 "$UNSAFE_OWNER_PARENT_DIRECTORY/reusable-result.json"
+  chown 65534 "$UNSAFE_OWNER_PARENT_DIRECTORY"
+  run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY" --reuse-result "$UNSAFE_OWNER_PARENT_DIRECTORY/reusable-result.json"
+  assert_failure 70 REUSE_RESULT_FILE_UNSAFE
+  assert_empty_file "$PROVIDER_LOG" "unsafe parent owner must fail before provider calls"
+  assert_empty_file "$CURL_LOG" "unsafe parent owner must fail before Grid calls"
+  printf 'ok - unsafe reuse parent owner maps to exit 70\n'
 else
   printf 'ok - unsafe reuse owner skipped (requires portable owner change)\n'
+  printf 'ok - unsafe reuse parent owner skipped (requires portable owner change)\n'
 fi
 
 RACE_REUSE_FILE="$TEMP_DIRECTORY/race-reuse-result.json"
@@ -791,7 +828,7 @@ chmod 600 "$RACE_REUSE_FILE" "$RACE_MALICIOUS_FILE"
 cat > "$FAKE_BIN/perl" <<'STUB'
 #!/bin/bash
 set -euo pipefail
-if [ -n "${RACE_REUSE_FILE:-}" ] && [ ! -e "$RACE_MARKER_FILE" ]; then
+if [ "$#" -eq 2 ] && [ -n "${RACE_REUSE_FILE:-}" ] && [ ! -e "$RACE_MARKER_FILE" ]; then
   rm -f -- "$RACE_REUSE_FILE"
   ln -s "$RACE_MALICIOUS_FILE" "$RACE_REUSE_FILE"
   : > "$RACE_MARKER_FILE"

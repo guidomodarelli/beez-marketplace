@@ -296,6 +296,26 @@ create_temp_directory() {
   return 1
 }
 
+reuse_parent_directory_is_secure() {
+  local file_path="$1"
+  local perl_binary="$2"
+  local current_user_id="$3"
+  local parent_directory="${file_path%/*}"
+
+  if [ -z "$parent_directory" ]; then
+    parent_directory="/"
+  fi
+
+  "$perl_binary" -e '
+    my ($parent_directory, $expected_user_id) = @ARGV;
+    my @metadata = lstat($parent_directory);
+    exit 1 unless @metadata;
+    exit 1 unless (($metadata[2] & 0170000) == 0040000);
+    exit 1 unless $metadata[4] == $expected_user_id;
+    exit 1 unless (($metadata[2] & 0077) == 0);
+  ' "$parent_directory" "$current_user_id" >/dev/null 2>&1
+}
+
 snapshot_reuse_file() {
   local file_path="$1"
   local snapshot_file="$2"
@@ -305,8 +325,18 @@ snapshot_reuse_file() {
   local file_mode
   local file_mode_decimal
   local current_user_id
+  local perl_binary
 
   if [ -L "$file_path" ] || [ ! -f "$file_path" ] || [ ! -r "$file_path" ]; then
+    return 1
+  fi
+
+  if ! perl_binary="$(command -v perl)" || [ -z "$perl_binary" ]; then
+    return 1
+  fi
+  current_user_id="$(id -u)"
+
+  if ! reuse_parent_directory_is_secure "$file_path" "$perl_binary" "$current_user_id"; then
     return 1
   fi
 
@@ -315,12 +345,6 @@ snapshot_reuse_file() {
   fi
 
   if [ -L "$file_path" ]; then
-    exec 9<&-
-    return 1
-  fi
-
-  local perl_binary
-  if ! perl_binary="$(command -v perl)" || [ -z "$perl_binary" ]; then
     exec 9<&-
     return 1
   fi
@@ -345,7 +369,6 @@ EOF
       ;;
   esac
 
-  current_user_id="$(id -u)"
   if [ "$file_owner" != "$current_user_id" ]; then
     exec 9<&-
     return 1
