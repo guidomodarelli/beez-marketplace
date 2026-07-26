@@ -362,7 +362,7 @@ $descriptor_metadata
 EOF
 
   case "$file_type" in
-    "Regular File"|"regular file") ;;
+    "regular file") ;;
     *)
       exec 9<&-
       return 1
