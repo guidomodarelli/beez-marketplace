@@ -516,6 +516,19 @@ if grep -Eq 'PRIVATE_|SECRET_|grid-sharing-plugin|fury-services-plugin' "$STDERR
 fi
 printf 'ok - Claude schema 2 success, one inventory call, and privacy contract\n'
 
+cat > "$FAKE_BIN/rm" <<'STUB'
+#!/bin/bash
+/bin/rm "$@"
+exit 91
+STUB
+chmod 700 "$FAKE_BIN/rm"
+run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+/bin/rm -f -- "$FAKE_BIN/rm"
+assert_equal 0 "$LAST_STATUS" "cleanup failure must preserve successful checker exit status"
+assert_json '.ok == true and .exit_code == 0 and .provider == "claude"' \
+  "cleanup failure must preserve successful JSON contract"
+printf 'ok - cleanup failure does not override successful exit status\n'
+
 run_checker claude success legacy-connected success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
 assert_equal 0 "$LAST_STATUS" "Claude legacy connected marker should succeed"
 assert_json ".schema_version == 2 and .scope == \"shell\" and .ok == true and .exit_code == 0 and .provider == \"claude\" and (.checks | map(.name)) == $EXPECTED_CHECK_NAMES and all(.checks[]; .status == \"passed\")" \

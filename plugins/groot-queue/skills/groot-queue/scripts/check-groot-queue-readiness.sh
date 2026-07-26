@@ -33,7 +33,7 @@ on_exit() {
     shell_status=70
   fi
 
-  cleanup
+  cleanup || true
   return "$shell_status"
 }
 
