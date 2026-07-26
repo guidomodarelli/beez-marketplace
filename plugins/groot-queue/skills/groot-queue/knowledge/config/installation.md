@@ -1,10 +1,11 @@
-# Groot Queue
+# 🚀 Groot Queue — Guía de instalación
 
 Guía canónica para instalar, configurar, diagnosticar, actualizar y desinstalar `groot-queue`.
 
 `groot-queue` monitorea y gestiona la cola de soporte de Groot en Jira: lista y clasifica tickets, sugiere soluciones, revisa SLA, genera alertas, asigna tickets y ejecuta acciones controladas. Algunos subcomandos son read-only y otros pueden modificar Jira, Slack o la knowledge base; revisá siempre la acción antes de aprobarla.
 
-## Alcance y providers
+<a id="alcance-y-providers"></a>
+## 🎯 Alcance y providers
 
 | Provider | Estado | Uso recomendado |
 |---|---|---|
@@ -14,7 +15,8 @@ Guía canónica para instalar, configurar, diagnosticar, actualizar y desinstala
 
 El subcomando `setup` **diagnostica** el entorno y muestra remediaciones. No instala, autentica, habilita, actualiza ni modifica componentes automáticamente. Toda acción mutable requiere aprobación explícita.
 
-## Fuentes de verdad
+<a id="fuentes-de-verdad"></a>
+## 🧭 Fuentes de verdad
 
 Esta guía es la fuente humana de onboarding. Los detalles técnicos permanecen en sus fuentes canónicas:
 
@@ -29,11 +31,12 @@ Esta guía es la fuente humana de onboarding. Los detalles técnicos permanecen 
 
 No copies IDs de documentos, endpoints internos, argumentos MCP, timeouts ni el catálogo completo de failure codes a otros archivos. Consultá las fuentes anteriores cuando necesites ese nivel de detalle.
 
-## 1. Prerrequisitos en macOS
+<a id="1-prerrequisitos-en-macos"></a>
+## 🧰 1. Prerrequisitos en macOS
 
 Necesitás acceso corporativo, GitHub por SSH y una cuenta autorizada para los servicios que uses. Verificá primero; instalá solo lo que falte.
 
-### Claude Code
+### 🤖 Claude Code
 
 ```bash
 claude --version
@@ -48,7 +51,7 @@ brew install --cask claude-code
 
 Después ejecutá `claude` y completá el login en el browser. La instalación nativa oficial también está documentada en [Claude Code setup](https://code.claude.com/docs/en/setup).
 
-### Git y acceso SSH
+### 🔐 Git y acceso SSH
 
 ```bash
 git --version
@@ -63,13 +66,13 @@ brew install git
 
 `ssh -T` puede terminar con un código distinto de cero aunque la autenticación sea válida; verificá el mensaje, no publiques su salida si contiene datos de identidad.
 
-### VPN corporativa
+### 🌐 VPN corporativa
 
 Conectate a la VPN corporativa mediante el cliente aprobado para macOS. No hay un instalador público que esta guía deba ejecutar. Grid depende de que el edge corporativo resuelva tu identidad; estar conectado a internet no alcanza.
 
 La validación segura se realiza más adelante con `setup`. No agregues headers, cookies ni tokens manuales para intentar reemplazar la VPN o la identidad del edge.
 
-### Bash, `jq` y `curl`
+### 🐚 Bash, `jq` y `curl`
 
 ```bash
 bash --version
@@ -83,7 +86,7 @@ Si falta alguna herramienta:
 brew install bash jq curl
 ```
 
-### ACLI
+### 🎫 ACLI
 
 ```bash
 acli --version
@@ -110,7 +113,7 @@ acli jira auth status
 
 Usá `acli jira auth status` como único check de autenticación para este onboarding.
 
-## 2. Instalar `groot-queue` en Claude Code
+## 📦 2. Instalar `groot-queue` en Claude Code
 
 Agregá el marketplace y el plugin en scope `user`:
 
@@ -127,7 +130,8 @@ claude plugin list --json
 
 La entrada `groot-queue@groot-marketplace` debe estar instalada y habilitada.
 
-## 3. Permisos ACLI en Claude Code
+<a id="3-permisos-acli-en-claude-code"></a>
+## 🔒 3. Permisos ACLI en Claude Code
 
 `Bash(acli jira *)` habilita todo el subárbol Jira de ACLI, incluidas operaciones mutables y masivas. Usalo solo si necesitás automatización completa y aceptás explícitamente esa capacidad:
 
@@ -159,9 +163,10 @@ Guardá el perfil elegido en `.claude/settings.local.json`. El perfil granular p
 
 **Fusioná valores; no reemplaces el archivo completo.** Conservá sus claves y entradas existentes, validá el JSON con `jq empty .claude/settings.local.json` y hacé una copia local si contiene configuración relevante. Otorgá permisos solo en proyectos confiables y no amplíes el patrón a todo `acli` ni a todo `Bash`.
 
-## 4. Atlassian MCP
+<a id="4-atlassian-mcp"></a>
+## 🔗 4. Atlassian MCP
 
-### Opción recomendada: plugin oficial
+### ⭐ Opción recomendada: plugin oficial
 
 ```bash
 claude plugin install --scope user atlassian@claude-plugins-official
@@ -169,7 +174,7 @@ claude plugin install --scope user atlassian@claude-plugins-official
 
 En una sesión de Claude Code, abrí `/mcp` y completá OAuth para el workspace corporativo correcto. Podés revisar el inventario con `claude plugin list --json` y el estado de las conexiones con `claude mcp list`.
 
-### Alternativa manual: endpoint `authv2`
+### 🛠️ Alternativa manual: endpoint `authv2`
 
 Usá esta alternativa solo si no podés instalar el plugin oficial:
 
@@ -180,7 +185,7 @@ claude mcp login atlassian
 
 **Elegí una sola opción.** No combines el plugin oficial y la conexión manual: dos conexiones Atlassian pueden inyectar tools duplicadas o ambiguas. Antes de continuar, revisá `claude plugin list --json` y `claude mcp list`, y dejá activa una única integración.
 
-### Reglas de seguridad Atlassian
+### 🛡️ Reglas de seguridad Atlassian
 
 - Usá OAuth; no pegues API tokens, cookies ni headers en prompts, settings o comandos.
 - Resolvé el `cloudId` dinámicamente desde los recursos que devuelve Atlassian MCP. Nunca lo hardcodees ni publiques su valor.
@@ -188,7 +193,8 @@ claude mcp login atlassian
 - Si no puede garantizarse visibilidad interna, abortá la automatización y completá la acción manualmente en Jira.
 - La regla exacta de visibilidad y los modos ABORTAR/DEGRADAR viven en [`atlassian-mcp.md`](atlassian-mcp.md).
 
-## 5. Slack MCP
+<a id="5-slack-mcp"></a>
+## 💬 5. Slack MCP
 
 Instalá el plugin oficial en scope `user`:
 
@@ -206,7 +212,8 @@ La verificación funcional segura es:
 
 `--dry-run` debe preparar el resumen sin enviar DMs. Si el runtime no ofrece las capacidades necesarias de Slack, mantené el flujo en dry-run y repará OAuth antes de habilitar envíos.
 
-## 6. Grid Sharing y VPN
+<a id="6-grid-sharing-y-vpn"></a>
+## 🧩 6. Grid Sharing y VPN
 
 Grid Sharing y Fury Services se distribuyen desde el mismo marketplace técnico. Agregalo **una sola vez**:
 
@@ -232,7 +239,8 @@ Usá `/groot-queue:setup` como probe seguro. El checker realiza únicamente lect
 
 Nunca intentes reparar un `401`/`403` agregando `Authorization`, cookies, headers de identidad o tokens a `curl`. Eso puede exponer credenciales y no sustituye la autenticación del edge. Para detalles de red, versión y acceso, consultá [Troubleshooting](#troubleshooting) y el [contrato técnico de readiness](groot-queue-readiness.md).
 
-## 7. Fury Services y FuryDocs
+<a id="7-fury-services-y-furydocs"></a>
+## 📚 7. Fury Services y FuryDocs
 
 Instalá Fury Services desde el marketplace técnico ya agregado:
 
@@ -251,13 +259,14 @@ No compartas la salida completa si incluye paths o configuración del transporte
 
 En runtime, el server `fury` debe exponer el componente y las tools documentales definidos en el [contrato técnico de readiness](groot-queue-readiness.md#fase-runtime-mcp). El diagnóstico solo descubre capacidades; no lee documentación. Las tools documentales se usan después, únicamente cuando un comando operativo las necesita.
 
-## 8. Configurar el TEAM
+## 👥 8. Configurar el TEAM
 
 El roster se mantiene exclusivamente en [`SKILL.md` — Equipo para asignación](../../SKILL.md#equipo-para-asignación). No lo copies a esta guía.
 
 Un `TEAM` vacío impide que `assign-unassigned` reparta tickets, pero no redefine ni reemplaza el readiness de Grid/FuryDocs para los demás comandos.
 
-## 9. Recargar y validar
+<a id="9-recargar-y-validar"></a>
+## 🔄 9. Recargar y validar
 
 Después de instalar o cambiar plugins, dentro de una sesión activa ejecutá:
 
@@ -283,7 +292,7 @@ Validá en este orden:
 2. `setup` verifica ACLI, permisos, integraciones, TEAM y readiness completo; no instala ni modifica nada.
 3. Ejecutá un comando operativo solo cuando `setup` indique que las fases obligatorias están listas. No omitas ni fuerces el gate de readiness.
 
-## 10. Launcher opcional
+## 🖥️ 10. Launcher opcional
 
 El launcher `run-groot-queue` es una conveniencia para iniciar un provider en un proceso hijo. **No es un prerrequisito** y no instala `groot-queue`, ACLI, plugins, MCPs ni credenciales.
 
@@ -299,11 +308,12 @@ El launcher usa un directorio temporal y no conserva `.claude/settings.local.jso
 
 Antes de usarlo, revisá [`run-groot-queue.sh`](../../../../scripts/run-groot-queue.sh): el launcher inicia procesos hijos con permisos amplios de tools para poder operar. Usalo solo desde una copia confiable y no lo tomes como bypass del readiness ni de las confirmaciones de acciones mutables.
 
-## Troubleshooting
+<a id="troubleshooting"></a>
+## 🩺 Troubleshooting
 
 Empezá siempre por `/groot-queue:setup`; reportá solo estados, nombres de checks y failure codes seguros. No pegues payloads completos, identidad, headers, tokens, paths privados ni datos de tickets.
 
-### Claude, inventario o dependencias locales
+### 🤖 Claude, inventario o dependencias locales
 
 **Síntomas:** CLI ausente, JSON inválido, plugin no instalado/deshabilitado, skill faltante o MCP local no declarado.
 
@@ -312,7 +322,7 @@ Empezá siempre por `/groot-queue:setup`; reportá solo estados, nombres de chec
 3. Ejecutá `/reload-plugins`; reiniciá si el inventario sigue stale.
 4. Seguí las familias `dependencies`, `configuration`, `provider_inventory`, `grid_*` y `fury_*` del [readiness técnico](groot-queue-readiness.md#fase-shell).
 
-### Grid: red, servicio o rate limit
+### 🌐 Grid: red, servicio o rate limit
 
 **Síntomas:** transport failure, servicio no disponible, timeout o rate limit.
 
@@ -321,7 +331,7 @@ Empezá siempre por `/groot-queue:setup`; reportá solo estados, nombres de chec
 3. Si `setup` informa espera segura, respetala.
 4. Consultá las remediaciones de [exit codes shell](groot-queue-readiness.md#exit-codes-shell-y-remediaciones).
 
-### Grid: versión, identidad o acceso
+### 🔐 Grid: versión, identidad o acceso
 
 **Síntomas:** plugin desactualizado, edge sin identidad, lectura general prohibida o documento requerido inaccesible.
 
@@ -330,7 +340,7 @@ Empezá siempre por `/groot-queue:setup`; reportá solo estados, nombres de chec
 3. Para permisos, solicitá acceso por el canal corporativo; no pruebes otros IDs ni copies el ID requerido desde la configuración.
 4. No interpretes un plugin instalado como readiness exitoso: todas las capas deben pasar.
 
-### Fury Services o FuryDocs
+### 📚 Fury Services o FuryDocs
 
 **Síntomas:** `mcp-remote-proxy` ausente, MCP `fury` desconectado o capacidades runtime requeridas no visibles.
 
@@ -339,7 +349,7 @@ Empezá siempre por `/groot-queue:setup`; reportá solo estados, nombres de chec
 3. No crees otra entrada `fury` ni copies argumentos internos del manifiesto.
 4. Revisá la [fase runtime MCP](groot-queue-readiness.md#fase-runtime-mcp).
 
-### ACLI o Atlassian
+### 🎫 ACLI o Atlassian
 
 **Síntomas:** `acli jira auth status` falla, OAuth expiró, workspace incorrecto, tools duplicadas o no existe capacidad de internal note.
 
@@ -349,7 +359,7 @@ Empezá siempre por `/groot-queue:setup`; reportá solo estados, nombres de chec
 4. No hardcodees `cloudId` ni conviertas una nota interna en comentario público.
 5. Consultá [`atlassian-mcp.md`](atlassian-mcp.md).
 
-### Slack
+### 💬 Slack
 
 **Síntomas:** Slack no aparece en `/mcp`, OAuth expiró o faltan tools de búsqueda/envío.
 
@@ -358,7 +368,7 @@ Empezá siempre por `/groot-queue:setup`; reportá solo estados, nombres de chec
 3. Probá solo `/groot-queue:alerts --dry-run` hasta que el diagnóstico esté listo.
 4. Consultá [`slack-mcp.md`](slack-mcp.md).
 
-## Preservar conocimiento local antes del lifecycle
+## 💾 Preservar conocimiento local antes del lifecycle
 
 `save`, `add-rule` y los flujos de auditoría pueden escribir soluciones, reglas y logs dentro del directorio activo de la skill. Antes de actualizar o desinstalar, exportá ese estado a una ubicación privada:
 
@@ -388,7 +398,7 @@ No continúes con update/uninstall si el bloque falla o si el backup no contiene
 
 En Codex, obtené el `source.path` del plugin instalado con `codex plugin list --json` y preservá los mismos recursos antes de `marketplace upgrade` o `plugin remove`.
 
-## Actualizar de forma segura
+## ⬆️ Actualizar de forma segura
 
 Primero revisá el estado actual:
 
@@ -413,7 +423,7 @@ claude plugin update --scope user slack@claude-plugins-official
 
 Reiniciá Claude Code y repetí la [secuencia de validación](#9-recargar-y-validar). Si usás el launcher opcional, ejecutá de nuevo `./scripts/install.sh` desde la copia actualizada para refrescar su wrapper. No actualices componentes automáticamente desde `setup`.
 
-## Desinstalar de forma conservadora
+## 🗑️ Desinstalar de forma conservadora
 
 Antes de desinstalar, verificá qué plugins y marketplaces siguen usando cada dependencia:
 
@@ -439,7 +449,8 @@ rm ~/.local/bin/run-groot-queue
 
 No ejecutes `rm` si el wrapper no contiene el source `scripts/run-groot-queue.sh` que esperás. La desinstalación del plugin no debe borrar `.claude/settings.local.json`, credenciales OAuth, configuración MCP ni datos compartidos sin una decisión explícita y separada.
 
-## Anexo Codex
+<a id="anexo-codex"></a>
+## 🧰 Anexo Codex
 
 Codex usa el mismo plugin y contrato técnico, pero sus comandos no llevan `--scope user`. Instalación:
 
