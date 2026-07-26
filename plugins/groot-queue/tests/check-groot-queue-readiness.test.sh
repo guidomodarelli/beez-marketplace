@@ -468,6 +468,12 @@ run_checker() {
   assert_equal "1" "$(wc -l < "$STDOUT_FILE" | tr -d ' ')" \
     "checker stdout must contain exactly one line"
   jq -e 'type == "object"' "$STDOUT_FILE" >/dev/null || fail "checker stdout must be valid JSON"
+  if grep -Eq 'PRIVATE_|SECRET_' "$STDOUT_FILE"; then
+    fail "checker stdout leaked a private fixture"
+  fi
+  if grep -Eq 'PRIVATE_|SECRET_' "$STDERR_FILE"; then
+    fail "checker stderr leaked a private fixture"
+  fi
 }
 
 assert_failure() {
@@ -504,6 +510,9 @@ assert_json ".schema_version == 2 and .scope == \"shell\" and .ok == true and .e
 assert_provider_calls claude 1 1
 if grep -Eq 'PRIVATE_|SECRET_|grid-sharing-plugin|fury-services-plugin' "$STDOUT_FILE"; then
   fail "checker stdout leaked a body, identity, token, or plugin path fixture"
+fi
+if grep -Eq 'PRIVATE_|SECRET_|grid-sharing-plugin|fury-services-plugin' "$STDERR_FILE"; then
+  fail "checker stderr leaked a body, identity, token, or plugin path fixture"
 fi
 printf 'ok - Claude schema 2 success, one inventory call, and privacy contract\n'
 
