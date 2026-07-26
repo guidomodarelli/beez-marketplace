@@ -1749,7 +1749,6 @@
           "description": "Describe orquestación de tickets y aprobaciones de Alfred",
           "values": [
             "orquesta procesos",
-            "tickets",
             "flujos de aprobación",
             "Buddy Applications"
           ]
