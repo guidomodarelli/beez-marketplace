@@ -45,4 +45,4 @@ NEXUS_TEAM:
 - Shuffle aleatorio de la lista de emails al momento de asignar.
 - Tomar el primero del orden barajado.
 - Usar `acli jira workitem assign --key <KEY> --assignee <email> --yes`.
-- Dejar nota interna indicando acceso a xtools/Pidgey (ver comentario sugerido en R-DER-13).
+- Dejar la nota interna definida en la sección `R-DER-13` de [`triage-rules.md`](../rules/triage-rules.md).

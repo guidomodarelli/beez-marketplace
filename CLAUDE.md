@@ -4,7 +4,7 @@
 
 > Fuente de verdad: `plugins/groot-queue/skills/groot-queue/knowledge/teams/groot-team.md`
 
-- **Nosotros somos el equipo Groot**. Groot se compone de dos células: **Kraken** (auth/roles) y **Nexus** (gestión de usuarios shipping, Pidgey, Alfred, Chat Interno).
+- **Nosotros somos el equipo Groot**. Groot se compone de dos células: **Kraken** y **Nexus**. Ver [`groot-team.md`](./plugins/groot-queue/skills/groot-queue/knowledge/teams/groot-team.md) para estructura y ownership, y [`nexus-team.md`, sección `Productos a cargo`](./plugins/groot-queue/skills/groot-queue/knowledge/teams/nexus-team.md#productos-a-cargo) para el catálogo Nexus.
 - Nunca referirse al equipo como si fuera externo ("escalar al equipo dev Groot"). Somos nosotros.
 - Nunca mencionar ni sugerir `context_id` de Jira en soluciones, runbooks, guías ni respuestas. No es útil para diagnóstico ni resolución — es un dato interno de Jira sin valor operativo.
 
