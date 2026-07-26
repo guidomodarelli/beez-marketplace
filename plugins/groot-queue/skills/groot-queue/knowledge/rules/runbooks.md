@@ -16,9 +16,11 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 
 ## Contexto de Groot
 
-> **Fuente de verdad**: [`teams/groot-team.md`](../teams/groot-team.md) — definición del equipo, células (Kraken / Nexus), productos, sistemas internos y externos.
+> **Fuentes de verdad**:
+> - [`teams/groot-team.md`](../teams/groot-team.md) — definición del equipo, células (Kraken / Nexus), ownership y sistemas internos y externos.
+> - [`teams/nexus-team.md#productos-a-cargo`](../teams/nexus-team.md#productos-a-cargo) — catálogo y alcance funcional de los productos Nexus.
 >
-> Leer ese archivo antes de diagnosticar un ticket para entender ownership y alcance.
+> Leer las fuentes aplicables antes de diagnosticar un ticket para entender ownership y alcance.
 
 **Error codes conocidos del sistema**:
 - `user_rollback_error`: Error haciendo rollback de cambios en usuario

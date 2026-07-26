@@ -1705,6 +1705,58 @@
       ]
     },
     {
+      "id": "nexus-products-official-descriptions",
+      "description": "La documentación de Nexus explica el alcance de Godric, Pidgey y Alfred según sus guías oficiales",
+      "input": "Pregunta documental, sin consultar servicios externos: ¿qué hacen Godric, Pidgey y Alfred dentro de la célula Nexus? Respondé desde la knowledge base bundled de groot-queue y distinguí el propósito de cada producto.",
+      "assertions": [
+        {
+          "type": "contains",
+          "description": "Identifica Godric",
+          "value": "Godric"
+        },
+        {
+          "type": "contains_any",
+          "description": "Describe segmentación y evaluación de reglas de Godric",
+          "values": [
+            "segmenta usuarios",
+            "segmentación de usuarios",
+            "JsonLogic",
+            "evaluaciones asíncronas"
+          ]
+        },
+        {
+          "type": "contains",
+          "description": "Identifica Pidgey",
+          "value": "Pidgey"
+        },
+        {
+          "type": "contains_any",
+          "description": "Describe gestión multicanal de notificaciones de Pidgey",
+          "values": [
+            "notificaciones y alertas",
+            "distintos canales",
+            "email",
+            "campana de Kraken"
+          ]
+        },
+        {
+          "type": "contains",
+          "description": "Identifica Alfred",
+          "value": "Alfred"
+        },
+        {
+          "type": "contains_any",
+          "description": "Describe orquestación de tickets y aprobaciones de Alfred",
+          "values": [
+            "orquesta procesos",
+            "tickets",
+            "flujos de aprobación",
+            "Buddy Applications"
+          ]
+        }
+      ]
+    },
+    {
       "id": "start-command",
       "description": "start subcommand shows the welcome banner with version and command catalog",
       "input": "/groot-queue start",

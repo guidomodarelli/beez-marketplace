@@ -14,11 +14,11 @@ Responsable de la gestión directa de usuarios y las herramientas de operaciones
 
 ## Productos a cargo
 
-- **Pidgey** — Notificaciones outbound (`xtools.adminml.com/tools/pidgey/*`)
-- **Alfred** — Operaciones masivas: tickets, aprobaciones, procesos bulk, CSV upload (`xtools.adminml.com/tools/alfred/*`)
+- **Pidgey** — Centraliza y gestiona el envío de notificaciones y alertas a usuarios Groot por distintos canales, como email y la campana de Kraken Plugin, para usuarios LDAP, MELI y GROOT. [Documentación oficial](https://furydocs.io/pidgey-notifications-api/latest/guide/#/introduction).
+- **Alfred** — Orquesta procesos integrados mediante tickets: aplica flujos de aprobación configurables y coordina la ejecución de la lógica de negocio en Buddy Applications. [Documentación oficial](https://furydocs.io/alfred-orchestrator-api/latest/guide/#/general-information/quick-start).
 - **Chat Interno** — Comunicación interna entre operarios y líderes
 - **Kraken Menu** — Menú lateral genérico de las apps Groot: niveles, subniveles, favoritos, búsqueda, y visibilidad de entradas según permisos del usuario
-- **Godric** — (pendiente documentar alcance)
+- **Godric** — Segmenta usuarios del dominio Kraken / Shipping Operations mediante configuraciones con reglas JsonLogic, evaluaciones asíncronas sobre universos de usuarios y acciones sobre quienes cumplen las reglas. [Documentación oficial](https://furydocs.io/godric-api/).
 
 ## Miembros
 
