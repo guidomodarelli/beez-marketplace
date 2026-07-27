@@ -3,4 +3,6 @@ description: Sugiere solución para un ticket SSHP basada en runbooks, casos pre
 argument-hint: SSHP-XXXXXX
 ---
 
-Leé y seguí literalmente las instrucciones de `~/.claude/skills/groot-queue/subcommands/solve.md`, aplicándolas al ticket `$ARGUMENTS`.
+Leé y aplicá `${CLAUDE_PLUGIN_ROOT}/skills/groot-queue/knowledge/config/command-entrypoint.md` para el subcomando canónico `solve`, los argumentos `$ARGUMENTS` y el provider `claude`.
+
+Solo si el entrypoint habilita la ejecución, leé y seguí literalmente `${CLAUDE_PLUGIN_ROOT}/skills/groot-queue/subcommands/solve.md`, aplicándolo a `$ARGUMENTS` y conservando el estado combinado de readiness validado cuando corresponda.

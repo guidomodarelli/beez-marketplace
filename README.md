@@ -71,11 +71,19 @@ Cada registro luego referencia la ruta del subdirectorio de su proveedor (ej. `.
 
 ## 📦 Instalar este marketplace
 
-| Proveedor | Comando |
-|-----------|---------|
-| **Claude Code** (CLI) | `fury ai assets marketplace install --name <marketplace-slug>` |
-| **Claude Code** (plugin) | `/plugin marketplace add melisource/<your-repo-name>` |
-| **Codex** | `fury ai assets marketplace install --name <marketplace-slug> --codex` |
+Los nombres disponibles viven en `.claude-plugin/marketplace.json` y `.agents/plugins/marketplace.json`. Instalá el marketplace y reemplazá `<plugin-name>` por el plugin elegido:
+
+```bash
+# Claude Code
+claude plugin marketplace add --scope user git@github.com:melisource/fury_groot-marketplace.git
+claude plugin install --scope user <plugin-name>@groot-marketplace
+
+# Codex
+codex plugin marketplace add git@github.com:melisource/fury_groot-marketplace.git
+codex plugin add <plugin-name>@groot-marketplace
+```
+
+Para `groot-queue`, consultá la [guía completa de instalación, configuración y diagnóstico](plugins/groot-queue/README.md), fuente canónica para sus prerrequisitos, MCPs, Grid Sharing, Fury Services/FuryDocs y troubleshooting.
 
 ---
 
@@ -166,6 +174,29 @@ Cada pull request es validado automáticamente por el Release Process (RP) usand
 | 🔗 **Marketplace sync** | Para PRs que agregan o modifican plugins | Verifica que cada directorio de plugin local esté registrado en `marketplace.json` |
 
 > 🚫 Si cualquier check falla, el PR queda bloqueado hasta resolver el problema.
+
+---
+
+## 🧪 Correr tests shell localmente
+
+Las suites shell usan [bats-core](https://github.com/bats-core/bats-core) con versión y dependencias fijadas en `package-lock.json`.
+
+```bash
+# Instalación reproducible
+npm ci
+
+# Suites aisladas: Groot Queue y contrato del eval runner
+npm test
+
+# E2E real de setup (se reporta como skipped sin el flag)
+npm run test:e2e
+RUN_GROOT_QUEUE_E2E=1 npm run test:e2e
+
+# Suites aisladas + E2E
+npm run test:all
+```
+
+El E2E real requiere Claude autenticado, plugins Grid Sharing y Fury Services, MCP Fury operativo y acceso de red correspondiente. No se ejecuta durante `npm test`.
 
 ---
 

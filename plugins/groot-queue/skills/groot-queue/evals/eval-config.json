@@ -5,7 +5,7 @@
   "test_cases": [
     {
       "id": "help-no-args",
-      "description": "Invoking /groot-queue without arguments shows help",
+      "description": "Invoking /groot-queue without arguments resolves to start and shows the gated command catalog",
       "input": "/groot-queue",
       "assertions": [
         {
@@ -23,16 +23,163 @@
       ]
     },
     {
-      "id": "setup-command",
-      "description": "setup subcommand verifies dependencies",
-      "input": "/groot-queue setup",
+      "id": "manual-install-claude-first-from-scratch",
+      "description": "La respuesta cubre onboarding manual completo de /groot-queue con Claude Code desde una máquina limpia",
+      "input": "Quiero instalar `/groot-queue` manualmente en una máquina macOS limpia usando Claude Code como provider principal. Consultá la guía bundled y explicá el recorrido completo hasta el primer setup: Claude Code, plugin Groot Queue, ACLI, permiso mínimo, Atlassian, Slack, Grid/VPN, Fury Services/FuryDocs, TEAM, reload/restart y validación. No invoques Bash, MCP, Jira, Slack ni servicios externos y no hagas cambios.",
       "assertions": [
         {
           "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
           "values": [
-            "ACLI",
-            "acli",
-            "setup"
+            "claude --version",
+            "claude doctor",
+            "claude-code"
+          ]
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "groot-queue@groot-marketplace"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "acli jira auth status"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "Bash(acli jira *)"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "Atlassian"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "OAuth"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "Slack"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "Grid Sharing"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "VPN"
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "Fury Services",
+            "fury-services"
+          ]
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "FuryDocs"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "TEAM"
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "/reload-plugins",
+            "reinici"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "/groot-queue:setup",
+            "/groot-queue setup"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-missing-dependencies-safe-diagnosis",
+      "description": "Setup informa dependencias faltantes y remite al onboarding sin mutar el entorno",
+      "input": "Escenario documental de `/groot-queue setup`: faltan dependencias locales como ACLI y jq. Consultá las referencias bundled y explicá el resultado visible, la remediación manual y si setup instala, habilita, configura o actualiza algo sin aprobación explícita. No invoques Bash, MCP, Jira, Slack ni servicios externos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "Setup incompleto",
+            "setup incompleto",
+            "dependencias faltantes",
+            "check fallido"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "guía canónica",
+            "README.md",
+            "Prerrequisitos en macOS",
+            "onboarding"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no instala",
+            "no instalará",
+            "sin instalar"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no habilita",
+            "no habilitará",
+            "sin habilitar"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no configura",
+            "no configurará",
+            "sin configurar"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no actualiza",
+            "no actualizará",
+            "sin actualizar"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "aprobación explícita",
+            "autorización explícita",
+            "sin tu aprobación"
           ]
         }
       ]
@@ -1126,6 +1273,433 @@
             "Veredicto: DESCARTAR",
             "Veredicto: `DESCARTAR`",
             "⛔ DESCARTAR"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-discovery-tools-unavailable",
+      "description": "operational commands fail closed when Fury discovery tools are not unequivocally available",
+      "input": "Documentation-only contract question. Read the bundled groot-queue readiness reference files if needed. Assume shell readiness passed, but the provider does not expose both Fury list_components and list_tools discovery tools. State the exact failure code, gate decision, and whether any discovery tool is invoked. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "FURY_RUNTIME_DISCOVERY_TOOLS_UNAVAILABLE"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "bloquear",
+            "detener",
+            "no ejecutar",
+            "no continuar"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "no discovery tool is invoked when the required pair is absent",
+          "values": [
+            "sin invocar",
+            "no invocar ninguna tool",
+            "no se invoca ninguna tool",
+            "no llamar"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-list-components-failure",
+      "description": "list_components failure blocks the operational subcommand",
+      "input": "Documentation-only contract question. Read the bundled groot-queue readiness reference files if needed. Assume shell readiness passed and both Fury discovery tools exist, but list_components fails while gating stats. State the exact failure code and whether stats may run. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "FURY_COMPONENT_DISCOVERY_FAILED"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no ejecutar",
+            "no puede continuar",
+            "bloque",
+            "detener"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-furydocs-component-missing",
+      "description": "missing furydocs component blocks before tool discovery",
+      "input": "Documentation-only contract question. Read the bundled groot-queue readiness reference files if needed. Assume list_components succeeds but has no component named exactly furydocs. State the exact failure code, gate decision for list, and whether list_tools is called. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "FURYDOCS_COMPONENT_UNAVAILABLE"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no invocar list_tools",
+            "no se invoca list_tools",
+            "sin llamar list_tools",
+            "bloquear",
+            "detener"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-list-tools-failure",
+      "description": "list_tools failure blocks the operational subcommand",
+      "input": "Documentation-only contract question. Read the bundled groot-queue readiness reference files if needed. Assume list_components finds furydocs but list_tools(component=\"furydocs\") fails. State the exact failure code and gate decision. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "FURY_TOOL_DISCOVERY_FAILED"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "bloquear",
+            "detener",
+            "no ejecutar",
+            "no continuar"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-get-doc-structure-missing",
+      "description": "furydocs without get_doc_structure remains unavailable",
+      "input": "Documentation-only contract question. Read the bundled groot-queue readiness reference files if needed. Assume list_tools for furydocs returns get_doc_file plus extras but not get_doc_structure, and every unrelated command prerequisite already passed. State the exact failure code and whether classify is dispatched. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "FURYDOCS_REQUIRED_TOOLS_UNAVAILABLE"
+        },
+        {
+          "type": "contains",
+          "value": "get_doc_structure"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no se habilita",
+            "no ejecutar",
+            "bloquear",
+            "detener"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-get-doc-file-missing",
+      "description": "furydocs without get_doc_file remains unavailable",
+      "input": "Documentation-only contract question. Read the bundled groot-queue readiness reference files if needed. Assume list_tools for furydocs returns get_doc_structure plus extras but not get_doc_file, and every unrelated command prerequisite already passed. State the exact failure code and whether solve is dispatched. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "FURYDOCS_REQUIRED_TOOLS_UNAVAILABLE"
+        },
+        {
+          "type": "contains",
+          "value": "get_doc_file"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no se habilita",
+            "no ejecutar",
+            "bloquear",
+            "detener"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-required-tools-enable-command",
+      "description": "both required furydocs tools enable the operational subcommand after shell success",
+      "input": "Documentation-only contract question. Read the bundled groot-queue readiness reference files if needed. Assume shell readiness and every unrelated command prerequisite passed, list_components returns furydocs, and list_tools returns get_doc_structure, get_doc_file, plus an extra tool. State whether the readiness entrypoint enables dispatch of list. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "get_doc_structure"
+        },
+        {
+          "type": "contains",
+          "value": "get_doc_file"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "habilitar",
+            "habilitado",
+            "puede continuar",
+            "puede ejecutar",
+            "se ejecuta"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "runtime-discovery-does-not-call-document-tools",
+      "description": "runtime readiness discovers capabilities without invoking documentation tools",
+      "input": "Documentation-only contract question. Read the bundled groot-queue readiness reference files if needed. After shell readiness succeeds, which Fury discovery tools may the runtime gate call, and may it invoke get_doc_structure or get_doc_file before dispatch? Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "list_components"
+        },
+        {
+          "type": "contains",
+          "value": "list_tools"
+        },
+        {
+          "type": "contains_any",
+          "description": "documentation tools are checked by name but never invoked by readiness",
+          "values": [
+            "no invocar get_doc_structure",
+            "no invoca get_doc_structure",
+            "no debe invocar get_doc_structure",
+            "sin invocar get_doc_structure"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "get_doc_file"
+        }
+      ]
+    },
+    {
+      "id": "setup-runs-fresh-independent-readiness",
+      "description": "setup runs fresh shell and independent runtime diagnostics even after prior readiness",
+      "input": "Documentation-only contract question. Read bundled setup/readiness references if needed. Assume GROOT_QUEUE_READINESS_RESULT_FILE points to a previous shell success but fresh setup shell diagnosis now fails. Explain reuse behavior, whether independent Fury runtime diagnosis still runs, and final setup status. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "no reutiliza",
+            "sin reutilizar",
+            "diagnóstico fresco",
+            "fresh"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "aunque la fase shell falle",
+            "incluso si la fase shell falla",
+            "independiente",
+            "debe continuar el diagnóstico runtime"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Setup incompleto",
+            "setup incompleto",
+            "no está completo"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-help-uses-no-tools",
+      "description": "Setup help describe el diagnóstico y la guía canónica sin ejecutar tools ni cambiar el entorno",
+      "input": "Respondé `/groot-queue setup --help` usando metadata y onboarding bundled. Resumí qué verifica setup, nombrá la guía canónica y explicá qué no ejecuta o modifica. No invoques Bash, MCP, Jira, Slack ni servicios externos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "Grid Sharing"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "FuryDocs"
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no ejecuta el checker",
+            "sin ejecutar el checker",
+            "no corre el checker",
+            "no ejecuta tools",
+            "sin tools",
+            "no ejecuta diagnósticos"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no instala",
+            "no modifica",
+            "no realiza cambios",
+            "sin autorización explícita"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "guía canónica",
+            "README.md",
+            "guía de instalación",
+            "onboarding"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-reuses-combined-readiness",
+      "description": "start displays Grid and FuryDocs health without repeating readiness work",
+      "input": "Documentation-only contract question. Read bundled start/readiness references if needed. Assume dispatcher already validated shell schema 2 and Fury runtime during this invocation. State the separate health entries and whether start repeats checker, discovery, probes, or documentation calls. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "Grid Sharing"
+        },
+        {
+          "type": "contains",
+          "value": "FuryDocs"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no repetir",
+            "no repite",
+            "no vuelve a ejecutar",
+            "sin repetir"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "checker",
+            "discovery",
+            "probes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grid-fury-atlassian-safe-remediation",
+      "description": "Fallas combinadas de Grid, Fury y Atlassian bloquean operaciones y muestran remediación manual segura",
+      "input": "Escenario documental de `/groot-queue setup`: fallan identidad/VPN o acceso Grid, Fury Services/FuryDocs y OAuth Atlassian. Consultá readiness/onboarding bundled y explicá el bloqueo y próximos pasos manuales seguros. Indicá si corresponde usar tokens/headers para Grid, reconstruir transporte Fury o hardcodear cloudId. No invoques Bash, MCP, Jira, Slack ni servicios externos y no cambies configuración.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "bloquear",
+            "bloqueado",
+            "no ejecutar",
+            "no continuar",
+            "Setup incompleto"
+          ]
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "VPN"
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "Fury Services",
+            "fury-services"
+          ]
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "FuryDocs"
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "/reload-plugins",
+            "reinici"
+          ]
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "Atlassian"
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "OAuth"
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no agregues headers",
+            "no uses headers",
+            "sin headers",
+            "no reconstruyas headers"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no uses tokens",
+            "no pegar tokens",
+            "sin tokens",
+            "no agregues tokens"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no sustituye la VPN",
+            "no reemplaza la VPN",
+            "no saltear la VPN",
+            "no omitir la VPN"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no reconstruyas",
+            "no copies argumentos",
+            "no crear otra entrada",
+            "no agregues una segunda declaración"
+          ]
+        },
+        {
+          "type": "contains",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "value": "cloudId"
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "no hardcode",
+            "nunca lo hardcodees",
+            "resolverlo dinámicamente",
+            "resolvé el cloudId dinámicamente"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "values": [
+            "pasos manuales",
+            "remediación manual",
+            "aprobación explícita",
+            "autorización explícita",
+            "no modifica"
           ]
         }
       ]

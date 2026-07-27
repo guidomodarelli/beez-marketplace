@@ -49,7 +49,7 @@ Buscar cualquier tool cuyo nombre contenga `slack` y exponga capacidad de postea
 1. Si **no existe ninguna tool de Slack** en el contexto → marcar `SLACK_MCP_AVAILABLE = false`. Los tickets SLACK_REDIRECT se procesarán como `MANUAL_REDIRECT` al final. Mostrar warning:
    ```
    ⚠️ Slack MCP no disponible — los tickets R-DER-05 quedarán como redirección manual.
-   Para habilitarlo, ver knowledge/config/slack-mcp.md § Instalación según tu proveedor.
+   Para habilitarlo, seguí la sección "Slack MCP" de la guía canónica de Groot Queue.
    ```
 2. Si existe → autenticarse si aún no lo está.
    - Autenticación OK → `SLACK_MCP_AVAILABLE = true`.

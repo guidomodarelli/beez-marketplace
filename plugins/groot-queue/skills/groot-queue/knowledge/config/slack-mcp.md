@@ -1,4 +1,4 @@
-# Slack MCP — Instalación
+# Slack MCP — Configuración y degradación
 
 Referencia centralizada para subcommands que usan el MCP de Slack.
 
@@ -6,41 +6,19 @@ Documentación oficial: [Connect to Claude — Slack MCP Server](https://docs.sl
 
 ---
 
-## Instalación
+## Instalación humana
 
-El nombre de las herramientas Slack varía según el proveedor — buscar cualquier tool cuyo nombre contenga `slack`.
+La fuente canónica para instalar y completar OAuth es la sección [Slack MCP de la guía de Groot Queue](installation.md#5-slack-mcp). No duplicar aquí comandos ni configuración de Claude Code.
 
-**Claude Code — UI (recomendado):**
-Settings → Integrations → Slack → autorizar el workspace.
+- **Claude Code**: seguir la sección canónica anterior.
+- **Codex**: seguir el [anexo Codex](installation.md#anexo-codex) y aplicar el mismo contrato de capacidades y OAuth.
+- **GitHub Copilot CLI**: el readiness no es operacional mientras no exista un inventario oficial verificable; consultar [Alcance y providers](installation.md#alcance-y-providers).
 
-**Claude Code — plugin (CLI):**
-Desde una sesión activa de Claude Code:
-```
-/plugin install slack
-```
-O desde la línea de comandos:
-```bash
-claude plugin install slack
-```
-El plugin configura el MCP automáticamente (OAuth incluido vía `clientId` y `callbackPort`).
+## Contrato de capacidades y degradación
 
-**Codex** — agregar en `~/.codex/config.toml`:
-```toml
-[mcp_servers.SlackMCP]
-command = "npx"
-args = ["-y", "mcp-remote", "https://mcp.slack.com/mcp"]
-```
-Reiniciar Codex y completar el flujo OAuth con `/mcp`.
+Los nombres de las tools de Slack varían según provider y configuración. Detectar capacidades compatibles para localizar usuarios y enviar mensajes sin depender de un nombre exacto.
 
-**GitHub Copilot CLI** — agregar en `~/.copilot/mcp-config.json`:
-```json
-{
-  "mcpServers": {
-    "SlackMCP": {
-      "type": "http",
-      "url": "https://mcp.slack.com/mcp"
-    }
-  }
-}
-```
-Reiniciar Copilot CLI y completar el flujo OAuth.
+- Si las capacidades requeridas no existen, marcar Slack como degradado y permitir `alerts` únicamente con `--dry-run`.
+- Si existen pero OAuth no está listo, no enviar mensajes; mostrar el estado y remitir a la sección "Slack MCP" de la guía canónica de Groot Queue.
+- Solo habilitar envíos cuando las capacidades y la autenticación del workspace correcto estén verificadas.
+- No enviar un mensaje real como prueba de setup.

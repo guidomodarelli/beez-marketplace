@@ -2,6 +2,6 @@
 description: Muestra el banner de bienvenida con la versión y el catálogo de comandos disponibles con hints de uso.
 ---
 
-<!-- Alias de invocación bare: `/groot-queue` (sin subcomando) muestra el mismo banner que `/groot-queue:start`. Ambos wrappers apuntan a propósito al subcomando `start.md` como única fuente de verdad. -->
+Leé y aplicá `${CLAUDE_PLUGIN_ROOT}/skills/groot-queue/knowledge/config/command-entrypoint.md` para el subcomando canónico `start`, los argumentos `$ARGUMENTS` y el provider `claude`.
 
-Leé y seguí literalmente las instrucciones de `~/.claude/skills/groot-queue/subcommands/start.md`.
+Solo si el entrypoint habilita la ejecución, leé y seguí literalmente `${CLAUDE_PLUGIN_ROOT}/skills/groot-queue/subcommands/start.md`, aplicándolo a `$ARGUMENTS` y conservando el estado combinado de readiness validado cuando corresponda.

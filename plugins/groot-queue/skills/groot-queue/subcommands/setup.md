@@ -1,128 +1,134 @@
 ---
-description: Verifica e instala dependencias necesarias (ACLI, Atlassian MCP, Slack MCP, permisos) para usar la skill groot-queue.
+description: Verifica dependencias, integraciones, permisos y el readiness completo de Grid Sharing y FuryDocs para usar groot-queue.
 ---
 
-# /groot-queue:setup
+# Subcomando: setup
 
-Verificar e instalar todo lo necesario para usar la skill. Ejecutar en orden.
+**Propósito**: Verificar el entorno requerido por `groot-queue`, diagnosticar dependencias y mostrar remediaciones seguras sin asumir que una integración está disponible.
 
-> **Re-ejecutable**: este subcomando es idempotente. Correrlo de nuevo no rompe nada — sólo revalida lo ya configurado y completa lo que falte. Usalo cuando algo deje de andar.
+> **Re-ejecutable**: este subcomando es idempotente. Correrlo de nuevo no rompe nada; revalida lo configurado y señala lo que falta.
+
+## Ayuda sin tools
+
+Antes de cualquier tool o lectura adicional, inspeccionar los argumentos. Si contienen el token exacto `--help` o `-h`, explicar brevemente qué verifica `setup`, que Grid Sharing y FuryDocs son obligatorios para completar el setup y que no se realizan instalaciones ni cambios sin autorización explícita. Detenerse después de responder la ayuda.
 
 ## 1. ACLI (Atlassian CLI)
 
-- Verificar: `acli --version`
-- Si no está instalado: mostrar instrucciones → `brew install acli` o https://acli.atlassian.com
-- Si está instalado, verificar autenticación: `acli jira serverinfo`
-  - Si falla: mostrar `acli jira auth login --web` y pedir seleccionar https://mercadolibre.atlassian.net
+- Verificar `acli --version`.
+- Si ACLI no está disponible, marcar el check como fallido y remitir al anchor canónico `$SKILL_DIR/knowledge/config/installation.md#1-prerrequisitos-en-macos`; no duplicar comandos ni instalar automáticamente.
+- Si está disponible, verificar autenticación con `acli jira auth status`.
+- Si la autenticación falla o corresponde a otro sitio, marcar el check como fallido y remitir al mismo anchor canónico; no ejecutar login automáticamente.
 
 ## 2. Atlassian MCP
 
-El subcomando `derive` usa el MCP de Atlassian para ejecutar la transición "Derivar a otro equipo" (requiere campos de pantalla que ACLI no puede proveer: Squad destino + comentario privado de traspaso). Ver `$SKILL_DIR/knowledge/config/atlassian-mcp.md` para la referencia canónica de instalación y mensajes de error.
+El subcomando `derive` usa el MCP de Atlassian para ejecutar la transición "Derivar a otro equipo". Leer `$SKILL_DIR/knowledge/config/atlassian-mcp.md` como referencia canónica de instalación y errores.
 
-- Verificar si el contexto expone un MCP de Atlassian compatible. Si se instaló con el nombre `Atlassian`, las herramientas deben aparecer con prefijo `mcp__Atlassian__...` (por ejemplo `mcp__Atlassian__getAccessibleAtlassianResources`, `mcp__Atlassian__getTransitionsForJiraIssue`, `mcp__Atlassian__addCommentToJiraIssue` y `mcp__Atlassian__transitionJiraIssue`).
-- Si el proveedor actual no expone herramientas MCP de Atlassian, informar que `/groot-queue:derive` no puede ejecutar la transición automática desde ese proveedor y que se debe completar la derivación manualmente en Jira.
-- Si el proveedor solo expone comentarios públicos (`addCommentToJiraIssue`) y no una capacidad equivalente para crear **nota interna de Jira Service Management**, informar que `/groot-queue:derive` no puede automatizar la derivación sin riesgo de publicar información interna al reporter. En ese caso debe completarse manualmente en Jira.
-- Si **no está disponible**, instalarlo con una de estas opciones:
-
-  **Opción A — CLI (recomendado):**
-  ```bash
-  claude mcp add --transport http "Atlassian" https://mcp.atlassian.com/v1/mcp
-  ```
-  Luego completar el flujo OAuth con `/mcp` dentro de Claude Code y autorizar el acceso a `mercadolibre.atlassian.net`.
-
-  **Opción B — UI:**
-  Claude Code → Settings → Integrations → Atlassian → autorizar acceso a `mercadolibre.atlassian.net`.
-
-  Mostrar mensaje:
-  ```
-  ⚠️  Atlassian MCP no detectado.
-  Instalá con: claude mcp add --transport http "Atlassian" https://mcp.atlassian.com/v1/mcp
-  Luego ejecutá /mcp para completar el flujo OAuth.
-  El subcomando /groot-queue:derive no puede ejecutar la transición de estado sin este MCP.
-  ```
-
-- Si **está disponible**, verificar autenticación y resolver el `cloudId` intentando:
-  - Llamar `mcp__Atlassian__atlassianUserInfo` o la herramienta equivalente expuesta por el MCP de Atlassian del proveedor actual.
-  - Si retorna datos del usuario: ✅ autenticado
-  - Si falla con error de auth: llamar `mcp__Atlassian__authenticate` o la herramienta equivalente, e indicar al usuario que complete el flujo OAuth
-  - Llamar `mcp__Atlassian__getAccessibleAtlassianResources` o la herramienta equivalente y elegir el recurso que represente `mercadolibre.atlassian.net`.
-  - Usar el `cloudId` retornado por ese recurso en las llamadas posteriores. Si el proveedor documenta o valida otro formato para ese sitio (por ejemplo URL completa o hostname), usar ese valor validado y dejarlo explícito.
-
-> **Nota**: no hardcodear el `cloudId` sin validarlo contra el MCP actual. Resolverlo durante setup y reutilizar el valor validado para `/groot-queue:derive`.
+- Verificar si el contexto expone un MCP de Atlassian compatible.
+- Si el provider no expone esas tools, informar que la derivación automática debe completarse manualmente en Jira.
+- Si solo permite comentarios públicos y no notas internas de Jira Service Management, no automatizar la derivación.
+- Si no está disponible o la autenticación falla, marcar el check según el contrato y remitir al anchor canónico `$SKILL_DIR/knowledge/config/installation.md#4-atlassian-mcp`; no duplicar comandos ni instalar, habilitar o autenticar automáticamente.
+- Si está disponible, verificar autenticación y resolver el `cloudId` con las tools del provider actual. No hardcodearlo.
 
 ## 3. Slack MCP
 
-El subcomando `alerts` usa el MCP de Slack para enviar DMs de resumen de SLA. El nombre de las herramientas Slack **varía según el proveedor y la configuración del MCP** — no hardcodear un nombre exacto.
+El subcomando `alerts` usa Slack MCP para enviar DMs de SLA. Los nombres de las tools varían según provider y configuración.
 
-- Buscar en el contexto **cualquier** tool cuyo nombre contenga `slack` y exponga capacidad de buscar usuarios y enviar mensajes (ej: `mcp__slack__search_users`, `mcp__plugin_slack_slack__search_users`, `mcp__<id>__slack_search_users`, u otra variante).
-- Si **no existe ninguna** tool de Slack:
-  ```
-  ⚠️  Slack MCP no detectado.
-  Para Claude Code: instalá el plugin/connector de Slack (Settings → Integrations) o vía `claude mcp add`.
-  Para Codex: configurá el MCP de Slack en .codex/mcp.json.
-  El subcomando /groot-queue:alerts sólo podrá correr en modo --dry-run sin este MCP.
-  ```
-- Si existe pero no está autenticado: ejecutar la tool de autenticación de Slack disponible (si el proveedor la expone) o indicar al usuario que complete el login del connector.
-- Si existe y está autenticado → ✅.
+- Buscar capacidades compatibles para localizar usuarios y enviar mensajes, sin depender de un nombre exacto de tool.
+- Si no existen, informar que `alerts` solo puede ejecutarse con `--dry-run` y remitir al anchor canónico `$SKILL_DIR/knowledge/config/installation.md#5-slack-mcp`.
+- Si existen pero no están autenticadas, mantener el modo degradado y remitir al mismo anchor; no duplicar comandos ni iniciar OAuth automáticamente.
+- Si están autenticadas, marcar el check como listo.
 
 ## 4. Permisos ACLI en settings
 
-- Verificar que el directorio `.claude/` existe en el directorio actual
-- Verificar que `.claude/settings.local.json` contiene `"Bash(acli jira *)"` en `permissions.allow`
-- Si no: crear o actualizar el archivo con el permiso mínimo necesario:
-  ```json
-  { "permissions": { "allow": ["Bash(acli jira *)"] } }
-  ```
+Aplicar este check según el provider activo, sin cambiar el readiness shell/runtime:
+
+- **Claude Code**: verificar que `.claude/settings.local.json` sea JSON válido y contenga el permiso amplio `"Bash(acli jira *)"` o el perfil read-only completo definido en `$SKILL_DIR/knowledge/config/installation.md#3-permisos-acli-en-claude-code`. Si faltan ambos perfiles, marcar el check base como crítico. Si existe solo el perfil granular, marcar lectura/diagnóstico como listos y advertir que asignaciones, transiciones y ediciones pedirán autorización. No crear ni modificar el archivo sin aprobación explícita.
+- **Codex**: mostrar el check como no aplicable y remitir a `$SKILL_DIR/knowledge/config/installation.md#anexo-codex` para la guía del provider.
+- **GitHub Copilot CLI**: mostrar el check como no aplicable y remitir a `$SKILL_DIR/knowledge/config/installation.md#alcance-y-providers`; no intentar adaptar permisos de Claude.
 
 ## 5. Verificación del TEAM
 
-- Leer la sección TEAM del SKILL.md (`$SKILL_DIR/SKILL.md`)
-- Si está vacía: advertir que `/groot-queue:assign-unassigned` no funcionará hasta configurarlo
+- Leer la sección TEAM de `$SKILL_DIR/SKILL.md`.
+- Si está vacía, advertir que `assign-unassigned` no funcionará hasta configurarla.
 
-## 6. Grid Sharing (plugin) — OBLIGATORIO
+## 6. Fase shell — diagnóstico fresco obligatorio
 
-El plugin `grid-sharing` permite leer documentación operativa alojada en Grid (grid.adminml.com). Los subcomandos lo usan para consultar guías operativas y generar mejores recomendaciones.
+Este diagnóstico es propio de `setup` y se ejecuta independientemente de cualquier gate previo. No reutilizar un estado en memoria ni `GROOT_QUEUE_READINESS_RESULT_FILE`.
 
-- Verificar si la skill `/grid-sharing:grid` está disponible en el contexto (aparece en la lista de skills disponibles).
-- Si **no está disponible**:
-  ```
-  ❌  Plugin grid-sharing no detectado.
-  Instalá con: /plugins (en Claude Code).
-  /groot-queue NO puede operar sin este plugin.
-  ```
-- Si está disponible → ✅.
+1. Leer y aplicar `$SKILL_DIR/knowledge/config/groot-queue-readiness.md` y usar `$SKILL_DIR/knowledge/config/groot-queue-readiness.json` como configuración máquina-legible.
+2. Identificar el provider activo como `claude`, `codex` o `copilot`. Usar `GROOT_QUEUE_ACTIVE_PROVIDER` solo si contiene uno de esos valores; en otro caso usar el provider que ejecuta la skill. Usar `auto` únicamente cuando no sea posible distinguirlo.
+3. Ejecutar `$SKILL_DIR/scripts/check-groot-queue-readiness.sh --provider <provider>` sin `--reuse-result`.
+4. Capturar tanto el exit code como el único objeto JSON de stdout. No imprimir el objeto completo, bodies, identidad, tokens ni paths de instalación.
+5. Exigir `schema_version: 2` y `scope: "shell"`. Usar exclusivamente `checks`, `failures`, `provider`, `ok` y `exit_code` para completar las filas shell.
+
+La fase shell solo está lista con exit code `0`, `schema_version: 2`, `scope: "shell"`, `ok: true` y `exit_code: 0`. La presencia textual de una skill, plugin o declaración MCP no reemplaza ninguna capa del checker.
+
+Si la fase shell falla, no instalar, habilitar, configurar ni actualizar nada. Mostrar cada failure code seguro y la remediación en español asociada a su exit code en el contrato central. Para fallos de Grid Sharing o sus permisos/red, remitir además a `$SKILL_DIR/knowledge/config/installation.md#6-grid-sharing-y-vpn`; para fallos de Fury Services/FuryDocs, remitir a `$SKILL_DIR/knowledge/config/installation.md#7-fury-services-y-furydocs`. No duplicar allí comandos de remediación. Cualquier acción mutable requiere aprobación explícita del usuario antes de ejecutarse.
+
+## 7. Fase runtime MCP — diagnóstico independiente
+
+Ejecutar este diagnóstico después del intento shell incluso cuando la fase shell haya fallado. No reutilizar un resultado runtime anterior.
+
+1. Detectar únicamente tools de discovery inequívocamente pertenecientes al server MCP `fury` del provider actual. En Claude Code, preferir `mcp__plugin_fury-services_fury__list_components` y `mcp__plugin_fury-services_fury__list_tools`; aceptar solo equivalentes exactos del mismo server.
+2. Si ambas tools están disponibles, invocar **solo** `list_components` sin argumentos. No mostrar el payload completo.
+3. Si la respuesta es válida, exigir un componente cuyo `name` sea exactamente `furydocs`.
+4. Si el componente existe, invocar **solo** `list_tools` con `component="furydocs"`. Exigir los nombres exactos `get_doc_structure` y `get_doc_file`; permitir tools adicionales.
+5. No invocar `get_doc_structure`, `get_doc_file` ni ninguna otra tool documental.
+6. Si las tools de discovery no están disponibles o una capa falla, registrar el check y failure code exactos definidos en `$SKILL_DIR/knowledge/config/groot-queue-readiness.md`, remitir a `$SKILL_DIR/knowledge/config/installation.md#7-fury-services-y-furydocs` y continuar armando el diagnóstico sin presentar la fase como exitosa. No duplicar comandos ni instalar o configurar componentes automáticamente.
+
+Esta fase es independiente y no serializable: no escribir su estado en archivos ni variables de entorno y no inferirla desde el JSON shell.
 
 ## Output esperado
 
-Renderizar una tabla de estado con el resultado **real** de cada check (no valores de ejemplo). Reemplazar cada `<...>` con lo que se obtuvo en tiempo de ejecución:
+Renderizar una tabla con el resultado real de cada check. No conservar placeholders ni inventar valores no verificables.
 
-```
+```text
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔧 Setup — Groot Queue
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-| Check                         | Estado | Detalle                                  |
-|-------------------------------|--------|------------------------------------------|
-| ACLI instalado                | <✅/❌> | <versión real, ej: v8.x.x>               |
-| ACLI autenticado              | <✅/❌> | mercadolibre.atlassian.net               |
-| Atlassian MCP + cloudId       | <✅/❌/⚠️> | <cloudId validado / no verificable>   |
-| Slack MCP                     | <✅/❌/⚠️> | <disponible y autenticado / no detectado> |
-| Permiso Bash(acli jira *)     | <✅/❌> | .claude/settings.local.json              |
-| TEAM configurado              | <✅/⚠️> | <N miembros / vacío>                      |
-| Grid Sharing plugin           | <✅/❌> | <disponible / no detectado>              |
+| Check                              | Estado      | Detalle seguro |
+|------------------------------------|-------------|----------------|
+| ACLI instalado                     | <resultado> | <versión o estado> |
+| ACLI autenticado                   | <resultado> | <sitio o estado> |
+| Atlassian MCP + cloudId            | <resultado> | <validado o no verificable> |
+| Slack MCP                          | <resultado> | <autenticado, limitado o ausente> |
+| Permisos ACLI Claude               | <resultado> | <perfil amplio, read-only o no aplicable> |
+| TEAM configurado                   | <resultado> | <cantidad o vacío> |
+| Provider inventory                 | <resultado> | <provider + failure code si aplica> |
+| Grid Sharing plugin                | <resultado> | <check real> |
+| Grid Sharing skill                 | <resultado> | <check real> |
+| Fury plugin                        | <resultado> | <check real> |
+| Fury skill                         | <resultado> | <check real> |
+| Fury manifest                      | <resultado> | <check real> |
+| Fury MCP declaration              | <resultado> | <check real> |
+| Fury MCP CLI                       | <resultado> | <check real> |
+| Grid network + ping                | <resultado> | <check real> |
+| Grid plugin version                | <resultado> | <check real> |
+| Grid identity + VPN                | <resultado> | <check real> |
+| Grid general read                  | <resultado> | <check real> |
+| Grid required document             | <resultado> | <check real> |
+| Fury runtime discovery             | <resultado> | <check real> |
+| FuryDocs component                 | <resultado> | <check real> |
+| FuryDocs required tools            | <resultado> | <check real> |
 ```
 
-- `✅` = OK · `❌` = falta y es bloqueante para algún subcomando · `⚠️` = degradado o no verificable en este proveedor.
-- Los valores entre `<...>` son placeholders: rellenarlos con el resultado real de cada verificación.
+Mapear las filas shell respectivamente a `provider_inventory`, `grid_plugin`, `grid_required_skill`, `fury_plugin`, `fury_required_skill`, `fury_manifest`, `fury_mcp_declaration`, `fury_mcp_cli`, `ping`, `skill_version`, `identity`, `general_read` y `required_document`.
+
+Mapear las filas runtime a los checks conceptuales del contrato:
+
+- `Fury runtime discovery`: `fury_runtime_discovery_tools` y `fury_component_discovery`.
+- `FuryDocs component`: `furydocs_component`.
+- `FuryDocs required tools`: `fury_tool_discovery` y `furydocs_required_tools`.
+
+Si una capa no corrió, mostrarla como no ejecutada con su failure code seguro; no presentarla como exitosa.
+
+- `✅` = check verificado.
+- `❌` = check crítico fallido.
+- `⚠️` = integración opcional degradada o no verificable.
 
 ### Cierre
 
-- Si **todos** los checks críticos (ACLI instalado + autenticado + permiso) están en ✅:
-  > ✅ Setup completo. Podés usar `/groot-queue list` para empezar.
-- Si hay ❌ o ⚠️, listar debajo **qué falló, cómo arreglarlo y qué subcomandos quedan limitados** mientras tanto. Ejemplo:
-  ```
-  ⚠️ Setup incompleto:
-  • Slack MCP no detectado → /groot-queue alerts sólo corre con --dry-run. Arreglo: ver sección 3.
-  • TEAM vacío → /groot-queue assign-unassigned no funciona. Arreglo: completá la sección TEAM del SKILL.md.
-
-  El resto de los comandos (list, classify, detail, solve, derive, discard) ya está operativo.
-  ```
+- Considerar críticos locales en todos los providers soportados: ACLI instalado y autenticado. En Claude Code, considerar crítico que exista el permiso amplio o el perfil read-only completo de la guía; el perfil granular deja operaciones mutables sujetas a autorización. En Codex o GitHub Copilot CLI debe figurar como no aplicable. Un TEAM vacío limita `assign-unassigned`, pero no bloquea el resto del readiness.
+- Mostrar `✅ Setup completo. Podés usar /groot-queue list para empezar.` únicamente cuando los críticos locales estén listos, la fase shell esté lista y todos los checks runtime estén listos.
+- En cualquier otro caso, mostrar `⚠️ Setup incompleto`, listar cada limitación comprobada y su remediación en español, y no afirmar que los comandos operativos están disponibles mientras cualquiera de las dos fases obligatorias no haya pasado.
+- No instalar, habilitar, configurar ni actualizar componentes durante `setup` sin aprobación explícita del usuario.

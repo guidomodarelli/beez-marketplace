@@ -4,6 +4,8 @@ Base de conocimiento **única** del equipo de soporte Groot. La skill `groot-que
 
 La idea es que todo el conocimiento del día a día del equipo crezca en este directorio, sin tocar la skill.
 
+Para instalar y preparar el entorno, consultar la [guía canónica de onboarding de Groot Queue](config/installation.md). Esta knowledge base conserva contratos operativos; no duplica los pasos de instalación.
+
 ## Estructura
 
 ```
@@ -17,9 +19,9 @@ rules/               Reglas de negocio y procedimientos de resolución:
                        Se consulta en /groot-queue solve.
 
 config/              Configuración de tooling externo y opciones de Jira:
-  atlassian-mcp.md     Instalación, pre-condiciones y uso del MCP de Atlassian.
+  atlassian-mcp.md     Precondiciones y uso seguro del MCP de Atlassian.
                        Fuente de verdad de `commentVisibility` (nota interna).
-  slack-mcp.md         Instalación del MCP de Slack.
+  slack-mcp.md         Capacidades y degradación segura del MCP de Slack.
   classification.md    JQL base y lógica de clasificación compartida entre commands.
   jira-field-options.md
                        Fuente de verdad centralizada de option IDs de campos

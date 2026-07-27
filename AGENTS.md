@@ -148,7 +148,7 @@ description: <same as skill table>
 argument-hint: <if applicable>
 ---
 
-Leé y seguí literalmente las instrucciones de `~/.claude/skills/<plugin>/subcommands/<name>.md`, aplicándolas a `$ARGUMENTS`.
+Leé y seguí literalmente las instrucciones de `${CLAUDE_PLUGIN_ROOT}/skills/<plugin>/subcommands/<name>.md`, aplicándolas a `$ARGUMENTS`.
 ```
 
 **Invocation matrix**:
@@ -162,6 +162,8 @@ Leé y seguí literalmente las instrucciones de `~/.claude/skills/<plugin>/subco
 **Reference implementation**: see `plugins/groot-queue/`. Use it as the template when porting any multi-action plugin to be multi-provider.
 
 ## Local Testing
+
+Run the canonical shell test commands documented in [`README.md` → “Correr tests shell localmente”](README.md#-correr-tests-shell-localmente). Keep the real setup E2E opt-in.
 
 ```bash
 # One-time setup: install the eval runner (provider-agnostic)

@@ -8,6 +8,15 @@
 
 Al ejecutar este subcomando, realizar los siguientes pasos **en orden**:
 
+### Paso 0: Exigir el readiness combinado validado
+
+Consumir el estado combinado de readiness validado por el dispatcher o wrapper durante esta misma invocación. Debe incluir:
+
+- fase shell producida por una ejecución o reutilización verificada de `check-groot-queue-readiness.sh`, con exit code `0`, `schema_version: 2`, `scope: "shell"`, `ok: true` y `exit_code: 0`;
+- fase runtime MCP validada en el runtime actual, con discovery de Fury, componente `furydocs` y las tools requeridas.
+
+No confiar en la mera presencia de `GROOT_QUEUE_READINESS_RESULT_FILE`, no leer ese archivo directamente y no repetir el checker, discovery ni ningún probe. Si el estado combinado no está disponible, detenerse antes del banner, de leer la versión, de ejecutar health-checks y de consultar Jira. Informar en español que el readiness de groot-queue no fue validado y pedir ejecutar `/groot-queue setup` para diagnosticar el entorno antes de reintentar `start`.
+
 ### Paso 1: Resolver datos dinámicos
 
 Ejecutar **en paralelo** (para minimizar latencia):
@@ -20,6 +29,8 @@ Ejecutar **en paralelo** (para minimizar latencia):
 2. **Nombre del usuario**: Ejecutar `git config user.name`. Si falla, usar `"developer"`.
 
 3. **Health-check del entorno** (cada check es independiente):
+   - **Grid Sharing**: usar la fase shell ya validada del Paso 0 → `✅ Grid Sharing`. No ejecutar ningún probe adicional.
+   - **FuryDocs**: usar la fase runtime MCP ya validada del Paso 0 → `✅ FuryDocs`. No repetir discovery ni invocar tools documentales.
    - **ACLI**: Ejecutar `which acli`. Si retorna 0 → `✅ ACLI`. Si falla → `❌ ACLI`.
    - **MCP Atlassian**: Verificar si existe MCP Atlassian configurado (buscar en la config del agente o con `claude mcp list 2>/dev/null | grep -i atlassian`). Si existe → `✅ Atlassian MCP`. Si no → `❌ Atlassian MCP`.
    - **MCP Slack**: Verificar si existe MCP Slack configurado (`claude mcp list 2>/dev/null | grep -i slack`). Si existe → `✅ Slack MCP`. Si no → `❌ Slack MCP`.
@@ -96,8 +107,9 @@ Antes de responder, verificar que stdout copiado contiene tanto `🟢 **/groot-q
 
 ## Reglas
 
+- El health-check debe incluir por separado `✅ Grid Sharing` y `✅ FuryDocs` desde el estado combinado validado de la misma invocación; nunca repetir checker, discovery ni probes.
 - Si ACLI no está disponible, **no fallar** — simplemente omitir la sección de conteo y marcar ACLI como ❌ en el health-check.
-- Si `claude mcp list` no está disponible (ej: Codex), marcar MCP checks como `⚠️ (no verificable)`.
+- Si `claude mcp list` no está disponible (ej: Codex), marcar MCP checks opcionales como `⚠️ (no verificable)`.
 - Si el usuario responde con un comando válido después del prompt, dispatchar al subcomando correspondiente.
 - El script bash del catálogo debe ejecutarse **verbatim** vía Bash tool — no resumir, no omitir líneas, no generar output de memoria ni reemplazarlo por una versión equivalente.
 - Preservar Markdown y bytes emitidos por script; no convertirlos a ANSI, envolver catálogo en bloque de código ni normalizar whitespace.
