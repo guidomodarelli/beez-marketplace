@@ -27,17 +27,17 @@ Ver [`nexus-team.md`](./nexus-team.md) para detalle completo: dominio, productos
 | Groot | Groot (ambas células) | API core de gestión de usuarios shipping |
 | Kraken (auth) | Kraken | Auth/roles/permisos |
 | Kraken Menu | Nexus | Menú lateral genérico de apps Groot |
-| Pidgey | Nexus | Notificaciones |
-| Alfred | Nexus | Operaciones masivas |
+| Pidgey | Nexus | [Ver alcance en el catálogo de productos Nexus](./nexus-team.md#productos-a-cargo) |
+| Alfred | Nexus | [Ver alcance en el catálogo de productos Nexus](./nexus-team.md#productos-a-cargo) |
 | Chat Interno | Nexus | Comunicación interna |
-| Godric | Nexus | (pendiente documentar) |
+| Godric | Nexus | [Ver alcance en el catálogo de productos Nexus](./nexus-team.md#productos-a-cargo) |
 | Autogestión de perfil | Kraken | Autogestión de CAD/atributos vía xtools (`/tools/profile/mercadoenvios`) |
 
 ## Plataformas con ownership parcial de Groot
 
 - **xtools** (xtools.adminml.com): Plataforma de herramientas internas de shipping. La plataforma es externa, pero **rutas específicas son productos Groot**:
-  - `/tools/pidgey/*` → Nexus (notificaciones)
-  - `/tools/alfred/*` → Nexus (operaciones masivas)
+  - `/tools/pidgey/*` → Nexus; ver [`nexus-team.md#productos-a-cargo`](./nexus-team.md#productos-a-cargo)
+  - `/tools/alfred/*` → Nexus; ver [`nexus-team.md#productos-a-cargo`](./nexus-team.md#productos-a-cargo)
   - `/tools/profile/mercadoenvios` → Kraken (autogestión de perfil)
   - Tickets sobre estas rutas son **internos del equipo**, no escalaciones externas.
 

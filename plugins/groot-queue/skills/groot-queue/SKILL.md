@@ -139,9 +139,12 @@ $SKILL_DIR/
     ├── classification.md   ← JQL base + Dimensión 1 + Dimensión 2 + mapeo a solutions/
     ├── triage-rules.md     ← Reglas R-DESC / R-DER / R-FIX + algoritmo de triage
     ├── runbooks.md         ← Runbooks procedurales por categoría
+    ├── teams/              ← Identidad, células, productos y criterios de asignación
     ├── solutions/          ← Casos concretos resueltos, por categoría
     └── apis/               ← Docs de endpoints (a futuro)
 ```
+
+Para preguntas documentales sobre el equipo, sus células o productos, leer `knowledge/teams/groot-team.md` y seguir la referencia a la célula correspondiente. Para Nexus y el alcance de Godric, Pidgey o Alfred, leer `knowledge/teams/nexus-team.md#productos-a-cargo`.
 
 Los subcomandos **deben leer estos archivos** cada vez que los necesiten (sin cachear). Si cualquiera de estos archivos no existe, avisar al usuario y seguir con los datos mínimos.
 
