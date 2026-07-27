@@ -1805,6 +1805,173 @@
           "pattern": "Tip:.*Corré `/groot-queue setup`\\."
         }
       ]
+    },
+    {
+      "id": "kraken-synthetic-ticket-does-not-query",
+      "description": "Synthetic tickets never query Kraken even when they mention a user",
+      "input": "Documentation-only contract question. Apply groot-queue solve policy to a synthetic ticket whose description names a user and asks to inspect roles. Explain whether Kraken is queried and how confidence is handled. Do not invoke Bash, Jira, MCP, or external services.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "synthetic input never triggers Kraken",
+          "values": [
+            "no consultar Kraken",
+            "no consulta Kraken",
+            "tickets sintéticos no consultan"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "missing verification lowers confidence or requires manual review",
+          "values": [
+            "REVISAR_MANUAL",
+            "confianza baja",
+            "verificación indeterminada"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kraken-query-only-when-fact-changes-decision",
+      "description": "Every real SSHP ticket evaluates enrichment but only required facts trigger requests",
+      "input": "Documentation-only contract question. Compare two real SSHP tickets: one is fully resolved by a tax-id-invalid text rule; the other can only be triaged after confirming current roles. Explain Kraken request behavior for each. Do not invoke tools or services.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "text-complete rule avoids remote lookup",
+          "values": [
+            "no dispara consultas",
+            "no consultar",
+            "sin consulta"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "role-dependent rule requests only roles",
+          "values": [
+            "roles",
+            "facts mínimos",
+            "hechos mínimos"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "urgency remains independent",
+          "values": [
+            "no modifica urgencia",
+            "urgencia no cambia",
+            "urgency"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kraken-forbidden-fails-closed",
+      "description": "Kraken access denial produces manual review and no Jira mutations",
+      "input": "Documentation-only contract question. A real SSHP ticket requires account status to decide discard, but Kraken returns 403. State verdict/confidence, retries, Jira side effects, and forbidden auth workarounds. Do not invoke tools or services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "REVISAR_MANUAL"
+        },
+        {
+          "type": "contains_any",
+          "description": "403 does not retry or imply state",
+          "values": [
+            "no retry",
+            "no reintentar",
+            "no confirma"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "manual result performs no Jira writes",
+          "values": [
+            "sin escritura",
+            "no escribir",
+            "cero escrituras",
+            "sin mutaciones"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "tokens or headers are not added manually",
+          "values": [
+            "no agregar Authorization",
+            "no agregar tokens",
+            "no agregar headers",
+            "Access Groups"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kraken-role-signals-gate-incompatibility-check",
+      "description": "Incompatibility checks only run for explicit role-related signals and candidates",
+      "input": "Documentation-only contract question. Explain when groot-queue invokes role-incompatibilities, what input it requires, and whether it scans global incompatibility catalogs for unrelated tickets. Do not invoke tools or services.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "role signals are required",
+          "values": [
+            "señales de roles",
+            "asignación",
+            "rol temporal",
+            "conflicto de roles"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "candidate role keys must be explicit",
+          "values": [
+            "candidate-role-keys",
+            "roles candidatos",
+            "role keys"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "global catalogs are not scanned",
+          "values": [
+            "no recorrer catálogo global",
+            "no consulta el catálogo global",
+            "sin catálogo global"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r-desc-15-incompatibility-needs-causality",
+      "description": "R-DESC-15 requires temporal-flow causality in addition to an incompatibility",
+      "input": "Documentation-only triage question. A real SSHP ticket has a confirmed role incompatibility but does not prove that the temporary role applied, expired, returned, or caused the loss. Explain R-DESC-15 verdict and confidence without invoking tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "R-DESC-15"
+        },
+        {
+          "type": "contains",
+          "value": "REVISAR_MANUAL"
+        },
+        {
+          "type": "contains_any",
+          "description": "incompatibility alone does not prove causality",
+          "values": [
+            "no demuestra causalidad",
+            "no prueba causalidad",
+            "secuencia temporal"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "diagnostic confidence is capped",
+          "values": [
+            "máxima media",
+            "confianza media",
+            "no habilita AC"
+          ]
+        }
+      ]
     }
   ]
 }
