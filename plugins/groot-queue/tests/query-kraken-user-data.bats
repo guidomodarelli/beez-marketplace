@@ -36,6 +36,165 @@ teardown() {
   assert_kraken_count 7 '^GET ' "lookup plus six facts should execute exactly once each"
 }
 
+@test "silos publishes a complete single-page response" {
+  run run_kraken_user_data context --user-id 123 --facts silos
+
+  [ "$status" -eq 0 ]
+  assert_kraken_json '
+    .status == "complete" and
+    .facts.silos.items == [{"key":"SILO_KEY","active":true}] and
+    .facts.silos.count == 1 and
+    .warnings == []
+  ' "complete silos response should publish the normalized fact"
+  assert_kraken_count 1 '/core/v1/users/123/silos?page=0&size=1000' "silos should request the configured page once"
+}
+
+@test "paginated silos collects every page before publishing the fact" {
+  KRAKEN_TEST_SCENARIO=paginated-silos
+  run run_kraken_user_data context --user-id 123 --facts silos
+
+  [ "$status" -eq 0 ]
+  assert_kraken_json '
+    .status == "complete" and
+    .facts.silos.count == 1001 and
+    any(.facts.silos.items[]; .key == "SILO_1" and .active == true) and
+    any(.facts.silos.items[]; .key == "SILO_1001" and .active == false) and
+    (.source_results | length) == 2 and
+    all(.source_results[];
+      .source == "silos" and
+      .status == "ok" and
+      (keys | sort) == ["attempts","authority","source","status"]
+    ) and
+    .warnings == []
+  ' "paginated silos should publish the complete sanitized collection"
+  assert_kraken_count 1 '/silos?page=0&size=1000' "first silos page should execute once"
+  assert_kraken_count 1 '/silos?page=1&size=1000' "second silos page should execute once"
+  assert_kraken_count 0 '/silos?page=2' "silos should stop after the advertised pages"
+}
+
+@test "paginated silos retries only the failing page" {
+  KRAKEN_TEST_SCENARIO=retry-paginated-silos
+  run run_kraken_user_data context --user-id 123 --facts silos
+
+  [ "$status" -eq 0 ]
+  assert_kraken_json '
+    .status == "complete" and
+    .facts.silos.count == 1001 and
+    (.source_results | length) == 2 and
+    .source_results[0].attempts == 1 and
+    .source_results[1].attempts == 2
+  ' "later silos page should recover without repeating earlier pages"
+  assert_kraken_count 1 '/silos?page=0&size=1000' "successful first page should not repeat"
+  assert_kraken_count 2 '/silos?page=1&size=1000' "transient second page should retry once"
+}
+
+@test "paginated silos failure discards earlier pages" {
+  KRAKEN_TEST_SCENARIO=failed-paginated-silos
+  run run_kraken_user_data context --user-id 123 --facts silos
+
+  [ "$status" -eq 0 ]
+  assert_kraken_json '
+    .status == "indeterminate" and
+    .warnings == ["SILOS_INDETERMINATE","UPSTREAM_ERROR"] and
+    (.facts | has("silos") | not) and
+    (.source_results | length) == 2 and
+    .source_results[0].status == "ok" and
+    .source_results[1].status == "upstream_error" and
+    .source_results[1].attempts == 2
+  ' "failed later page must invalidate the complete silos fact"
+  ! grep -q 'private silos page error' "$STDOUT_FILE"
+  ! grep -q 'private silos page error' "$STDERR_FILE"
+  assert_kraken_count 1 '/silos?page=0&size=1000' "first page should execute once"
+  assert_kraken_count 2 '/silos?page=1&size=1000' "failed page should retry once"
+  assert_kraken_count 0 '/silos?page=2' "pages after failure should not execute"
+}
+
+@test "paginated silos failure makes mixed context partial" {
+  KRAKEN_TEST_SCENARIO=failed-paginated-silos
+  run run_kraken_user_data context --user-id 123 --facts roles,silos
+
+  [ "$status" -eq 0 ]
+  assert_kraken_json '
+    .status == "partial" and
+    .facts.roles.count == 2 and
+    (.facts | has("silos") | not) and
+    (.warnings | index("SILOS_INDETERMINATE")) != null
+  ' "failed silos pagination should preserve successful facts"
+}
+
+@test "mutated silos metadata is treated as truncated" {
+  KRAKEN_TEST_SCENARIO=mutated-paginated-silos
+  run run_kraken_user_data context --user-id 123 --facts silos
+
+  [ "$status" -eq 0 ]
+  assert_kraken_json '.status == "indeterminate" and .warnings == ["SILOS_TRUNCATED"] and (.facts | has("silos") | not)' "mutated paging metadata should fail closed"
+}
+
+@test "invalid later silos schema remains distinct from truncation" {
+  KRAKEN_TEST_SCENARIO=invalid-later-silos
+  run run_kraken_user_data context --user-id 123 --facts silos
+
+  [ "$status" -eq 0 ]
+  assert_kraken_json '.status == "indeterminate" and .warnings == ["INVALID_SILOS_RESPONSE"] and (.facts | has("silos") | not)' "invalid later schema should keep its warning"
+}
+
+@test "duplicate silos IDs across pages fail closed" {
+  KRAKEN_TEST_SCENARIO=duplicate-paginated-silos
+  run run_kraken_user_data context --user-id 123 --facts silos
+
+  [ "$status" -eq 0 ]
+  assert_kraken_json '.status == "indeterminate" and .warnings == ["SILOS_TRUNCATED"] and (.facts | has("silos") | not)' "duplicate IDs should invalidate paginated silos"
+}
+
+@test "silos page limit fails before requesting another page" {
+  KRAKEN_TEST_SCENARIO=excessive-silos-pages
+  run run_kraken_user_data context --user-id 123 --facts silos
+
+  [ "$status" -eq 0 ]
+  assert_kraken_json '.status == "indeterminate" and .warnings == ["SILOS_TRUNCATED"] and (.facts | has("silos") | not)' "excessive pagination should fail closed"
+  assert_kraken_count 1 '/silos?page=0&size=1000' "only metadata page should execute"
+  assert_kraken_count 0 '/silos?page=1' "page limit should stop traversal"
+}
+
+@test "paginated account status finds the requested user on a later page" {
+  KRAKEN_TEST_SCENARIO=paginated-account-status
+  run run_kraken_user_data context --user-id 123 --facts account-status
+
+  [ "$status" -eq 0 ]
+  assert_kraken_json '.status == "complete" and .facts["account-status"].state == "active" and (.source_results | length) == 2' "account status should validate all pages"
+  assert_kraken_count 1 '/status?ids=123&page=0&size=100' "first status page should execute once"
+  assert_kraken_count 1 '/status?ids=123&page=1&size=100' "second status page should execute once"
+}
+
+@test "paginated temporary status finds the attribute on a later page" {
+  KRAKEN_TEST_SCENARIO=paginated-temporary-status
+  run run_kraken_user_data context --user-id 123 --facts temporary-status
+
+  [ "$status" -eq 0 ]
+  assert_kraken_json '.status == "complete" and .facts["temporary-status"].active == true and .facts["temporary-status"].values == ["labour-share"] and (.source_results | length) == 2' "temporary status should not infer absence from the first page"
+  assert_kraken_count 1 '/attribute-values-admin?key=tmp_user_status&page=0&size=200' "first attribute page should execute once"
+  assert_kraken_count 1 '/attribute-values-admin?key=tmp_user_status&page=1&size=200' "second attribute page should execute once"
+}
+
+@test "empty complete temporary status is inactive" {
+  KRAKEN_TEST_SCENARIO=empty-temporary-status
+  run run_kraken_user_data context --user-id 123 --facts temporary-status
+
+  [ "$status" -eq 0 ]
+  assert_kraken_json '.status == "complete" and .facts["temporary-status"] == {"active":false,"values":[],"source":"sot"}' "only complete global absence should produce inactive"
+  assert_kraken_count 1 '/attribute-values-admin?key=tmp_user_status&page=0&size=200' "empty collection should use one page"
+}
+
+@test "temporary status page failure never implies inactivity" {
+  KRAKEN_TEST_SCENARIO=failed-paginated-temporary-status
+  run run_kraken_user_data context --user-id 123 --facts temporary-status
+
+  [ "$status" -eq 0 ]
+  assert_kraken_json '.status == "indeterminate" and (.facts | has("temporary-status") | not) and (.warnings | index("TEMPORARY_STATUS_INDETERMINATE")) != null' "partial temporary status must not become inactive"
+  ! grep -q 'private temporary status page error' "$STDOUT_FILE"
+  ! grep -q 'private temporary status page error' "$STDERR_FILE"
+}
+
 @test "user ID bypasses LDAP lookup" {
   run run_kraken_user_data context --user-id 123 --facts roles
 

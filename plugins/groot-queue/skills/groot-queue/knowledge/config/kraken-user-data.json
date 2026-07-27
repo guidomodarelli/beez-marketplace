@@ -14,7 +14,9 @@
   "limits": {
     "max_users_per_invocation": 20,
     "max_roles_per_check": 20,
-    "max_identifier_length": 128
+    "max_identifier_length": 128,
+    "max_pages_per_fact": 10,
+    "max_items_per_fact": 10000
   },
   "endpoints": {
     "resolve_user": {
@@ -46,13 +48,21 @@
       "method": "GET",
       "path": "/attributes-core/entities/kraken_user/{user_id}/attribute-values-admin",
       "authority": "sot",
-      "attribute_key": "tmp_user_status"
+      "attribute_key": "tmp_user_status",
+      "pagination": {
+        "mode": "total_items",
+        "page_size": 200
+      }
     },
     "user_status": {
       "host": "kraken",
       "method": "GET",
       "path": "/integration/v1/users/status",
-      "authority": "sot"
+      "authority": "sot",
+      "pagination": {
+        "mode": "total_pages",
+        "page_size": 100
+      }
     },
     "ssff_status": {
       "host": "kraken",
@@ -70,7 +80,11 @@
       "host": "kraken",
       "method": "GET",
       "path": "/core/v1/users/{user_id}/silos",
-      "authority": "sot"
+      "authority": "sot",
+      "pagination": {
+        "mode": "total_pages",
+        "page_size": 1000
+      }
     },
     "role_incompatibilities": {
       "host": "internal_api",

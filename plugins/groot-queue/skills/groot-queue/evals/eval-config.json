@@ -1866,6 +1866,43 @@
       ]
     },
     {
+      "id": "kraken-pagination-requires-complete-evidence",
+      "description": "Paginated Kraken facts traverse every required page and never infer absence from partial data",
+      "input": "Documentation-only contract question. A real SSHP ticket needs silos and temporary status, but Kraken advertises multiple pages and a later page fails. Explain whether groot-queue reads all pages, which facts may be published, and how triage confidence/verdict is handled. Do not invoke tools or services.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "all required pages must be traversed",
+          "values": [
+            "todas las páginas",
+            "todas las paginas",
+            "recorrer las páginas",
+            "recorrer las paginas"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "partial collections are never published or treated as absence",
+          "values": [
+            "no publicar lista parcial",
+            "no publicar el fact",
+            "no inferir ausencia",
+            "no implica ausencia"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "incomplete required evidence forces manual or indeterminate handling",
+          "values": [
+            "REVISAR_MANUAL",
+            "indeterminate",
+            "indeterminado",
+            "verificación indeterminada"
+          ]
+        }
+      ]
+    },
+    {
       "id": "kraken-forbidden-fails-closed",
       "description": "Kraken access denial produces manual review and no Jira mutations",
       "input": "Documentation-only contract question. A real SSHP ticket requires account status to decide discard, but Kraken returns 403. State verdict/confidence, retries, Jira side effects, and forbidden auth workarounds. Do not invoke tools or services.",

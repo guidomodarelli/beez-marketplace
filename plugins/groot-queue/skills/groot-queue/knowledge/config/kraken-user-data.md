@@ -58,6 +58,20 @@ El JSON normalizado del script es dato técnico efímero para razonamiento inter
 
 `attributes` genérico y `ssff-status` quedan temporalmente sin contrato ejecutable. Si una regla los requiere, script devuelve `UNSUPPORTED_FACT_CONTRACT` y verificación queda indeterminada. No inferirlos desde otros payloads.
 
+### Paginación
+
+Los tamaños y límites viven exclusivamente en `kraken-user-data.json`.
+
+| Endpoint/fact | Contrato | Criterio de completitud |
+|---|---|---|
+| `account-status` | `total_pages` | recorrer todas las páginas y validar exactamente un resultado global para el sujeto |
+| `temporary-status` | `total` de items | recorrer hasta reunir el total; solo ausencia global completa permite `active:false` |
+| `silos` | `total_pages` | recorrer todas las páginas y validar total e IDs globales únicos |
+
+Cada página GET conserva retry individual. La página inicial fija total y cantidad esperada de páginas; respuestas posteriores no pueden cambiar esos límites. Ante fallo HTTP, schema inválido, metadata mutante, límite excedido o agregado incompleto, omitir fact entero: nunca publicar primera página ni convertirla en evidencia de ausencia.
+
+`resolve-user`, `roles`, `permissions`, `context-accesses` y assignment check no exponen contrato paginado en configuración actual. No inventar parámetros ni envelopes. Si contrato upstream incorpora paging, actualizar configuración, script y tests antes de usar respuesta para afirmar membresía o ausencia.
+
 ## Matriz regla → hechos
 
 Esta tabla define requisitos externos; `triage-rules.md` conserva señales, orden y veredictos.
@@ -143,7 +157,8 @@ El script depende de acceso autorizado mediante Fury Access Groups/edge. No agre
 
 | Resultado técnico | Resultado operativo |
 |---|---|
-| `200` + schema válido | usar facts proyectados |
+| `200` + schema válido y todas las páginas coherentes | usar facts proyectados |
+| fallo, límite o inconsistencia durante paginación | `indeterminate`; no publicar lista parcial ni inferir ausencia |
 | `200` + schema inválido | `indeterminate` |
 | `401` / `403` | `indeterminate`; solicitar acceso autorizado |
 | `404` | `indeterminate`, salvo contrato que defina ausencia explícita |

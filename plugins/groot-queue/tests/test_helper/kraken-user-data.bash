@@ -91,6 +91,80 @@ case "$scenario" in
       *'/integration/v1/users/status?'*) body='{"results":[]}' ;;
     esac
     ;;
+  paginated-silos|retry-paginated-silos|failed-paginated-silos|mutated-paginated-silos|invalid-later-silos|duplicate-paginated-silos)
+    case "$url" in
+      *'/core/v1/users/123/silos?page=0&size=1000')
+        body="$("$REAL_JQ" -cn '{results:[range(1;1001) | {id:.,key:("SILO_" + tostring),active:true}],paging:{page:0,size:1000,total_pages:2,total:1001}}')"
+        ;;
+      *'/core/v1/users/123/silos?page=1&size=1000')
+        body='{"results":[{"id":1001,"key":"SILO_1001","active":false}],"paging":{"page":1,"size":1000,"total_pages":2,"total":1001}}'
+        case "$scenario" in
+          retry-paginated-silos)
+            attempt_file="$CURL_STATE_DIRECTORY/silos-page-1-attempt"
+            attempt=0
+            [ ! -f "$attempt_file" ] || attempt="$(< "$attempt_file")"
+            attempt=$((attempt + 1))
+            printf '%s\n' "$attempt" > "$attempt_file"
+            if [ "$attempt" -eq 1 ]; then
+              status=503
+              body='{"message":"private silos retry body"}'
+            fi
+            ;;
+          failed-paginated-silos)
+            status=503
+            body='{"message":"private silos page error"}'
+            ;;
+          mutated-paginated-silos)
+            body='{"results":[{"id":1001,"key":"SILO_1001","active":false}],"paging":{"page":1,"size":1000,"total_pages":2,"total":1002}}'
+            ;;
+          invalid-later-silos)
+            body='{"results":[{"id":1001,"key":"SILO_1001","active":false}],"paging":{"page":1,"size":1000,"total_pages":"2","total":1001}}'
+            ;;
+          duplicate-paginated-silos)
+            body='{"results":[{"id":1,"key":"SILO_DUPLICATE","active":false}],"paging":{"page":1,"size":1000,"total_pages":2,"total":1001}}'
+            ;;
+        esac
+        ;;
+    esac
+    ;;
+  paginated-account-status)
+    case "$url" in
+      *'/integration/v1/users/status?ids=123&page=0&size=100')
+        body="$("$REAL_JQ" -cn '{results:[range(1000;1100) | {id:.,active:false}],paging:{page:0,size:100,total_pages:2,total:101}}')"
+        ;;
+      *'/integration/v1/users/status?ids=123&page=1&size=100')
+        body='{"results":[{"id":123,"active":true}],"paging":{"page":1,"size":100,"total_pages":2,"total":101}}'
+        ;;
+    esac
+    ;;
+  paginated-temporary-status|failed-paginated-temporary-status)
+    case "$url" in
+      *'/attribute-values-admin?key=tmp_user_status&page=0&size=200')
+        body="$("$REAL_JQ" -cn '{results:[range(0;200) | {attribute_key:("other_" + tostring),values:[]}],paging:{page:0,size:200,total:201}}')"
+        ;;
+      *'/attribute-values-admin?key=tmp_user_status&page=1&size=200')
+        body='{"results":[{"attribute_key":"tmp_user_status","values":[{"id":100,"value":"labour-share"}]}],"paging":{"page":1,"size":200,"total":201}}'
+        if [ "$scenario" = "failed-paginated-temporary-status" ]; then
+          status=503
+          body='{"message":"private temporary status page error"}'
+        fi
+        ;;
+    esac
+    ;;
+  empty-temporary-status)
+    case "$url" in
+      *'/attribute-values-admin?key=tmp_user_status&page=0&size=200')
+        body='{"results":[],"paging":{"page":0,"size":200,"total":0}}'
+        ;;
+    esac
+    ;;
+  excessive-silos-pages)
+    case "$url" in
+      *'/core/v1/users/123/silos?page=0&size=1000')
+        body="$("$REAL_JQ" -cn '{results:[range(1;1001) | {id:.,key:("SILO_" + tostring),active:true}],paging:{page:0,size:1000,total_pages:11,total:11000}}')"
+        ;;
+    esac
+    ;;
   retry-status)
     case "$url" in
       *'/integration/v1/users/status?'*)

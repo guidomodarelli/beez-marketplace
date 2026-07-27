@@ -18,6 +18,8 @@ SOURCE_RESULTS_JSON='[]'
 WARNINGS_JSON='[]'
 SUCCESSFUL_FACTS=0
 FAILED_FACTS=0
+PAGINATED_RESULTS_FILE=""
+PAGINATION_ERROR=""
 MAX_SAFE_JSON_INTEGER=9007199254740991
 MAX_SAFE_JSON_INTEGER_LENGTH="${#MAX_SAFE_JSON_INTEGER}"
 
@@ -123,6 +125,12 @@ endpoint_value() {
   local endpoint="$1"
   local field="$2"
   jq -er --arg endpoint "$endpoint" --arg field "$field" '.endpoints[$endpoint][$field]' "$CONFIG_FILE"
+}
+
+pagination_value() {
+  local endpoint="$1"
+  local field="$2"
+  jq -er --arg endpoint "$endpoint" --arg field "$field" '.endpoints[$endpoint].pagination[$field]' "$CONFIG_FILE"
 }
 
 host_value() {
@@ -278,6 +286,162 @@ request_http() {
   return 0
 }
 
+validate_paginated_result_items() {
+  local source="$1"
+  local response_file="$2"
+
+  case "$source" in
+    user_status)
+      jq -e 'all(.results[]; type == "object" and (.id | type == "number") and (.active | type == "boolean"))' "$response_file" >/dev/null 2>&1
+      ;;
+    temporary_status)
+      jq -e '
+        all(.results[];
+          type == "object" and
+          (.attribute_key | type == "string") and
+          (.values | type == "array") and
+          all(.values[]; type == "object" and (.value | type == "string"))
+        )
+      ' "$response_file" >/dev/null 2>&1
+      ;;
+    silos)
+      jq -e '
+        all(.results[];
+          type == "object" and
+          (.id | type == "number") and
+          (.key | type == "string" and length > 0) and
+          (.active | type == "boolean")
+        )
+      ' "$response_file" >/dev/null 2>&1
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+fetch_paginated_results() {
+  local source="$1"
+  local authority="$2"
+  local endpoint_url="$3"
+  local query="$4"
+  local page_size="$5"
+  local mode="$6"
+  local accumulated_file="$TEMP_DIRECTORY/paginated-${source}-results"
+  local next_accumulated_file="$TEMP_DIRECTORY/paginated-${source}-results-next"
+  local page=0
+  local expected_total=""
+  local declared_total_pages=""
+  local expected_pages=""
+  local expected_page_items
+  local received_page_items
+  local request_url
+  local accumulated_items
+
+  PAGINATED_RESULTS_FILE=""
+  PAGINATION_ERROR=""
+  printf '[]' > "$accumulated_file"
+
+  while :; do
+    if [ -n "$query" ]; then
+      request_url="${endpoint_url}?${query}&page=${page}&size=${page_size}"
+    else
+      request_url="${endpoint_url}?page=${page}&size=${page_size}"
+    fi
+
+    if ! request_http GET "$source" "$authority" "$request_url"; then
+      PAGINATION_ERROR="http"
+      return 1
+    fi
+
+    if ! jq -e --arg mode "$mode" '
+      def nonnegative_integer: type == "number" and . >= 0 and . == floor;
+      def positive_integer: type == "number" and . > 0 and . == floor;
+      type == "object" and
+      (.results | type == "array") and
+      (.paging | type == "object") and
+      (.paging.page | nonnegative_integer) and
+      (.paging.size | positive_integer) and
+      (.paging.total | nonnegative_integer) and
+      ($mode == "total_items" or (.paging.total_pages | nonnegative_integer))
+    ' "$HTTP_BODY_FILE" >/dev/null 2>&1 || ! validate_paginated_result_items "$source" "$HTTP_BODY_FILE"; then
+      PAGINATION_ERROR="invalid_schema"
+      return 1
+    fi
+
+    if ! jq -e --argjson requested_page "$page" --argjson page_size "$page_size" '
+      .paging.page == $requested_page and
+      .paging.size == $page_size and
+      (.results | length) <= $page_size
+    ' "$HTTP_BODY_FILE" >/dev/null 2>&1; then
+      PAGINATION_ERROR="incomplete"
+      return 1
+    fi
+
+    if [ "$page" -eq 0 ]; then
+      expected_total="$(jq -er '.paging.total' "$HTTP_BODY_FILE")"
+      [ "$expected_total" -le "$MAX_ITEMS_PER_FACT" ] || { PAGINATION_ERROR="incomplete"; return 1; }
+
+      if [ "$mode" = "total_pages" ]; then
+        declared_total_pages="$(jq -er '.paging.total_pages' "$HTTP_BODY_FILE")"
+        if [ "$expected_total" -eq 0 ]; then
+          { [ "$declared_total_pages" -eq 0 ] || [ "$declared_total_pages" -eq 1 ]; } || { PAGINATION_ERROR="incomplete"; return 1; }
+          expected_pages=1
+        else
+          expected_pages=$(((expected_total + page_size - 1) / page_size))
+          [ "$declared_total_pages" -eq "$expected_pages" ] || { PAGINATION_ERROR="incomplete"; return 1; }
+        fi
+      else
+        expected_pages=$(((expected_total + page_size - 1) / page_size))
+        [ "$expected_pages" -gt 0 ] || expected_pages=1
+      fi
+      [ "$expected_pages" -le "$MAX_PAGES_PER_FACT" ] || { PAGINATION_ERROR="incomplete"; return 1; }
+    else
+      if ! jq -e --arg mode "$mode" --argjson expected_total "$expected_total" --argjson expected_total_pages "${declared_total_pages:-0}" '
+        .paging.total == $expected_total and
+        ($mode == "total_items" or .paging.total_pages == $expected_total_pages)
+      ' "$HTTP_BODY_FILE" >/dev/null 2>&1; then
+        PAGINATION_ERROR="incomplete"
+        return 1
+      fi
+    fi
+
+    expected_page_items=$((expected_total - (page * page_size)))
+    [ "$expected_page_items" -le "$page_size" ] || expected_page_items="$page_size"
+    [ "$expected_page_items" -ge 0 ] || { PAGINATION_ERROR="incomplete"; return 1; }
+    received_page_items="$(jq -er '.results | length' "$HTTP_BODY_FILE")"
+    [ "$received_page_items" -eq "$expected_page_items" ] || { PAGINATION_ERROR="incomplete"; return 1; }
+
+    if ! jq -cn --slurpfile accumulated "$accumulated_file" --slurpfile response "$HTTP_BODY_FILE" '$accumulated[0] + $response[0].results' > "$next_accumulated_file"; then
+      PAGINATION_ERROR="invalid_schema"
+      return 1
+    fi
+    mv -- "$next_accumulated_file" "$accumulated_file"
+
+    page=$((page + 1))
+    [ "$page" -lt "$expected_pages" ] || break
+  done
+
+  accumulated_items="$(jq -er 'length' "$accumulated_file")"
+  if [ "$accumulated_items" -ne "$expected_total" ] || [ "$accumulated_items" -gt "$MAX_ITEMS_PER_FACT" ]; then
+    PAGINATION_ERROR="incomplete"
+    return 1
+  fi
+
+  PAGINATED_RESULTS_FILE="$accumulated_file"
+  return 0
+}
+
+mark_pagination_failure() {
+  local http_warning="$1"
+  local invalid_warning="$2"
+  local incomplete_warning="$3"
+
+  case "$PAGINATION_ERROR" in
+    http) mark_fact_failed "$http_warning" ;;
+    invalid_schema) mark_fact_failed "$invalid_warning" ;;
+    *) mark_fact_failed "$incomplete_warning" ;;
+  esac
+}
+
 resolve_subject() {
   local endpoint_url
   local encoded_ldap
@@ -322,27 +486,29 @@ resolve_subject() {
 query_account_status() {
   local endpoint_url
   local authority
+  local page_size
+  local pagination_mode
   local fact_json
 
   endpoint_url="$(build_endpoint_url user_status)"
   authority="$(endpoint_value user_status authority)"
-  if ! request_http GET user_status "$authority" "${endpoint_url}?ids=${USER_ID}"; then
-    mark_fact_failed "ACCOUNT_STATUS_INDETERMINATE"
+  page_size="$(pagination_value user_status page_size)"
+  pagination_mode="$(pagination_value user_status mode)"
+  if ! fetch_paginated_results user_status "$authority" "$endpoint_url" "ids=${USER_ID}" "$page_size" "$pagination_mode"; then
+    mark_pagination_failure "ACCOUNT_STATUS_INDETERMINATE" "INVALID_ACCOUNT_STATUS_RESPONSE" "ACCOUNT_STATUS_TRUNCATED"
     return
   fi
 
   if ! jq -e --argjson user_id "$USER_ID" '
-    type == "object" and
-    (.results | type == "array") and
-    (.paging | type == "object") and
-    ([.results[] | select(.id == $user_id)] | length == 1) and
-    ([.results[] | select(.id == $user_id)][0].active | type == "boolean")
-  ' "$HTTP_BODY_FILE" >/dev/null 2>&1; then
+    type == "array" and
+    ([.[] | select(.id == $user_id)] | length == 1) and
+    ([.[] | select(.id == $user_id)][0].active | type == "boolean")
+  ' "$PAGINATED_RESULTS_FILE" >/dev/null 2>&1; then
     mark_fact_failed "INVALID_ACCOUNT_STATUS_RESPONSE"
     return
   fi
 
-  fact_json="$(jq -c --argjson user_id "$USER_ID" '{state: (if ([.results[] | select(.id == $user_id)][0].active) then "active" else "inactive" end), source:"sot"}' "$HTTP_BODY_FILE")"
+  fact_json="$(jq -c --argjson user_id "$USER_ID" '{state: (if ([.[] | select(.id == $user_id)][0].active) then "active" else "inactive" end), source:"sot"}' "$PAGINATED_RESULTS_FILE")"
   set_fact "account-status" "$fact_json"
 }
 
@@ -404,6 +570,8 @@ query_temporary_status() {
   local authority
   local attribute_key
   local encoded_key
+  local page_size
+  local pagination_mode
   local fact_json
 
   endpoint_url="$(build_endpoint_url temporary_status)"
@@ -411,31 +579,26 @@ query_temporary_status() {
   authority="$(endpoint_value temporary_status authority)"
   attribute_key="$(endpoint_value temporary_status attribute_key)"
   encoded_key="$(jq -nr --arg value "$attribute_key" '$value | @uri')"
+  page_size="$(pagination_value temporary_status page_size)"
+  pagination_mode="$(pagination_value temporary_status mode)"
 
-  if ! request_http GET temporary_status "$authority" "${endpoint_url}?key=${encoded_key}"; then
-    mark_fact_failed "TEMPORARY_STATUS_INDETERMINATE"
+  if ! fetch_paginated_results temporary_status "$authority" "$endpoint_url" "key=${encoded_key}" "$page_size" "$pagination_mode"; then
+    mark_pagination_failure "TEMPORARY_STATUS_INDETERMINATE" "INVALID_TEMPORARY_STATUS_RESPONSE" "TEMPORARY_STATUS_TRUNCATED"
     return
   fi
 
   if ! jq -e --arg attribute_key "$attribute_key" '
-    type == "object" and
-    (.results | type == "array") and
-    all(.results[];
-      type == "object" and
-      (.attribute_key | type == "string") and
-      (.values | type == "array") and
-      all(.values[]; type == "object" and (.value | type == "string"))
-    ) and
-    ([.results[] | select(.attribute_key == $attribute_key)] | length <= 1)
-  ' "$HTTP_BODY_FILE" >/dev/null 2>&1; then
+    type == "array" and
+    ([.[] | select(.attribute_key == $attribute_key)] | length <= 1)
+  ' "$PAGINATED_RESULTS_FILE" >/dev/null 2>&1; then
     mark_fact_failed "INVALID_TEMPORARY_STATUS_RESPONSE"
     return
   fi
 
   fact_json="$(jq -c --arg attribute_key "$attribute_key" '
-    ([.results[] | select(.attribute_key == $attribute_key)] | first // {values:[]}) as $attribute |
+    ([.[] | select(.attribute_key == $attribute_key)] | first // {values:[]}) as $attribute |
     {active:($attribute.values | length > 0), values:([$attribute.values[].value] | sort | unique), source:"sot"}
-  ' "$HTTP_BODY_FILE")"
+  ' "$PAGINATED_RESULTS_FILE")"
   set_fact "temporary-status" "$fact_json"
 }
 
@@ -472,36 +635,26 @@ query_context_accesses() {
 query_silos() {
   local endpoint_url
   local authority
+  local page_size
+  local pagination_mode
   local fact_json
 
   endpoint_url="$(build_endpoint_url silos)"
   endpoint_url="${endpoint_url//\{user_id\}/$USER_ID}"
   authority="$(endpoint_value silos authority)"
-  if ! request_http GET silos "$authority" "${endpoint_url}?page=0&size=1000"; then
-    mark_fact_failed "SILOS_INDETERMINATE"
+  page_size="$(pagination_value silos page_size)"
+  pagination_mode="$(pagination_value silos mode)"
+  if ! fetch_paginated_results silos "$authority" "$endpoint_url" "" "$page_size" "$pagination_mode"; then
+    mark_pagination_failure "SILOS_INDETERMINATE" "INVALID_SILOS_RESPONSE" "SILOS_TRUNCATED"
     return
   fi
 
-  if ! jq -e '
-    type == "object" and
-    (.results | type == "array") and
-    (.paging | type == "object") and
-    (.paging.page | type == "number") and
-    (.paging.size | type == "number") and
-    (.paging.total_pages | type == "number") and
-    (.paging.total | type == "number") and
-    all(.results[];
-      type == "object" and
-      (.id | type == "number") and
-      (.key | type == "string" and length > 0) and
-      (.active | type == "boolean")
-    )
-  ' "$HTTP_BODY_FILE" >/dev/null 2>&1; then
-    mark_fact_failed "INVALID_SILOS_RESPONSE"
+  if ! jq -e '([.[].id] | unique | length) == length' "$PAGINATED_RESULTS_FILE" >/dev/null 2>&1; then
+    mark_fact_failed "SILOS_TRUNCATED"
     return
   fi
 
-  fact_json="$(jq -c '{items:[.results[] | {key, active}] | sort_by(.key) | unique, count:(.results | length), source:"sot"}' "$HTTP_BODY_FILE")"
+  fact_json="$(jq -c '{items:[.[] | {key, active}] | sort_by(.key) | unique, count:length, source:"sot"}' "$PAGINATED_RESULTS_FILE")"
   set_fact "silos" "$fact_json"
 }
 
@@ -609,14 +762,24 @@ render_result() {
 command -v jq >/dev/null 2>&1 || { printf 'jq is required.\n' >&2; exit 69; }
 command -v curl >/dev/null 2>&1 || { printf 'curl is required.\n' >&2; exit 69; }
 jq -e '
+  def nonnegative_integer: type == "number" and . >= 0 and . == floor;
+  def positive_integer: type == "number" and . > 0 and . == floor;
   .schema_version == 1 and
   (.hosts | type == "object" and all(.[]; type == "string" and startswith("https://"))) and
   (.network.connect_timeout_seconds | type == "number" and . > 0) and
   (.network.max_time_seconds | type == "number" and . > 0) and
   (.network.max_get_retries | type == "number" and . >= 0) and
   (.network.max_response_bytes | type == "number" and . > 0) and
-  (.limits.max_roles_per_check | type == "number" and . > 0) and
-  (.limits.max_identifier_length | type == "number" and . > 0)
+  (.limits.max_roles_per_check | positive_integer) and
+  (.limits.max_identifier_length | positive_integer) and
+  (.limits.max_pages_per_fact | positive_integer) and
+  (.limits.max_items_per_fact | positive_integer) and
+  (.endpoints.user_status.pagination.mode == "total_pages") and
+  (.endpoints.user_status.pagination.page_size | positive_integer) and
+  (.endpoints.temporary_status.pagination.mode == "total_items") and
+  (.endpoints.temporary_status.pagination.page_size | positive_integer) and
+  (.endpoints.silos.pagination.mode == "total_pages") and
+  (.endpoints.silos.pagination.page_size | positive_integer)
 ' "$CONFIG_FILE" >/dev/null 2>&1 || { printf 'Kraken user data configuration is invalid.\n' >&2; exit 78; }
 
 CONNECT_TIMEOUT_SECONDS="$(jq -er '.network.connect_timeout_seconds' "$CONFIG_FILE")"
@@ -625,6 +788,8 @@ MAX_GET_RETRIES="$(jq -er '.network.max_get_retries' "$CONFIG_FILE")"
 MAX_RESPONSE_BYTES="$(jq -er '.network.max_response_bytes' "$CONFIG_FILE")"
 MAX_ROLES_PER_CHECK="$(jq -er '.limits.max_roles_per_check' "$CONFIG_FILE")"
 MAX_IDENTIFIER_LENGTH="$(jq -er '.limits.max_identifier_length' "$CONFIG_FILE")"
+MAX_PAGES_PER_FACT="$(jq -er '.limits.max_pages_per_fact' "$CONFIG_FILE")"
+MAX_ITEMS_PER_FACT="$(jq -er '.limits.max_items_per_fact' "$CONFIG_FILE")"
 
 OPERATION="${1:-}"
 [ -n "$OPERATION" ] || fail_usage "Missing operation."
