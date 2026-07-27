@@ -53,6 +53,14 @@ teardown() {
   grep -q 'Invalid LDAP' "$STDERR_FILE"
 }
 
+@test "unsafe JSON integer user ID fails before curl" {
+  run run_kraken_user_data context --user-id 9007199254740992 --facts account-status
+
+  [ "$status" -eq 64 ]
+  [ ! -s "$CURL_LOG" ]
+  grep -q 'Invalid user ID' "$STDERR_FILE"
+}
+
 @test "unsupported fact is indeterminate without guessing a schema" {
   run run_kraken_user_data context --user-id 123 --facts ssff-status
 

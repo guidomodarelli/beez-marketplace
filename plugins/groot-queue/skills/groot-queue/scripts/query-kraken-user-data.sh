@@ -18,6 +18,8 @@ SOURCE_RESULTS_JSON='[]'
 WARNINGS_JSON='[]'
 SUCCESSFUL_FACTS=0
 FAILED_FACTS=0
+MAX_SAFE_JSON_INTEGER=9007199254740991
+MAX_SAFE_JSON_INTEGER_LENGTH="${#MAX_SAFE_JSON_INTEGER}"
 
 usage() {
   cat <<'USAGE'
@@ -86,7 +88,9 @@ validate_user_id() {
   case "$value" in
     ''|*[!0-9]*) return 1 ;;
   esac
-  [ "$value" != "0" ]
+  [ "${#value}" -le "$MAX_IDENTIFIER_LENGTH" ] || return 1
+  [ "${#value}" -le "$MAX_SAFE_JSON_INTEGER_LENGTH" ] || return 1
+  (( 10#$value > 0 && 10#$value <= MAX_SAFE_JSON_INTEGER ))
 }
 
 validate_role_key() {
