@@ -87,6 +87,8 @@ STUB
     after_checksum="$(shasum "$TARGET_SCRIPT" | cut -d' ' -f1)"
 
     [ "$before_checksum" = "$after_checksum" ]
+    grep -Fq 'run-groot-queue ya apunta al launcher actual' "$STDOUT_FILE"
+    ! grep -Fq 'run-groot-queue instalado →' "$STDOUT_FILE"
 }
 
 @test "confirmed replacement publishes the expected wrapper" {
