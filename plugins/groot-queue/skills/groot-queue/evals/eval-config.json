@@ -1203,7 +1203,7 @@
     {
       "id": "r-desc-02-role-assignment-system-error-exception",
       "description": "R-DESC-02 keeps role-assignment failures in Groot when an authorized user should be able to perform the operation",
-      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Gestor autorizado no puede asignar rol'. Description='El gestor tiene permisos válidos y debería poder asignar el rol de picking, pero Groot muestra un error y no guarda el cambio.'. Apply triage rules.",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Error 500 al guardar cambio de rol'. Description='La herramienta Groot devuelve 500 y no persiste la operación. Diagnosticar el fallo sistémico sin determinar ni aplicar el rol como workaround.'. Apply triage rules.",
       "assertions": [
         {
           "type": "contains_any",
@@ -1229,25 +1229,26 @@
     },
     {
       "id": "solve-external-user-leader-change-manual-workaround",
-      "description": "solve retrieves the confirmed manual workaround for ext_* leader-change failures in Groot",
-      "input": "/groot-queue solve this synthetic ticket without querying Jira: Summary='Error al cambiar lider de usuario externo'. Description='No puedo cambiar el supervisor de ext_user_test desde el flujo estandar de Groot. La solicitud de cambio de lider falla y no guarda el nuevo lider.'. Use the hierarchy-leader solutions knowledge base.",
+      "description": "solve treats the historical manual workaround only as an antecedent and recommends systemic diagnosis",
+      "input": "/groot-queue solve this synthetic ticket without querying Jira: Summary='Error al cambiar lider de usuario externo'. Description='Groot devuelve un error inesperado y rollback al guardar cambio de supervisor.'. Use hierarchy-leader knowledge without applying manual configuration workarounds.",
       "assertions": [
         {
           "type": "contains_any",
-          "description": "the known hierarchy-leader solution is retrieved",
+          "description": "historical solutions remain antecedents rather than authorization",
           "values": [
-            "cambio-lider-manual-ext-thathama",
-            "SSHP-1416401"
+            "antecedente histórico",
+            "antecedentes históricos",
+            "no autoriza",
+            "evidencia técnica"
           ]
         },
         {
-          "type": "contains_any",
-          "description": "the manual workaround is recommended",
+          "type": "not_contains_any",
+          "description": "manual hierarchy modification is not recommended",
           "values": [
-            "adecuo manualmente",
             "adecuar manualmente",
-            "intervencion manual",
-            "manual"
+            "asignar manualmente el líder",
+            "corregir manualmente la jerarquía"
           ]
         },
         {
@@ -1833,34 +1834,39 @@
     },
     {
       "id": "kraken-query-only-when-fact-changes-decision",
-      "description": "Every real SSHP ticket evaluates enrichment but only required facts trigger requests",
-      "input": "Documentation-only contract question. Compare two real SSHP tickets: one is fully resolved by a tax-id-invalid text rule; the other can only be triaged after confirming current roles. Explain Kraken request behavior for each. Do not invoke tools or services.",
+      "description": "Text-complete and configuration-choice tickets do not trigger Kraken requests",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Comparar usuario y copiar permisos'. Description='Usar otro usuario como referencia para determinar roles y permisos faltantes. No existe error sistémico.'. Explain why this policy is resolved by text without Kraken requests.",
       "assertions": [
         {
           "type": "contains_any",
-          "description": "text-complete rule avoids remote lookup",
+          "description": "both text-complete decisions avoid remote lookup",
           "values": [
             "no dispara consultas",
-            "no consultar",
-            "sin consulta"
+            "no consultar Kraken",
+            "sin consulta",
+            "No requerida"
           ]
         },
         {
           "type": "contains_any",
-          "description": "role-dependent rule requests only roles",
+          "description": "Kraken does not define desired configuration",
           "values": [
-            "roles",
-            "facts mínimos",
-            "hechos mínimos"
+            "no define estado deseado",
+            "no determina configuración",
+            "no comparar usuarios",
+            "decide la configuración correcta",
+            "decidir configuración correcta",
+            "No determinar configuración objetivo",
+            "descubrir configuración objetivo"
           ]
         },
         {
-          "type": "contains_any",
-          "description": "urgency remains independent",
+          "type": "not_contains_any",
+          "description": "workflow does not request role facts to choose configuration",
           "values": [
-            "no modifica urgencia",
-            "urgencia no cambia",
-            "urgency"
+            "consultar roles del usuario de referencia",
+            "copiar los roles",
+            "consultar permissions para elegir"
           ]
         }
       ]
@@ -2177,34 +2183,42 @@
     },
     {
       "id": "ticket-evidence-output-projects-without-pii",
-      "description": "Verified user facts are projected without identifiers or complete collections",
-      "input": "Documentation-only privacy question. A real ticket contains LDAP test_user, email person@example.com and Groot user ID 123. A complete result verifies the required role and permission. Show the allowed user-facing conclusion without invoking tools or services.",
+      "description": "Synthetic triage explains that technical facts do not expose PII or define configuration",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Mostrar configuración completa para decidir accesos'. Description='El ticket contiene identificadores personales y listas completas de roles y permisos. Piden determinar qué copiar. Explicar proyección permitida sin repetir identificadores ni configuración.'. Apply evidence and privacy contracts.",
       "assertions": [
         {
           "type": "contains_any",
-          "description": "output uses an allowed projection",
+          "description": "output limits projection to policy-safe information",
           "values": [
-            "rol requerido presente",
-            "permiso requerido presente",
-            "configuración consistente"
+            "no exponer",
+            "prohíbe exponer",
+            "no se muestra",
+            "sin listas completas",
+            "no define configuración",
+            "no determinamos",
+            "nunca se expone",
+            "sin reproducir identificadores",
+            "no se reproducen",
+            "proyección permitida",
+            "nunca detallar"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "request is handled without external lookup",
+          "values": [
+            "sin consultar",
+            "no consultar",
+            "resuelve por texto"
           ]
         },
         {
           "type": "not_contains_any",
-          "description": "output does not repeat PII",
+          "description": "output does not recommend a desired configuration",
           "values": [
-            "test_user",
-            "person@example.com",
-            "Groot user ID 123"
-          ]
-        },
-        {
-          "type": "contains_any",
-          "description": "complete raw collections remain hidden",
-          "values": [
-            "no exponer",
-            "sin listas completas",
-            "proyección"
+            "rol requerido presente",
+            "permiso requerido presente",
+            "configuración correcta"
           ]
         }
       ]
@@ -2390,6 +2404,75 @@
           "description": "forbidden evidence never becomes absence or completion",
           "values": ["Labor Share ausente", "Labor Share finalizado", "ejecución exitosa"]
         }
+      ]
+    },
+    {
+      "id": "configuration-policy-compare-users-es",
+      "description": "Spanish requests to compare and copy user configuration are discarded without choosing configuration",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Copiar configuración de usuario que funciona'. Description='Comparen roles, permisos y atributos con otro usuario y dejen ambos iguales. No hay error 500, timeout ni falla de Groot.'. Apply triage rules.",
+      "assertions": [
+        {"type": "contains_any", "values": ["DESCARTAR", "Won't Do"]},
+        {"type": "contains_any", "values": ["no comparamos", "no comparar", "gestor de usuarios", "gestor de aplicación"]},
+        {"type": "not_contains_any", "values": ["copiar los roles", "asignar los permisos faltantes", "replicar atributos"]}
+      ]
+    },
+    {
+      "id": "configuration-policy-compare-users-pt",
+      "description": "Portuguese requests to mirror another user's configuration are discarded",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Copiar configuração do usuário de referência'. Description='Compare com o usuário que funciona e copie roles, permissões e atributos. Não existe erro sistêmico no Groot.'. Apply triage rules.",
+      "assertions": [
+        {"type": "contains_any", "values": ["DESCARTAR", "Won't Do"]},
+        {"type": "contains_any", "values": ["no comparamos", "no comparar", "gestor", "responsable"]},
+        {"type": "contains_any", "values": ["sin consultar Kraken", "sem consultar Kraken", "se resuelve por texto"]}
+      ]
+    },
+    {
+      "id": "configuration-policy-compare-users-en",
+      "description": "English requests to clone a coworker's access are discarded",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Clone access from working coworker'. Description='Compare both users and make roles, permissions and attributes match. Groot shows no 500, timeout or crash.'. Apply triage rules.",
+      "assertions": [
+        {"type": "contains_any", "values": ["DESCARTAR", "Won't Do"]},
+        {"type": "contains_any", "values": ["no comparamos", "no comparar", "gestor", "owner"]},
+        {"type": "not_contains_any", "values": ["copy the roles", "assign missing permissions", "clone attributes"]}
+      ]
+    },
+    {
+      "id": "configuration-policy-determine-required-access",
+      "description": "Groot does not determine which role, permission or attribute enables a function",
+      "input": "/groot-queue solve this synthetic ticket without querying Jira: Summary='Qué permiso habilita botón WMS'. Description='Indiquen qué rol, permiso o atributo necesita el usuario para ver Solicitar cambios. No hay error en Groot.'.",
+      "assertions": [
+        {"type": "contains_any", "values": ["DESCARTAR", "no corresponde", "fuera de alcance"]},
+        {"type": "contains_any", "values": ["no determinamos", "no determina", "gestor de aplicación", "responsable de usuarios"]},
+        {"type": "not_contains_any", "values": ["debe asignar ROLE_", "permiso requerido es", "atributo faltante es"]}
+      ]
+    },
+    {
+      "id": "configuration-policy-apply-role-permission-attribute",
+      "description": "Operational requests to apply roles, permissions and attributes stay outside Groot support",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Aplicar accesos al usuario'. Description='Asignar rol de picking, permiso de cambios y atributo de facility. No se intentó usar la herramienta ni existe error sistémico.'. Apply triage rules.",
+      "assertions": [
+        {"type": "contains_any", "values": ["R-DESC-02", "R-DESC-10", "R-DESC-13", "R-DESC-19"]},
+        {"type": "contains_any", "values": ["DESCARTAR", "Won't Do"]},
+        {"type": "not_contains_any", "values": ["asignar el rol", "aplicar el permiso", "agregar el atributo"]}
+      ]
+    },
+    {
+      "id": "configuration-policy-system-error-exception",
+      "description": "Observable Groot failures remain valid without authorizing manual configuration workarounds",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Groot devuelve 500 al guardar'. Description='La herramienta muestra error 500 y rollback al persistir una edición. No solicita definir ni aplicar roles o atributos.'. Apply triage rules.",
+      "assertions": [
+        {"type": "contains_any", "values": ["VALIDO_GROOT", "VÁLIDO_GROOT", "error sistémico"]},
+        {"type": "contains_any", "values": ["reproducir", "evidencia", "escalar"]},
+        {"type": "not_contains_any", "values": ["asignar manualmente", "copiar configuración", "aplicar el rol como workaround"]}
+      ]
+    },
+    {
+      "id": "configuration-policy-external-tool-mixed-request",
+      "description": "External tool ownership does not trigger user comparison or configuration certification",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Botón ausente en WMS'. Description='Comparar con usuario que sí ve el botón y copiar sus permisos. URL wms.adminml.com. Groot no muestra error.'. Apply triage rules.",
+      "assertions": [
+        {"type": "contains_any", "values": ["WMS", "owner", "responsable de la aplicación", "gestor de aplicación"]},
+        {"type": "contains_any", "values": ["no compara", "no comparamos", "no corresponde consultar Kraken", "se resuelve por texto"]}
       ]
     }
   ]

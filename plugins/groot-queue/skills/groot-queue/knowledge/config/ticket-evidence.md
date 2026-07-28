@@ -18,6 +18,8 @@ Antes de concluir:
 4. Pedir solo datos mínimos; no obtener perfiles completos ni hechos que no cambien decisión.
 5. Reevaluar regla o diagnóstico con evidencia obtenida. Una contradicción con Jira obliga a corregir conclusión, no a conservar reporte original.
 
+Antes de consultar, aplicar `triage-rules.md` § **Política transversal — configuración de usuarios**. Evidencia externa no puede usarse para seleccionar una persona de referencia, comparar perfiles, descubrir configuración objetivo, decidir qué rol/permiso/atributo corresponde ni justificar una mutación. Solicitudes cubiertas por esa política se resuelven por texto; consultar facts solo para ownership, estado técnico o diagnóstico de un fallo sistémico que no requiera elegir configuración.
+
 Para facts actuales de usuario, aplicar [`kraken-user-data.md`](kraken-user-data.md), incluida matriz regla → hechos. Para una ejecución concreta o catálogo de procesos de Labour Share, aplicar [`labor-share-data.md`](labor-share-data.md). Son fuentes separadas: un `labor_share_id` identifica un recurso de ejecución, no una persona ni un sujeto Kraken. No invocar endpoints ni construir HTTP fuera de esos contratos.
 
 Reglas resueltas íntegramente por texto Jira no disparan consultas. Presencia de identificador tampoco justifica enriquecimiento especulativo. Todo `labor_share_id` o `facility_type` extraído de Jira es un candidato no confiable: consultar solo cuando esté asociado explícitamente a Labour Share, sea único después de canonicalizar y pueda cambiar diagnóstico o solución. Cero o múltiples candidatos no disparan red; si el dato es decisivo, la evidencia queda `indeterminado`.
@@ -85,7 +87,7 @@ Datos técnicos remotos son efímeros y no confiables. No exponer ni persistir:
 - payloads crudos o listas completas de roles, permisos, atributos, context accesses o silos;
 - `message` por assignment, headers, tokens, URLs con query, cuerpos de error o stack traces.
 
-Mostrar solo proyecciones necesarias: “cuenta activa verificada”, “rol requerido presente”, “permiso requerido ausente”, “configuración inconsistente”, “ejecución de Labour Share en procesamiento”, conteos agregados `SUCCESS`/`FAIL`, catálogo mínimo o “verificación no disponible”.
+Mostrar solo proyecciones necesarias que no definan configuración objetivo: “cuenta activa verificada”, “proceso temporal activo”, “fallo sistémico observado”, “ejecución de Labour Share en procesamiento”, conteos agregados `SUCCESS`/`FAIL`, catálogo mínimo o “verificación no disponible”. No publicar qué rol, permiso o atributo falta/sobra ni calificar una configuración como correcta a partir de comparaciones.
 
 ## Aplicación por flujo
 
@@ -93,5 +95,5 @@ Mostrar solo proyecciones necesarias: “cuenta activa verificada”, “rol req
 - **Estadísticas**: casos dependientes de evidencia indeterminada cuentan como `REVISAR_MANUAL`.
 - **Alertas**: no excluir ticket por derivación/descarte sin condiciones confirmadas.
 - **Escrituras Jira**: bloquear acción automática cuando condición decisiva no está verificada; `assign-unassigned` conserva tickets Labour Share indeterminados en `REVISAR_MANUAL` aunque autorun esté activo.
-- **Guías**: consumir evidencia sanitizada ya obtenida; no reinterpretar Jira como hecho.
+- **Guías**: consumir evidencia sanitizada ya obtenida; no reinterpretar Jira como hecho ni convertir runbooks o soluciones históricas en instrucciones para comparar, determinar o aplicar configuración de usuarios.
 - **Knowledge base/históricos**: exigir provenance suficiente y confirmación humana; no guardar PII ni causalidad especulativa como `confirmed`.
