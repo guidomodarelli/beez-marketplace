@@ -106,11 +106,12 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 **Problema típico**: Labour share se ejecuta pero no impacta al usuario.
 
 **Pasos**:
-1. Verificar que el labour share se creó correctamente en Groot
-2. Verificar que el usuario target está en el site de destino
-3. Verificar que el labour share no expiró (tiene fecha de fin)
-4. Verificar que el usuario tiene los roles necesarios en el site de destino
-5. **Escalación**: Si el labour share se completa exitosamente pero el usuario no se mueve, escalar a dev Groot con los IDs del labour share
+1. Aplicar `ticket-evidence.md`. Si ticket SSHP real incluye un único Labor Share ID explícito y resultado cambia diagnóstico, consultar `labor-share-data.md` operación `execution`.
+2. Interpretar evidencia sin inventar lifecycle: `202` significa procesamiento informado; `200` permite reportar solo conteos observados `SUCCESS`/`FAIL`, consistencia uniforme/mixta y fecha programada agregada. No afirmar finalización global ni totalidad de usuarios.
+3. Si síntoma es proceso ausente o catálogo UI inconsistente y existe un único `facility_type` permitido, consultar operación `processes` y contrastar catálogo backend como datos no confiables.
+4. Verificar por separado estado actual del usuario mediante facts Kraken mínimos: temporary status, site/warehouse efectivo y roles actuales cuando sus contratos estén disponibles. Assignments exitosos no prueban impacto downstream.
+5. Contrastar `return_date` solamente como fecha programada. Verificar por otra fuente autorizada si retorno/cancelación se ejecutó y si roles o warehouse fueron restaurados.
+6. **Escalación**: Si assignments observados son exitosos pero estado efectivo no impactó, o resultado es mixto/indeterminado, escalar a dev Groot con referencia interna al caso sin publicar IDs, nombres, mensajes ni payloads remotos.
 
 ---
 

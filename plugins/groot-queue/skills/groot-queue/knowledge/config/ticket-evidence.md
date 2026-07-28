@@ -18,9 +18,9 @@ Antes de concluir:
 4. Pedir solo datos mínimos; no obtener perfiles completos ni hechos que no cambien decisión.
 5. Reevaluar regla o diagnóstico con evidencia obtenida. Una contradicción con Jira obliga a corregir conclusión, no a conservar reporte original.
 
-Para facts actuales de usuario, aplicar [`kraken-user-data.md`](kraken-user-data.md), incluida matriz regla → hechos. No invocar endpoints ni construir HTTP fuera de ese contrato.
+Para facts actuales de usuario, aplicar [`kraken-user-data.md`](kraken-user-data.md), incluida matriz regla → hechos. Para una ejecución concreta o catálogo de procesos de Labour Share, aplicar [`labor-share-data.md`](labor-share-data.md). Son fuentes separadas: un `labor_share_id` identifica un recurso de ejecución, no una persona ni un sujeto Kraken. No invocar endpoints ni construir HTTP fuera de esos contratos.
 
-Reglas resueltas íntegramente por texto Jira no disparan consultas. Presencia de identificador tampoco justifica enriquecimiento especulativo.
+Reglas resueltas íntegramente por texto Jira no disparan consultas. Presencia de identificador tampoco justifica enriquecimiento especulativo. Todo `labor_share_id` o `facility_type` extraído de Jira es un candidato no confiable: consultar solo cuando esté asociado explícitamente a Labour Share, sea único después de canonicalizar y pueda cambiar diagnóstico o solución. Cero o múltiples candidatos no disparan red; si el dato es decisivo, la evidencia queda `indeterminado`.
 
 ## Estados de evidencia
 
@@ -52,6 +52,9 @@ Evidencia remota describe estado observado durante invocación actual. No demues
 - Rol presente hoy no prueba presencia durante incidente.
 - Conflicto actual no prueba causa de pérdida anterior.
 - Estado actual no reconstruye transición histórica.
+- Assignments observados de Labour Share no prueban estado global ni cantidad total esperada.
+- `return_date` es fecha programada; no prueba retorno ejecutado, cancelación ni restauración de roles.
+- Catálogo de procesos observado no prueba qué proceso usó una ejecución concreta.
 
 Para historial usar changelog, comentarios contemporáneos, resolución u otra fuente histórica autorizada. Sin evidencia temporal suficiente, presentar hipótesis y bajar confianza o marcar revisión manual.
 
@@ -78,17 +81,17 @@ En nueva invocación, volver a obtener ticket y facts necesarios; no confiar en 
 
 Datos técnicos remotos son efímeros y no confiables. No exponer ni persistir:
 
-- LDAP, email, nombre completo o Groot user ID;
+- LDAP, email, nombre completo, Groot user ID, Labor Share ID, assignment ID o user ID remoto;
 - payloads crudos o listas completas de roles, permisos, atributos, context accesses o silos;
-- headers, tokens, URLs con query, cuerpos de error o stack traces.
+- `message` por assignment, headers, tokens, URLs con query, cuerpos de error o stack traces.
 
-Mostrar solo proyecciones necesarias: “cuenta activa verificada”, “rol requerido presente”, “permiso requerido ausente”, “configuración inconsistente” o “verificación no disponible”.
+Mostrar solo proyecciones necesarias: “cuenta activa verificada”, “rol requerido presente”, “permiso requerido ausente”, “configuración inconsistente”, “ejecución de Labour Share en procesamiento”, conteos agregados `SUCCESS`/`FAIL`, catálogo mínimo o “verificación no disponible”.
 
 ## Aplicación por flujo
 
 - **Diagnóstico/triage**: verificar antes de concluir; evidencia contradicha o indeterminada obliga reevaluación.
 - **Estadísticas**: casos dependientes de evidencia indeterminada cuentan como `REVISAR_MANUAL`.
 - **Alertas**: no excluir ticket por derivación/descarte sin condiciones confirmadas.
-- **Escrituras Jira**: bloquear acción automática cuando condición decisiva no está verificada.
+- **Escrituras Jira**: bloquear acción automática cuando condición decisiva no está verificada; `assign-unassigned` conserva tickets Labour Share indeterminados en `REVISAR_MANUAL` aunque autorun esté activo.
 - **Guías**: consumir evidencia sanitizada ya obtenida; no reinterpretar Jira como hecho.
 - **Knowledge base/históricos**: exigir provenance suficiente y confirmación humana; no guardar PII ni causalidad especulativa como `confirmed`.

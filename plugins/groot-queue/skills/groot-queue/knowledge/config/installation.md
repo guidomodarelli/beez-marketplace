@@ -86,9 +86,9 @@ Si falta alguna herramienta:
 brew install bash jq curl
 ```
 
-`groot-queue` reutiliza `curl` + `jq` para consultar hechos mínimos de usuario Kraken cuando una regla de triage lo requiere. Esas consultas dependen de Fury Access Groups y de la identidad resuelta por el edge corporativo; no forman parte del gate global de readiness porque comandos y tickets que no necesitan contexto deben seguir funcionando.
+`groot-queue` reutiliza `curl` + `jq` para consultar hechos mínimos de usuario Kraken y evidencia read-only de Labour Share cuando diagnóstico lo requiere. Esas consultas dependen de Fury Access Groups y de identidad resuelta por edge corporativo; no forman parte del gate global de readiness porque comandos y tickets sin contexto deben seguir funcionando.
 
-Un `401`/`403` deja la verificación como indeterminada. No agregar `Authorization`, cookies, `x-tiger-token` ni otros headers manuales. Solicitar acceso autorizado para los endpoints definidos en [`kraken-user-data.json`](kraken-user-data.json) y seguir el procedimiento de [`kraken-user-data.md`](kraken-user-data.md).
+Un `401`/`403` deja verificación como indeterminada. No agregar `Authorization`, cookies, `x-tiger-token` ni otros headers manuales. Solicitar acceso autorizado para endpoints definidos en [`kraken-user-data.json`](kraken-user-data.json) o [`labor-share-data.json`](labor-share-data.json), y seguir procedimientos de [`kraken-user-data.md`](kraken-user-data.md) o [`labor-share-data.md`](labor-share-data.md). Integración Labour Share admite únicamente operaciones GET `execution` y `processes`; nunca creación ni sink.
 
 ### 🎫 ACLI
 

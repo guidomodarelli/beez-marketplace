@@ -48,11 +48,11 @@ Aplicar **modo DEGRADAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/config/atla
 
 Si no hay tickets sin assignee, mostrar: "✅ No hay tickets sin assignee en la cola." y terminar.
 
-3. Leer `$SKILL_DIR/knowledge/config/ticket-evidence.md`, `$SKILL_DIR/knowledge/config/kraken-user-data.md`, `$SKILL_DIR/knowledge/rules/triage-rules.md` y `$SKILL_DIR/knowledge/teams/support-queues.md` (funciones de cada equipo para desambiguar ownership). Obtener el contenido de **todos** los tickets filtrados (en paralelo si es posible):
+3. Leer `$SKILL_DIR/knowledge/config/ticket-evidence.md`, `$SKILL_DIR/knowledge/config/kraken-user-data.md`, `$SKILL_DIR/knowledge/config/labor-share-data.md`, `$SKILL_DIR/knowledge/rules/triage-rules.md` y `$SKILL_DIR/knowledge/teams/support-queues.md` (funciones de cada equipo para desambiguar ownership). Obtener el contenido de **todos** los tickets filtrados (en paralelo si es posible):
    ```bash
    acli jira workitem view <KEY>
    ```
-   Para cada ticket, aplicar gate de `ticket-evidence.md`; verificar autónomamente facts decisivos mínimos mediante `kraken-user-data.md`, reutilizar resultados por sujeto durante toda corrida y respetar presupuesto de usuarios.
+   Para cada ticket, aplicar gate de `ticket-evidence.md`; verificar autónomamente facts decisivos mínimos mediante `kraken-user-data.md`. Cuando ticket Labour Share incluya un único `labor_share_id` o `facility_type` explícito y esa evidencia pueda cambiar triage, aplicar `labor-share-data.md`. Reutilizar resultados por sujeto, Labor Share ID o facility durante toda corrida y respetar presupuestos de consultas. Tickets sintéticos no aplican en este flujo.
 
    Luego aplicar el algoritmo canónico first-match en el orden exacto de `triage-rules.md` con la evidencia normalizada. No agrupar primero todas las R-DER y después todas las R-DESC. Clasificar cada ticket en una de estas categorías:
 
@@ -63,7 +63,7 @@ Si no hay tickets sin assignee, mostrar: "✅ No hay tickets sin assignee en la 
    - **`REVISAR_MANUAL`**: matchea una regla que requiere verificación en Groot admin que no puede confirmarse desde el contenido del ticket.
    - **`ASIGNAR`**: no matchea ninguna regla R-DER ni R-DESC, o su veredicto es `VALIDO_GROOT`.
 
-   Las verificaciones externas se resuelven según la matriz de `kraken-user-data.md`. Si falta sujeto inequívoco o una consulta necesaria queda parcial/indeterminada, clasificar como `REVISAR_MANUAL`; no interpretar el fallo como ausencia. Una regla no marcada ⚡ conserva confianza estándar aunque los facts estén completos.
+   Las verificaciones externas se resuelven según matrices de `kraken-user-data.md` y `labor-share-data.md`. Si falta sujeto o recurso inequívoco, se excede presupuesto, o una consulta necesaria queda parcial/indeterminada, clasificar como `REVISAR_MANUAL`; no interpretar fallo como ausencia, éxito, finalización ni retorno. Excluir ese ticket de auto-derive, auto-discard y asignación automática basada en condición no verificada, incluso con `GROOT_QUEUE_AUTORUN=true`. Una regla no marcada ⚡ conserva confianza estándar aunque facts estén completos.
 
 4. Mostrar el plan consolidado y ejecutar confirmaciones por nivel:
 
