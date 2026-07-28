@@ -179,6 +179,16 @@ teardown() {
   [ ! -s "$STDERR_FILE" ]
 }
 
+@test "processes 404 reports upstream resource not found without retrying" {
+  LABOR_SHARE_TEST_SCENARIO=processes-not-found
+  run run_labor_share_data processes --facility-type WAREHOUSE
+
+  [ "$status" -eq 0 ]
+  assert_labor_share_json '.operation == "processes" and .status == "indeterminate" and .facts == {} and .source_results[0].attempts == 1 and .warnings == ["UPSTREAM_NOT_FOUND"]' "processes 404 should not claim a labor share execution is missing"
+  assert_labor_share_count 1 '/management/v1/labor-share/process/WAREHOUSE$' "processes 404 must not retry"
+  assert_labor_share_private_values_hidden
+}
+
 @test "invalid facility type fails before curl" {
   run run_labor_share_data processes --facility-type OFFICE
 

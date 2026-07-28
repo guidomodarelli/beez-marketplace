@@ -218,10 +218,19 @@ request_http() {
 }
 
 warning_for_http_status() {
-  case "$1" in
+  local operation="$1"
+  local http_status="$2"
+
+  case "$http_status" in
     401) printf 'UPSTREAM_UNAUTHORIZED' ;;
     403) printf 'UPSTREAM_FORBIDDEN' ;;
-    404) printf 'LABOR_SHARE_NOT_FOUND' ;;
+    404)
+      if [ "$operation" = "execution" ]; then
+        printf 'LABOR_SHARE_NOT_FOUND'
+      else
+        printf 'UPSTREAM_NOT_FOUND'
+      fi
+      ;;
     429) printf 'UPSTREAM_RATE_LIMITED' ;;
     5??) printf 'UPSTREAM_ERROR' ;;
     *) printf 'UPSTREAM_HTTP_ERROR' ;;
@@ -438,7 +447,7 @@ case "$OPERATION" in
       202)
         emit_result "execution" "processing" '{"processing":true}' "processing" '["LABOR_SHARE_PROCESSING"]'
         ;;
-      *) emit_indeterminate "execution" "$(warning_for_http_status "$HTTP_STATUS")" ;;
+      *) emit_indeterminate "execution" "$(warning_for_http_status "$OPERATION" "$HTTP_STATUS")" ;;
     esac
     ;;
   processes)
@@ -474,7 +483,7 @@ case "$OPERATION" in
           emit_indeterminate "processes" "INVALID_LABOR_SHARE_RESPONSE"
         fi
         ;;
-      *) emit_indeterminate "processes" "$(warning_for_http_status "$HTTP_STATUS")" ;;
+      *) emit_indeterminate "processes" "$(warning_for_http_status "$OPERATION" "$HTTP_STATUS")" ;;
     esac
     ;;
   *)

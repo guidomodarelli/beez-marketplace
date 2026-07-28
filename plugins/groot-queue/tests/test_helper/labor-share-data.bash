@@ -126,6 +126,10 @@ case "$scenario" in
     body='[]'
     ;;
   processes-success) ;;
+  processes-not-found)
+    status=404
+    body='{"message":"private not found body"}'
+    ;;
   invalid-processes-schema)
     body='[{"id":9101,"description":"Inbound","sub_processes":[{"id":"9201","description":"Receiving"}]}]'
     ;;
