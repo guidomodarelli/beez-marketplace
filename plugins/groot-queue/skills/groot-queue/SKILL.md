@@ -139,6 +139,7 @@ $SKILL_DIR/
     ├── config/
     │   ├── ticket-evidence.md  ← Contrato general de verificación y provenance
     │   ├── kraken-user-data.md ← Facts actuales de usuario y protocolo Kraken
+    │   ├── labor-share-data.md ← Ejecución y catálogo Labour Share read-only
     │   └── classification.md   ← JQL base + Dimensión 1 + Dimensión 2
     ├── rules/
     │   ├── triage-rules.md     ← Reglas R-DESC / R-DER / R-FIX + algoritmo
@@ -150,7 +151,7 @@ $SKILL_DIR/
 
 Para preguntas documentales sobre el equipo, sus células o productos, leer `knowledge/teams/groot-team.md` y seguir la referencia a la célula correspondiente. Para Nexus y el alcance de Godric, Pidgey o Alfred, leer `knowledge/teams/nexus-team.md#productos-a-cargo`.
 
-Todo subcomando que clasifique, diagnostique, excluya, recomiende, mute o persista información de tickets debe leer y aplicar primero `knowledge/config/ticket-evidence.md`. Cuando ese contrato determine que hacen falta facts actuales de usuario, aplicar `knowledge/config/kraken-user-data.md`. Verificar autónomamente todos los hechos decisivos disponibles sin esperar otro pedido del usuario, consultar solo facts mínimos y reutilizar evidencia normalizada durante la misma invocación.
+Todo subcomando que clasifique, diagnostique, excluya, recomiende, mute o persista información de tickets debe leer y aplicar primero `knowledge/config/ticket-evidence.md`. Cuando ese contrato determine que hacen falta facts actuales de usuario, aplicar `knowledge/config/kraken-user-data.md`. `detail`, `solve`, `assign-unassigned` y `backfill-guides` también aplican `knowledge/config/labor-share-data.md` cuando una ejecución o catálogo Labour Share puede cambiar diagnóstico; demás subcomandos no disparan esta integración. Verificar autónomamente todos los hechos decisivos disponibles sin esperar otro pedido del usuario, consultar solo facts mínimos y reutilizar evidencia normalizada durante la misma invocación.
 
 Los subcomandos **deben leer estos archivos** cada vez que los necesiten (sin cachear entre invocaciones). Si cualquiera no existe, avisar al usuario y seguir solo con datos mínimos; una verificación decisiva ausente queda `REVISAR_MANUAL`.
 

@@ -44,12 +44,12 @@ Verificar si el output contiene el slug de detección automática:
 
 ### 3. Filtrar tickets derivables y descartables
 
-Leer `$SKILL_DIR/knowledge/config/ticket-evidence.md`, `$SKILL_DIR/knowledge/config/kraken-user-data.md` y `$SKILL_DIR/knowledge/rules/triage-rules.md`.
+Leer `$SKILL_DIR/knowledge/config/ticket-evidence.md`, `$SKILL_DIR/knowledge/config/kraken-user-data.md`, `$SKILL_DIR/knowledge/config/labor-share-data.md` y `$SKILL_DIR/knowledge/rules/triage-rules.md`.
 
 Para cada ticket que pasó los filtros anteriores:
 - Aplicar gate de `ticket-evidence.md`.
-- Verificar autónomamente facts decisivos mínimos mediante `kraken-user-data.md` y reutilizar resultados por sujeto durante lote.
-- Aplicar algoritmo canónico first-match con evidencia normalizada.
+- Verificar autónomamente facts decisivos mínimos mediante `kraken-user-data.md`. Para tickets Labour Share, aplicar `labor-share-data.md` cuando una ejecución o catálogo pueda cambiar triage o guía; reutilizar resultados por sujeto, Labor Share ID o facility durante lote.
+- Aplicar algoritmo canónico first-match con evidencia normalizada. Un resultado Labour Share `indeterminate` decisivo no autoriza inferir ausencia, éxito, finalización ni retorno.
 - Si matchea R-DER → marcar `DERIVABLE` y excluir.
 - Si matchea R-DESC → marcar `DESCARTABLE` y excluir.
 - Si una verificación obligatoria queda indeterminada → marcar `REVISAR_MANUAL` y excluir; no generar guía ni escribir Jira.
@@ -103,6 +103,8 @@ Para cada ticket elegible, ejecutar el **procedimiento de generación de nota in
 
 1. Leer las referencias (reutilizar si ya fueron cargadas):
    - `$SKILL_DIR/knowledge/config/classification.md`
+   - `$SKILL_DIR/knowledge/config/ticket-evidence.md`
+   - `$SKILL_DIR/knowledge/config/labor-share-data.md`
    - `$SKILL_DIR/knowledge/rules/runbooks.md`
    - `$SKILL_DIR/knowledge/templates/assignment-note-template.md`
 2. Con el contenido del ticket (ya obtenido en el paso 2):
@@ -111,7 +113,8 @@ Para cada ticket elegible, ejecutar el **procedimiento de generación de nota in
    - Resolver primero la carpeta real de `solutions/` usando el mapeo de `classification.md` (por ejemplo: `Jerarquía/Líder` → `hierarchy-leader`, `Warehouse/Site` → `warehouse-assignment`, `Roles/Permisos` → `role-permission`, `Otro` → `queue-management`).
    - Buscar casos previos similares en `$SKILL_DIR/knowledge/solutions/<categoria-slug>/`.
 3. Generar la nota siguiendo estrictamente el template:
-   - Completar cada campo (`{CATEGORIA}`, `{DIAGNOSTICO}`, `{PASOS_RESOLUCION}`, etc.) según las reglas de llenado del template.
+   - Completar cada campo (`{CATEGORIA}`, `{DIAGNOSTICO}`, `{PASOS_RESOLUCION}`, etc.) según las reglas de llenado del template y evidence sanitizada ya obtenida; no repetir consultas.
+   - Para Labour Share, usar solo procesamiento, conteos agregados, consistencia, fecha programada o catálogo mínimo. No afirmar lifecycle global, retorno ejecutado ni Team Leader.
    - Respetar las restricciones: español neutro, sin códigos de regla, sin PII, sin texto verbatim no sanitizado.
    - **Incluir siempre el slug `<!-- groot-auto-guide -->` como última línea del body.**
 4. Postear la nota como **nota interna de Jira Service Management** usando MCP Atlassian:

@@ -20,6 +20,13 @@
 - **No incluir LDAPs ni identificadores de usuario específicos** en archivos de knowledge base (soluciones, reglas de triage, runbooks). Usar siempre referencias genéricas: `<ldap_usuario>`, `<ldap_externo>`, `<groot_id>`, `<nombre_usuario>`. Los patrones de prefijo sí son válidos (ej. `ext_*` para identificar el tipo de cuenta). El LDAP real pertenece al ticket SSHP, no a la KB.
 - **Orden canónico de campos en frontmatter** de archivos `solutions/**/*.md`: `ticket` → `category` → `summary` → `date` → `effectiveness` → `verdict` → `rule` → `destination` → `source`. Omitir campos opcionales que no apliquen. No usar `derived_to` (usar `destination`). No usar `subverdict`.
 
+## Paridad de flujos de resolución
+
+- Todo cambio funcional, fuente de evidencia, fact remoto, runbook o caso reusable agregado a `plugins/groot-queue/skills/groot-queue/subcommands/solve.md` debe evaluarse y reflejarse también en `subcommands/assign-unassigned.md`, porque este subcommand clasifica y genera resolución para tickets antes de asignarlos.
+- Revisar además `subcommands/detail.md`, que invoca explícitamente lógica de `solve`, y `subcommands/backfill-guides.md`, que genera guías con mismos runbooks, solutions y evidence. Aplicar cambio cuando corresponda al flujo; si no corresponde, dejar razón explícita en validación final.
+- No cerrar cambio relacionado con resolución sin revisar estos cuatro archivos: `solve.md`, `assign-unassigned.md`, `detail.md` y `backfill-guides.md`.
+- Mantener diferencias de superficie: `solve` y `detail` son read-only; `assign-unassigned` y `backfill-guides` conservan sus gates, confirmaciones y restricciones de escritura propios.
+
 ## Uso de subagentes
 
 - No crear subagentes salvo pedido explícito del usuario.

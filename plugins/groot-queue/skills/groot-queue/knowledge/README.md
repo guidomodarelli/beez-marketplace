@@ -19,6 +19,9 @@ rules/               Reglas de negocio y procedimientos de resolución:
                        Se consulta en /groot-queue solve.
 
 config/              Configuración de tooling externo y opciones de Jira:
+  ticket-evidence.md   Gate general de verificación y provenance.
+  kraken-user-data.*   Facts actuales de usuario y contrato Kraken.
+  labor-share-data.*   Ejecución y catálogo Labour Share read-only.
   atlassian-mcp.md     Precondiciones y uso seguro del MCP de Atlassian.
                        Fuente de verdad de `commentVisibility` (nota interna).
   slack-mcp.md         Capacidades y degradación segura del MCP de Slack.
