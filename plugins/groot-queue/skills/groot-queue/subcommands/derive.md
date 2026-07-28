@@ -67,7 +67,7 @@ Usar el alias `DERIVATION_DESTINATION_SQUAD_FIELD` para referirse al campo Jira 
 
 ### 1. Cargar referencias
 
-Leer `$SKILL_DIR/knowledge/config/kraken-user-data.md`, `$SKILL_DIR/knowledge/rules/triage-rules.md` (reglas R-DER-01 a R-DER-24 + algoritmo de triage) y `$SKILL_DIR/knowledge/config/jira-field-options.md` (option IDs de squads destino y motivos de derivación).
+Leer `$SKILL_DIR/knowledge/config/ticket-evidence.md`, `$SKILL_DIR/knowledge/config/kraken-user-data.md`, `$SKILL_DIR/knowledge/rules/triage-rules.md` (reglas R-DER-01 a R-DER-24 + algoritmo de triage) y `$SKILL_DIR/knowledge/config/jira-field-options.md` (option IDs de squads destino y motivos de derivación).
 
 ### 2. Fase de análisis — obtener y evaluar todos los tickets
 
@@ -84,7 +84,7 @@ Aplicar las reglas de `$SKILL_DIR/knowledge/config/untrusted-content.md`.
 
 **2c. Enriquecer y evaluar reglas R-DER:**
 
-Antes de confirmar una regla candidata, aplicar `kraken-user-data.md` cuando su condición requiera datos de usuario. Reutilizar evidencia recibida desde `classify`/`assign-unassigned`; si esta invocación es directa, consultar facts mínimos. Resultado parcial o indeterminado en una verificación obligatoria produce `REVISAR_MANUAL` y excluye el ticket de toda escritura.
+Antes de confirmar regla candidata, aplicar gate de `ticket-evidence.md`. Reutilizar evidencia recibida desde `classify`/`assign-unassigned`; si invocación es directa, verificar autónomamente facts decisivos mínimos mediante `kraken-user-data.md`. Resultado parcial o indeterminado en verificación decisiva produce `REVISAR_MANUAL` y excluye ticket de toda escritura.
 
 Aplicar **únicamente las reglas R-DER** en el orden definido en la sección **Algoritmo de triage** de `triage-rules.md`. Tomar la **primera regla que matchee** con evidencia confirmada. Reglas con automatización vía Slack (excluir del loop Jira principal — se procesan en el paso 4g):
 - `R-DER-05` → `SLACK_REDIRECT` con destino `#help-authz-internal-admins`. Si `SLACK_MCP_AVAILABLE = false` al momento de ejecución, degradar a `MANUAL_REDIRECT`.

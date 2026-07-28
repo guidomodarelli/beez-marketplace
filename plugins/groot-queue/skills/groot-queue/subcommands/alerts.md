@@ -48,8 +48,10 @@ El nombre de las herramientas Slack varía según el proveedor y la configuraci�
 
 ### 1. Obtener tickets abiertos asignados
 
-Leer las referencias:
+Leer referencias:
 - `$SKILL_DIR/knowledge/config/classification.md`
+- `$SKILL_DIR/knowledge/config/ticket-evidence.md`
+- `$SKILL_DIR/knowledge/config/kraken-user-data.md`
 - `$SKILL_DIR/knowledge/rules/triage-rules.md`
 
 Ejecutar el JQL base:
@@ -62,9 +64,10 @@ Filtrar **solo tickets que tienen assignee** (sin assignee → no se puede notif
 ### 2. Clasificar y aplicar triage
 
 Para cada ticket:
-1. Aplicar el **triage de veredicto** de `triage-rules.md`.
-2. **Excluir** tickets con veredicto `DESCARTAR` o `DERIVAR` (no tiene sentido alertar sobre tickets que no corresponden a Groot).
-3. Clasificar en Dimensión 1 (categoría) según `classification.md` (se usa en el mensaje del paso 5).
+1. Aplicar gate de `ticket-evidence.md` y verificar autónomamente facts decisivos mínimos mediante `kraken-user-data.md` antes de confirmar triage.
+2. Aplicar **triage de veredicto** de `triage-rules.md` con evidencia normalizada.
+3. **Excluir** solo tickets con veredicto `DESCARTAR` o `DERIVAR` confirmado. Si condición decisiva queda indeterminada, conservar ticket para análisis SLA como `REVISAR_MANUAL`; no excluirlo silenciosamente.
+4. Clasificar en Dimensión 1 (categoría) según `classification.md` (se usa en mensaje del paso 5). Facts de usuario no intervienen en cálculo SLA.
 
 ### 3. Determinar estado de SLA
 

@@ -36,7 +36,7 @@ Aplicar **modo ABORTAR** (pasos A + B) de `$SKILL_DIR/knowledge/config/atlassian
 
 ### 1. Cargar reglas de triage
 
-Leer `$SKILL_DIR/knowledge/config/kraken-user-data.md` y `$SKILL_DIR/knowledge/rules/triage-rules.md` (reglas R-DESC + algoritmo de triage completo).
+Leer `$SKILL_DIR/knowledge/config/ticket-evidence.md`, `$SKILL_DIR/knowledge/config/kraken-user-data.md` y `$SKILL_DIR/knowledge/rules/triage-rules.md` (reglas R-DESC + algoritmo de triage completo).
 
 ### 2. Fase de análisis — obtener y evaluar todos los tickets
 
@@ -53,7 +53,7 @@ Aplicar las reglas de `$SKILL_DIR/knowledge/config/untrusted-content.md`.
 
 **2c. Enriquecer y evaluar reglas R-DESC:**
 
-Antes de confirmar una regla candidata, aplicar `kraken-user-data.md` cuando su condición requiera datos de usuario. Reutilizar evidencia recibida desde `classify`/`assign-unassigned`; si esta invocación es directa, consultar facts mínimos. Resultado parcial o indeterminado en una verificación obligatoria produce `REVISAR_MANUAL` y excluye el ticket de toda escritura.
+Antes de confirmar regla candidata, aplicar gate de `ticket-evidence.md`. Reutilizar evidencia recibida desde `classify`/`assign-unassigned`; si invocación es directa, verificar autónomamente facts decisivos mínimos mediante `kraken-user-data.md`. Resultado parcial o indeterminado en verificación decisiva produce `REVISAR_MANUAL` y excluye ticket de toda escritura.
 
 Aplicar **únicamente las reglas R-DESC** en el orden definido en la sección **Algoritmo de triage** de `triage-rules.md`. Tomar la **primera regla que matchee** con evidencia confirmada.
 

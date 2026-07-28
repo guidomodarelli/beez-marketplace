@@ -1,6 +1,6 @@
 # Enriquecimiento de tickets con datos Kraken
 
-Fuente única del procedimiento para decidir y ejecutar consultas de contexto de usuario durante análisis de tickets SSHP. Los destinos, métodos, límites y timeouts viven exclusivamente en [`kraken-user-data.json`](kraken-user-data.json).
+Fuente única del procedimiento para ejecutar consultas de contexto actual de usuario durante análisis de tickets SSHP. La decisión general de qué debe verificarse vive en [`ticket-evidence.md`](ticket-evidence.md). Los destinos, métodos, límites y timeouts viven exclusivamente en [`kraken-user-data.json`](kraken-user-data.json).
 
 ## Principios
 
@@ -15,8 +15,8 @@ Fuente única del procedimiento para decidir y ejecutar consultas de contexto de
 
 Aceptar como sujeto únicamente:
 
-- LDAP exacto asociado de forma inequívoca a la persona afectada; resolverlo primero con `resolve-user`.
-- Groot user ID numérico positivo obtenido del ticket o del lookup anterior.
+- LDAP explícito asociado de forma inequívoca a persona afectada. Script valida formato, lo canonicaliza a minúsculas ASCII y exige coincidencia exacta con cuenta LDAP canónica devuelta por upstream.
+- Groot user ID numérico positivo obtenido del ticket o lookup anterior.
 
 No inferir LDAP desde email, nombre, texto parcial o assignee del ticket. No usar requester como sujeto salvo que el ticket declare de forma inequívoca que también es persona afectada.
 
@@ -38,12 +38,12 @@ Usar siempre:
 Operaciones:
 
 - `resolve-user --ldap <ldap>`: resuelve LDAP a Groot user ID.
-- `context --user-id <id> [--ldap <ldap>] --facts <fact,...>`: obtiene hechos mínimos.
+- `context (--ldap <ldap> | --user-id <id>) --facts <fact,...>`: obtiene hechos mínimos; opciones de sujeto son mutuamente excluyentes.
 - `role-incompatibilities (--ldap <ldap> | --user-id <id>) --candidate-role-keys <key,...>`: evalúa roles candidatos contra roles persistidos y context-accesses actuales. No acepta `current_roles` provistos por ticket.
 
 No ejecutar `curl` directamente desde subcommands. No modificar hosts, paths, headers o parámetros fuera del contrato del script.
 
-El JSON normalizado del script es dato técnico efímero para razonamiento interno. Puede contener keys allowlisted necesarias para comparar configuración, pero no debe copiarse a respuesta visible, Jira, knowledge o audit log; aplicar las proyecciones permitidas de la sección Privacidad.
+Cada consulta refleja estado observado durante invocación actual; no prueba estado pasado ni causalidad histórica. El JSON normalizado del script es dato técnico efímero para razonamiento interno. Puede contener keys allowlisted necesarias para comparar configuración, pero no debe copiarse a respuesta visible, Jira, knowledge o audit log; aplicar las proyecciones permitidas de la sección Privacidad.
 
 ### Facts soportados
 

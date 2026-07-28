@@ -85,6 +85,10 @@ validate_ldap() {
   esac
 }
 
+canonicalize_ldap() {
+  printf '%s' "$1" | LC_ALL=C tr '[:upper:]' '[:lower:]'
+}
+
 validate_user_id() {
   local value="$1"
   case "$value" in
@@ -832,6 +836,10 @@ if [ -z "$LDAP_USER" ] && [ -z "$USER_ID" ]; then
   fail_usage "Missing subject: use --ldap or --user-id."
 fi
 validate_ldap "$LDAP_USER" || { [ -z "$LDAP_USER" ] || fail_usage "Invalid LDAP."; }
+if [ -n "$LDAP_USER" ]; then
+  LDAP_USER="$(canonicalize_ldap "$LDAP_USER")"
+  validate_ldap "$LDAP_USER" || fail_usage "Invalid LDAP."
+fi
 validate_user_id "$USER_ID" || { [ -z "$USER_ID" ] || fail_usage "Invalid user ID."; }
 
 umask 077

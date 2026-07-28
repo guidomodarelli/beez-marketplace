@@ -8,11 +8,14 @@ Mostrar estadísticas agregadas de la cola.
 
 ## Procedimiento
 
-1. Leer las referencias:
+1. Leer referencias:
    - `$SKILL_DIR/knowledge/config/classification.md`
+   - `$SKILL_DIR/knowledge/config/ticket-evidence.md`
+   - `$SKILL_DIR/knowledge/config/kraken-user-data.md`
    - `$SKILL_DIR/knowledge/rules/triage-rules.md`
 2. Obtener todos los tickets abiertos (JQL base).
-3. Clasificar cada uno (categoría + urgencia + triage).
+3. Para cada ticket, aplicar gate de `ticket-evidence.md` y verificar autónomamente facts decisivos mínimos mediante `kraken-user-data.md`. Reutilizar evidencia por sujeto y respetar presupuesto de usuarios.
+4. Clasificar cada ticket (categoría + urgencia + triage). Si veredicto depende de evidencia indeterminada o presupuesto agotado, contar como `REVISAR_MANUAL`; no convertir reporte Jira en veredicto confirmado.
 
 ## Presentación
 

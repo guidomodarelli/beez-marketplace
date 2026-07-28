@@ -2009,6 +2009,205 @@
           ]
         }
       ]
+    },
+    {
+      "id": "ticket-evidence-jira-contradicted-by-sot",
+      "description": "A verified source-of-truth result overrides an unverified Jira claim",
+      "input": "Documentation-only contract question. A real SSHP ticket says the affected user lacks ROLE_ICQA, but an authorized complete Kraken SoT result confirms the required role is currently present. Explain how groot-queue must diagnose and triage this contradiction. Do not invoke tools or services.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "Jira is treated as reported information rather than proof",
+          "values": [
+            "Jira es reporte",
+            "dato reportado",
+            "no prueba"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "the verified result forces reevaluation",
+          "values": [
+            "reevaluar",
+            "corregir el diagnóstico",
+            "rol requerido presente"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "the contradicted absence is not repeated as fact",
+          "values": [
+            "rol ausente verificado",
+            "se confirmó que falta",
+            "falta el rol confirmado"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ticket-evidence-ambiguous-identity-fails-closed",
+      "description": "Ambiguous subjects block fact queries and decisive triage",
+      "input": "Documentation-only contract question. A real SSHP ticket mentions two users but does not associate either one with the reported permission failure. Explain identity selection, external verification, verdict, and automation. Do not invoke tools or services.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "no subject is guessed",
+          "values": [
+            "identidad ambigua",
+            "sujeto inequívoco",
+            "no inferir identidad"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "REVISAR_MANUAL"
+        },
+        {
+          "type": "contains_any",
+          "description": "automatic action is blocked",
+          "values": [
+            "bloquear mutaciones",
+            "sin acción automática",
+            "no automatizar"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ticket-evidence-current-state-does-not-prove-history",
+      "description": "Current user facts cannot establish historical causality",
+      "input": "Documentation-only solve question. A current Kraken result confirms a role conflict, while the Jira incident claims that conflict caused a role rollback last week. There is no changelog or contemporaneous evidence. Explain diagnosis wording, confidence, and whether the cause is verified. Do not invoke tools or services.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "current state is bounded in time",
+          "values": [
+            "estado actual",
+            "invocación actual",
+            "observado actualmente"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "causality remains unproven",
+          "values": [
+            "no prueba causalidad",
+            "no demuestra causalidad",
+            "causa no verificada"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "output remains hypothesis or manual confidence",
+          "values": [
+            "hipótesis",
+            "confianza media",
+            "REVISAR_MANUAL"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stats-indeterminate-triage-counts-manual",
+      "description": "Stats do not count an unverified conditional verdict as confirmed",
+      "input": "Documentation-only stats question. A real ticket text suggests DESCARTAR, but that rule requires roles and the authorized verification is indeterminate. Explain which triage bucket contributes to groot-queue stats. Do not invoke tools or services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "REVISAR_MANUAL"
+        },
+        {
+          "type": "not_contains_any",
+          "description": "unverified verdict is not counted as confirmed",
+          "values": [
+            "contar como DESCARTAR confirmado",
+            "DESCARTAR confirmado"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "alerts-keeps-unverified-triage-ticket",
+      "description": "Alerts do not silently exclude a ticket whose discard or derive condition is unverified",
+      "input": "Documentation-only alerts question. A ticket appears derivable from Jira text, but its decisive account-status verification failed. Explain whether it is excluded before SLA analysis and which triage state it keeps. Do not invoke tools or services.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "REVISAR_MANUAL"
+        },
+        {
+          "type": "contains_any",
+          "description": "ticket remains in SLA analysis",
+          "values": [
+            "conservar ticket",
+            "no excluir",
+            "análisis SLA"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "save-refuses-unproven-confirmed-cause",
+      "description": "Save does not persist inferred historical causality as confirmed",
+      "input": "Documentation-only save question. A user asks to save a solution whose stated root cause comes only from Jira description and a current role snapshot; no closing comment, changelog, or explicit confirmation proves that historical cause. Explain whether groot-queue writes effectiveness confirmed and what it must do first. Do not invoke tools or services.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "unproven cause is not persisted as confirmed",
+          "values": [
+            "no guardar",
+            "no persistir",
+            "no escribir"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "human or historical evidence is required",
+          "values": [
+            "confirmación explícita",
+            "evidencia histórica",
+            "pedir confirmación"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "effectiveness: confirmed"
+        }
+      ]
+    },
+    {
+      "id": "ticket-evidence-output-projects-without-pii",
+      "description": "Verified user facts are projected without identifiers or complete collections",
+      "input": "Documentation-only privacy question. A real ticket contains LDAP test_user, email person@example.com and Groot user ID 123. A complete result verifies the required role and permission. Show the allowed user-facing conclusion without invoking tools or services.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "output uses an allowed projection",
+          "values": [
+            "rol requerido presente",
+            "permiso requerido presente",
+            "configuración consistente"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "output does not repeat PII",
+          "values": [
+            "test_user",
+            "person@example.com",
+            "Groot user ID 123"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "complete raw collections remain hidden",
+          "values": [
+            "no exponer",
+            "sin listas completas",
+            "proyección"
+          ]
+        }
+      ]
     }
   ]
 }
