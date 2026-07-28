@@ -20,6 +20,38 @@ teardown() {
   assert_kraken_count 1 '/aggregator/integration/v1/users?' "lookup should execute once"
 }
 
+@test "uppercase LDAP is canonicalized before lookup without exposing identity" {
+  run run_kraken_user_data resolve-user --ldap TEST_USER
+
+  [ "$status" -eq 0 ]
+  assert_kraken_json '.status == "complete" and .facts.identity.resolved == true' "uppercase LDAP should resolve through canonical form"
+  assert_kraken_count 1 'account_id=test_user&account_type=LDAP' "lookup should use lowercase canonical LDAP once"
+  ! grep -Eq 'TEST_USER|test_user' "$STDOUT_FILE"
+  [ ! -s "$STDERR_FILE" ]
+}
+
+@test "context canonicalizes uppercase LDAP and resolves roles once" {
+  run run_kraken_user_data context --ldap TEST_USER --facts roles
+
+  [ "$status" -eq 0 ]
+  assert_kraken_json '.status == "complete" and .facts.roles.keys == ["ROLE_A","ROLE_B"]' "roles should resolve after canonical lookup"
+  assert_kraken_count 1 '/aggregator/integration/v1/users?' "context should resolve identity once"
+  assert_kraken_count 1 '/user/123/roles' "context should query roles once"
+  ! grep -Eq 'TEST_USER|test_user' "$STDOUT_FILE"
+  [ ! -s "$STDERR_FILE" ]
+}
+
+@test "canonical LDAP mismatch fails closed without exposing identity" {
+  KRAKEN_TEST_SCENARIO=identity-mismatch
+  run run_kraken_user_data context --ldap TEST_USER --facts roles
+
+  [ "$status" -eq 0 ]
+  assert_kraken_json '.status == "indeterminate" and (.warnings | index("IDENTITY_INDETERMINATE")) != null and (.facts | length) == 0' "identity mismatch should remain indeterminate"
+  assert_kraken_count 0 '/user/123/roles' "mismatch should block role query"
+  ! grep -Eq 'TEST_USER|test_user|different_user|"id"[[:space:]]*:[[:space:]]*123' "$STDOUT_FILE"
+  [ ! -s "$STDERR_FILE" ]
+}
+
 @test "context returns strict normalized facts after one lookup" {
   run run_kraken_user_data context --ldap test_user --facts account-status,roles,permissions,temporary-status,context-accesses,silos
 

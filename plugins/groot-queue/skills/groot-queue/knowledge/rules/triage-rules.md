@@ -27,9 +27,9 @@ Groot Soporte atiende **exclusivamente errores sistémicos**: bugs, comportamien
 
 > **Criterio de distinción**: si la herramienta muestra un mensaje claro indicando qué falta o qué condición no se cumple → es validación esperada, no bug. Si falla de forma inesperada sin mensaje de validación claro → es error sistémico.
 
-## Verificaciones con datos Kraken
+## Verificaciones de evidencia y datos Kraken
 
-Cuando una condición dependa del estado actual del usuario, aplicar `$SKILL_DIR/knowledge/config/kraken-user-data.md`. Su matriz regla → facts es la fuente única para seleccionar endpoints e interpretar evidencia. Un error, acceso denegado, identidad ambigua, respuesta parcial o schema inválido no confirma ausencia ni compatibilidad: si el dato es obligatorio, usar `REVISAR_MANUAL` y bloquear mutaciones.
+Antes de confirmar cualquier regla, aplicar `$SKILL_DIR/knowledge/config/ticket-evidence.md`; Jira aporta señales reportadas, no prueba condiciones operativas verificables. Cuando una condición dependa del estado actual del usuario, aplicar `$SKILL_DIR/knowledge/config/kraken-user-data.md`. Su matriz regla → facts es fuente única para seleccionar consultas e interpretar evidencia. Un error, acceso denegado, identidad ambigua, respuesta parcial o schema inválido no confirma ausencia ni compatibilidad: si dato es decisivo, usar `REVISAR_MANUAL` y bloquear mutaciones.
 
 La evidencia externa resuelve predicados de reglas existentes; no crea reglas nuevas, no modifica urgencia y no promueve una regla no marcada ⚡ a alta confianza automática.
 

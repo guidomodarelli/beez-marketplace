@@ -52,7 +52,14 @@ body='{}'
 
 case "$url" in
   *'/aggregator/integration/v1/users?'*)
-    body='{"id":123,"active":true,"accounts":[{"account_id":"test_user","account_type":"LDAP"}]}'
+    case "$url" in
+      *'account_id=test_user&account_type=LDAP')
+        body='{"id":123,"active":true,"accounts":[{"account_id":"test_user","account_type":"LDAP"}]}'
+        ;;
+      *)
+        body='{"id":123,"active":true,"accounts":[{"account_id":"different_user","account_type":"LDAP"}]}'
+        ;;
+    esac
     ;;
   *'/integration/v1/users/status?'*)
     body='{"results":[{"id":123,"active":true}],"paging":{"page":0,"size":100,"total_pages":1,"total":1}}'
@@ -82,6 +89,13 @@ case "$url" in
 esac
 
 case "$scenario" in
+  identity-mismatch)
+    case "$url" in
+      *'/aggregator/integration/v1/users?'*)
+        body='{"id":123,"active":true,"accounts":[{"account_id":"different_user","account_type":"LDAP"}]}'
+        ;;
+    esac
+    ;;
   forbidden)
     status=403
     body='{"message":"private forbidden body"}'

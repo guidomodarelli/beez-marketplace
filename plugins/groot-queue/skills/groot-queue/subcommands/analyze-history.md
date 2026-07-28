@@ -72,6 +72,8 @@ Si no hay resultados: mostrar `ℹ️ No hay tickets cerrados pendientes de anal
 
 ### 2. Para cada ticket (iteración interactiva — UNO POR UNO, sin batch)
 
+Leer y aplicar `$SKILL_DIR/knowledge/config/ticket-evidence.md`. Para reconstruir desenlaces usar solo changelog, comentarios contemporáneos, resolución u otra evidencia histórica autorizada; no consultar estado Kraken actual como prueba del pasado. Causalidad no demostrada produce `groot-kb-manual-review`.
+
 ⚠️ **REGLA CRÍTICA — ANÁLISIS INDIVIDUAL OBLIGATORIO**: Cada ticket DEBE analizarse completamente de forma individual. **PROHIBIDO** agrupar, resumir o "batchear" múltiples tickets en un solo paso. Aunque varios tickets parezcan similares, cada uno puede tener matices que lo diferencien (equipo destino distinto, señal única, verificación previa diferente). El volumen no es un criterio para saltear — un ticket único puede materializar una regla válida. Si un ticket no matchea ningún patrón existente con ≥3 tickets previos, IGUALMENTE debe analizarse individualmente y presentarse al usuario con su propuesta. El usuario decide si materializar; el agente no descarta por volumen.
 
 Mostrar contador de progreso antes de cada ticket: `[N/M] Analizando SSHP-XXXXXXX…`
@@ -157,7 +159,7 @@ Preguntar con `AskUserQuestion` (single-select):
   - Tipo de regla: `DESCARTAR`
   - Título: derivar del summary del ticket (frase breve descriptiva del patrón)
   - Señales: las extraídas en 2f
-  - Razón: inferida del comentario clave y el contexto del ticket
+  - Razón: sustentada por comentario contemporáneo y changelog; si solo puede inferirse, marcar `groot-kb-manual-review` y no materializar como confirmada
   - Verificación previa: omitir a menos que el comentario la mencione
   - Acción: `Cerrar como Won't Do`
   - Comentario sugerido: el texto literal del comentario clave (sin normalizar)

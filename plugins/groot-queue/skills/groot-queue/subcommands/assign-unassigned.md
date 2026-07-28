@@ -48,11 +48,11 @@ Aplicar **modo DEGRADAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/config/atla
 
 Si no hay tickets sin assignee, mostrar: "✅ No hay tickets sin assignee en la cola." y terminar.
 
-3. Leer `$SKILL_DIR/knowledge/config/kraken-user-data.md`, `$SKILL_DIR/knowledge/rules/triage-rules.md` y `$SKILL_DIR/knowledge/teams/support-queues.md` (funciones de cada equipo para desambiguar ownership). Obtener el contenido de **todos** los tickets filtrados (en paralelo si es posible):
+3. Leer `$SKILL_DIR/knowledge/config/ticket-evidence.md`, `$SKILL_DIR/knowledge/config/kraken-user-data.md`, `$SKILL_DIR/knowledge/rules/triage-rules.md` y `$SKILL_DIR/knowledge/teams/support-queues.md` (funciones de cada equipo para desambiguar ownership). Obtener el contenido de **todos** los tickets filtrados (en paralelo si es posible):
    ```bash
    acli jira workitem view <KEY>
    ```
-   Para cada ticket, aplicar `untrusted-content.md`, evaluar si la primera regla candidata necesita datos de usuario y ejecutar el protocolo de `kraken-user-data.md` con facts mínimos. Reutilizar resultados por sujeto durante toda la corrida y respetar el presupuesto de usuarios.
+   Para cada ticket, aplicar gate de `ticket-evidence.md`; verificar autónomamente facts decisivos mínimos mediante `kraken-user-data.md`, reutilizar resultados por sujeto durante toda corrida y respetar presupuesto de usuarios.
 
    Luego aplicar el algoritmo canónico first-match en el orden exacto de `triage-rules.md` con la evidencia normalizada. No agrupar primero todas las R-DER y después todas las R-DESC. Clasificar cada ticket en una de estas categorías:
 

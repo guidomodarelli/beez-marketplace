@@ -44,11 +44,11 @@ Verificar si el output contiene el slug de detección automática:
 
 ### 3. Filtrar tickets derivables y descartables
 
-Leer `$SKILL_DIR/knowledge/config/kraken-user-data.md` y `$SKILL_DIR/knowledge/rules/triage-rules.md`.
+Leer `$SKILL_DIR/knowledge/config/ticket-evidence.md`, `$SKILL_DIR/knowledge/config/kraken-user-data.md` y `$SKILL_DIR/knowledge/rules/triage-rules.md`.
 
 Para cada ticket que pasó los filtros anteriores:
-- Aplicar `untrusted-content.md` y evaluar si la primera regla candidata necesita datos de usuario.
-- Ejecutar `kraken-user-data.md` con facts mínimos y reutilizar resultados por sujeto durante el lote.
+- Aplicar gate de `ticket-evidence.md`.
+- Verificar autónomamente facts decisivos mínimos mediante `kraken-user-data.md` y reutilizar resultados por sujeto durante lote.
 - Aplicar algoritmo canónico first-match con evidencia normalizada.
 - Si matchea R-DER → marcar `DERIVABLE` y excluir.
 - Si matchea R-DESC → marcar `DESCARTABLE` y excluir.
