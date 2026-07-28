@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "hosts": {
+    "authenticated_users": "https://kraken-authusers.melioffice.com",
+    "internal_api": "https://internal-api.mercadolibre.com",
+    "kraken": "https://kraken.melioffice.com"
+  },
+  "network": {
+    "connect_timeout_seconds": 5,
+    "max_time_seconds": 15,
+    "max_get_retries": 1,
+    "max_response_bytes": 1048576
+  },
+  "limits": {
+    "max_users_per_invocation": 20,
+    "max_roles_per_check": 20,
+    "max_identifier_length": 128,
+    "max_pages_per_fact": 10,
+    "max_items_per_fact": 10000
+  },
+  "endpoints": {
+    "resolve_user": {
+      "host": "kraken",
+      "method": "GET",
+      "path": "/aggregator/integration/v1/users",
+      "authority": "replica"
+    },
+    "user_roles": {
+      "host": "internal_api",
+      "method": "GET",
+      "path": "/internal/kraken/auth-core/user/{user_id}/roles",
+      "authority": "sot"
+    },
+    "user_permissions": {
+      "host": "authenticated_users",
+      "method": "GET",
+      "path": "/api/v0/users/{user_id}/permissions",
+      "authority": "replica"
+    },
+    "user_attributes": {
+      "host": "internal_api",
+      "method": "GET",
+      "path": "/attributes-core/entities/kraken_user/{user_id}/attribute-values-admin",
+      "authority": "sot"
+    },
+    "temporary_status": {
+      "host": "internal_api",
+      "method": "GET",
+      "path": "/attributes-core/entities/kraken_user/{user_id}/attribute-values-admin",
+      "authority": "sot",
+      "attribute_key": "tmp_user_status",
+      "pagination": {
+        "mode": "total_items",
+        "page_size": 200
+      }
+    },
+    "user_status": {
+      "host": "kraken",
+      "method": "GET",
+      "path": "/integration/v1/users/status",
+      "authority": "sot",
+      "pagination": {
+        "mode": "total_pages",
+        "page_size": 100
+      }
+    },
+    "ssff_status": {
+      "host": "kraken",
+      "method": "GET",
+      "path": "/integration/v1/iam/users/ssff-details/{ldap}/status",
+      "authority": "sot"
+    },
+    "context_accesses": {
+      "host": "internal_api",
+      "method": "GET",
+      "path": "/internal/kraken/auth-core/users/{user_id}/context-accesses",
+      "authority": "sot"
+    },
+    "silos": {
+      "host": "kraken",
+      "method": "GET",
+      "path": "/core/v1/users/{user_id}/silos",
+      "authority": "sot",
+      "pagination": {
+        "mode": "total_pages",
+        "page_size": 1000
+      }
+    },
+    "role_incompatibilities": {
+      "host": "internal_api",
+      "method": "GET",
+      "path": "/internal/kraken/auth-core/v2/roles/{role_key}/incompatibilities",
+      "authority": "sot"
+    },
+    "assignment_check": {
+      "host": "internal_api",
+      "method": "POST",
+      "path": "/internal/kraken/auth-core/users/assign_roles/check",
+      "authority": "sot"
+    }
+  }
+}

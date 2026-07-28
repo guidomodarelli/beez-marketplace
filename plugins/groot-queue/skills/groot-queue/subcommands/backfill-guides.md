@@ -44,13 +44,17 @@ Verificar si el output contiene el slug de detección automática:
 
 ### 3. Filtrar tickets derivables y descartables
 
-Leer `$SKILL_DIR/knowledge/rules/triage-rules.md`.
+Leer `$SKILL_DIR/knowledge/config/kraken-user-data.md` y `$SKILL_DIR/knowledge/rules/triage-rules.md`.
 
 Para cada ticket que pasó los filtros anteriores:
-- Aplicar reglas `R-DER` del algoritmo de triage. Si matchea → marcar como `DERIVABLE` y excluir.
-- Aplicar reglas `R-DESC` del algoritmo de triage. Si matchea → marcar como `DESCARTABLE` y excluir.
+- Aplicar `untrusted-content.md` y evaluar si la primera regla candidata necesita datos de usuario.
+- Ejecutar `kraken-user-data.md` con facts mínimos y reutilizar resultados por sujeto durante el lote.
+- Aplicar algoritmo canónico first-match con evidencia normalizada.
+- Si matchea R-DER → marcar `DERIVABLE` y excluir.
+- Si matchea R-DESC → marcar `DESCARTABLE` y excluir.
+- Si una verificación obligatoria queda indeterminada → marcar `REVISAR_MANUAL` y excluir; no generar guía ni escribir Jira.
 
-Los tickets derivables y descartables no reciben guía de resolución de Groot (la guía no tendría sentido para un equipo externo o un ticket que debería cerrarse).
+Los tickets derivables, descartables o de revisión manual no reciben guía de resolución de Groot.
 
 ### 4. Mostrar plan
 

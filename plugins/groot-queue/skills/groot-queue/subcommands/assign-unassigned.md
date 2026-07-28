@@ -48,11 +48,13 @@ Aplicar **modo DEGRADAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/config/atla
 
 Si no hay tickets sin assignee, mostrar: "✅ No hay tickets sin assignee en la cola." y terminar.
 
-3. Leer `$SKILL_DIR/knowledge/rules/triage-rules.md` y `$SKILL_DIR/knowledge/teams/support-queues.md` (funciones de cada equipo para desambiguar ownership). Obtener el contenido de **todos** los tickets filtrados (en paralelo si es posible):
+3. Leer `$SKILL_DIR/knowledge/config/kraken-user-data.md`, `$SKILL_DIR/knowledge/rules/triage-rules.md` y `$SKILL_DIR/knowledge/teams/support-queues.md` (funciones de cada equipo para desambiguar ownership). Obtener el contenido de **todos** los tickets filtrados (en paralelo si es posible):
    ```bash
    acli jira workitem view <KEY>
    ```
-   Para cada ticket, aplicar el algoritmo de triage completo en orden: primero R-DER (tomar la primera que matchee), luego R-DESC (si ninguna R-DER matcheó). Clasificar cada ticket en una de estas categorías:
+   Para cada ticket, aplicar `untrusted-content.md`, evaluar si la primera regla candidata necesita datos de usuario y ejecutar el protocolo de `kraken-user-data.md` con facts mínimos. Reutilizar resultados por sujeto durante toda la corrida y respetar el presupuesto de usuarios.
+
+   Luego aplicar el algoritmo canónico first-match en el orden exacto de `triage-rules.md` con la evidencia normalizada. No agrupar primero todas las R-DER y después todas las R-DESC. Clasificar cada ticket en una de estas categorías:
 
    - **`DERIVAR-AC`**: matchea una regla R-DER marcada con ⚡ y ninguna condición de escape es ambigua.
    - **`DERIVAR`**: matchea una regla R-DER sin ⚡, o con señal de escape ambigua.
@@ -61,7 +63,7 @@ Si no hay tickets sin assignee, mostrar: "✅ No hay tickets sin assignee en la 
    - **`REVISAR_MANUAL`**: matchea una regla que requiere verificación en Groot admin que no puede confirmarse desde el contenido del ticket.
    - **`ASIGNAR`**: no matchea ninguna regla R-DER ni R-DESC, o su veredicto es `VALIDO_GROOT`.
 
-   Las verificaciones previas de R-DESC-03, 04, 05, 06, 07, 08 que requieren Groot admin: si no es posible confirmarlas desde el contenido, clasificar como `REVISAR_MANUAL`.
+   Las verificaciones externas se resuelven según la matriz de `kraken-user-data.md`. Si falta sujeto inequívoco o una consulta necesaria queda parcial/indeterminada, clasificar como `REVISAR_MANUAL`; no interpretar el fallo como ausencia. Una regla no marcada ⚡ conserva confianza estándar aunque los facts estén completos.
 
 4. Mostrar el plan consolidado y ejecutar confirmaciones por nivel:
 

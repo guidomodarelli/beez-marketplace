@@ -27,6 +27,12 @@ Groot Soporte atiende **exclusivamente errores sistémicos**: bugs, comportamien
 
 > **Criterio de distinción**: si la herramienta muestra un mensaje claro indicando qué falta o qué condición no se cumple → es validación esperada, no bug. Si falla de forma inesperada sin mensaje de validación claro → es error sistémico.
 
+## Verificaciones con datos Kraken
+
+Cuando una condición dependa del estado actual del usuario, aplicar `$SKILL_DIR/knowledge/config/kraken-user-data.md`. Su matriz regla → facts es la fuente única para seleccionar endpoints e interpretar evidencia. Un error, acceso denegado, identidad ambigua, respuesta parcial o schema inválido no confirma ausencia ni compatibilidad: si el dato es obligatorio, usar `REVISAR_MANUAL` y bloquear mutaciones.
+
+La evidencia externa resuelve predicados de reglas existentes; no crea reglas nuevas, no modifica urgencia y no promueve una regla no marcada ⚡ a alta confianza automática.
+
 ---
 
 ## Veredictos posibles
@@ -210,6 +216,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - PT: "usuario interno desligado no SSFF", "usuario inativo em Groot nao pode ser reativado", "opcao de ativar desabilitada".
   - EN: "internal user deactivated in SSFF", "inactive user in Groot cannot be reactivated", "activate option disabled".
 - **Razón**: Los usuarios internos dados de baja en SSFF no se reactivan manualmente desde Groot. Cuando SSFF vuelve a activar al usuario, la cuenta se reactiva automáticamente.
+- **Verificación previa**: Confirmar `account-status` inactivo y `ssff-status` de baja según `kraken-user-data.md`. Si fuentes discrepan o alguna queda indeterminada → `REVISAR_MANUAL`; si SSFF está activo y Groot no se reactiva → `VALIDO_GROOT`.
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "Hola los usuarios internos que son dados de baja en SSFF no se pueden volver a reactivar. Cuando el usuario sea nuevamente activado se reactivara la cuenta automaticamente."
@@ -221,6 +228,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - PT: "roles anteriores nao retornam", "permissao temporaria expirou e os roles nao voltaram", "roles incompatíveis previamente atribuídos".
   - EN: "previous roles are not restored", "temporary permission expired and roles did not return", "previously assigned incompatible roles".
 - **Razón**: Desde el 14 de marzo no se exceptúan incompatibilidades de roles por pedido del equipo de auditoría. Usuarios con roles incompatibles asignados previamente pueden perder progresivamente esa concurrencia cuando pasan por flujos de roles temporales.
+- **Verificación previa**: Aplicar `roles`, `temporary-status` y `role-incompatibilities` de `kraken-user-data.md`. La incompatibilidad actual es evidencia necesaria, pero no demuestra causalidad histórica: también debe confirmarse que el rol temporal se aplicó, expiró, ejecutó retorno y que la pérdida se limita a roles conflictivos. Sin secuencia completa → `REVISAR_MANUAL`; roles compatibles → continuar algoritmo; consulta indeterminada → `REVISAR_MANUAL`.
 - **⚠️ NO APLICA cuando**:
   - El rol temporal **nunca impactó** en la operación (no se reflejó en la HH, el usuario nunca pudo trabajar con el rol asignado). Eso es un **bug real** → `VALIDO_GROOT`.
   - El usuario reporta que el **proceso de rol temporal falló completamente** (asignación no efectiva, retorno no ejecutado, el sistema no procesó el cambio). Eso es un **error sistémico** → `VALIDO_GROOT`.
@@ -237,6 +245,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - PT: "hierarquia incorreta", "gestor incorreto no Groot", "superior hierárquico errado", "problema de hierarquia e gestão".
   - EN: "incorrect hierarchy", "wrong manager in Groot", "supervisor not updated", "hierarchy and management problem".
 - **Razón**: El valor en Groot es un reflejo fiel de SSFF (SuccessFactors). Si la jerarquía es incorrecta, el cambio debe hacerse en SSFF y Groot lo sincronizará automáticamente.
+- **Verificación previa**: Comparar atributo de jerarquía Groot con fuente SSFF según `kraken-user-data.md`. Solo descartar cuando ambas fuentes válidas coinciden; discrepancia o fuente indeterminada → `REVISAR_MANUAL`.
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "El superior asignado que figura es el mismo que el que tiene asignado en SSFF. El cambio de gestor debe realizarse en SuccessFactors para que se refleje automáticamente en Groot."
@@ -264,7 +273,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - El error afecta a **todos** los HCs del usuario, no a uno solo.
   - Al verificar en Groot, el usuario tiene posición `analyst` (no `team_lead` ni `supervisor`).
 - **Razón**: Solo los usuarios con posición `team_lead` o `supervisor` tienen permiso para crear Labour Share. La posición `analyst` no habilita esta funcionalidad — es restricción by design del sistema, no un bug.
-- **Verificación previa**: Confirmar en Groot admin que el usuario tiene posición `analyst`. Si la posición es `team_lead` o `supervisor` y aun así falla → reclasificar como `VALIDO_GROOT` (error sistémico real).
+- **Verificación previa**: Consultar el atributo de posición según `kraken-user-data.md`. Si es `analyst`, aplica; si es `team_lead` o `supervisor` y aun así falla → `VALIDO_GROOT`; respuesta ausente/indeterminada → `REVISAR_MANUAL`.
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "Hola, el error al crear Labour Share se debe a que la posición del usuario es 'analyst'. Solo los usuarios con posición team_lead o supervisor tienen habilitada la funcionalidad de crear Labour Share. Esto es por diseño del sistema."

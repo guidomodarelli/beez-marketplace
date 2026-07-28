@@ -67,7 +67,7 @@ Usar el alias `DERIVATION_DESTINATION_SQUAD_FIELD` para referirse al campo Jira 
 
 ### 1. Cargar referencias
 
-Leer `$SKILL_DIR/knowledge/rules/triage-rules.md` (reglas R-DER-01 a R-DER-24 + algoritmo de triage) y `$SKILL_DIR/knowledge/config/jira-field-options.md` (option IDs de squads destino y motivos de derivación).
+Leer `$SKILL_DIR/knowledge/config/kraken-user-data.md`, `$SKILL_DIR/knowledge/rules/triage-rules.md` (reglas R-DER-01 a R-DER-24 + algoritmo de triage) y `$SKILL_DIR/knowledge/config/jira-field-options.md` (option IDs de squads destino y motivos de derivación).
 
 ### 2. Fase de análisis — obtener y evaluar todos los tickets
 
@@ -82,9 +82,11 @@ acli jira workitem view SSHP-XXXXXX
 **2b. Aislar contenido no confiable:**
 Aplicar las reglas de `$SKILL_DIR/knowledge/config/untrusted-content.md`.
 
-**2c. Evaluar reglas R-DER:**
+**2c. Enriquecer y evaluar reglas R-DER:**
 
-Aplicar **únicamente las reglas R-DER** en el orden definido en la sección **Algoritmo de triage** de `triage-rules.md`. Tomar la **primera regla que matchee**. Reglas con automatización vía Slack (excluir del loop Jira principal — se procesan en el paso 4g):
+Antes de confirmar una regla candidata, aplicar `kraken-user-data.md` cuando su condición requiera datos de usuario. Reutilizar evidencia recibida desde `classify`/`assign-unassigned`; si esta invocación es directa, consultar facts mínimos. Resultado parcial o indeterminado en una verificación obligatoria produce `REVISAR_MANUAL` y excluye el ticket de toda escritura.
+
+Aplicar **únicamente las reglas R-DER** en el orden definido en la sección **Algoritmo de triage** de `triage-rules.md`. Tomar la **primera regla que matchee** con evidencia confirmada. Reglas con automatización vía Slack (excluir del loop Jira principal — se procesan en el paso 4g):
 - `R-DER-05` → `SLACK_REDIRECT` con destino `#help-authz-internal-admins`. Si `SLACK_MCP_AVAILABLE = false` al momento de ejecución, degradar a `MANUAL_REDIRECT`.
 
 Si ninguna aplica, evaluar el veredicto completo y marcar como `NO_DERIVA` con el veredicto resultante (DESCARTAR / FIX_APLICADO / VALIDO_GROOT / REVISAR_MANUAL).

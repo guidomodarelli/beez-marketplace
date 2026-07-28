@@ -86,6 +86,10 @@ Si falta alguna herramienta:
 brew install bash jq curl
 ```
 
+`groot-queue` reutiliza `curl` + `jq` para consultar hechos mínimos de usuario Kraken cuando una regla de triage lo requiere. Esas consultas dependen de Fury Access Groups y de la identidad resuelta por el edge corporativo; no forman parte del gate global de readiness porque comandos y tickets que no necesitan contexto deben seguir funcionando.
+
+Un `401`/`403` deja la verificación como indeterminada. No agregar `Authorization`, cookies, `x-tiger-token` ni otros headers manuales. Solicitar acceso autorizado para los endpoints definidos en [`kraken-user-data.json`](kraken-user-data.json) y seguir el procedimiento de [`kraken-user-data.md`](kraken-user-data.md).
+
 ### 🎫 ACLI
 
 ```bash
