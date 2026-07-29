@@ -25,7 +25,7 @@
     {
       "id": "manual-install-claude-first-from-scratch",
       "description": "La respuesta cubre onboarding manual completo de /groot-queue con Claude Code desde una máquina limpia",
-      "input": "Quiero instalar `/groot-queue` manualmente en una máquina macOS limpia usando Claude Code como provider principal. Consultá la guía bundled y explicá el recorrido completo hasta el primer setup: Claude Code, plugin Groot Queue, ACLI, permiso mínimo, Atlassian, Slack, Grid/VPN, Fury Services/FuryDocs, TEAM, reload/restart y validación. No invoques Bash, MCP, Jira, Slack ni servicios externos y no hagas cambios.",
+      "input": "Quiero instalar `/groot-queue` manualmente en una máquina macOS limpia usando Claude Code como provider principal. Consultá la guía bundled y explicá el recorrido completo hasta el primer setup: Claude Code, plugin Groot Queue, ACLI, autorización interactiva, Atlassian, Slack, Grid/VPN, Fury Services/FuryDocs, TEAM, reload/restart y validación. No invoques Bash, MCP, Jira, Slack ni servicios externos y no hagas cambios.",
       "assertions": [
         {
           "type": "contains_any",
@@ -45,11 +45,6 @@
           "type": "contains",
           "description": "Valida un elemento observable del contrato de onboarding o remediación",
           "value": "acli jira auth status"
-        },
-        {
-          "type": "contains",
-          "description": "Valida un elemento observable del contrato de onboarding o remediación",
-          "value": "Bash(acli jira *)"
         },
         {
           "type": "contains",
@@ -108,6 +103,56 @@
           "values": [
             "/groot-queue:setup",
             "/groot-queue setup"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Aclara que permisos persistentes son opcionales y mutaciones se autorizan al ejecutarse",
+          "values": [
+            "opcional",
+            "caso por caso",
+            "autorización"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No obliga a crear configuración persistente para completar setup",
+          "values": [
+            "Guardá el perfil elegido en `.claude/settings.local.json`",
+            "creá `.claude/settings.local.json`",
+            "crear `.claude/settings.local.json`"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-complete-without-provider-settings",
+      "description": "Setup queda completo sin settings persistentes cuando ACLI y readiness obligatorio están listos",
+      "input": "Escenario documental de `/groot-queue setup` en Claude Code: ACLI está instalado y autenticado para mercadolibre.atlassian.net, TEAM está configurado, todos los checks shell pasan y Fury runtime descubre furydocs con get_doc_structure y get_doc_file. No existe `.claude/settings.local.json`. Consultá las referencias bundled y mostrá el cierre y las filas relevantes sin ejecutar tools ni modificar archivos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "description": "Ausencia de settings persistentes no bloquea setup",
+          "value": "Setup completo"
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No presenta ausencia de settings como limitación",
+          "values": [
+            "Setup incompleto",
+            "Permisos ACLI Claude",
+            "perfil amplio o read-only",
+            "settings.local.json requerido",
+            "settings.local.json obligatorio"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No pide crear o configurar archivo local",
+          "values": [
+            "creá `.claude/settings.local.json`",
+            "crear `.claude/settings.local.json`",
+            "configurá `.claude/settings.local.json`"
           ]
         }
       ]
