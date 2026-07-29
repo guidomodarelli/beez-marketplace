@@ -248,6 +248,47 @@
       ]
     },
     {
+      "id": "alerts-overdue-via-breached-sla-function",
+      "description": "alerts detects VENCIDO tickets authoritatively via the 'Time to resolution' = breached() SLA JQL function, independent of the Atlassian MCP",
+      "input": "Documentation question: in /groot-queue alerts, how are VENCIDO (overdue) tickets detected against the 'Time to resolution' column, and does that detection depend on the Atlassian MCP being available? Do not execute Jira commands.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "breached()",
+            "Time to resolution",
+            "= breached"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no depende del MCP",
+            "independiente del MCP",
+            "no se necesita para los VENCIDOS",
+            "acli"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "alerts-must-paginate-to-catch-old-overdue",
+      "description": "alerts must use --paginate so old (oldest = most overdue) tickets are not truncated out of the candidate set",
+      "input": "Documentation question: in /groot-queue alerts, why must the acli ticket search use --paginate, and what happens to the oldest overdue tickets if it does not? Do not execute Jira commands.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "--paginate",
+            "primera página",
+            "más viejos",
+            "created DESC",
+            "se pierden"
+          ]
+        }
+      ]
+    },
+    {
       "id": "backfill-guides-includes-service-requests",
       "description": "backfill-guides uses the shared open-queue definition so Service Requests also receive missing guides",
       "input": "/groot-queue backfill-guides --help. Which open Jira issue types are eligible for the initial backfill search before checking the groot-guide-posted label? Do not execute Jira commands.",
