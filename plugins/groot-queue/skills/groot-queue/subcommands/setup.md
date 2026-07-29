@@ -1,5 +1,5 @@
 ---
-description: Verifica dependencias, integraciones, permisos y el readiness completo de Grid Sharing y FuryDocs para usar groot-queue.
+description: Verifica ACLI, integraciones y el readiness completo de Grid Sharing y FuryDocs para usar groot-queue.
 ---
 
 # Subcomando: setup
@@ -38,13 +38,9 @@ El subcomando `alerts` usa Slack MCP para enviar DMs de SLA. Los nombres de las 
 - Si existen pero no están autenticadas, mantener el modo degradado y remitir al mismo anchor; no duplicar comandos ni iniciar OAuth automáticamente.
 - Si están autenticadas, marcar el check como listo.
 
-## 4. Permisos ACLI en settings
+## 4. Autorización interactiva de ACLI
 
-Aplicar este check según el provider activo, sin cambiar el readiness shell/runtime:
-
-- **Claude Code**: verificar que `.claude/settings.local.json` sea JSON válido y contenga el permiso amplio `"Bash(acli jira *)"` o el perfil read-only completo definido en `$SKILL_DIR/knowledge/config/installation.md#3-permisos-acli-en-claude-code`. Si faltan ambos perfiles, marcar el check base como crítico. Si existe solo el perfil granular, marcar lectura/diagnóstico como listos y advertir que asignaciones, transiciones y ediciones pedirán autorización. No crear ni modificar el archivo sin aprobación explícita.
-- **Codex**: mostrar el check como no aplicable y remitir a `$SKILL_DIR/knowledge/config/installation.md#anexo-codex` para la guía del provider.
-- **GitHub Copilot CLI**: mostrar el check como no aplicable y remitir a `$SKILL_DIR/knowledge/config/installation.md#alcance-y-providers`; no intentar adaptar permisos de Claude.
+No inspeccionar, crear ni exigir archivos de settings del provider. Los permisos persistentes son opcionales y no forman parte del readiness. Si una operación futura usa ACLI, el provider puede solicitar autorización en ese momento según su política activa.
 
 ## 5. Verificación del TEAM
 
@@ -92,7 +88,6 @@ Renderizar una tabla con el resultado real de cada check. No conservar placehold
 | ACLI autenticado                   | <resultado> | <sitio o estado> |
 | Atlassian MCP + cloudId            | <resultado> | <validado o no verificable> |
 | Slack MCP                          | <resultado> | <autenticado, limitado o ausente> |
-| Permisos ACLI Claude               | <resultado> | <perfil amplio, read-only o no aplicable> |
 | TEAM configurado                   | <resultado> | <cantidad o vacío> |
 | Provider inventory                 | <resultado> | <provider + failure code si aplica> |
 | Grid Sharing plugin                | <resultado> | <check real> |
@@ -128,7 +123,7 @@ Si una capa no corrió, mostrarla como no ejecutada con su failure code seguro; 
 
 ### Cierre
 
-- Considerar críticos locales en todos los providers soportados: ACLI instalado y autenticado. En Claude Code, considerar crítico que exista el permiso amplio o el perfil read-only completo de la guía; el perfil granular deja operaciones mutables sujetas a autorización. En Codex o GitHub Copilot CLI debe figurar como no aplicable. Un TEAM vacío limita `assign-unassigned`, pero no bloquea el resto del readiness.
+- Considerar críticos locales en todos los providers soportados únicamente ACLI instalado y autenticado. Los permisos persistentes del provider no forman parte del readiness; las operaciones mutables quedan sujetas a autorización cuando se ejecutan. Un TEAM vacío limita `assign-unassigned`, pero no bloquea el resto del readiness.
 - Mostrar `✅ Setup completo. Podés usar /groot-queue list para empezar.` únicamente cuando los críticos locales estén listos, la fase shell esté lista y todos los checks runtime estén listos.
 - En cualquier otro caso, mostrar `⚠️ Setup incompleto`, listar cada limitación comprobada y su remediación en español, y no afirmar que los comandos operativos están disponibles mientras cualquiera de las dos fases obligatorias no haya pasado.
 - No instalar, habilitar, configurar ni actualizar componentes durante `setup` sin aprobación explícita del usuario.

@@ -135,37 +135,11 @@ claude plugin list --json
 La entrada `groot-queue@groot-marketplace` debe estar instalada y habilitada.
 
 <a id="3-permisos-acli-en-claude-code"></a>
-## 🔒 3. Permisos ACLI en Claude Code
+## 🔒 3. Autorización ACLI en Claude Code
 
-`Bash(acli jira *)` habilita todo el subárbol Jira de ACLI, incluidas operaciones mutables y masivas. Usalo solo si necesitás automatización completa y aceptás explícitamente esa capacidad:
+No hace falta configurar permisos persistentes para instalar, diagnosticar ni completar `groot-queue setup`. Claude Code puede solicitar autorización cuando un comando necesite ejecutar ACLI; las operaciones mutables siempre quedan sujetas a la política activa del provider.
 
-```json
-{
-  "permissions": {
-    "allow": [
-      "Bash(acli jira *)"
-    ]
-  }
-}
-```
-
-Para una instalación read-only inicial, preferí reglas granulares y aprobá las mutaciones caso por caso:
-
-```json
-{
-  "permissions": {
-    "allow": [
-      "Bash(acli jira auth status)",
-      "Bash(acli jira workitem search *)",
-      "Bash(acli jira workitem view *)"
-    ]
-  }
-}
-```
-
-Guardá el perfil elegido en `.claude/settings.local.json`. El perfil granular permite diagnóstico, listado y lectura; comandos como asignación, transición o edición seguirán solicitando autorización.
-
-**Fusioná valores; no reemplaces el archivo completo.** Conservá sus claves y entradas existentes, validá el JSON con `jq empty .claude/settings.local.json` y hacé una copia local si contiene configuración relevante. Otorgá permisos solo en proyectos confiables y no amplíes el patrón a todo `acli` ni a todo `Bash`.
+Los allowlists persistentes son una optimización opcional para reducir prompts en proyectos confiables, no una condición de readiness. Si decidís configurarlos, preferí permisos read-only acotados para autenticación, búsqueda y lectura; aprobá asignaciones, transiciones y ediciones caso por caso. No amplíes el patrón a todo `acli` ni a todo `Bash` sin aceptar explícitamente ese alcance.
 
 <a id="4-atlassian-mcp"></a>
 ## 🔗 4. Atlassian MCP
@@ -293,7 +267,7 @@ Validá en este orden:
 ```
 
 1. `setup --help` explica el diagnóstico sin ejecutar tools.
-2. `setup` verifica ACLI, permisos, integraciones, TEAM y readiness completo; no instala ni modifica nada.
+2. `setup` verifica ACLI, integraciones, TEAM y readiness completo; no inspecciona settings del provider ni instala o modifica nada.
 3. Ejecutá un comando operativo solo cuando `setup` indique que las fases obligatorias están listas. No omitas ni fuerces el gate de readiness.
 
 ## 🖥️ 10. Launcher opcional
@@ -308,7 +282,7 @@ Desde el directorio del plugin:
 
 El instalador publica un wrapper ejecutable en `~/.local/bin/run-groot-queue` con el source absoluto de la copia actual. Puede pedir confirmación si existe otro destino. Cada proceso queda anclado a una sola copia, incluso si reinstalás el wrapper mientras está corriendo. Volvé a ejecutar `./scripts/install.sh` después de actualizar o mover el plugin y revisá la interfaz con `run-groot-queue --help`.
 
-El launcher usa un directorio temporal y no conserva `.claude/settings.local.json` del proyecto llamador. Ejecutá `/groot-queue:setup` desde la sesión Claude abierta en tu proyecto para validar ese permiso local; no uses el launcher para ese check.
+El launcher usa un directorio temporal y no depende de settings locales del proyecto llamador. `setup` valida ACLI, integraciones y readiness desde ese proceso sin exigir configuración persistente del provider.
 
 Antes de usarlo, revisá [`run-groot-queue.sh`](../../../../scripts/run-groot-queue.sh): el launcher inicia procesos hijos con permisos amplios de tools para poder operar. Usalo solo desde una copia confiable y no lo tomes como bypass del readiness ni de las confirmaciones de acciones mutables.
 

@@ -82,7 +82,7 @@ Ejemplos:
 | Subcomando | Alias | Acción |
 |------------|-------|--------|
 | `start` | — | Mostrar banner de bienvenida, versión y catálogo de comandos con hints de uso |
-| `setup` | — | Diagnosticar dependencias, integraciones, permisos y readiness de Grid Sharing + Fury Services/FuryDocs; no instala ni modifica componentes sin aprobación explícita |
+| `setup` | — | Diagnosticar ACLI, integraciones y readiness de Grid Sharing + Fury Services/FuryDocs; no instala ni modifica componentes sin aprobación explícita |
 | `list` | `ls` | Listar todos los incidentes abiertos |
 | `classify` | `cl` | Clasificar y agrupar por tipo de problema + urgencia |
 | `detail SSHP-XXXXXX` | `d` | Detalle completo de un ticket con clasificación y sugerencia |
