@@ -35,7 +35,7 @@ assert_setup_output() {
 assert_setup_output_excludes() {
     local unexpected_output="$1"
 
-    if grep -q "$unexpected_output" "$STDOUT_FILE"; then
+    if grep -qF "$unexpected_output" "$STDOUT_FILE"; then
         printf 'Setup output unexpectedly contained: %s\n' "$unexpected_output" >&2
         return 1
     fi
