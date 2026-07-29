@@ -23,9 +23,18 @@ Construir un mapa `email → name` para resolver cada assignee a su nombre human
 
 ---
 
-## Pre-condición: MCP Atlassian (para SLA "Time to resolution")
+## Pre-condición: `acli` autenticado (fuente primaria de VENCIDOS)
 
-El paso 3 necesita consultar `customfield_12400` de cada ticket vía MCP Atlassian. Aplicar **modo DEGRADAR** (pasos A + B) de `$SKILL_DIR/knowledge/config/atlassian-mcp.md`. Omitir el paso C (este subcomando no postea notas internas). Usar `ATLASSIAN_MCP_AVAILABLE` como nombre de la variable de estado. El warning de degradación debe aclarar: "SLA `Time to resolution` no se puede verificar — solo se evaluará la condición de `Esperando por Soporte` para determinar alertas."
+Los **VENCIDOS** se detectan con la función JQL de SLA `breached()` vía `acli` (paso 1, Fetch B), que evalúa la columna **Time to resolution** del ticket — la misma que se ve en el dashboard de Jira. `acli` usa su propia autenticación, **independiente del MCP Atlassian**.
+
+Verificar con `acli jira auth status`. Si `acli` no está autenticado, abortar con:
+```
+❌ acli no autenticado. Ejecutá `acli auth login` (site mercadolibre.atlassian.net) antes de usar este comando.
+```
+
+## Pre-condición: MCP Atlassian (solo para precisión de POR VENCER)
+
+El MCP Atlassian se usa **únicamente** para (a) enriquecer la **edad** (`created`) y (b) calcular las **horas de calendario hasta el vencimiento** (`customfield_12400.breachTime.jira`) de los candidatos a POR VENCER. **No** se necesita para los VENCIDOS. Aplicar **modo DEGRADAR** (pasos A + B) de `$SKILL_DIR/knowledge/config/atlassian-mcp.md`. Omitir el paso C (este subcomando no postea notas internas). Usar `ATLASSIAN_MCP_AVAILABLE` como nombre de la variable de estado. El warning de degradación debe aclarar: "Los VENCIDOS se detectan igual vía `acli breached()`. Sin MCP solo se degrada la precisión de POR VENCER (se cae a la heurística de `Esperando por Soporte`)."
 
 ---
 
@@ -46,24 +55,48 @@ El nombre de las herramientas Slack varía según el proveedor y la configuraci�
 
 ## Procedimiento
 
-### 1. Obtener tickets abiertos asignados
+### 1. Obtener tickets abiertos asignados (conjunto COMPLETO, sin truncar)
 
 Leer referencias:
-- `$SKILL_DIR/knowledge/config/classification.md`
+- `$SKILL_DIR/knowledge/config/classification.md` (JQL base)
 - `$SKILL_DIR/knowledge/config/ticket-evidence.md`
 - `$SKILL_DIR/knowledge/config/kraken-user-data.md`
 - `$SKILL_DIR/knowledge/rules/triage-rules.md`
 
-Ejecutar el JQL base:
+Partir del **JQL base** de `classification.md` y agregar `assignee IS NOT EMPTY` (los tickets sin assignee no se pueden notificar; para esos usar `/groot-queue:assign-unassigned` primero).
+
+> ⚠️ **SIEMPRE usar `--paginate`.** Sin `--paginate`, `acli jira workitem search` devuelve solo la **primera página (~30 resultados)**. La cola Groot suele tener 100+ tickets abiertos y el orden `created DESC` deja los **más viejos —que son los más vencidos— fuera de esa página**, por lo que se pierden exactamente los tickets que este comando debe detectar. La inclusión de un ticket **nunca** puede depender del orden ni de un corte de página.
+
+Ejecutar **tres** búsquedas, todas con `--paginate`. El nombre del SLA se referencia entre comillas simples dentro del `--jql` de comillas dobles: `'Time to resolution' = breached()` (funciones JQL nativas de Jira Service Management).
+
+**Fetch B — VENCIDOS autoritativos por SLA "Time to resolution" (`breached()`):**
 ```bash
-acli jira workitem search --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved ORDER BY created DESC"
+acli jira workitem search \
+  --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved AND assignee IS NOT EMPTY AND 'Time to resolution' = breached() ORDER BY created ASC" \
+  --paginate --fields "key,assignee,status,priority,summary" --csv
+```
+**Cada key devuelta por Fetch B está VENCIDA** según la columna "Time to resolution" — lo calcula Jira, en tiempo calendario, y **no depende del MCP**. Guardar como `vencidas`.
+
+**Fetch C — candidatos a POR VENCER (SLA corriendo, aún no vencido):**
+```bash
+acli jira workitem search \
+  --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved AND assignee IS NOT EMPTY AND 'Time to resolution' = running() AND 'Time to resolution' != breached() ORDER BY created ASC" \
+  --paginate --fields "key,assignee,status,priority,summary" --csv
+```
+Guardar como `por_vencer_candidatas`. Solo sobre este subconjunto se calcula el umbral "≤48h calendario" en el paso 3 (nunca sobre las ya vencidas).
+
+**Fetch A — universo completo de alertables (solo se usa en el fallback 3.3):**
+```bash
+acli jira workitem search \
+  --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved AND assignee IS NOT EMPTY ORDER BY created ASC" \
+  --paginate --fields "key,assignee,status,priority,summary" --csv
 ```
 
-Filtrar **solo tickets que tienen assignee** (sin assignee → no se puede notificar; para esos, usar `/groot-queue:assign-unassigned` primero).
+En la salida, el campo `assignee` viene como **email** (ej. `francisco.gonzalez@mercadolibre.com`); usarlo directamente para el mapa `email → name` del TEAM. `acli` **no** expone `created` ni el breach time (esos vienen del MCP en el paso 3).
 
 ### 2. Clasificar y aplicar triage
 
-Para cada ticket:
+El triage se aplica sobre el conjunto en riesgo `vencidas ∪ por_vencer_candidatas` (en el fallback 3.3, sobre `alertables`). Para cada ticket:
 1. Aplicar gate de `ticket-evidence.md` y verificar autónomamente facts decisivos mínimos mediante `kraken-user-data.md` antes de confirmar triage.
 2. Aplicar **triage de veredicto** de `triage-rules.md` con evidencia normalizada.
 3. **Excluir** solo tickets con veredicto `DESCARTAR` o `DERIVAR` confirmado. Si condición decisiva queda indeterminada, conservar ticket para análisis SLA como `REVISAR_MANUAL`; no excluirlo silenciosamente.
@@ -71,62 +104,55 @@ Para cada ticket:
 
 ### 3. Determinar estado de SLA
 
-Para cada ticket restante, determinar su estado de SLA basándose en el campo **Time to resolution** del ticket (SLA nativo de Jira Service Management).
+El estado de SLA se basa en la columna **Time to resolution** (SLA nativo de Jira Service Management), la misma que se ve en el dashboard.
 
-**Obtener el campo "Time to resolution" — `customfield_12400`:**
+#### 3.1 VENCIDOS — autoritativo vía `acli` (Fetch B)
 
-El campo **NO aparece** en el output de `acli jira workitem view`. Requiere MCP Atlassian.
+Todas las keys de **Fetch B** (`'Time to resolution' = breached()`) son **VENCIDO**. No requieren MCP ni parseo adicional: Jira ya evaluó el breach en tiempo calendario contra la columna "Time to resolution". Marcar cada `vencidas[k]` como `VENCIDO`.
 
-**Método principal: búsquedas batch por lote de keys (sin perder tickets 51+):**
+> Esto reemplaza el viejo enfoque de traer `customfield_12400` de cada ticket para leer el flag `breached`. Es más confiable: no se trunca, no depende del MCP y usa exactamente la columna que se ve en el dashboard.
 
-Después del paso 2, construir `ticket_keys_alertables` con **todos** los tickets restantes (los que tienen assignee y no fueron excluidos por triage). No usar una única búsqueda global limitada a 50, porque deja tickets fuera del fetch de SLA.
+#### 3.2 POR VENCER — cálculo calendario sobre `por_vencer_candidatas` (Fetch C)
 
-Dividir `ticket_keys_alertables` en lotes de hasta `50` keys y consultar **todos los lotes, uno por uno, hasta agotar la lista completa** con `searchJiraIssuesUsingJql`, pidiendo **solo los campos necesarios**:
+Solo los tickets de **Fetch C** pueden ser POR VENCER. Para decidir hace falta la **hora exacta de vencimiento** (`breachTime.jira`), que `acli` no expone y requiere MCP Atlassian.
+
+**Si `ATLASSIAN_MCP_AVAILABLE = true`:**
+
+Traer `customfield_12400` y `created` por **lotes** con `searchJiraIssuesUsingJql`. Incluir en el lote **también** las keys de `vencidas` (para obtener su `created` y calcular la edad). Dividir `vencidas ∪ por_vencer_candidatas` en lotes de hasta 50 keys y recorrer **todos** los lotes hasta agotar la lista:
 
 ```
 searchJiraIssuesUsingJql(
   cloudId: "<cloudId de mercadolibre.atlassian.net>",
-  jql: "issuekey in (SSHP-1234567, SSHP-1234568, ..., SSHP-1234616) ORDER BY created DESC",
+  jql: "issuekey in (SSHP-1234567, SSHP-1234568, ...) ORDER BY created ASC",
   fields: ["customfield_12400", "status", "assignee", "summary", "created"],
   maxResults: 50
 )
 ```
 
-Ese `maxResults: 50` es **por lote**, no global. Si hay 137 tickets alertables, se hacen 3 búsquedas (50 + 50 + 37). **No cortar después del primer batch**.
+> ⚠️ **Usar `maxResults`, no `limit`** (`limit` no es soportado por esta tool y puede hacer fallar la búsqueda). ⚠️ **Nunca `fields: ["*all"]`** (respuestas de ~300K chars que saturan el contexto). `maxResults: 50` es **por lote**, no global: si hay 90 keys se hacen 2 búsquedas (50 + 40). Verificar cobertura y recuperar cualquier `missing_key` con `getJiraIssue(cloudId, issueIdOrKey, fields: [...])`.
 
-> ⚠️ **Usar `maxResults`, no `limit`**. En el MCP Atlassian de `searchJiraIssuesUsingJql`, `limit` no es un argumento soportado para esta tool y puede hacer fallar la búsqueda antes de devolver `customfield_12400`.
+Para cada key de `por_vencer_candidatas`, con su `customfield_12400.ongoingCycle`:
+- `horas_restantes = breachTime.jira - ahora` (en horas de **calendario**, misma timezone).
+- Si `horas_restantes` ≤ 48h → **POR VENCER**. Si > 48h → no alertar.
 
-> ⚠️ **Nunca usar `fields: ["*all"]`** — genera respuestas de ~300K chars que saturan el contexto. Siempre pedir solo los campos listados arriba.
+> ⚠️ **NO usar `remainingTime.millis` ni la función JQL `remaining("48h")`**: ambas cuentan solo **horas hábiles** (working time), no calendario. En esta instancia `'Time to resolution' < remaining('48h')` devuelve ~78 tickets (casi toda la cola), por eso no sirve como umbral. Comparar siempre `breachTime.jira` contra `ahora`.
 
-> ⚠️ **No hacer llamadas individuales `getJiraIssue` por ticket como camino principal** — con 25+ tickets son 25+ llamadas. El camino principal debe ser batch por lotes.
+La **edad** de cada ticket (VENCIDO o POR VENCER) se calcula `ahora - created` con el `created` traído en este batch.
 
-Al terminar los lotes:
+**Si `ATLASSIAN_MCP_AVAILABLE = false` (degradado):**
+- Los **VENCIDOS ya están cubiertos** por Fetch B — no se pierden.
+- Para **POR VENCER**, aplicar la heurística de **"Esperando por Soporte"** sobre `por_vencer_candidatas`: status = "Esperando por Soporte" sin respuesta del equipo entre 24h y 48h → POR VENCER.
+- La **edad** se obtiene best-effort con `acli jira workitem view <key>` para las pocas keys en riesgo; si no se puede, omitir el `Edad:` de ese ticket.
+- Mostrar el warning de degradación de la pre-condición MCP.
 
-1. Construir un mapa `issue_key -> customfield_12400/status/assignee/summary/created`.
-2. Verificar cobertura completa: `missing_keys = ticket_keys_alertables - fetched_issue_keys`.
-3. Si `missing_keys` no está vacío, hacer `getJiraIssue` **solo para esas keys faltantes** (en paralelo) con:
-   ```
-   getJiraIssue(
-     cloudId: "<cloudId>",
-     issueIdOrKey: "<KEY faltante>",
-     fields: ["customfield_12400", "status", "assignee", "summary", "created"]
-   )
-   ```
+#### 3.3 Fallback si `acli` no soporta la función SLA `breached()`
 
-> ⚠️ **Nunca degradar silenciosamente un ticket a "SLA desconocido" solo porque quedó fuera de un batch**. Si una key no volvió en `searchJiraIssuesUsingJql`, recuperarla explícitamente antes de clasificarla.
+Si **Fetch B/C fallan** porque el entorno rechaza `'Time to resolution' = breached()` (error de JQL), degradar así:
+1. Usar el **universo completo** `alertables` de **Fetch A** (paginado).
+2. Con MCP disponible, traer `customfield_12400` por lotes sobre **todo** `alertables` y clasificar con la estructura de abajo (`ongoingCycle.breached == true` → VENCIDO; `breachTime.jira - ahora ≤ 48h` → POR VENCER).
+3. Sin MCP, último recurso: evaluar **solo** la condición de "Esperando por Soporte" y avisar que los VENCIDOS pueden estar **subestimados**.
 
-**Fallback si `searchJiraIssuesUsingJql` no retorna `customfield_12400`:**
-Algunos entornos no exponen campos SLA vía search. Si `customfield_12400` viene `null` para **todos** los tickets recuperados por batch, hacer una **única** llamada `getJiraIssue` de prueba con un ticket para confirmar:
-```
-getJiraIssue(
-  cloudId: "<cloudId>",
-  issueIdOrKey: "<primer KEY>",
-  fields: ["customfield_12400"]
-)
-```
-Si el campo sí viene en `getJiraIssue` pero no en search, entonces usar `getJiraIssue` en paralelo para todos los tickets que sigan sin `customfield_12400`. Este es el fallback de compatibilidad cuando search no expone el SLA; la recuperación de `missing_keys` anterior cubre el caso distinto en el que faltan keys porque un batch no devolvió todo el conjunto solicitado.
-
-**Estructura del campo `customfield_12400`:**
+**Estructura del campo `customfield_12400`** (usada por 3.2 y por el fallback 3.3):
 
 ```json
 {
@@ -147,34 +173,20 @@ Si el campo sí viene en `getJiraIssue` pero no en search, entonces usar `getJir
 }
 ```
 
-**Parseo — usar siempre `breachTime.jira` (tiempo calendario):**
-
-> ⚠️ **NO usar `remainingTime.millis`** para calcular horas restantes. Ese campo cuenta solo **horas hábiles** (working time), no calendario. Un `remainingTime` de 25h working puede significar 70h de calendario. Siempre comparar `breachTime.jira` contra `ahora` para obtener las horas reales de calendario.
-
-- `ongoingCycle.breached == true` → **VENCIDO** directamente (no hace falta comparar fechas)
-- `ongoingCycle.breached == false` → calcular: `horas_restantes = breachTime.jira - ahora` (en horas de calendario, misma timezone)
-  - Si `horas_restantes` ≤ 48h → **POR VENCER**
-  - Si `horas_restantes` > 48h → no alertar
-- Si `ongoingCycle` es null y hay `completedCycles` → el SLA ya se completó (ticket resuelto), no alertar.
-
-**Fallback si MCP Atlassian no está disponible:**
-Si MCP no está disponible (verificación de pre-condición), evaluar **solo** por la condición de "Esperando por Soporte" (ver abajo). Mostrar warning:
-```
-⚠️ MCP Atlassian no disponible — SLA "Time to resolution" no se puede verificar.
-Solo se evaluará la condición de "Esperando por Soporte".
-```
+- `ongoingCycle.breached == true` → **VENCIDO** directamente.
+- `ongoingCycle.breached == false` → `horas_restantes = breachTime.jira - ahora` (calendario); ≤ 48h → **POR VENCER**; > 48h → no alertar.
+- `ongoingCycle` null con `completedCycles` → SLA completado (resuelto), no alertar.
 
 **Reglas de clasificación:**
 
 | Estado | Condición | Indicador |
 |--------|-----------|-----------|
-| **VENCIDO** | `ongoingCycle.breached == true` **O** (status = "Esperando por Soporte" sin respuesta del equipo > 48h) | 🔴 |
-| **POR VENCER** | `breachTime.jira - ahora` ≤ 48h calendario **O** (status = "Esperando por Soporte" sin respuesta del equipo entre 24h y 48h) | 🟡 |
+| **VENCIDO** | key en Fetch B (`'Time to resolution' = breached()`) **O** (fallback 3.3) `ongoingCycle.breached == true` **O** (último recurso) status = "Esperando por Soporte" sin respuesta del equipo > 48h | 🔴 |
+| **POR VENCER** | candidato de Fetch C con `breachTime.jira - ahora` ≤ 48h calendario **O** (degradado) status = "Esperando por Soporte" sin respuesta del equipo entre 24h y 48h | 🟡 |
 
+- Un ticket VENCIDO **no** se evalúa además como POR VENCER (no se duplica).
 - Si un ticket no califica como VENCIDO ni POR VENCER, descartarlo del reporte.
-- Si un ticket no tiene el campo `customfield_12400` (null o vacío), evaluarlo solo por la condición de "Esperando por Soporte". Si tampoco aplica, descartarlo.
-- "Sin respuesta del equipo" significa que no hay comentario interno posterior al último comentario del reporter o a la transición a "Esperando por Soporte".
-- Un ticket que matchee ambas condiciones (SLA breached + "Esperando por Soporte" >48h) se clasifica una sola vez como VENCIDO (no se duplica).
+- "Sin respuesta del equipo" = no hay comentario interno posterior al último comentario del reporter o a la transición a "Esperando por Soporte".
 
 ### 4. Agrupar por responsable
 
