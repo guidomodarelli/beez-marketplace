@@ -70,7 +70,9 @@ fi
 
 create_wrapper
 
+INSTALLATION_CHANGED=true
 if [ -f "$TARGET_SCRIPT" ] && [ ! -L "$TARGET_SCRIPT" ] && cmp -s "$TEMPORARY_WRAPPER" "$TARGET_SCRIPT"; then
+    INSTALLATION_CHANGED=false
     printf '%b\n' "${GREEN}✓ run-groot-queue ya apunta al launcher actual → $TARGET_SCRIPT${NC}"
 elif [ -e "$TARGET_SCRIPT" ] || [ -L "$TARGET_SCRIPT" ]; then
     printf '%b\n' "${YELLOW}run-groot-queue ya existe en $TARGET_SCRIPT${NC}"
@@ -90,7 +92,9 @@ if [ ! -f "$TARGET_SCRIPT" ] || [ -L "$TARGET_SCRIPT" ] || [ ! -x "$TARGET_SCRIP
     exit 1
 fi
 
-printf '%b\n\n' "${GREEN}✓ run-groot-queue instalado → $TARGET_SCRIPT${NC}"
+if [ "$INSTALLATION_CHANGED" = "true" ]; then
+    printf '%b\n\n' "${GREEN}✓ run-groot-queue instalado → $TARGET_SCRIPT${NC}"
+fi
 
 if [[ ":$PATH:" != *":$INSTALL_DIRECTORY:"* ]]; then
     printf '%b\n' "${YELLOW}⚠ $INSTALL_DIRECTORY no está en tu PATH${NC}"

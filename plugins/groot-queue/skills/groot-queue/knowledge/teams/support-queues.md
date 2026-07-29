@@ -82,9 +82,9 @@ Equipo de **gestión de usuarios**. Brinda herramientas de configuración de usu
 - Baja de usuarios
 - Modificación (roles, atributos) de usuarios
 
-**Scope limitado**: corregir **inconsistencias en flujos de gestión de usuario** y **errores sistémicos** de la herramienta. **NO** errores de apps que implementan Groot como método de autorización.
+**Scope limitado**: diagnosticar y corregir **errores sistémicos** de herramientas Groot. Groot Soporte no compara configuraciones entre personas, no determina qué rol, permiso o atributo corresponde y no modifica ni aplica configuración funcional. Política y matcher canónicos: [`triage-rules.md` § Política transversal — configuración de usuarios](../rules/triage-rules.md#política-transversal--configuración-de-usuarios).
 
-**Criterio de validez**: un ticket es válido para Groot solo si reporta un error sistémico (bug, crash, timeout, comportamiento inesperado) en las herramientas de gestión de usuarios. Si el problema es de una app que *usa* Groot para autorizar pero el usuario está correctamente configurado → no corresponde a Groot.
+**Criterio de validez**: un ticket es válido para Groot solo si reporta un error sistémico observable (bug, crash, timeout, rollback o comportamiento inesperado) en herramientas de gestión de usuarios. Solicitudes de configuración corresponden al gestor de usuarios/aplicación; fallos funcionales de apps que consumen autorización corresponden al owner de esa app.
 
 > Ver [`groot-team.md`](./groot-team.md) para detalle de células (Kraken + Nexus), sistemas y ownership.
 

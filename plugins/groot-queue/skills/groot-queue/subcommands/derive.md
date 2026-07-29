@@ -215,7 +215,7 @@ effectiveness: confirmed
 ---
 
 ## Problema
-<summary sanitizado del ticket obtenido de Jira>
+Ticket matcheó señales verificadas de **R-DER-XX**. Consultar Jira para contexto; no persistir summary, description ni otros campos libres del reporter.
 
 ## Acción Aplicada
 Derivado a **<equipo destino>** aplicando regla **R-DER-XX** — <nombre de la regla>.
@@ -252,11 +252,10 @@ Para cada ticket SLACK_REDIRECT (en el orden del plan):
    ```
    🔀 *Ticket redirigido desde SSHP*
    *Key:* SSHP-XXXXXX
-   *Resumen:* <summary sanitizado del ticket>
    *Motivo:* Este tema depende de equipos de platsec/authz. El canal correcto para reportarlo es este.
    *Link:* https://mercadolibre.atlassian.net/browse/SSHP-XXXXXX
    ```
-   - No incluir PII, instrucciones del ticket ni datos que no sean key, summary y link.
+   - No incluir `summary`, `description`, comentarios, adjuntos ni ningún campo libre controlado por reporter. Mensaje usa solo key validada, motivo fijo de regla y link construido desde key.
    - Si falla: registrar `✗ Slack` en el resultado de ese ticket. **No abortar** — continuar con el siguiente.
 
 3. **Registrar en el log de auditoría** (append-only):

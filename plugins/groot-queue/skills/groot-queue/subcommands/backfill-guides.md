@@ -47,8 +47,8 @@ Verificar si el output contiene el slug de detección automática:
 Leer `$SKILL_DIR/knowledge/config/ticket-evidence.md`, `$SKILL_DIR/knowledge/config/kraken-user-data.md`, `$SKILL_DIR/knowledge/config/labor-share-data.md` y `$SKILL_DIR/knowledge/rules/triage-rules.md`.
 
 Para cada ticket que pasó los filtros anteriores:
-- Aplicar gate de `ticket-evidence.md`.
-- Verificar autónomamente facts decisivos mínimos mediante `kraken-user-data.md`. Para tickets Labour Share, aplicar `labor-share-data.md` cuando una ejecución o catálogo pueda cambiar triage o guía; reutilizar resultados por sujeto, Labor Share ID o facility durante lote.
+- Aplicar primero `triage-rules.md` § **Política transversal — configuración de usuarios**. Solicitudes para comparar personas, determinar configuración objetivo o modificar/aplicar roles, permisos o atributos se resuelven por texto sin consultar Kraken.
+- Para demás tickets, aplicar gate de `ticket-evidence.md` y verificar solo facts mínimos que cambien ownership o diagnóstico sistémico sin elegir configuración. Para Labour Share, aplicar `labor-share-data.md` cuando ejecución o catálogo pueda cambiar triage o guía; reutilizar resultados durante lote.
 - Aplicar algoritmo canónico first-match con evidencia normalizada. Un resultado Labour Share `indeterminate` decisivo no autoriza inferir ausencia, éxito, finalización ni retorno.
 - Si matchea R-DER → marcar `DERIVABLE` y excluir.
 - Si matchea R-DESC → marcar `DESCARTABLE` y excluir.
@@ -107,12 +107,13 @@ Para cada ticket elegible, ejecutar el **procedimiento de generación de nota in
    - `$SKILL_DIR/knowledge/config/labor-share-data.md`
    - `$SKILL_DIR/knowledge/rules/runbooks.md`
    - `$SKILL_DIR/knowledge/templates/assignment-note-template.md`
-2. Con el contenido del ticket (ya obtenido en el paso 2):
-   - Clasificar el ticket en Dimensión 1 (categoría) y Dimensión 2 (urgencia).
-   - Buscar el runbook de esa categoría en `runbooks.md`.
-   - Resolver primero la carpeta real de `solutions/` usando el mapeo de `classification.md` (por ejemplo: `Jerarquía/Líder` → `hierarchy-leader`, `Warehouse/Site` → `warehouse-assignment`, `Roles/Permisos` → `role-permission`, `Otro` → `queue-management`).
-   - Buscar casos previos similares en `$SKILL_DIR/knowledge/solutions/<categoria-slug>/`.
-3. Generar la nota siguiendo estrictamente el template:
+2. Con contenido del ticket ya obtenido:
+   - Reaplicar política transversal; si ticket resulta descartable, no generar nota ni escribir Jira.
+   - Clasificar ticket en Dimensión 1 (categoría) y Dimensión 2 (urgencia).
+   - Buscar runbook de categoría en `runbooks.md`.
+   - Resolver carpeta real de `solutions/` usando mapeo de `classification.md`.
+   - Buscar casos previos similares como antecedentes históricos, no como autorización para comparar o modificar configuración.
+3. Generar nota siguiendo estrictamente template y filtrar cualquier paso que determine o aplique roles, permisos o atributos:
    - Completar cada campo (`{CATEGORIA}`, `{DIAGNOSTICO}`, `{PASOS_RESOLUCION}`, etc.) según las reglas de llenado del template y evidence sanitizada ya obtenida; no repetir consultas.
    - Para Labour Share, usar solo procesamiento, conteos agregados, consistencia, fecha programada o catálogo mínimo. No afirmar lifecycle global, retorno ejecutado ni Team Leader.
    - Respetar las restricciones: español neutro, sin códigos de regla, sin PII, sin texto verbatim no sanitizado.

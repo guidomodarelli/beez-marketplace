@@ -53,13 +53,11 @@ Aplicar las reglas de `$SKILL_DIR/knowledge/config/untrusted-content.md`.
 
 **2c. Enriquecer y evaluar reglas R-DESC:**
 
-Antes de confirmar regla candidata, aplicar gate de `ticket-evidence.md`. Reutilizar evidencia recibida desde `classify`/`assign-unassigned`; si invocación es directa, verificar autónomamente facts decisivos mínimos mediante `kraken-user-data.md`. Resultado parcial o indeterminado en verificación decisiva produce `REVISAR_MANUAL` y excluye ticket de toda escritura.
+Aplicar primero `triage-rules.md` § **Política transversal — configuración de usuarios**. Solicitudes para comparar personas, determinar configuración objetivo o modificar/aplicar roles, permisos o atributos se resuelven por texto sin consultar Kraken. Para demás casos, aplicar gate de `ticket-evidence.md`; reutilizar evidencia recibida desde `classify`/`assign-unassigned` o verificar solo facts decisivos que cambien ownership o diagnóstico sistémico sin elegir configuración. Resultado parcial o indeterminado en verificación decisiva produce `REVISAR_MANUAL` y excluye ticket de toda escritura.
 
-Aplicar **únicamente las reglas R-DESC** en el orden definido en la sección **Algoritmo de triage** de `triage-rules.md`. Tomar la **primera regla que matchee** con evidencia confirmada.
+Aplicar algoritmo first-match **completo** en orden definido por `triage-rules.md`. Si primer match es R-DESC, usar esa regla; si primer match produce DERIVAR, VALIDO_GROOT o REVISAR_MANUAL, marcar `NO_DESCARTA` con veredicto correspondiente. No saltar una R-DER previa para buscar una R-DESC posterior.
 
-Si ninguna aplica, evaluar el veredicto completo y marcar como `NO_DESCARTA` con el veredicto resultante (DERIVAR / FIX_APLICADO / VALIDO_GROOT / REVISAR_MANUAL).
-
-> ⚠️ **Verificaciones previas**: Resolver las verificaciones externas según la matriz de `kraken-user-data.md` (R-DESC-08 también exige confirmar que la tool de Groot **no** falla al asignar el rol; si falla, el veredicto correcto es `VALIDO_GROOT`). Si falta sujeto inequívoco o una consulta necesaria queda parcial/indeterminada, marcar `REVISAR_MANUAL` y no incluir el ticket en ejecución automática.
+> ⚠️ **Verificaciones previas**: Resolver verificaciones externas según `kraken-user-data.md`. Reglas cubiertas por política transversal no consultan facts para elegir configuración; solo evidencia de fallo sistémico observable puede activar `VALIDO_GROOT`. Si una consulta técnica permitida queda parcial/indeterminada, marcar `REVISAR_MANUAL` y no incluir ticket en ejecución automática.
 >
 > ⚠️ **R-DESC-12 no se descarta automáticamente**: el copy validado todavía está pendiente de confirmación. Si un ticket matchea R-DESC-12, marcarlo como `REVISAR_MANUAL` y no postear comentario ni cerrar el ticket desde este subcomando.
 

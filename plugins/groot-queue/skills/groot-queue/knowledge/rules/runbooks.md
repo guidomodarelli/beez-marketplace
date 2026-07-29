@@ -8,9 +8,12 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 > Conocimiento de dominio extraído del SKILL.md original. Se mantiene versionado junto a `triage-rules.md` y `solutions/` para que la base crezca en un solo lugar.
 >
 > Uso: el subcomando `/groot-queue solve SSHP-XXXXXX` debe:
-> 1. Identificar la categoría del ticket.
-> 2. Buscar aquí el runbook de esa categoría.
-> 3. Complementar con casos concretos de `solutions/<categoria>/`.
+> 1. Aplicar primero `triage-rules.md` § **Política transversal — configuración de usuarios** y el algoritmo first-match.
+> 2. Identificar la categoría del ticket.
+> 3. Buscar aquí el runbook de esa categoría.
+> 4. Complementar con casos concretos de `solutions/<categoria>/` solo como antecedentes históricos.
+>
+> Ningún runbook o solution autoriza comparar usuarios, determinar configuración objetivo ni modificar o aplicar roles, permisos o atributos. Ante error sistémico, limitar pasos a reproducción segura, evidencia técnica y escalación; no usar cambios manuales como workaround.
 
 ---
 
@@ -37,12 +40,11 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 **Problema típico**: Un usuario no puede cambiar el líder de otro en Groot, o el cambio no persiste.
 
 **Pasos**:
-1. Verificar la jerarquía actual del usuario en Groot admin (https://envios.adminml.com/tools/auth/users/shared)
-2. Verificar si el usuario target aparece "debajo de sí mismo" (bug de referencia circular conocido)
-3. Si hay referencia circular → requiere corrección en BD, escalar a equipo dev Groot
-4. Si el botón de cambio de gestión está deshabilitado → verificar que el usuario que intenta hacer el cambio tiene permisos de TL o superior
-5. Si el cambio se hace pero revierte → verificar si hay un proceso de Rostering o Alfred Massive sobrescribiendo el cambio
-6. **Escalación**: Crear bug para equipo dev Groot con el error observado, URL y screenshot si aplica
+1. Confirmar que ticket reporta un fallo sistémico de Groot y no una solicitud para definir o aplicar jerarquía.
+2. Reproducir el mismo flujo sin usar otra persona como configuración de referencia.
+3. Registrar mensaje/código, URL, timestamp y evidencia de rollback o no persistencia.
+4. Si existe referencia circular o reversión automática, escalar a equipo dev Groot con evidencia técnica; no corregir manualmente la jerarquía como workaround.
+5. **Escalación**: Crear bug para equipo dev Groot con error observado, URL y screenshot si aplica.
 
 ---
 
@@ -51,12 +53,11 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 **Problema típico**: Usuario vinculado a warehouse incorrecto, necesita ser movido.
 
 **Pasos**:
-1. Verificar el warehouse actual del usuario en Groot admin
-2. Verificar si el usuario tiene operaciones en curso en el warehouse actual (bolhas activas, tareas pendientes)
-3. Editar el usuario en Groot → cambiar campo warehouse/facility
-4. Si la edición no guarda → verificar si hay conflicto con datos de Rostering
-5. Si es un cambio masivo de múltiples usuarios → usar Alfred Massive con CSV
-6. **Escalación**: Si Groot no permite el cambio, escalar a equipo dev con el error específico
+1. Confirmar que ticket reporta un fallo sistémico de Groot y no una solicitud para determinar o cambiar warehouse/facility.
+2. Reproducir flujo con mismo sujeto y registrar mensaje/código, URL, timestamp y evidencia de no persistencia.
+3. Distinguir validación esperable de `500`, timeout, crash o rollback inesperado.
+4. No comparar otro usuario ni editar warehouse/facility como workaround.
+5. **Escalación**: Si Groot falla sistémicamente, escalar a equipo dev con error específico y evidencia.
 
 ---
 
@@ -65,12 +66,11 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 **Problema típico**: Usuario no puede acceder a una función, le falta un rol, o no puede asignar rol a otros.
 
 **Pasos**:
-1. Verificar los roles actuales del usuario en Groot admin
-2. Verificar en Kraken si el rol existe y está activo para el site del usuario
-3. Si el usuario completó learning pero no ve el rol → verificar que el learning está vinculado al rol correcto en la config
-4. Si aparece "NO AUTORIZADO" → verificar que el usuario tiene el rol necesario Y que el site es correcto
-5. Para remoción masiva de roles (BISO): el sistema tiene un threshold del 20% — si se remueve más del 20% de la población de un rol en 24h, requiere aprobación manual del owner del rol via Alfred Orchestrator
-6. **Escalación**: Si el rol existe en Kraken pero no aparece en Groot, escalar a dev Groot
+1. Aplicar política transversal: no comparar usuarios ni determinar qué rol o permiso habilita una función.
+2. Confirmar si existe fallo sistémico observable en una herramienta Groot (`500`, timeout, crash, rollback o no persistencia inesperada).
+3. Reproducir mismo flujo y registrar mensaje/código, URL, timestamp y evidencia técnica.
+4. Si existe mensaje de validación claro, seguir `R-DER-24`; si es pedido operativo, redirigir al owner según regla R-DESC aplicable.
+5. **Escalación**: Si Groot falla sistémicamente, escalar a equipo dev sin asignar, remover o recomendar roles como workaround.
 
 ---
 
@@ -79,12 +79,11 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 **Problema típico**: Usuario no ve bolhas (bubbles) en WMS, o no aparece en LMS/Kioske.
 
 **Pasos**:
-1. Verificar que el usuario está activo en Groot (no deshabilitado)
-2. Verificar que tiene el warehouse correcto asignado
-3. Verificar que tiene los roles necesarios para la operación (ej: rol de picking para ver bolha de picking)
-4. Verificar que el site tiene la operación habilitada
-5. Si es "tela branca" → posible problema de sesión, pedir que limpie cache/reloguee
-6. **Escalación**: Si todo está correcto pero sigue sin ver → escalar con screenshot y datos del usuario
+1. Identificar sistema y función donde ocurre síntoma; no asumir que ausencia implica rol, permiso o atributo faltante.
+2. Aplicar triage por ownership antes de consultar facts.
+3. Si falla una herramienta Groot, reproducir mismo flujo y registrar mensaje/código, URL y timestamp sin comparar otra persona.
+4. Si síntoma ocurre en WMS/LMS u otra aplicación externa, escalar a owner correspondiente sin certificar configuración Groot.
+5. **Escalación**: Adjuntar evidencia sanitizada; no recomendar cambios de roles, permisos o atributos.
 
 ---
 
@@ -93,11 +92,11 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 **Problema típico**: No se puede agregar/remover un atributo, o el cambio no persiste.
 
 **Pasos**:
-1. Verificar el atributo actual del usuario en Groot admin
-2. Intentar editar → si da error "alteração não salva" verificar si hay validación de negocio bloqueando
-3. Si es atributo crossdocking → verificar que el site soporta crossdocking
-4. Si es cambio masivo → usar Alfred Massive
-5. **Escalación**: Con el error code específico (`update_attribute_error`)
+1. Aplicar política transversal: no determinar, comparar ni modificar atributos.
+2. Confirmar si reporte contiene validación esperable o fallo sistémico observable de Groot.
+3. Para fallo sistémico, reproducir mismo flujo y registrar mensaje/código, URL, timestamp y evidencia de no persistencia.
+4. No usar edición manual, Alfred Massive ni otra configuración como workaround.
+5. **Escalación**: Escalar con error code específico (por ejemplo, `update_attribute_error`) y evidencia técnica.
 
 ---
 
@@ -120,12 +119,11 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 **Problema típico**: CAD no aparece en autogestión, perfil incorrecto en xtools.
 
 **Pasos**:
-0. **Si el síntoma es "no aparece CAD/atributo para seleccionar en autogestión (xtools)"** → verificar primero si el **líder directo** del usuario tiene el CAD/atributo asignado. Si **no** lo tiene → aplicar `R-DESC-03` de `triage-rules.md` (descartar), porque la autogestión solo ofrece valores que el líder ya posee. No es un bug del sistema.
-1. Verificar el CAD del usuario en Groot admin
-2. Si el CAD es incorrecto → editar en Groot → campo facility/site
-3. Si no aparece en autogestión (xtools) **y el líder sí tiene el atributo** → verificar que el usuario tiene acceso a xtools y que el CAD está sincronizado
-4. Si el perfil muestra datos de otro site → posible dato stale, verificar última sincronización
-5. **Escalación**: Si el dato en Groot es correcto pero xtools muestra otro, escalar como bug de sincronización
+1. Si pedido busca determinar o habilitar CAD/atributo, aplicar `R-DESC-03` sin comparar configuración del usuario con su líder.
+2. Si reporte contiene fallo sistémico observable de Groot o xtools, reproducir mismo flujo y registrar mensaje/código, URL y timestamp.
+3. No determinar CAD correcto ni editar facility/site como workaround.
+4. Si existe evidencia técnica de desincronización, escalar al owner del sistema afectado sin certificar configuración objetivo.
+5. **Escalación**: Adjuntar evidencia sanitizada del fallo; no incluir perfiles comparados.
 
 ---
 
@@ -134,10 +132,11 @@ description: Runbooks procedurales por categoría de problema para la cola Groot
 **Problema típico**: La UI de Groot muestra error, se queda cargando, o un botón desapareció.
 
 **Pasos**:
-1. Verificar si el error es reproducible con otro usuario/browser
-2. Si el botón desapareció → posible cambio de permisos reciente, verificar roles del usuario que opera
-3. Si "se queda cargando" → posible timeout de backend, verificar si el usuario target tiene muchos datos
-4. **Escalación**: Siempre escalar errores de UI con URL completa y screenshot
+1. Reproducir mismo flujo con mismo sujeto en entorno controlado; puede variar browser, nunca usar otra persona como patrón de configuración.
+2. Registrar mensaje/código, URL, timestamp, screenshot y comportamiento observado.
+3. No inferir rol/permiso/atributo faltante porque botón desaparece.
+4. Si se queda cargando, documentar timeout o request fallido sin modificar configuración.
+5. **Escalación**: Escalar errores UI con URL completa y evidencia técnica.
 
 ---
 

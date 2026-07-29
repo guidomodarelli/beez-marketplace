@@ -10,6 +10,8 @@ Fuente única del procedimiento para ejecutar consultas de contexto actual de us
 4. No consultar endpoints para tickets sintéticos, ayuda, setup, catálogo ni comandos que no analizan tickets.
 5. No usar HTTP remoto como autorización para escribir en Jira. Una mutación sigue requiriendo gates y confirmaciones del subcommand correspondiente.
 6. Ante identidad ambigua, acceso denegado, timeout, respuesta inválida o evidencia contradictoria, el resultado es indeterminado. Nunca inferir ausencia, compatibilidad o inactividad desde un error.
+7. Kraken observa estado técnico; no define estado deseado. Aplicar `triage-rules.md` § **Política transversal — configuración de usuarios**: no consultar otra persona como baseline, comparar sujetos, descubrir qué rol/permiso/atributo habilita una función ni recomendar una mutación.
+8. Solicitudes operativas de comparar, determinar o aplicar configuración se resuelven por texto sin consultar facts. Un rol candidato mencionado en Jira no autoriza evaluarlo cuando la finalidad es elegir configuración.
 
 ## Identidad
 
@@ -43,7 +45,7 @@ Operaciones:
 
 No ejecutar `curl` directamente desde subcommands. No modificar hosts, paths, headers o parámetros fuera del contrato del script.
 
-Cada consulta refleja estado observado durante invocación actual; no prueba estado pasado ni causalidad histórica. El JSON normalizado del script es dato técnico efímero para razonamiento interno. Puede contener keys allowlisted necesarias para comparar configuración, pero no debe copiarse a respuesta visible, Jira, knowledge o audit log; aplicar las proyecciones permitidas de la sección Privacidad.
+Cada consulta refleja estado observado durante invocación actual; no prueba estado pasado ni causalidad histórica. El JSON normalizado del script es dato técnico efímero para razonamiento interno. Puede contener keys allowlisted necesarias para diagnosticar un predicado técnico permitido, pero nunca para comparar usuarios o construir configuración objetivo; no debe copiarse a respuesta visible, Jira, knowledge o audit log. Aplicar las proyecciones permitidas de la sección Privacidad.
 
 ### Facts soportados
 
@@ -80,9 +82,10 @@ Esta tabla define requisitos externos; `triage-rules.md` conserva señales, orde
 |---|---|---|
 | R-DER-04, R-DER-17, R-DER-20, R-DER-22 | `account-status`, `roles`; sumar `permissions`, `attributes` o `silos` solo si ticket nombra configuración concreta | Configuración completa confirma condición previa para derivación; faltante o indeterminado impide automatizar |
 | R-DER-06, R-DER-10, R-DER-15 | `account-status`; `ssff-status` cuando cuenta es interna | Estado/tipo de cuenta resuelve condición; error no equivale a baja |
-| R-DESC-03, R-DESC-06, R-DESC-07, R-DESC-10 | `attributes`; sumar `temporary-status` para procesos temporales | Confirmar facility/CAD/atributo exacto, sin exponer conjunto completo |
-| R-DESC-04 | `attributes`, `account-status` del sujeto correspondiente | Confirmar condición de líder; si identidad del líder no es inequívoca, manual |
-| R-DESC-05, R-DESC-08, R-DESC-13 | `roles`; `permissions` solo para permiso o módulo concreto | Confirmar configuración antes de descartar; error sistémico conserva ownership Groot |
+| R-DESC-06, R-DESC-07 | `attributes`; sumar `temporary-status` para procesos temporales | Verificar predicado técnico explícito sin determinar configuración objetivo |
+| R-DESC-04 | `account-status` del líder actual cuando escape por inactividad sea decisivo | Confirmar únicamente estado de cuenta; no comparar configuraciones |
+| R-DESC-08 | `roles` solo si un fallo sistémico observable requiere comprobar impacto técnico | No usar resultado para elegir o aplicar un rol |
+| R-DESC-02, R-DESC-03, R-DESC-05, R-DESC-10, R-DESC-13, R-DESC-19 | Ninguno para solicitudes operativas | Resolver por texto según política transversal; no consultar para comparar, determinar ni aplicar configuración |
 | R-DESC-14 | `account-status`, `ssff-status` | Ambos estados válidos confirman baja SSFF; cualquier discrepancia queda manual |
 | R-DESC-15 | `roles`, `temporary-status`, incompatibilidades | Conflicto es evidencia necesaria pero no prueba causalidad histórica |
 | R-DESC-16 | `attributes` | Comparar jerarquía Groot con dato SSFF disponible; sin ambas fuentes, manual |
@@ -138,10 +141,12 @@ Evidencia SoT completa puede satisfacer verificación, pero nunca promover regla
 Permitido en output o Jira:
 
 - “cuenta activa/inactiva verificada”;
-- “rol o permiso requerido presente/ausente”;
-- “configuración consistente/inconsistente”;
-- “conflicto de roles detectado”;
+- “proceso temporal activo/inactivo verificado”;
+- “fallo sistémico observado”;
+- “conflicto de roles detectado” solo cuando diagnostica causalidad de flujo temporal y no configuración objetivo;
 - “verificación no disponible”.
+
+No publicar qué rol, permiso o atributo requiere una persona ni afirmar configuración correcta/inconsistente mediante comparación.
 
 Prohibido:
 

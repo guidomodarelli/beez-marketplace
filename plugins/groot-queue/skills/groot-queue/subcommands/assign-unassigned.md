@@ -52,9 +52,9 @@ Si no hay tickets sin assignee, mostrar: "✅ No hay tickets sin assignee en la 
    ```bash
    acli jira workitem view <KEY>
    ```
-   Para cada ticket, aplicar gate de `ticket-evidence.md`; verificar autónomamente facts decisivos mínimos mediante `kraken-user-data.md`. Cuando ticket Labour Share incluya un único `labor_share_id` o `facility_type` explícito y esa evidencia pueda cambiar triage, aplicar `labor-share-data.md`. Reutilizar resultados por sujeto, Labor Share ID o facility durante toda corrida y respetar presupuestos de consultas. Tickets sintéticos no aplican en este flujo.
+   Para cada ticket, aplicar primero `triage-rules.md` § **Política transversal — configuración de usuarios**. Solicitudes para comparar personas, determinar configuración objetivo o modificar/aplicar roles, permisos o atributos se resuelven por texto sin consultar Kraken. Para demás tickets, aplicar gate de `ticket-evidence.md` y verificar solo facts mínimos que cambien ownership o diagnóstico sistémico sin elegir configuración. Cuando ticket Labour Share incluya un único `labor_share_id` o `facility_type` explícito y esa evidencia pueda cambiar triage, aplicar `labor-share-data.md`. Reutilizar resultados por sujeto, Labor Share ID o facility durante toda corrida y respetar presupuestos.
 
-   Luego aplicar el algoritmo canónico first-match en el orden exacto de `triage-rules.md` con la evidencia normalizada. No agrupar primero todas las R-DER y después todas las R-DESC. Clasificar cada ticket en una de estas categorías:
+   Luego aplicar algoritmo canónico first-match en orden exacto de `triage-rules.md` con evidencia normalizada. No agrupar primero todas las R-DER y después todas las R-DESC. Clasificar cada ticket en una de estas categorías:
 
    - **`DERIVAR-AC`**: matchea una regla R-DER marcada con ⚡ y ninguna condición de escape es ambigua.
    - **`DERIVAR`**: matchea una regla R-DER sin ⚡, o con señal de escape ambigua.
@@ -256,11 +256,12 @@ Ejecutar este paso solo para los tickets clasificados como `ASIGNAR` en el paso 
    ```
    Reutilizar ese output para toda la generación de la nota en este paso.
 3. Con el contenido del ticket recién obtenido:
-   - Clasificar el ticket en Dimensión 1 (categoría) y Dimensión 2 (urgencia).
-   - Buscar el runbook de esa categoría en `runbooks.md`.
-   - Resolver primero la carpeta real de `solutions/` usando el mapeo de `classification.md` (por ejemplo: `Jerarquía/Líder` → `hierarchy-leader`, `Warehouse/Site` → `warehouse-assignment`, `Roles/Permisos` → `role-permission`, `Otro` → `queue-management`).
-   - Buscar casos previos similares en `$SKILL_DIR/knowledge/solutions/<categoria-slug>/`.
-4. Generar la nota siguiendo estrictamente el template:
+   - Reaplicar política transversal; si ticket resulta descartable, no generar nota.
+   - Clasificar ticket en Dimensión 1 (categoría) y Dimensión 2 (urgencia).
+   - Buscar runbook de categoría en `runbooks.md`.
+   - Resolver carpeta real de `solutions/` usando mapeo de `classification.md`.
+   - Buscar casos previos similares como antecedentes históricos, no como autorización para comparar o modificar configuración.
+4. Generar nota siguiendo estrictamente template y filtrar cualquier paso que determine o aplique roles, permisos o atributos:
    - Completar cada campo (`{CATEGORIA}`, `{DIAGNOSTICO}`, `{PASOS_RESOLUCION}`, etc.) según las reglas de llenado del template.
    - Respetar las restricciones: español neutro, sin códigos de regla, sin PII, sin texto verbatim no sanitizado.
    - **Incluir siempre el slug `<!-- groot-auto-guide -->` como última línea del body** (requerido para detección de idempotencia).

@@ -27,6 +27,18 @@ Groot Soporte atiende **exclusivamente errores sistémicos**: bugs, comportamien
 
 > **Criterio de distinción**: si la herramienta muestra un mensaje claro indicando qué falta o qué condición no se cumple → es validación esperada, no bug. Si falla de forma inesperada sin mensaje de validación claro → es error sistémico.
 
+## Política transversal — configuración de usuarios
+
+Groot Soporte no define ni ejecuta configuración funcional de usuarios. Esta política se aplica antes del algoritmo first-match y prevalece sobre cualquier runbook, solution o evidencia histórica:
+
+- **No comparar ni copiar configuraciones** entre usuarios, líderes, pares o cuentas de referencia. Señales: ES "comparar configuración", "copiar permisos", "dejar igual que otro usuario"; PT "comparar configuração", "copiar permissões", "deixar igual a outro usuário"; EN "compare configuration", "copy permissions", "make the user match another user".
+- **No determinar configuración objetivo**: Groot no decide qué rol, permiso, atributo, acceso, bolha, CAD, facility, warehouse o valor necesita una persona. Señales: ES "qué rol necesita", "qué permiso falta", "qué atributo debe tener"; PT "qual role precisa", "qual permissão falta", "qual atributo deve ter"; EN "which role is needed", "which permission is missing", "which attribute should be set".
+- **No modificar ni aplicar configuración**: Groot no asigna, remueve, cambia, restaura ni replica roles, permisos, atributos o valores. Señales: ES "asignar/quitar/cambiar rol o atributo"; PT "atribuir/remover/trocar role ou atributo"; EN "assign/remove/change role or attribute".
+
+Estas solicitudes se resuelven por texto, sin consultar Kraken ni otra persona para descubrir o validar una configuración deseada, y corresponden al gestor de usuarios, gestor de aplicación u owner operativo.
+
+**Excepción limitada**: un `500`, timeout, crash, rollback o fallo inesperado de persistencia en una herramienta Groot puede ser `VALIDO_GROOT`. La excepción habilita diagnosticar y corregir el sistema, recopilar evidencia y escalar; nunca comparar personas, decidir configuración ni aplicar cambios manuales como workaround. Un mensaje de validación claro sigue `R-DER-24`.
+
 ## Verificaciones de evidencia y datos Kraken
 
 Antes de confirmar cualquier regla, aplicar `$SKILL_DIR/knowledge/config/ticket-evidence.md`; Jira aporta señales reportadas, no prueba condiciones operativas verificables. Cuando una condición dependa del estado actual del usuario, aplicar `$SKILL_DIR/knowledge/config/kraken-user-data.md`. Su matriz regla → facts es fuente única para seleccionar consultas e interpretar evidencia. Un error, acceso denegado, identidad ambigua, respuesta parcial o schema inválido no confirma ausencia ni compatibilidad: si dato es decisivo, usar `REVISAR_MANUAL` y bloquear mutaciones.
@@ -66,21 +78,21 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - Cuenta **sin** tag azul de "no es cuenta de envíos" (es decir, es de shipping).
   - No hay problema técnico: el usuario simplemente pide que le asignen un rol.
 - **Razón**: Groot Soporte **no** hace asignación de roles; eso lo hace el gestor de usuarios de la operación. Groot atiende **solo errores sistémicos**.
-- **Verificación previa**: Si el requester reporta que intentó asignar el rol y la herramienta **da error / no guarda**, o que un usuario con permisos válidos para asignarlo **no puede hacerlo aunque debería poder** → distinguir: si el error es un **mensaje de validación** (ej. "atributo obligatorio", "debe tener valor por defecto", "debe corregir lo siguiente") → aplicar `R-DER-24` (derivar a IAM Soporte, no es error sistémico). Solo reclasificar como `VALIDO_GROOT` (runbook Roles/Permisos) si el error es **sistémico** (500, timeout, crash, comportamiento inesperado sin mensaje de validación claro). Señales de excepción sistémica: ES "no puede asignar el rol", "debería poder asignarlo", "error inesperado al asignar rol"; PT "não consegue atribuir o role", "deveria conseguir atribuir", "erro inesperado ao atribuir role"; EN "cannot assign the role", "should be able to assign it", "unexpected error assigning role". Mismo criterio de escape que `R-DESC-09`.
+- **Verificación previa**: Aplicar la política transversal. La solicitud operativa se resuelve por texto, sin consultar roles ni validar configuración del operador. Un mensaje de validación claro aplica `R-DER-24`; solo un `500`, timeout, crash, rollback o fallo inesperado de persistencia permite `VALIDO_GROOT`, sin determinar ni aplicar el rol como workaround.
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "Desde Groot Soporte no hacemos asignación de roles a usuarios. Para esto debe comunicarse con el gestor de usuarios de su operación."
 
-### R-DESC-03 — Autogestión de CAD/atributo sin opciones porque el líder no tiene el valor
+### R-DESC-03 — Solicitud de determinar o habilitar CAD/atributo en autogestión
 - **Señales**:
   - Usuario reporta que en autogestión (xtools profile) **no le aparece** un CAD / facility / atributo para seleccionar.
-  - Contexto típico: usuario visitando otro site (ej. BRBA02 visitando BRBA01) y no puede cambiar el CAD para acceder a LMS / herramientas del site de destino.
+  - Pide que Groot compare otra persona, determine valor correcto o habilite opción. Variantes: ES "comparar con líder", "qué CAD corresponde"; PT "comparar com líder", "qual CAD corresponde"; EN "compare with manager", "which CAD is required".
   - URL típica: `https://xtools.adminml.com/tools/profile/mercadoenvios`.
-- **Razón**: En autogestión un usuario solo puede solicitar valores de atributo que **su líder directo tenga asignados**. Si el líder no tiene el valor → la opción no aparece en la UI. No es un bug de Groot.
-- **Verificación previa**: Inspeccionar al líder directo del usuario en Groot admin y confirmar que **no** tiene el CAD/atributo en cuestión. Si el líder sí lo tiene → no aplica esta regla (reclasificar como `VALIDO_GROOT`).
+- **Razón**: Determinar y aplicar CAD, facility o atributos corresponde al gestor de usuarios/aplicación. Groot no compara configuraciones ni define valor objetivo.
+- **Verificación previa**: Aplicar la política transversal. No inspeccionar ni comparar atributos del usuario y su líder. Si el ticket solo pide determinar o habilitar un CAD/atributo, descartar sin consulta Kraken; si reporta un fallo sistémico observable de la autogestión, reclasificar como `VALIDO_GROOT` sin decidir qué valor corresponde.
 - **Acción**: Cerrar como `Won't Do` / descartado.
 - **Comentario sugerido**:
-  > "Hola, su líder no tiene el valor de atributo asignado, es por esto que el usuario no puede solicitar el valor de atributo desde autogestión. Para habilitarlo, el líder directo debe tener primero el atributo asignado."
+  > "Hola, desde Groot Soporte no comparamos configuraciones ni determinamos o aplicamos roles, permisos o atributos. Esta configuración debe gestionarla el responsable de usuarios o de la aplicación en su operación."
 - **Fuente**: Francisco Gonzalez, ticket SSHP-1410959 (2026-04-21).
 
 ### R-DESC-04 — Cambio de líder / supervisor directo sin error técnico → autogestionable por el líder actual
@@ -107,10 +119,10 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - El usuario **sí** logra loguearse (auth OK).
   - Afecta a uno o pocos usuarios; el requester pregunta "qué rol necesita" o "qué permiso falta".
 - **Razón**: Groot/Kraken Soporte no es dueño del mapeo "funcionalidad ↔ rol requerido". Esa correspondencia la define el gestor de usuarios de la operación del site.
-- **Verificación previa**: Revisar que el usuario tenga los roles **base** de su función (Rep, TL, PS, etc.). Si falta un rol base que ya tenía → reclasificar como `VALIDO_GROOT`.
+- **Verificación previa**: Aplicar la política transversal. No revisar roles base, comparar perfiles ni consultar Kraken para descubrir qué rol o permiso habilita la función. Solo un fallo sistémico observable en una herramienta Groot activa el escape `VALIDO_GROOT`.
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
-  > "Hola, desde soporte Groot/Kraken no somos responsables de saber cuál es el permiso/rol que habilita una funcionalidad. Esto debe ser dirigido a los equipos de gestión de usuarios de su operación para que determinen si hay un rol faltante o si requiere ajustes en los roles actuales."
+  > "Hola, desde Groot Soporte no comparamos configuraciones ni determinamos o aplicamos roles, permisos o atributos. Esta configuración debe gestionarla el responsable de usuarios o de la aplicación en su operación."
 - **Fuente**: Francisco Gonzalez, ticket SSHP-1416994 (2026-04-21).
 
 ### R-DESC-06 — Rep sin clock-in físico → valor de atributo se obtiene dinámicamente al hacer clock-in
@@ -167,7 +179,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - **No** hay error técnico/sistémico: la herramienta de Groot funciona; el requester solo pide que Groot ejecute la asignación/cambio.
   - El requester no es gestor de usuarios de la operación; pide que Groot haga la operación por él.
 - **Razón**: Groot Soporte atiende **solo errores sistémicos**. La asignación o cambio de valores de atributo sin error de la herramienta la realiza el gestor de usuarios de la operación (mismo criterio que `R-DESC-02` / `R-DESC-09` para roles, extendido a atributos). Si la solicitud es solo "ejecutá esta acción porque al usuario le falta el atributo", el canal no es la ticketera de Groot.
-- **Verificación previa**: Si el requester reporta que intentó la operación y la tool **da error / no guarda** → distinguir: si el error es un **mensaje de validación** (ej. "atributo X es obligatorio", "debe tener valor por defecto") → aplicar `R-DER-24` (derivar a IAM Soporte, no es error sistémico). Solo reclasificar como `VALIDO_GROOT` si el error es **sistémico** (500, timeout, crash, comportamiento inesperado sin mensaje de validación claro). Distinto de `R-DESC-03` (el valor no aparece en autogestión porque el líder no lo tiene), `R-DESC-06` (rep sin clock-in) y `R-DESC-07` (reps ya ubicados en el facility): si matchea una de esas señales específicas, usar esa regla.
+- **Verificación previa**: Aplicar la política transversal y resolver la solicitud operativa por texto, sin consultar atributos ni comparar usuarios. Si la tool muestra un mensaje de validación claro, aplicar `R-DER-24`; solo un `500`, timeout, crash, rollback o fallo inesperado de persistencia permite `VALIDO_GROOT`, sin determinar ni aplicar el atributo como workaround.
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
   > "Hola, desde soporte Groot/Kraken solo atendemos errores sistémicos. La asignación o cambio de valores de atributo (CAD, facility, etc.) sin un error de la herramienta debe gestionarla el equipo de gestión de usuarios de su operación."
@@ -204,10 +216,10 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - PT: "liberar acesso a bolha", "habilitar Put Away", "ajuste de permissoes", "adicionar funcao", "atribuir role para funcao operacional".
   - EN: "grant bubble access", "enable Put Away", "permissions adjustment", "add function", "assign role for operational function".
 - **Razón**: Groot Soporte no modifica atributos ni roles por pedido operativo. Si no hay error sistémico de la herramienta, la gestión debe hacerla el gestor de la aplicación u operación.
-- **Verificación previa**: Si el requester reporta que intentó asignar el rol/función y la herramienta da error o no guarda, reclasificar como `VALIDO_GROOT`. Si el caso menciona Training Hub / Learning Hub pero no indica entrenamiento completado ni asistencia validada, mantener esta regla antes que `R-DESC-08`.
+- **Verificación previa**: Aplicar la política transversal. Resolver por texto sin consultar roles, permisos ni atributos. Si existe un fallo sistémico observable de una herramienta Groot, reclasificar como `VALIDO_GROOT`; no usar esa excepción para determinar o aplicar configuración.
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
-  > "Desde groot no hacemos modificacion de atributos/roles, para eso debe ponerse en contacto con el gestor de su aplicacion."
+  > "Hola, desde Groot Soporte no comparamos configuraciones ni determinamos, modificamos o aplicamos roles, permisos o atributos. Esta configuración debe gestionarla el responsable de usuarios o de la aplicación en su operación."
 - **Fuente**: groot-queue:analyze-history, SSHP-1470912, 2026-06-08.
 
 ### R-DESC-14 — Usuario interno dado de baja en SSFF no puede reactivarse manualmente ⚡
@@ -258,10 +270,10 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - EN: "cannot access systems even with bubbles released", "applications not managed by Groot".
   - URLs reportadas NO pertenecen al dominio de Groot (`envios.adminml.com/tools/auth/*`).
 - **Razón**: Groot solo administra tools bajo su dominio (`envios.adminml.com/tools/auth/*`). Problemas de acceso a otras tools deben ser gestionados por los equipos responsables de esas plataformas.
-- **Verificación previa**: Confirmar que las URLs reportadas NO pertenecen a Groot. Si el error es en una tool de Groot → reclasificar como `VALIDO_GROOT`.
+- **Verificación previa**: Confirmar únicamente que la URL reportada no pertenece a Groot. No comparar perfiles ni validar qué permisos necesita la persona. Si el error sistémico ocurre en una tool de Groot, reclasificar como `VALIDO_GROOT`.
 - **Acción**: Cerrar como `Won't Do`.
 - **Comentario sugerido**:
-  > "Estas aplicaciones no son administradas por Groot. Validar que el usuario tenga los permisos necesarios para acceder a las tools indicadas."
+  > "Hola, esta aplicación no es administrada por Groot. El equipo responsable de la aplicación debe revisar el acceso y la configuración requerida."
 - **Fuente**: groot-queue:analyze-history, SSHP-1510443, 2026-07-01.
 
 ### R-DESC-18 — Error al crear Labour Share por posición "analyst" → funcionalidad by design, no bug
@@ -288,10 +300,10 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - **No** hay error técnico / sistémico reportado: la tool funciona, el requester simplemente pide que Groot ejecute la operación en su lugar.
   - No matchea una regla más específica (R-DESC-02, R-DESC-04, R-DESC-09, R-DESC-10, R-DESC-13).
 - **Razón**: Groot Soporte atiende **solo errores sistémicos**. Si la funcionalidad ya existe en la tool y está disponible para ser ejecutada por el líder/gestor de la operación, no hay intervención requerida por parte de soporte.
-- **Verificación previa**: Si el requester reporta que intentó realizar la operación y la herramienta **da error / no guarda / falla** → reclasificar como `VALIDO_GROOT` (error sistémico). Si ya tiene asignado exactamente lo que pide (estado actual = estado deseado) → descartar sin más.
+- **Verificación previa**: Aplicar la política transversal. No comparar estado actual con estado deseado ni consultar otra persona o Kraken para decidir la configuración. Un fallo sistémico observable habilita `VALIDO_GROOT`; un mensaje de validación claro aplica `R-DER-24`.
 - **Acción**: Cerrar como `Won't Do` con razón `[R] Funcionalidad existente`.
 - **Comentario sugerido**:
-  > "Hola, la operación solicitada es una funcionalidad que ya existe en la tool de autogestión. Los líderes/gestores actuales pueden realizar esta acción directamente desde https://envios.adminml.com/tools/auth/users/shared?active=true. Desde soporte Groot solo atendemos errores sistémicos de la herramienta."
+  > "Hola, desde Groot Soporte no comparamos configuraciones ni determinamos, modificamos o aplicamos roles, permisos o atributos. Esta configuración debe gestionarla el responsable de usuarios o de la aplicación en su operación."
 - **Fuente**: Francisco Gonzalez, ticket SSHP-1494206 (2026-07-06). Regla catch-all para resolución `[R] Funcionalidad existente`.
 
 ---
@@ -335,13 +347,13 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Señales**:
   - URL afectada en `envios.adminml.com/logistics/...` o módulos de package-management / app nav / Shield.
   - Síntoma: "no guarda el cambio", "botón no responde", "se cierra la solicitud automáticamente".
-  - En Groot/Kraken el usuario luce **correctamente configurado**.
-  - El problema afecta a algunos usuarios sin patrón claro de permisos Groot.
+  - El síntoma ocurre en componente externo y no hay fallo sistémico observado en herramienta Groot.
+  - El problema afecta a algunos usuarios sin patrón técnico confirmado.
 - **Razón**: El componente (p.ej. SVC selector en package-management) pertenece a Platsec/Randall, no a Groot/Kraken. Groot no puede arreglarlo.
-- **Verificación previa**: Revisar roles/facility/atributos del usuario en Groot. Si todo está correcto → derivar. Si falta un rol Groot → `VALIDO_GROOT`.
+- **Verificación previa**: Decidir por dominio, URL y fallo del componente externo. No certificar configuración completa ni determinar roles/facility/atributos. Si evidencia muestra un fallo sistémico en una tool Groot, usar `VALIDO_GROOT`; de otro modo derivar al owner externo.
 - **Acción**: Derivar a **Helpdesk IA** (ruteo al owner correcto).
 - **Comentario sugerido**:
-  > "Hola, este ticket no corresponde a Groot/Kraken Soporte. El usuario está correctamente configurado en Kraken y el error corresponde a un componente externo (Platsec/Randall) que está fuera de nuestro alcance. Derivamos a Helpdesk IA para que enruten el caso con el equipo owner del componente."
+  > "Hola, este ticket corresponde a un componente externo a Groot/Kraken. Derivamos a Helpdesk IA para que enruten el caso con el equipo owner del componente."
 - **Canal directo Slack**: `#help-authz-internal-admins`.
 - **Fuente**: Francisco Gonzalez, ticket SSHP-1412840 (2026-04-21).
 
@@ -508,11 +520,11 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - EN: "has permissions but cannot access WMS", "WMS inbound monitors no access", "blank screen WMS", "403 error WMS", "cannot take process", "WMS reloading", "apply button disabled", "no warehouse visibility", "automatic warehouse change", "limited to local CAD in WMS", "cannot query all CADs", "works in incognito tab", "only happens to this user in WMS".
   - El usuario tiene roles y bolhas correctamente asignados en Groot/Kraken, pero **WMS/Logistics no refleja esos permisos** o presenta errores funcionales (pantalla en blanco, error 403, page reloading, botones deshabilitados, procesos inaccesibles, vista limitada al CAD local cuando debería ser regional).
   - **Señal fuerte**: si el usuario reporta que **funciona en pestaña de incógnito / aba anônima pero no en navegador normal**, es casi seguro un problema de sesión/cache del frontend WMS. Si el backend (Groot) tuviera mal la configuración, incógnito tampoco funcionaría. Esta señal por sí sola es suficiente para derivar a Helpdesk IA si se confirma que Groot está correcto.
-- **Razón**: Groot Soporte atiende **solo errores sistémicos de Groot**. Si el usuario está correctamente configurado en Groot (bolhas asignadas, warehouse correcto, roles vigentes, atributos regionales) pero WMS/Logistics falla o no muestra las funciones esperadas, el problema es del **sistema WMS** (frontend o backend), no de la configuración de permisos. Groot Soporte no tiene visibilidad ni herramientas para resolver bugs de WMS. No es responsabilidad de Groot investigar problemas de sesión, cache ni rendering del frontend WMS.
-- **Verificación previa**: Confirmar que el usuario **efectivamente tiene** los roles/bolhas/warehouse/atributos en Groot. Si la configuración en Groot es incorrecta o faltante → reclasificar como `VALIDO_GROOT` (ajustar permisos en Groot). Si todo en Groot está correcto → derivar sin demora, no intentar workarounds de cache ni troubleshooting de WMS: eso le compete al equipo WMS vía Helpdesk IA.
+- **Razón**: Groot Soporte atiende errores sistémicos de herramientas Groot. Fallos funcionales, de sesión, cache o rendering dentro de WMS/Logistics corresponden al owner de WMS; Groot no compara perfiles ni certifica configuración para decidir ownership.
+- **Verificación previa**: Decidir por dominio WMS/Logistics y evidencia funcional (URL, error, rendering, sesión), sin comparar usuarios ni certificar roles/bolhas/warehouse/atributos. Si evidencia muestra fallo sistémico en una tool Groot, usar `VALIDO_GROOT`; de otro modo derivar a Helpdesk IA. No ajustar permisos ni proponer workarounds de configuración.
 - **Acción**: Derivar a **Helpdesk IA** (ruteo a WMS/Logistics).
 - **Comentario sugerido**:
-  > "Hola, este ticket no corresponde a Groot Soporte. Verificamos la configuración del usuario en Groot y los permisos están correctos (roles, bolhas y warehouse asignados). El problema es funcional de WMS/Logistics, fuera del alcance de Groot. Derivamos a Helpdesk IA para que enruten el caso con el equipo de WMS."
+  > "Hola, el problema reportado es funcional de WMS/Logistics, fuera del alcance de Groot. Derivamos a Helpdesk IA para que enruten el caso con el equipo de WMS."
 - **Fuente**: Análisis histórico (9 tickets: SSHP-1508621, SSHP-1500233, SSHP-1495880, SSHP-1492695, SSHP-1486490, SSHP-1485607, SSHP-1484713, SSHP-1465825, SSHP-1486341). Reforzado con SSHP-1504561 (usuario regional limitado al CAD local en WMS solo en navegador normal; incógnito funciona correctamente).
 
 ### R-DER-18 — Solicitud operativa de WMS (gestión de paquetes/envíos, no de usuarios) → Helpdesk IA
@@ -535,10 +547,10 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - EN: "lost access after login", "no access to default warehouse", "management swap in LMS", "access disappeared", "permissions unassigned by themselves".
   - El usuario estaba activo y funcionando, pero **perdió acceso a WMS/LMS sin que nadie modificara su configuración en Groot**. La cuenta sigue activa, los roles parecen estar, pero el sistema downstream (WMS/LMS) dejó de reconocer sus permisos.
 - **Razón**: La sincronización entre IAM y los sistemas downstream (WMS, LMS) a veces falla o se corrompe sin intervención manual. El equipo IAM Soporte tiene acceso a los logs de sincronización y puede forzar re-sync o corregir inconsistencias.
-- **Verificación previa**: Confirmar que el usuario está activo en Groot, tiene roles asignados, y el problema NO es configuración faltante en Groot (si le faltan roles → `VALIDO_GROOT`).
+- **Verificación previa**: Confirmar únicamente estado técnico necesario y evidencia de pérdida downstream. No comparar perfiles ni determinar si falta un rol. Si evidencia muestra fallo sistémico en una tool Groot, usar `VALIDO_GROOT`; si síntoma pertenece a sincronización IAM/downstream, derivar.
 - **Acción**: Derivar a **IAM Soporte**.
 - **Comentario sugerido**:
-  > "Hola, verificamos que tu configuración en Groot está correcta pero detectamos un problema de sincronización con el sistema. Derivamos al equipo de IAM para que puedan investigar y restaurar el acceso."
+  > "Hola, detectamos señales de un problema de sincronización con el sistema. Derivamos al equipo de IAM para que puedan investigar el acceso."
 - **Fuente**: Análisis histórico (3 tickets: SSHP-1493771, SSHP-1491358, SSHP-1482519).
 
 ### R-DER-22 — Errores funcionales o pantalla en blanco en LMS (no involucra configuración de usuario) → LMS
@@ -547,12 +559,12 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - PT: "LMS tela em branco", "LMS não carrega", "LMS mostra CAD incorreto", "reps aparecem no site incorreto no LMS", "LMS carregando indefinidamente", "perda de bolhas no LMS sem mudança no Groot".
   - EN: "LMS blank screen", "LMS not loading", "LMS shows incorrect CAD", "reps appear in wrong site in LMS", "LMS loading indefinitely", "loss of bubbles in LMS without change in Groot".
   - El reporte es sobre **LMS** (Labour Management System): pantalla en blanco, CAD/site incorrecto, bolhas que desaparecen — y la configuración en Groot/Kraken está correcta.
-- **Razón**: Si el usuario está correctamente configurado en Groot pero LMS muestra datos incorrectos o no carga, el problema es del sistema LMS. Groot Soporte no tiene herramientas para corregir inconsistencias internas de LMS.
-- **Verificación previa**: Confirmar que no es un problema de R-DER-12 (horas Be a Rep) ni de configuración faltante en Groot. Si al usuario le faltan roles en Groot → `VALIDO_GROOT`.
+- **Razón**: Pantallas en blanco, carga indefinida o datos funcionales incorrectos dentro de LMS corresponden al owner de LMS. Groot no compara perfiles ni certifica configuración para decidir ownership.
+- **Verificación previa**: Confirmar que no es R-DER-12 y que síntoma pertenece funcionalmente a LMS. No comparar usuarios ni determinar roles faltantes. Si evidencia muestra fallo sistémico en una tool Groot, usar `VALIDO_GROOT`; de otro modo derivar a LMS.
 - **Acción**: Derivar a **LMS** (equipo Labour Management).
 - **Automatización**: Habilitada. Option id en `$SKILL_DIR/knowledge/config/jira-field-options.md`.
 - **Comentario sugerido**:
-  > "Hola, verificamos tu configuración en Groot y está correcta. El problema parece ser funcional de LMS. Derivamos al equipo de LMS para que puedan investigar."
+  > "Hola, el problema reportado parece ser funcional de LMS. Derivamos al equipo de LMS para que puedan investigar."
 - **Fuente**: Análisis histórico (2 tickets: SSHP-1475187, SSHP-1470659).
 
 ### R-DER-23 — Errores en AppSheet (SHE, GEMBA) → Equipo SHE/AppSheet
@@ -592,7 +604,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 
 Cuando `/groot-queue classify` auto-descarta tickets de reglas ⚡, **usa este comentario** en lugar del comentario por regla:
 
-> "Hola, desde Groot/Kraken Soporte atendemos exclusivamente errores sistémicos: bugs, comportamientos inesperados o fallos de la herramienta que no pueden resolverse por autogestión. La asignación o cambio de roles, permisos, atributos y configuraciones operativas — incluyendo errores de validación por datos faltantes — no es responsabilidad de este equipo y debe gestionarla el responsable de usuarios de su operación."
+> "Hola, desde Groot Soporte atendemos exclusivamente errores sistémicos de nuestras herramientas. No comparamos configuraciones ni determinamos, modificamos o aplicamos roles, permisos o atributos. Esta configuración debe gestionarla el responsable de usuarios o de la aplicación en su operación."
 
 **Rejection reason** a usar en la transición: `[R] Funcionalidad existente` (id: `81170`), salvo que la tabla de `discard.md` indique otro para la regla específica.
 
@@ -603,7 +615,7 @@ Cuando `/groot-queue classify` auto-descarta tickets de reglas ⚡, **usa este c
 
 ## Algoritmo de triage (para `list` y `classify`)
 
-Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredicto que matchee:
+Para cada ticket abierto, aplicar primero `Política transversal — configuración de usuarios`: no comparar sujetos, determinar configuración objetivo ni consultar facts para elegirla. Después evaluar en este orden y asignar el **primer** veredicto que matchee. Señales mixtas con fallo sistémico observable conservan la excepción; pedidos operativos se resuelven por texto.
 
 1. **R-DER-12** _[clasificación activa; no ejecutar derivación automáticamente]_ → si el reporte menciona errores, diferencias o inconsistencias en la contabilidad de horas de Be a Rep con impacto en LMS / Labour Management System.
 2. **R-DER-22** → si LMS muestra pantalla en blanco, CAD/site incorrecto o bolhas que desaparecen, y la configuración en Groot/Kraken está correcta (no es R-DER-12 ni configuración faltante).
@@ -621,7 +633,7 @@ Para cada ticket abierto, evaluar en este orden y asignar el **primer** veredict
 14. **R-DER-17** → si el usuario tiene roles/bolhas/warehouse correctos en Groot pero **WMS/Logistics no refleja esos permisos** o presenta errores funcionales (pantalla en blanco, error 403, reloading, botones deshabilitados).
 15. **R-DER-18** → si la solicitud es puramente **operativa de WMS** (gestión de paquetes, envíos, shipments) y no involucra usuarios, permisos ni roles.
 16. **R-DER-23** → si la URL afectada es `appsheet.com/start/...` y el error es "Something has gone wrong" / "Internal Server Error" (apps SHE/GEMBA externas a Groot).
-17. **R-DER-04** → si la URL afectada es `envios.adminml.com/logistics/...` / **package-management** / app nav / componente externo y el usuario está correctamente configurado en Groot/Kraken.
+17. **R-DER-04** → si URL y síntoma pertenecen a `envios.adminml.com/logistics/...` / **package-management** / app nav / componente externo y no hay fallo sistémico observado en herramienta Groot.
 18. **R-DER-05** → si el tema es de **clasificación/taxonomía** de proceso madre en la tool Groot o issues de **app nav** (no un error real de Groot).
 19. **R-DER-01** → si menciona "tag azul", "no es cuenta de envíos", "conta não é de envios", "sin opción de deshabilitar", o el admin (accediendo al perfil en la tool de Groot) ve que "no puede habilitar al usuario" porque "no pertenece a envíos / no pertenece a Mercado Envío" / PT "não pertence às remessas" / "nao pertence as remessas" / EN "does not belong to shipping" / "not a shipping account" (cuenta desactivada que piden reactivar; IAM debe ajustar el flag de shipping).
 20. **R-DER-02** → si menciona "app nav", "navegación del app", "navegação" sin señal de R-DER-05.
