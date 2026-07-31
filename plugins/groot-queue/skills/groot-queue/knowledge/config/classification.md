@@ -9,15 +9,15 @@ Este archivo concentra el JQL base y la lógica de clasificación que usan los c
 Para listar todos los tickets abiertos (Incidents y Service Requests):
 
 ```bash
-acli jira workitem search --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved ORDER BY created DESC"
+acli jira workitem search --paginate --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved ORDER BY created DESC"
 ```
 
-> ⚠️ **Paginación**: sin `--paginate`, `acli jira workitem search` devuelve solo la **primera página (~30 resultados)**. La cola Groot suele tener 100+ tickets abiertos, así que todo consumidor que necesite el **conjunto completo** (p. ej. `alerts`, `stats`, conteos) debe agregar `--paginate`. El orden `created DESC` empuja los tickets más viejos al final: si se trunca la página, se pierden justo esos.
+> ⚠️ **Paginación obligatoria para conjuntos completos**: `acli jira workitem search` sin `--paginate` devuelve solo la primera página (~30 resultados). Toda búsqueda que alimente listados completos, clasificación, estadísticas, conteos o mutaciones por lote debe incluir `--paginate`; el orden `created DESC` deja los tickets más viejos fuera del resultado truncado. Consultas por key única o límites intencionales pueden omitirlo solo si documentan que no requieren exhaustividad.
 
 Para listar solo los tickets asignados a un LDAP específico (usado por `assignee=<ldap>`, `assignee=me` y `@me`):
 
 ```bash
-acli jira workitem search --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved AND assignee = <ldap> ORDER BY created DESC"
+acli jira workitem search --paginate --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved AND assignee = <ldap> ORDER BY created DESC"
 ```
 
 Para ver un ticket específico:

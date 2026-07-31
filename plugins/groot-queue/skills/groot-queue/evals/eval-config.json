@@ -334,6 +334,92 @@
       ]
     },
     {
+      "id": "assign-unassigned-paginates-complete-queue",
+      "description": "assign-unassigned must paginate before filtering unassigned tickets so no later-page ticket is skipped",
+      "input": "/groot-queue assign-unassigned --help. Explicá qué flag usa búsqueda ACLI inicial para recuperar todos tickets abiertos soportados antes de filtrar assignee vacío. No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "paginate"
+        },
+        {
+          "type": "contains",
+          "value": "assignee"
+        }
+      ]
+    },
+    {
+      "id": "shared-open-queue-search-paginates",
+      "description": "shared open-queue searches for list, classify, and stats must not rely on ACLI first-page results",
+      "input": "Documentation question: how should /groot-queue list, classify, and stats query the complete open queue through classification.md? Do not execute Jira commands.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "paginate"
+        },
+        {
+          "type": "contains",
+          "value": "classification.md"
+        },
+        {
+          "type": "contains",
+          "value": "created DESC"
+        }
+      ]
+    },
+    {
+      "id": "backfill-guides-paginates-eligible-tickets",
+      "description": "backfill-guides must paginate every eligible assigned ticket without a posted guide",
+      "input": "/groot-queue backfill-guides --help. Explicá cómo evita omitir tickets abiertos asignados sin groot-guide-posted cuando ACLI devuelve varias páginas. No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "paginate"
+        },
+        {
+          "type": "contains",
+          "value": "groot-guide-posted"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "todos",
+            "conjunto completo",
+            "primera página",
+            "pagin"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-counts-paginate-complete-results",
+      "description": "start express counts must paginate to avoid reporting partial queue totals",
+      "input": "/groot-queue start --help Explicá cómo calcula Total abiertos, Sin asignar y En riesgo SLA sin subcontar una cola con varias páginas ACLI. No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "paginate"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Total abiertos",
+            "Sin asignar",
+            "En riesgo SLA"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "primera página",
+            "conjunto completo",
+            "subconteo",
+            "pagin"
+          ]
+        }
+      ]
+    },
+    {
       "id": "backfill-guides-includes-service-requests",
       "description": "backfill-guides uses the shared open-queue definition so Service Requests also receive missing guides",
       "input": "/groot-queue backfill-guides --help. Which open Jira issue types are eligible for the initial backfill search before checking the groot-guide-posted label? Do not execute Jira commands.",
