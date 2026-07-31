@@ -263,17 +263,17 @@
     },
     {
       "id": "alerts-sla-fetch-covers-all-keys",
-      "description": "alerts explains that SLA fields must be fetched in exact key batches so tickets beyond the first 50 are not missed",
-      "input": "Documentation question: in /groot-queue alerts, how must customfield_12400 be fetched so tickets beyond the first 50 assigned issues are not silently missed? Do not execute Jira commands.",
+      "description": "alerts explains that SLA fields must be fetched in exact key batches of 25 so tickets are not missed",
+      "input": "/groot-queue alerts --help Explicá cómo se obtiene customfield_12400 en lotes de 25 sin perder tickets. No ejecutes Jira ni Slack.",
       "assertions": [
         {
           "type": "contains_any",
           "values": [
             "issuekey in",
             "lote de keys",
-            "lotes de hasta 50",
+            "lotes de hasta 25",
             "batch por lote",
-            "maxResults: 50",
+            "maxResults: 25",
             "no `limit`",
             "no limit",
             "todos los lotes",
@@ -406,7 +406,9 @@
             "best-effort",
             "latencia",
             "no bloquear",
-            "sin bloquear"
+            "sin bloquear",
+            "no bloqueante",
+            "no demora"
           ]
         },
         {
@@ -509,6 +511,133 @@
             "Lote",
             "lote",
             "51"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "list-batches-complete-queue-analysis",
+      "description": "list processes a complete paginated snapshot in lots of 25 and renders one global table",
+      "input": "/groot-queue list --help Explicá cómo lista 51 tickets abiertos usando lotes de 25. No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "25"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Lote",
+            "lote",
+            "51"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "tabla global",
+            "todos los lotes",
+            "tabla markdown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "classify-confirms-actions-per-batch",
+      "description": "classify analyzes in lots of 25 and confirms only actions from the active lot",
+      "input": "/groot-queue classify --help Explicá cómo procesa 26 tickets si el primer lote contiene acciones de triage. No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "25"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "confirmación",
+            "confirmar",
+            "sí / no"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "lote activo",
+            "Lote",
+            "lote"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stats-aggregates-batches-globally",
+      "description": "stats analyzes complete queue in lots of 25 and aggregates counters after every lot",
+      "input": "/groot-queue stats --help Explicá cómo calcula estadísticas para 51 tickets abiertos usando lotes de 25. No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "25"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "globales",
+            "global",
+            "acumular"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "alerts-batches-sla-and-consolidates-dms",
+      "description": "alerts hydrates SLA and triages keys in lots of 25 before one consolidated DM per assignee",
+      "input": "/groot-queue alerts --help Explicá cómo procesa 51 tickets SLA usando lotes de 25 y envía mensajes Slack. No ejecutes Jira ni Slack.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "25"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "DM",
+            "Slack",
+            "mensaje"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "todos los lotes",
+            "consolid",
+            "global"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "analyze-history-batches-fetches-but-analyzes-individually",
+      "description": "analyze-history defaults to 25 and splits higher limits without combining individual ticket analysis",
+      "input": "/groot-queue analyze-history --help Explicá cómo procesa 51 tickets cerrados con lotes de 25 sin combinar análisis individuales. No ejecutes Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "25"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "individual",
+            "uno por uno",
+            "análisis individual"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "51",
+            "Lote",
+            "lote"
           ]
         }
       ]

@@ -58,6 +58,7 @@ El nombre de las herramientas Slack varía según el proveedor y la configuraci�
 ### 1. Obtener tickets abiertos asignados (conjunto COMPLETO, sin truncar)
 
 Leer referencias:
+- `$SKILL_DIR/knowledge/config/batch-processing.md`
 - `$SKILL_DIR/knowledge/config/classification.md` (JQL base)
 - `$SKILL_DIR/knowledge/config/ticket-evidence.md`
 - `$SKILL_DIR/knowledge/config/kraken-user-data.md`
@@ -92,11 +93,13 @@ acli jira workitem search \
   --paginate --fields "key,assignee,status,priority,summary" --csv
 ```
 
+Unir, deduplicar y congelar keys de `vencidas ∪ por_vencer_candidatas` (o `alertables` en fallback) sin reconsultar ni reordenar snapshot. Según `$SKILL_DIR/knowledge/config/batch-processing.md`, procesar triage, hidratación SLA MCP y fallbacks en lotes consecutivos de hasta 25 keys; anunciar `Lote X/Y` y acumular resultados globales. No enviar Slack durante un lote.
+
 En la salida, el campo `assignee` viene como **email** (ej. `francisco.gonzalez@mercadolibre.com`); usarlo directamente para el mapa `email → name` del TEAM. `acli` **no** expone `created` ni el breach time (esos vienen del MCP en el paso 3).
 
 ### 2. Clasificar y aplicar triage
 
-El triage se aplica sobre el conjunto en riesgo `vencidas ∪ por_vencer_candidatas` (en el fallback 3.3, sobre `alertables`). Para cada ticket:
+El triage se aplica sobre cada lote activo del conjunto en riesgo `vencidas ∪ por_vencer_candidatas` (en el fallback 3.3, sobre `alertables`). Para cada ticket:
 1. Aplicar gate de `ticket-evidence.md` y verificar autónomamente facts decisivos mínimos mediante `kraken-user-data.md` antes de confirmar triage.
 2. Aplicar **triage de veredicto** de `triage-rules.md` con evidencia normalizada.
 3. **Excluir** solo tickets con veredicto `DESCARTAR` o `DERIVAR` confirmado. Si condición decisiva queda indeterminada, conservar ticket para análisis SLA como `REVISAR_MANUAL`; no excluirlo silenciosamente.
@@ -118,18 +121,18 @@ Solo los tickets de **Fetch C** pueden ser POR VENCER. Para decidir hace falta l
 
 **Si `ATLASSIAN_MCP_AVAILABLE = true`:**
 
-Traer `customfield_12400` y `created` por **lotes** con `searchJiraIssuesUsingJql`. Incluir en el lote **también** las keys de `vencidas` (para obtener su `created` y calcular la edad). Dividir `vencidas ∪ por_vencer_candidatas` en lotes de hasta 50 keys y recorrer **todos** los lotes hasta agotar la lista:
+Traer `customfield_12400` y `created` por **lotes** con `searchJiraIssuesUsingJql`. Incluir en el lote **también** las keys de `vencidas` (para obtener su `created` y calcular la edad). Dividir `vencidas ∪ por_vencer_candidatas` en lotes de hasta 25 keys y recorrer **todos** los lotes hasta agotar la lista:
 
 ```
 searchJiraIssuesUsingJql(
   cloudId: "<cloudId de mercadolibre.atlassian.net>",
   jql: "issuekey in (SSHP-1234567, SSHP-1234568, ...) ORDER BY created ASC",
   fields: ["customfield_12400", "status", "assignee", "summary", "created"],
-  maxResults: 50
+  maxResults: 25
 )
 ```
 
-> ⚠️ **Usar `maxResults`, no `limit`** (`limit` no es soportado por esta tool y puede hacer fallar la búsqueda). ⚠️ **Nunca `fields: ["*all"]`** (respuestas de ~300K chars que saturan el contexto). `maxResults: 50` es **por lote**, no global: si hay 90 keys se hacen 2 búsquedas (50 + 40). Verificar cobertura y recuperar cualquier `missing_key` con `getJiraIssue(cloudId, issueIdOrKey, fields: [...])`.
+> ⚠️ **Usar `maxResults`, no `limit`** (`limit` no es soportado por esta tool y puede hacer fallar la búsqueda). ⚠️ **Nunca `fields: ["*all"]`** (respuestas de ~300K chars que saturan el contexto). `maxResults: 25` es **por lote**, no global: si hay 90 keys se hacen 4 búsquedas (25 + 25 + 25 + 15). Verificar cobertura y recuperar cualquier `missing_key` con `getJiraIssue(cloudId, issueIdOrKey, fields: [...])`.
 
 Para cada key de `por_vencer_candidatas`, con su `customfield_12400.ongoingCycle`:
 - `horas_restantes = breachTime.jira - ahora` (en horas de **calendario**, misma timezone).
@@ -149,7 +152,7 @@ La **edad** de cada ticket (VENCIDO o POR VENCER) se calcula `ahora - created` c
 
 Si **Fetch B/C fallan** porque el entorno rechaza `'Time to resolution' = breached()` (error de JQL), degradar así:
 1. Usar el **universo completo** `alertables` de **Fetch A** (paginado).
-2. Con MCP disponible, traer `customfield_12400` por lotes sobre **todo** `alertables` y clasificar con la estructura de abajo (`ongoingCycle.breached == true` → VENCIDO; `breachTime.jira - ahora ≤ 48h` → POR VENCER).
+2. Con MCP disponible, traer `customfield_12400` por lotes de hasta 25 sobre **todo** `alertables` y clasificar con la estructura de abajo (`ongoingCycle.breached == true` → VENCIDO; `breachTime.jira - ahora ≤ 48h` → POR VENCER).
 3. Sin MCP, último recurso: evaluar **solo** la condición de "Esperando por Soporte" y avisar que los VENCIDOS pueden estar **subestimados**.
 
 **Estructura del campo `customfield_12400`** (usada por 3.2 y por el fallback 3.3):
@@ -190,7 +193,7 @@ Si **Fetch B/C fallan** porque el entorno rechaza `'Time to resolution' = breach
 
 ### 4. Agrupar por responsable
 
-Crear un mapa `assignee_email → { vencidos: [...], por_vencer: [...] }`.
+Después de agotar todos los lotes y sólo entonces, crear un mapa global `assignee_email → { vencidos: [...], por_vencer: [...] }`. Ningún lote envía DMs parciales.
 
 Solo incluir assignees que **pertenecen al TEAM** (match por email). Si un ticket está asignado a alguien fuera del TEAM, listarlo en una sección separada "Tickets con assignee externo" en consola pero **no enviar DM**.
 

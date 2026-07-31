@@ -33,6 +33,13 @@ No crear presupuestos implícitos para Labour Share: conservar límites de respu
 
 ## Reglas específicas por flujo
 
+### `list`, `classify` y `stats`
+
+- Descubrir snapshot paginado completo una vez y analizar 25 tickets por lote.
+- `list` y `stats` no piden confirmación: acumulan filas o contadores globales y renderizan salida sólo después de agotar todos los lotes.
+- `classify` acumula categorías globales. Si un lote tiene acciones derive/discard, mostrar y confirmar sólo acciones de ese lote; rechazo termina corrida antes de lotes posteriores.
+- Los tres comandos reinician `max_users_per_batch` al iniciar lote siguiente y conservan fail-closed para evidencia decisiva.
+
 ### `assign-unassigned`
 
 - Crear un único shuffle del `TEAM` antes del primer lote.
