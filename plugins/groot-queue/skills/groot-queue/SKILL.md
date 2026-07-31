@@ -105,7 +105,7 @@ Ejemplos:
 Para detalles completos, leer `subcommands/analyze-history.md`.
 
 - Requiere MCP Atlassian para consultar tickets cerrados, leer changelog/comentarios y escribir labels.
-- Por defecto procesa máximo `20` tickets (`--limit N` cambia ese máximo).
+- Por defecto procesa máximo `25` tickets (`--limit N` cambia ese máximo y se procesa en lotes de 25).
 - Idempotencia vía labels en Jira: `groot-kb-analyzed` / `groot-kb-manual-review`.
 - `--force` re-analiza tickets con `groot-kb-analyzed` (no `groot-kb-manual-review`).
 - `--since YYYY-MM-DD` filtra por fecha de actualización.

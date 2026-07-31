@@ -106,7 +106,7 @@ Reglas resueltas íntegramente por texto Jira no disparan consultas. Si una regl
 5. Reutilizar resultado durante misma invocación. Una respuesta con superset de facts satisface pedidos posteriores del mismo sujeto.
 6. Pasar evidencia normalizada a `derive`, `discard` o generación de guía cuando fueron invocados desde otro flujo; no repetir consulta.
 
-En lotes, respetar `max_users_per_invocation` de config. Al alcanzar límite, no hacer nuevas consultas; tickets restantes que dependan de datos quedan manuales.
+En lotes, respetar `max_users_per_batch` de config dentro del lote activo. Al alcanzar límite, no hacer nuevas consultas en ese lote; tickets restantes que dependan de datos quedan manuales. El presupuesto se reinicia en el lote siguiente; nunca se interpreta el límite como ausencia de facts.
 
 ## Incompatibilidades
 

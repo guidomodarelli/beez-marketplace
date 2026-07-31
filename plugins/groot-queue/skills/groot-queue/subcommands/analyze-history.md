@@ -9,7 +9,7 @@ Analizar tickets cerrados (DERIVADO / DESCARTADO / RESUELTO) de la cola Groot (S
 
 ## Argumentos opcionales
 
-- `--limit N` (por defecto: 20) — máximo de tickets a procesar en esta corrida.
+- `--limit N` (por defecto: 25) — máximo de tickets a procesar en esta corrida. Valores mayores se procesan en lotes consecutivos de 25.
 - `--since YYYY-MM-DD` — analizar solo tickets cuya última actualización sea ≥ esa fecha.
 - `--force` — re-analizar tickets ya marcados con `groot-kb-analyzed`. Los marcados con `groot-kb-manual-review` siguen excluidos incluso con `--force` (requieren revisión manual explícita quitando la label).
   - Al explicar `--force` en modo ayuda, decir explícitamente: `no incluye` tickets con `groot-kb-manual-review`; siguen excluidos incluso con `--force`.
@@ -50,7 +50,7 @@ Al explicar la idempotencia en modo ayuda, mencionar explícitamente `labels IS 
 
 #### Modificaciones adicionales:
 - Si `--since YYYY-MM-DD`: agregar `AND updated >= "YYYY-MM-DD"` al JQL.
-- Siempre aplicar el `--limit` tomando los primeros N resultados.
+- Siempre aplicar el `--limit` tomando los primeros N resultados, congelar snapshot de keys en orden `updated DESC` y dividirlo en lotes consecutivos de hasta 25. No reconsultar ni reordenar snapshot entre lotes.
 
 #### Filtro `--only` (post-query)
 
@@ -70,13 +70,15 @@ Si no hay resultados: mostrar `ℹ️ No hay tickets cerrados pendientes de anal
 
 ---
 
-### 2. Para cada ticket (iteración interactiva — UNO POR UNO, sin batch)
+### 2. Para cada ticket (lotes de 25, análisis individual obligatorio)
 
-Leer y aplicar `$SKILL_DIR/knowledge/config/ticket-evidence.md`. Para reconstruir desenlaces usar solo changelog, comentarios contemporáneos, resolución u otra evidencia histórica autorizada; no consultar estado Kraken actual como prueba del pasado. Causalidad no demostrada produce `groot-kb-manual-review`.
+Leer y aplicar `$SKILL_DIR/knowledge/config/batch-processing.md` y `$SKILL_DIR/knowledge/config/ticket-evidence.md`. Para reconstruir desenlaces usar solo changelog, comentarios contemporáneos, resolución u otra evidencia histórica autorizada; no consultar estado Kraken actual como prueba del pasado. Causalidad no demostrada produce `groot-kb-manual-review`.
 
-⚠️ **REGLA CRÍTICA — ANÁLISIS INDIVIDUAL OBLIGATORIO**: Cada ticket DEBE analizarse completamente de forma individual. **PROHIBIDO** agrupar, resumir o "batchear" múltiples tickets en un solo paso. Aunque varios tickets parezcan similares, cada uno puede tener matices que lo diferencien (equipo destino distinto, señal única, verificación previa diferente). El volumen no es un criterio para saltear — un ticket único puede materializar una regla válida. Si un ticket no matchea ningún patrón existente con ≥3 tickets previos, IGUALMENTE debe analizarse individualmente y presentarse al usuario con su propuesta. El usuario decide si materializar; el agente no descarta por volumen.
+Procesar snapshot en lotes consecutivos de hasta 25: anunciar `Lote X/Y`, obtener y etiquetar resultados de ese lote antes de continuar. El lote controla volumen, fetch y progreso; **no** autoriza análisis combinado.
 
-Mostrar contador de progreso antes de cada ticket: `[N/M] Analizando SSHP-XXXXXXX…`
+⚠️ **REGLA CRÍTICA — ANÁLISIS INDIVIDUAL OBLIGATORIO**: Dentro de cada lote, cada ticket DEBE analizarse completamente de forma individual. **PROHIBIDO** agrupar, resumir o tratar múltiples tickets como una sola propuesta. Aunque varios tickets parezcan similares, cada uno puede tener matices que lo diferencien (equipo destino distinto, señal única, verificación previa diferente). El volumen no es un criterio para saltear — un ticket único puede materializar una regla válida. Si un ticket no matchea ningún patrón existente con ≥3 tickets previos, IGUALMENTE debe analizarse individualmente y presentarse al usuario con su propuesta. El usuario decide si materializar; el agente no descarta por volumen.
+
+Mostrar contador de progreso antes de cada ticket: `[Lote X/Y · N/M] Analizando SSHP-XXXXXXX…`
 
 #### 2a. Obtener datos del ticket
 
@@ -194,6 +196,8 @@ Usar `editJiraIssue` (MCP Atlassian) para agregar la label al ticket. **Merge de
 Si falla la escritura por permisos → advertir al usuario con el ticket afectado, continuar sin bloquear.
 
 ---
+
+Al terminar cada lote, mostrar progreso local con tickets consultados, materializados, descartados, saltados y manuales. Después de agotar todos los lotes, mostrar resumen global.
 
 ### 3. Resumen final
 

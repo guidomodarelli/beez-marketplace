@@ -263,17 +263,17 @@
     },
     {
       "id": "alerts-sla-fetch-covers-all-keys",
-      "description": "alerts explains that SLA fields must be fetched in exact key batches so tickets beyond the first 50 are not missed",
-      "input": "Documentation question: in /groot-queue alerts, how must customfield_12400 be fetched so tickets beyond the first 50 assigned issues are not silently missed? Do not execute Jira commands.",
+      "description": "alerts explains that SLA fields must be fetched in exact key batches of 25 so tickets are not missed",
+      "input": "/groot-queue alerts --help Explicá cómo se obtiene customfield_12400 en lotes de 25 sin perder tickets. No ejecutes Jira ni Slack.",
       "assertions": [
         {
           "type": "contains_any",
           "values": [
             "issuekey in",
             "lote de keys",
-            "lotes de hasta 50",
+            "lotes de hasta 25",
             "batch por lote",
-            "maxResults: 50",
+            "maxResults: 25",
             "no `limit`",
             "no limit",
             "todos los lotes",
@@ -329,6 +329,315 @@
             "más viejos",
             "created DESC",
             "se pierden"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "assign-unassigned-paginates-complete-queue",
+      "description": "assign-unassigned must paginate before filtering unassigned tickets so no later-page ticket is skipped",
+      "input": "/groot-queue assign-unassigned --help. Explicá qué flag usa búsqueda ACLI inicial para recuperar todos tickets abiertos soportados antes de filtrar assignee vacío. No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "paginate"
+        },
+        {
+          "type": "contains",
+          "value": "assignee"
+        }
+      ]
+    },
+    {
+      "id": "shared-open-queue-search-paginates",
+      "description": "shared open-queue searches for list, classify, and stats must not rely on ACLI first-page results",
+      "input": "Documentation question: how should /groot-queue list, classify, and stats query the complete open queue through classification.md? Do not execute Jira commands.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "paginate"
+        },
+        {
+          "type": "contains",
+          "value": "classification.md"
+        },
+        {
+          "type": "contains",
+          "value": "created DESC"
+        }
+      ]
+    },
+    {
+      "id": "backfill-guides-paginates-eligible-tickets",
+      "description": "backfill-guides must paginate every eligible assigned ticket without a posted guide",
+      "input": "/groot-queue backfill-guides --help. Explicá cómo evita omitir tickets abiertos asignados sin groot-guide-posted cuando ACLI devuelve varias páginas. No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "paginate"
+        },
+        {
+          "type": "contains",
+          "value": "groot-guide-posted"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "todos",
+            "conjunto completo",
+            "primera página",
+            "pagin"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-sample-preserves-banner-latency",
+      "description": "start shows a first-page sample instead of blocking the banner for exhaustive queue counts",
+      "input": "/groot-queue start --help Explicá cómo muestra actividad de cola sin bloquear banner cuando ACLI tiene varias páginas. No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "primera página"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "best-effort",
+            "latencia",
+            "no bloquear",
+            "sin bloquear",
+            "no bloqueante",
+            "no demora"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "stats",
+            "conteos completos",
+            "búsqueda"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "assign-unassigned-batches-twenty-six-candidates",
+      "description": "assign-unassigned discovers every page once and processes 26 unassigned tickets as lots of 25 and 1",
+      "input": "/groot-queue assign-unassigned --help Explicá cómo procesa 26 tickets sin assignee cuando el tamaño de lote es 25. No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "25"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Lote",
+            "lote",
+            "26"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "assign-unassigned-keeps-global-shuffle-across-batches",
+      "description": "assign-unassigned creates one team shuffle for the full run and never reshuffles between lots",
+      "input": "/groot-queue assign-unassigned --help ¿Cómo mantiene reparto equitativo si hay 51 tickets y varios lotes? No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "una única vez",
+            "un solo shuffle",
+            "mismo orden"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no se rebaraja",
+            "misma cola",
+            "mismo orden"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "batch-rejection-stops-later-lots",
+      "description": "interactive batch rejection ends the run before any later lot is analyzed or mutated",
+      "input": "/groot-queue assign-unassigned --help ¿Qué pasa si se rechaza confirmación del lote 1 de 3? No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "terminar",
+            "termina",
+            "detener",
+            "no procesar"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "lotes posteriores",
+            "lote siguiente",
+            "otros lotes",
+            "lotes 2 y 3"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "backfill-guides-batches-and-confirms-before-write",
+      "description": "backfill-guides processes complete discovery in lots of 25 and confirms each lot before notes or labels",
+      "input": "/groot-queue backfill-guides --help Explicá cómo procesa 51 tickets elegibles sin guías usando lotes de 25. No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "25"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "confirmación",
+            "confirmar",
+            "sí / no"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Lote",
+            "lote",
+            "51"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "list-batches-complete-queue-analysis",
+      "description": "list processes a complete paginated snapshot in lots of 25 and renders one global table",
+      "input": "/groot-queue list --help Explicá cómo lista 51 tickets abiertos usando lotes de 25. No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "25"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Lote",
+            "lote",
+            "51"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "tabla global",
+            "todos los lotes",
+            "tabla markdown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "classify-confirms-actions-per-batch",
+      "description": "classify analyzes in lots of 25 and confirms only actions from the active lot",
+      "input": "/groot-queue classify --help Explicá cómo procesa 26 tickets si el primer lote contiene acciones de triage. No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "25"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "confirmación",
+            "confirmar",
+            "sí / no"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "lote activo",
+            "Lote",
+            "lote"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stats-aggregates-batches-globally",
+      "description": "stats analyzes complete queue in lots of 25 and aggregates counters after every lot",
+      "input": "/groot-queue stats --help Explicá cómo calcula estadísticas para 51 tickets abiertos usando lotes de 25. No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "25"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "globales",
+            "global",
+            "acumular"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "alerts-batches-sla-and-consolidates-dms",
+      "description": "alerts hydrates SLA and triages keys in lots of 25 before one consolidated DM per assignee",
+      "input": "/groot-queue alerts --help Explicá cómo procesa 51 tickets SLA usando lotes de 25 y envía mensajes Slack. No ejecutes Jira ni Slack.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "25"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "DM",
+            "Slack",
+            "mensaje"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "todos los lotes",
+            "consolid",
+            "global"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "analyze-history-batches-fetches-but-analyzes-individually",
+      "description": "analyze-history defaults to 25 and splits higher limits without combining individual ticket analysis",
+      "input": "/groot-queue analyze-history --help Explicá cómo procesa 51 tickets cerrados con lotes de 25 sin combinar análisis individuales. No ejecutes Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "25"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "individual",
+            "uno por uno",
+            "análisis individual"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "51",
+            "Lote",
+            "lote"
           ]
         }
       ]

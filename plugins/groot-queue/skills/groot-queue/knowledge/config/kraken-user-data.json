@@ -12,7 +12,7 @@
     "max_response_bytes": 1048576
   },
   "limits": {
-    "max_users_per_invocation": 20,
+    "max_users_per_batch": 25,
     "max_roles_per_check": 20,
     "max_identifier_length": 128,
     "max_pages_per_fact": 10,

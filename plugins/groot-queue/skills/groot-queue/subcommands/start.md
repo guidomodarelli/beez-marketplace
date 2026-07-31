@@ -36,18 +36,18 @@ Ejecutar **en paralelo** (para minimizar latencia):
    - **MCP Slack**: Verificar si existe MCP Slack configurado (`claude mcp list 2>/dev/null | grep -i slack`). Si existe → `✅ Slack MCP`. Si no → `❌ Slack MCP`.
    - Si algún check falla por error de permisos o tool no disponible, marcar como `⚠️ <nombre> (no verificable)`.
 
-4. **Conteo express de tickets** (best-effort — no bloquear el banner por esto): dejar que el JQL calcule los conteos en el servidor en vez de parsear fechas client-side. Usar la misma definición de cola abierta compartida (`Incident` + `Service Request`). Ejecutar en paralelo:
+4. **Muestra express de tickets** (best-effort — no bloquear el banner por esto): usar una única página por query para mantener latencia mínima. Estos valores son una muestra de la primera página, no conteos exhaustivos. Para conteos completos usar `stats` o una búsqueda que aplique el contrato de paginación de `classification.md`. Ejecutar en paralelo:
    ```bash
-   # Total abiertos
+   # Abiertos en primera página
    acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type IN (Incident, \"Service Request\") AND resolution = Unresolved" --output json 2>/dev/null
-   # Sin asignar
+   # Sin asignar en primera página
    acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type IN (Incident, \"Service Request\") AND resolution = Unresolved AND assignee IS EMPTY" --output json 2>/dev/null
-   # En riesgo SLA (alta prioridad + más de 24h de antigüedad, calculado por Jira)
+   # En riesgo SLA en primera página (alta prioridad + más de 24h de antigüedad, calculado por Jira)
    acli jira workitem search --jql "project = SSHP AND Squad = Groot AND type IN (Incident, \"Service Request\") AND resolution = Unresolved AND priority IN (Highest, High) AND created <= -24h" --output json 2>/dev/null
    ```
-   Tomar el conteo de resultados de cada query (`Total abiertos`, `Sin asignar`, `En riesgo SLA`).
+   Tomar el conteo de resultados de cada query como muestra (`Abiertos`, `Sin asignar`, `En riesgo SLA`).
 
-   Si ACLI falla o no está disponible, omitir esta sección completamente (no mostrar conteo con errores). No reintentar ni esperar: el banner debe salir rápido.
+   Si ACLI falla o no está disponible, omitir esta sección completamente (no mostrar muestra con errores). No reintentar ni esperar: el banner debe salir rápido.
 
 ### Paso 2: Mostrar el output
 
@@ -81,7 +81,7 @@ Renderizar el siguiente bloque, reemplazando los placeholders:
 Si hay conteo de tickets disponible, agregar inmediatamente después:
 
 ```
- ┌─ Cola ahora ─────────────────────────────────────────────────────┐
+ ┌─ Muestra de cola (primera página) ───────────────────────────────┐
  │ 📬 {{TOTAL}} | 👤 {{UNASSIGNED}} | 🔥 {{SLA_RISK}} en riesgo SLA │
  └──────────────────────────────────────────────────────────────────┘
 ```
