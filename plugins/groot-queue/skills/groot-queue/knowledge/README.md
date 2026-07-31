@@ -85,7 +85,9 @@ la forma:
 
 Campos: `ts` (ISO8601 UTC), `action` (`derive`/`discard`), `key`, `rule`,
 `source` (`auto-assign`/`manual`), `destination` (solo derive), `result`
-(`ok`/`partial-error`/`failed`/`manual`).
+(`ok`/`partial-error`/`failed`/`manual`), `watcher_cleanup` (estado seguro) y conteos agregados opcionales `watchers_before_count` / `watchers_after_count`.
+
+Nunca registrar account IDs, emails ni listas de watchers.
 
 Ejemplos de consulta para auditoría:
 

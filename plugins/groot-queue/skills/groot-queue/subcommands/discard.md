@@ -61,7 +61,7 @@ Aplicar algoritmo first-match **completo** en orden definido por `triage-rules.m
 >
 > ⚠️ **R-DESC-12 no se descarta automáticamente**: el copy validado todavía está pendiente de confirmación. Si un ticket matchea R-DESC-12, marcarlo como `REVISAR_MANUAL` y no postear comentario ni cerrar el ticket desde este subcomando.
 
-### 3. Verificar estado del ticket y preparar transición
+### 3. Verificar estado, assignee y preparar transición
 
 La transición de descarte en SSHP es **"Descartar" (id: `101`)**. No es necesario descubrirla cada vez.
 
@@ -75,6 +75,12 @@ Para cada ticket, verificar su estado actual. **Los nombres de estado pueden apa
 > ⚠️ **Nombres bilingües**: Jira puede devolver el estado en inglés o español indistintamente. Comparar siempre case-insensitive y considerar ambas variantes: "Waiting for support" = "Esperando soporte", "In Progress" = "En progreso", "Resolved" = "Resuelto", etc.
 
 Guardar `CLOSE_TRANSITION_ID = "101"` y `CLOSE_TRANSITION_NAME = "Descartar"` para usar en todos los tickets.
+
+Antes de la primera transición, congelar `discardAssignee`:
+- Si ticket ya tiene assignee, conservar su email como `discardAssignee`.
+- Si ticket no tiene assignee y flujo es directo, resolver email de `currentUser()` con `acli jira auth status` y usarlo como `discardAssignee`.
+- Si `assign-unassigned` delega descarte, recibir email preseleccionado del siguiente miembro `$QUEUE` como `discardAssignee`; no reconstruir ni rebarajar TEAM.
+- Si no se puede resolver `discardAssignee`, no descartar ticket: registrar `✗ Asignación previa` y continuar.
 
 ### 4. Mostrar plan consolidado
 
@@ -114,7 +120,19 @@ Para cada ticket marcado para descartar automáticamente. Omitir los tickets `RE
 **5a. `cloudId`:**
 Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la pre-condición. No resolver de nuevo; el valor ya está disponible.
 
-**5b. Postear comentario público** con MCP Atlassian:
+**5b. Transicionar, asignar y verificar antes de descartar**:
+
+1. Si ticket está en `Waiting for support` / `Waiting for customer`, transicionar a `En progreso` (id `21`) en llamada separada.
+2. En una llamada ACLI separada, asignar `discardAssignee`:
+   ```bash
+   acli jira workitem assign --key SSHP-XXXXXX --assignee <discardAssignee> --yes
+   ```
+3. Verificar assignee mediante `acli jira workitem view`. Si no coincide, reintentar assign una sola vez. Si sigue sin coincidir, registrar `✗ Asignación previa` y no descartar.
+4. Si ticket ya estaba `In Progress`, asignar y verificar de la misma forma antes de continuar.
+
+El assignee final recibe novedades de comentarios posteriores al descarte. Esta asignación conserva assignee existente en descarte directo o usa `currentUser()` cuando no había uno; desde `assign-unassigned` usa el miembro preseleccionado del TEAM.
+
+**5c. Postear comentario público** con MCP Atlassian:
 
 - `cloudId`: valor validado en la pre-condición
 - `issueIdOrKey`: `"SSHP-XXXXXX"`
@@ -126,7 +144,7 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 
 - Si falla: registrar `✗ Comentario` en el resultado de ese ticket, **no continuar con la transición de ese ticket**, pasar al siguiente.
 
-**5c. Transicionar a "Descartar"** con MCP Atlassian en una llamada **separada**, después de que el comentario retorne exitosamente:
+**5d. Transicionar a "Descartar"** con MCP Atlassian en una llamada **separada**, después de que el comentario retorne exitosamente:
 
 > ⚠️ **IMPORTANTE — Payload JSM "Descartar"**: La transición "Descartar" (id: `101`) en SSHP es una pantalla JSM que requiere **obligatoriamente** tanto el campo `customfield_19296` (Reason for rejection) como un comentario público en `update.comment` con la propiedad `sd.public.comment`. Sin ambos, el validador rechaza con "Por favor, ingresa un mensaje informando por qué se descarta..."
 
@@ -167,13 +185,20 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 
 - Si falla: registrar `✗ Transición` en el resultado. **No abortar** — el comentario ya fue posteado en 5b. Continuar al siguiente ticket.
 
-**5d. Escribir labels en Jira** (después de transición exitosa):
+**5e. Revalidar assignee y reconciliar watcher del ejecutor** (después de descarte exitoso):
+
+1. Releer ticket y verificar que `discardAssignee` siga como assignee. Si transición de descarte lo pisó, reintentar assign una vez y verificar.
+2. Aplicar `$SKILL_DIR/knowledge/config/shared-procedures.md` § Reconciliar watcher del ejecutor.
+3. Si assignee es actor (`currentUser()`), conservar watcher actor. Si es otra persona, remover exclusivamente watcher actor.
+4. Fallo de assignee final o watcher cleanup deja `partial-error`, no revierte descarte ni remueve otros watchers.
+
+**5f. Escribir labels en Jira** (después de transición exitosa):
 
 Aplicar procedimiento de `$SKILL_DIR/knowledge/config/shared-procedures.md` § Escribir labels en Jira. Labels específicas de descarte:
 1. `groot-descartado` — label de acción (común a todos los descartes)
 2. `groot-r-desc-XX` — label de regla aplicada (e.g. `groot-r-desc-02`, `groot-r-desc-04`)
 
-**5e. Evaluar novedad y registrar en knowledge base** (Write tool):
+**5g. Evaluar novedad y registrar en knowledge base** (Write tool):
 
 Aplicar procedimiento de `$SKILL_DIR/knowledge/config/shared-procedures.md` § Evaluar novedad y registrar en knowledge base.
 
@@ -204,12 +229,14 @@ Ticket cerrado como **Won't Do** aplicando regla **R-DESC-XX** — <nombre de la
 <señales concretas y sanitizadas de la regla que matchearon en este ticket>
 ```
 
-**5f. Registrar en el log de auditoría**:
+**5h. Registrar en el log de auditoría**:
 
 Aplicar procedimiento de `$SKILL_DIR/knowledge/config/shared-procedures.md` § Registrar en el log de auditoría.
 
 Campos específicos para descarte:
 - `action`: `"discard"`
+- `watcher_cleanup`: estado seguro de reconciliación y conteos agregados opcionales; nunca identidades.
+- Si descarte fue exitoso pero assignee final o watcher cleanup falló, usar `result: "partial-error"`.
 - Ejemplo:
   ```bash
   printf '%s\n' '{"ts":"<ISO8601 UTC>","action":"discard","key":"<KEY>","rule":"R-DESC-XX","source":"<source>","result":"<result>"}' >> "$SKILL_DIR/knowledge/audit-log-$(date -u +%Y).jsonl"
@@ -221,13 +248,13 @@ Campos específicos para descarte:
 ```
 Resultados de descarte (N tickets procesados):
 
-| Key           | Regla      | Comentario | Transición | Labels | KB  |
-|---------------|------------|------------|------------|--------|-----|
-| SSHP-XXXXXX   | R-DESC-02  | ✓          | ✓          | ✓      | — Sin conocimiento nuevo |
-| SSHP-YYYYYY   | R-DESC-04  | ✓          | ✓          | ✓      | ✓   |
-| SSHP-ZZZZZZ   | —          | NO_DESCARTA| —          | —      | —   |
-| SSHP-WWWWWW   | —          | REVISAR    | Manual     | —      | —   |
-| SSHP-VVVVVV   | R-DESC-01  | ✓          | ✗ Error    | —      | —   |
+| Key           | Regla      | Assignee final | Comentario | Transición | Watcher | Labels | KB  |
+|---------------|------------|----------------|------------|------------|---------|--------|-----|
+| SSHP-XXXXXX   | R-DESC-02  | ✓ verificado   | ✓          | ✓          | ✓ removido | ✓ | — Sin conocimiento nuevo |
+| SSHP-YYYYYY   | R-DESC-04  | ✓ verificado   | ✓          | ✓          | — actor assignee | ✓ | ✓ |
+| SSHP-ZZZZZZ   | —          | —              | NO_DESCARTA| —          | — | — | — |
+| SSHP-WWWWWW   | —          | —              | REVISAR    | Manual     | — | — | — |
+| SSHP-VVVVVV   | R-DESC-01  | ✗ Error        | ✓          | ✗ Error    | — | — | — |
 
 Resumen: N descartados ✓  |  M sin acción  |  K revisión manual  |  E con errores parciales
 ```

@@ -152,25 +152,27 @@ o para descarte:
 
 Mezclar derivaciones y descartes en el mismo loop ordenado por key (no separar en dos rondas).
 
-5. **Fase de derive/discard** — ejecutar **primero**, antes de cualquier asignación:
+5. **Fase de derive/discard** — ejecutar **primero**, antes de cualquier asignación `ASIGNAR`:
+
+   Si lote activo tiene descartes aprobados, inicializar shuffle global y `$QUEUE` antes de procesarlos, si todavía no existen. Los descartes consumen turno sólo después de `discardAssignee` verificado. Derivaciones no consumen turno.
 
    Solo se procesan los tickets aprobados del lote activo en el paso 4 (⚡ aprobados en lote + ❓ aprobados individualmente o por `q`). Los tickets ❓ rechazados con `n` **no generan ninguna escritura en Jira** — no se postea comentario, no se transiciona estado, no se asigna responsable; quedan intactos en su estado original. Se registran como `"omitido"` únicamente en la tabla final local.
 
    Antes de cada derive/discard, revalidar ticket contra estado actual. Si ya fue asignado, resuelto, derivado, descartado o cambió de forma que invalida veredicto, registrar `SKIP_CAMBIO_CONCURRENTE`, no escribir y continuar con siguiente ticket del lote.
 
-   **Derivar:** Invocar el flujo de `$SKILL_DIR/subcommands/derive.md` para los tickets `DERIVAR-AC` y `DERIVAR` aprobados (la confirmación ya fue obtenida en el paso 4 — omitir la confirmación interna de `derive.md`). Al registrar en el log de auditoría:
+   **Derivar:** Invocar el flujo de `$SKILL_DIR/subcommands/derive.md` para los tickets `DERIVAR-AC` y `DERIVAR` aprobados (la confirmación ya fue obtenida en el paso 4 — omitir la confirmación interna de `derive.md`). El subflujo reconcilia watcher del ejecutor; no duplicar esa operación aquí. Al registrar en el log de auditoría:
    - `DERIVAR-AC`: usar `source = "auto-assign-autoconfianza"`.
    - `DERIVAR`: usar `source = "auto-assign"`.
    - `GROOT_QUEUE_AUTORUN=true`: usar `source = "auto-run"` para todos.
 
-   **Descartar:** Invocar el flujo de `$SKILL_DIR/subcommands/discard.md` para los tickets `DESCARTAR-AC` y `DESCARTAR` aprobados (la confirmación ya fue obtenida en el paso 4 — omitir la confirmación interna de `discard.md`). Al registrar en el log de auditoría:
+   **Descartar:** Para cada ticket `DESCARTAR-AC` o `DESCARTAR` aprobado del lote activo, tomar el siguiente email de `$QUEUE` como `discardAssignee`, transicionar/asignar/verificar con el mismo protocolo separado de fase 6 y consumir turno sólo después de assignee verificado. Luego invocar `$SKILL_DIR/subcommands/discard.md` pasando `discardAssignee` como contexto interno (la confirmación ya fue obtenida en el paso 4 — omitir confirmación interna). El subflujo preserva ese assignee después de cerrar y aplica watcher cleanup: remueve ejecutor sólo si no es assignee final. Al registrar en el log de auditoría:
    - `DESCARTAR-AC`: usar `source = "auto-assign-autoconfianza"`. Usar el **comentario universal** de `triage-rules.md` (con la variante de R-DESC-14 si corresponde) en lugar del comentario por regla.
    - `DESCARTAR`: usar `source = "auto-assign"`. Usar el comentario sugerido de la regla.
    - `GROOT_QUEUE_AUTORUN=true`: usar `source = "auto-run"` para todos.
 
    Los tickets `REVISAR_MANUAL` y los ❓ omitidos **no se tocan** en este paso.
 
-6. **Fase de asignación** — solo para los tickets clasificados como `ASIGNAR` en el paso 3. Los tickets derivados, descartados o de revisión manual **no participan del reparto**.
+6. **Fase de asignación** — para tickets clasificados como `ASIGNAR` en el paso 3. Los descartes aprobados ya consumieron su turno al verificar `discardAssignee` en fase 5; derivaciones y revisión manual no participan del reparto.
 
    **Antes del primer lote activo, barajar el TEAM una sola vez (shuffle aleatorio) y crear los archivos scratch.** El shuffle se ejecuta **una única vez por corrida**. Si `$ORDER` y `$QUEUE` ya existen desde un lote previo, reutilizarlos sin recrear ni rebarajar. Generar un orden aleatorio real con entropía del sistema (no inventar el orden a mano). En una sola llamada Bash, crear con `mktemp` el archivo de orden `$ORDER` (los emails del TEAM barajados, uno por línea) y copiarlo a la cola de trabajo `$QUEUE`, con este one-liner portable (macOS + Linux):
    ```bash
@@ -223,6 +225,7 @@ Mezclar derivaciones y descartes en el mismo loop ordenado por key (no separar e
       - Si `Assignee` == `<email>`: continuar al paso e.
 
    e. Si transición + asignación + verificación exitosos:
+      - Aplicar `$SKILL_DIR/knowledge/config/shared-procedures.md` § Reconciliar watcher del ejecutor. Si assignee final es `currentUser()`, conservar watcher actor; si es otro miembro TEAM, remover exclusivamente watcher actor. Fallo watcher deja resultado parcial pero no revierte asignación.
       - **Consumir el email**: eliminar la primera línea de `$QUEUE` en una llamada Bash:
         ```bash
         tail -n +2 "$QUEUE" > "$QUEUE.tmp" && mv "$QUEUE.tmp" "$QUEUE"
