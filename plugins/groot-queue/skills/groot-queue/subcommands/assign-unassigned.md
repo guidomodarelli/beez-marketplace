@@ -44,11 +44,21 @@ Aplicar **modo DEGRADAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/config/atla
    ```bash
    acli jira workitem search --paginate --jql "project = SSHP AND Squad = Groot AND type IN (Incident, \"Service Request\") AND resolution = Unresolved ORDER BY created DESC"
    ```
-2. Sobre la salida paginada completa, filtrar solo los que **no tienen assignee** (campo `assignee` vacío o null).
+2. Sobre la salida paginada completa, filtrar solo los que **no tienen assignee** (campo `assignee` vacío o null) y congelar sus keys como snapshot de la corrida.
 
 Si no hay tickets sin assignee, mostrar: "✅ No hay tickets sin assignee en la cola." y terminar.
 
-3. Leer `$SKILL_DIR/knowledge/config/ticket-evidence.md`, `$SKILL_DIR/knowledge/config/kraken-user-data.md`, `$SKILL_DIR/knowledge/config/labor-share-data.md`, `$SKILL_DIR/knowledge/rules/triage-rules.md` y `$SKILL_DIR/knowledge/teams/support-queues.md` (funciones de cada equipo para desambiguar ownership). Obtener el contenido de **todos** los tickets filtrados (en paralelo si es posible):
+2a. Leer y aplicar `$SKILL_DIR/knowledge/config/batch-processing.md`. Dividir el snapshot, sin volver a buscar ni reordenar keys, en lotes consecutivos de hasta 25 tickets. Anunciar `Lote X/Y` antes de procesar cada uno.
+
+2b. Para cada lote activo, pedir primero:
+```
+📦 Lote X/Y — N tickets candidatos
+¿Analizar y procesar este lote? (sí / no)
+```
+- **No**: terminar la corrida sin analizar, confirmar ni escribir sobre lotes posteriores.
+- **Sí**: continuar con los pasos 3 a 9 exclusivamente sobre el lote activo. `GROOT_QUEUE_AUTORUN=true` omite esta confirmación, pero no omite gates de evidencia, presupuestos ni revalidación.
+
+3. Leer `$SKILL_DIR/knowledge/config/batch-processing.md`, `$SKILL_DIR/knowledge/config/ticket-evidence.md`, `$SKILL_DIR/knowledge/config/kraken-user-data.md`, `$SKILL_DIR/knowledge/config/labor-share-data.md`, `$SKILL_DIR/knowledge/rules/triage-rules.md` y `$SKILL_DIR/knowledge/teams/support-queues.md` (funciones de cada equipo para desambiguar ownership). Obtener el contenido de los tickets del **lote activo** con concurrencia máxima de cuatro lecturas simultáneas:
    ```bash
    acli jira workitem view <KEY>
    ```
@@ -65,10 +75,10 @@ Si no hay tickets sin assignee, mostrar: "✅ No hay tickets sin assignee en la 
 
    Las verificaciones externas se resuelven según matrices de `kraken-user-data.md` y `labor-share-data.md`. Si falta sujeto o recurso inequívoco, se excede presupuesto, o una consulta necesaria queda parcial/indeterminada, clasificar como `REVISAR_MANUAL`; no interpretar fallo como ausencia, éxito, finalización ni retorno. Excluir ese ticket de auto-derive, auto-discard y asignación automática basada en condición no verificada, incluso con `GROOT_QUEUE_AUTORUN=true`. Una regla no marcada ⚡ conserva confianza estándar aunque facts estén completos.
 
-4. Mostrar el plan consolidado y ejecutar confirmaciones por nivel:
+4. Mostrar el plan del lote activo y ejecutar confirmaciones por nivel. Acumular resultados para tabla global final; no mutar tickets de otros lotes:
 
 ```
-📋 Plan de corrida — N tickets sin assignee
+📋 Plan de lote X/Y — N tickets sin assignee
 ═══════════════════════════════════════════════════════════════
 
 🔀 Para derivar (M tickets):
@@ -104,7 +114,7 @@ Derivar: M  |  Descartar: K  |  Revisión manual: J  |  Asignar: P
 
 Omitir secciones vacías.
 
-Si `GROOT_QUEUE_AUTORUN=true`, omitir todas las confirmaciones y proceder directamente con todos los tickets. Si no, seguir el flujo de confirmación diferenciado:
+Si `GROOT_QUEUE_AUTORUN=true`, omitir confirmaciones del lote activo y proceder directamente con sus tickets. Si no, después de aprobar la confirmación de lote de 2b, seguir el flujo de confirmación diferenciado:
 
 **Confirmación ⚡ (lote):**
 
@@ -144,7 +154,9 @@ Mezclar derivaciones y descartes en el mismo loop ordenado por key (no separar e
 
 5. **Fase de derive/discard** — ejecutar **primero**, antes de cualquier asignación:
 
-   Solo se procesan los tickets aprobados en el paso 4 (⚡ aprobados en lote + ❓ aprobados individualmente o por `q`). Los tickets ❓ rechazados con `n` **no generan ninguna escritura en Jira** — no se postea comentario, no se transiciona estado, no se asigna responsable; quedan intactos en su estado original. Se registran como `"omitido"` únicamente en la tabla final local.
+   Solo se procesan los tickets aprobados del lote activo en el paso 4 (⚡ aprobados en lote + ❓ aprobados individualmente o por `q`). Los tickets ❓ rechazados con `n` **no generan ninguna escritura en Jira** — no se postea comentario, no se transiciona estado, no se asigna responsable; quedan intactos en su estado original. Se registran como `"omitido"` únicamente en la tabla final local.
+
+   Antes de cada derive/discard, revalidar ticket contra estado actual. Si ya fue asignado, resuelto, derivado, descartado o cambió de forma que invalida veredicto, registrar `SKIP_CAMBIO_CONCURRENTE`, no escribir y continuar con siguiente ticket del lote.
 
    **Derivar:** Invocar el flujo de `$SKILL_DIR/subcommands/derive.md` para los tickets `DERIVAR-AC` y `DERIVAR` aprobados (la confirmación ya fue obtenida en el paso 4 — omitir la confirmación interna de `derive.md`). Al registrar en el log de auditoría:
    - `DERIVAR-AC`: usar `source = "auto-assign-autoconfianza"`.
@@ -160,7 +172,7 @@ Mezclar derivaciones y descartes en el mismo loop ordenado por key (no separar e
 
 6. **Fase de asignación** — solo para los tickets clasificados como `ASIGNAR` en el paso 3. Los tickets derivados, descartados o de revisión manual **no participan del reparto**.
 
-   **Barajar el TEAM una sola vez (shuffle aleatorio) y crear los archivos scratch.** El shuffle se ejecuta **una única vez por corrida**. Generar un orden aleatorio real con entropía del sistema (no inventar el orden a mano). En una sola llamada Bash, crear con `mktemp` el archivo de orden `$ORDER` (los emails del TEAM barajados, uno por línea) y copiarlo a la cola de trabajo `$QUEUE`, con este one-liner portable (macOS + Linux):
+   **Antes del primer lote activo, barajar el TEAM una sola vez (shuffle aleatorio) y crear los archivos scratch.** El shuffle se ejecuta **una única vez por corrida**. Si `$ORDER` y `$QUEUE` ya existen desde un lote previo, reutilizarlos sin recrear ni rebarajar. Generar un orden aleatorio real con entropía del sistema (no inventar el orden a mano). En una sola llamada Bash, crear con `mktemp` el archivo de orden `$ORDER` (los emails del TEAM barajados, uno por línea) y copiarlo a la cola de trabajo `$QUEUE`, con este one-liner portable (macOS + Linux):
    ```bash
    ORDER=$(mktemp -t groot-assign-order.XXXXXX 2>/dev/null || mktemp)
    QUEUE=$(mktemp -t groot-assign-queue.XXXXXX 2>/dev/null || mktemp)
@@ -177,7 +189,9 @@ Mezclar derivaciones y descartes en el mismo loop ordenado por key (no separar e
 
    Para cada ticket `ASIGNAR`, tomar el **primer email** de `$QUEUE` (`head -n1 "$QUEUE"`) — reparto **sin repetición**. Cuando `$QUEUE` quede vacío (más tickets que miembros), **rellenarla con el mismo orden barajado** copiando `$ORDER` de nuevo (`cp "$ORDER" "$QUEUE"`) — **no se vuelve a barajar** — y seguir.
 
-   Para cada ticket `ASIGNAR`:
+   Para cada ticket `ASIGNAR` del lote activo:
+
+   0. Revalidar que ticket siga sin assignee y en estado elegible. Si cambió por otro actor, registrar `SKIP_CAMBIO_CONCURRENTE`, no consumir email y continuar.
 
    a. `assignee` = primer email de `$QUEUE`:
       ```bash
@@ -215,13 +229,13 @@ Mezclar derivaciones y descartes en el mismo loop ordenado por key (no separar e
         ```
         Así ese miembro no vuelve al pool hasta la próxima ronda.
 
-7. **Limpieza obligatoria.** Al terminar el loop —tanto si completó como si abortó por un error— eliminar los archivos scratch:
+7. **Limpieza obligatoria.** Después de terminar todos los lotes —o al abortar la corrida por un error o confirmación negativa— eliminar los archivos scratch:
    ```bash
    rm -f "$QUEUE" "$ORDER"
    ```
    No persiste estado entre corridas.
 
-8. Mostrar tabla de asignaciones:
+8. Al finalizar cada lote, mostrar progreso `Lote X/Y` con resultados locales. Al terminar todos los lotes, mostrar tabla global de asignaciones:
 
 ```
 Asignaciones realizadas (P tickets):
@@ -242,7 +256,7 @@ Si no hay tickets `ASIGNAR` (todos fueron derivados/descartados), mostrar: "✅ 
 
 ## 9. Postear notas internas para tickets asignados
 
-Ejecutar este paso solo para los tickets clasificados como `ASIGNAR` en el paso 3 que terminaron con estado **✓ OK** en el paso 8. Los tickets derivados, descartados o de revisión manual no reciben nota interna.
+Ejecutar este paso al cierre de cada lote, solo para tickets del lote clasificados como `ASIGNAR` en el paso 3 que terminaron con estado **✓ OK** en el paso 8. Antes de postear, revalidar que ticket siga asignado al responsable esperado, abierto y sin `groot-guide-posted` ni slug. Los tickets derivados, descartados, de revisión manual o con cambio concurrente no reciben nota interna.
 
 **Procedimiento por ticket elegible:**
 

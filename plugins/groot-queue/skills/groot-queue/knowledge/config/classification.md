@@ -12,7 +12,7 @@ Para listar todos los tickets abiertos (Incidents y Service Requests):
 acli jira workitem search --paginate --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved ORDER BY created DESC"
 ```
 
-> ⚠️ **Paginación obligatoria para conjuntos completos**: `acli jira workitem search` sin `--paginate` devuelve solo la primera página (~30 resultados). Toda búsqueda que alimente listados completos, clasificación, estadísticas, conteos o mutaciones por lote debe incluir `--paginate`; el orden `created DESC` deja los tickets más viejos fuera del resultado truncado. Consultas por key única o límites intencionales pueden omitirlo solo si documentan que no requieren exhaustividad.
+> ⚠️ **Paginación obligatoria para conjuntos completos**: `acli jira workitem search` sin `--paginate` devuelve solo la primera página (~30 resultados). Toda búsqueda que alimente listados completos, clasificación, estadísticas, conteos exhaustivos o mutaciones por lote debe incluir `--paginate`; el orden `created DESC` deja los tickets más viejos fuera del resultado truncado. Consultas por key única o límites intencionales pueden omitirlo solo si documentan que no requieren exhaustividad.
 
 Para listar solo los tickets asignados a un LDAP específico (usado por `assignee=<ldap>`, `assignee=me` y `@me`):
 

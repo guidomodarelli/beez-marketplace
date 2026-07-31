@@ -45,7 +45,7 @@ Si existen cero sujetos, varios sujetos sin relación clara con síntomas o look
 - marcar verificación `indeterminado`;
 - usar `REVISAR_MANUAL` cuando dato cambie veredicto o diagnóstico.
 
-En lotes, respetar presupuesto configurado. Al agotarlo, casos dependientes de facts quedan manuales; no se degradan a ausencia.
+En lotes, respetar presupuesto configurado para el lote activo. Al agotarlo, casos dependientes de facts quedan manuales; no se degradan a ausencia. Un lote posterior reinicia sólo los presupuestos configurados por lote; no reutiliza evidencia remota de una invocación anterior.
 
 ## Temporalidad
 

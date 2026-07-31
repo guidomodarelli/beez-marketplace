@@ -392,29 +392,123 @@
       ]
     },
     {
-      "id": "start-counts-paginate-complete-results",
-      "description": "start express counts must paginate to avoid reporting partial queue totals",
-      "input": "/groot-queue start --help Explicá cómo calcula Total abiertos, Sin asignar y En riesgo SLA sin subcontar una cola con varias páginas ACLI. No ejecutes comandos Jira.",
+      "id": "start-sample-preserves-banner-latency",
+      "description": "start shows a first-page sample instead of blocking the banner for exhaustive queue counts",
+      "input": "/groot-queue start --help Explicá cómo muestra actividad de cola sin bloquear banner cuando ACLI tiene varias páginas. No ejecutes comandos Jira.",
       "assertions": [
         {
           "type": "contains",
-          "value": "paginate"
+          "value": "primera página"
         },
         {
           "type": "contains_any",
           "values": [
-            "Total abiertos",
-            "Sin asignar",
-            "En riesgo SLA"
+            "best-effort",
+            "latencia",
+            "no bloquear",
+            "sin bloquear"
           ]
         },
         {
           "type": "contains_any",
           "values": [
-            "primera página",
-            "conjunto completo",
-            "subconteo",
-            "pagin"
+            "stats",
+            "conteos completos",
+            "búsqueda"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "assign-unassigned-batches-twenty-six-candidates",
+      "description": "assign-unassigned discovers every page once and processes 26 unassigned tickets as lots of 25 and 1",
+      "input": "/groot-queue assign-unassigned --help Explicá cómo procesa 26 tickets sin assignee cuando el tamaño de lote es 25. No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "25"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Lote",
+            "lote",
+            "26"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "assign-unassigned-keeps-global-shuffle-across-batches",
+      "description": "assign-unassigned creates one team shuffle for the full run and never reshuffles between lots",
+      "input": "/groot-queue assign-unassigned --help ¿Cómo mantiene reparto equitativo si hay 51 tickets y varios lotes? No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "una única vez",
+            "un solo shuffle",
+            "mismo orden"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no se rebaraja",
+            "misma cola",
+            "mismo orden"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "batch-rejection-stops-later-lots",
+      "description": "interactive batch rejection ends the run before any later lot is analyzed or mutated",
+      "input": "/groot-queue assign-unassigned --help ¿Qué pasa si se rechaza confirmación del lote 1 de 3? No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "terminar",
+            "termina",
+            "detener",
+            "no procesar"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "lotes posteriores",
+            "lote siguiente",
+            "otros lotes",
+            "lotes 2 y 3"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "backfill-guides-batches-and-confirms-before-write",
+      "description": "backfill-guides processes complete discovery in lots of 25 and confirms each lot before notes or labels",
+      "input": "/groot-queue backfill-guides --help Explicá cómo procesa 51 tickets elegibles sin guías usando lotes de 25. No ejecutes comandos Jira.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "25"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "confirmación",
+            "confirmar",
+            "sí / no"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Lote",
+            "lote",
+            "51"
           ]
         }
       ]
