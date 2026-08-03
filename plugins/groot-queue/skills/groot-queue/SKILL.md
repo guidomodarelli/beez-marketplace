@@ -54,7 +54,7 @@ Si el token resuelto no corresponde a un subcomando disponible, o si no hay toke
 
 ### Paso 2 — Resolver provider y aplicar el entrypoint
 
-Identificar el provider activo como `claude`, `codex` o `copilot`. Usar `GROOT_QUEUE_ACTIVE_PROVIDER` cuando el launcher lo haya definido con uno de esos valores; en otro caso usar el provider que ejecuta esta skill. Usar `auto` solamente cuando el contexto no permita distinguirlo.
+Identificar el provider activo como `claude` o `codex`. Usar `GROOT_QUEUE_ACTIVE_PROVIDER` cuando el launcher lo haya definido con uno de esos valores; en otro caso usar el provider que ejecuta esta skill. Usar `auto` solamente cuando el contexto no permita distinguirlo.
 
 Antes de leer el archivo del subcomando, leer y aplicar `$SKILL_DIR/knowledge/config/command-entrypoint.md` con el subcomando canónico resuelto, los tokens completos de la invocación y el provider. Si el entrypoint deshabilita la ejecución, detenerse.
 

@@ -195,12 +195,13 @@ STUB
   assert_failure 10 FURY_MCP_CLI_RESPONSE_INVALID
 }
 
-@test "Copilot inventory is unsupported and skips external calls" {
-  run_checker copilot success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+@test "removed provider is rejected before external calls" {
+  local removed_provider="co""pilot"
+  run_checker "$removed_provider" success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
 
-  assert_failure 2 PROVIDER_INVENTORY_UNSUPPORTED
-  assert_empty_file "$PROVIDER_LOG" "Copilot inventory must not be inferred from CLI execution"
-  assert_empty_file "$CURL_LOG" "unsupported Copilot must short-circuit before Grid HTTP probes"
+  assert_failure 2 INVALID_PROVIDER
+  assert_empty_file "$PROVIDER_LOG" "invalid provider must not invoke a provider CLI"
+  assert_empty_file "$CURL_LOG" "invalid provider must short-circuit before Grid HTTP probes"
 }
 
 @test "identity 401 maps to exit 22" {

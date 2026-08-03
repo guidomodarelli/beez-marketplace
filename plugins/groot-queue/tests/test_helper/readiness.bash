@@ -272,13 +272,6 @@ printf 'unexpected codex invocation: %s\n' "$*" >&2
 exit 64
 STUB
 
-cat > "$FAKE_BIN/copilot" <<'STUB'
-#!/bin/bash
-set -euo pipefail
-printf 'copilot %s\n' "$*" >> "$PROVIDER_LOG"
-exit 0
-STUB
-
 cat > "$FAKE_BIN/curl" <<'STUB'
 #!/bin/bash
 set -euo pipefail
@@ -363,7 +356,7 @@ printf '%s' "$body" > "$output_file"
 printf '%s' "$status"
 STUB
 
-chmod 700 "$FAKE_BIN/claude" "$FAKE_BIN/codex" "$FAKE_BIN/copilot" "$FAKE_BIN/curl"
+chmod 700 "$FAKE_BIN/claude" "$FAKE_BIN/codex" "$FAKE_BIN/curl"
 }
 
 readiness_fail() {

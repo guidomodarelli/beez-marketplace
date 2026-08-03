@@ -8,7 +8,7 @@ Recibir conceptualmente:
 
 - el subcomando canónico ya resuelto;
 - los argumentos completos de la invocación, conservando sus tokens;
-- el provider resuelto por el caller: `claude`, `codex`, `copilot` o `auto`.
+- el provider resuelto por el caller: `claude`, `codex` o `auto`.
 
 Usar como `$SKILL_DIR` el directorio del skill desde el que se leyó este contrato. El dispatcher debe resolver el provider y los aliases antes de aplicarlo; los wrappers Claude deben pasar su subcomando canónico y el provider `claude`.
 

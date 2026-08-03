@@ -198,16 +198,6 @@ fi
 printf 'codex child complete\n'
 STUB
 
-  cat > "$FAKE_BIN/copilot" <<'STUB'
-#!/bin/bash
-set -euo pipefail
-printf 'copilot child args=%s\n' "$*" >> "$CHILD_LOG"
-printf 'provider=%s\n' "${GROOT_QUEUE_ACTIVE_PROVIDER:-unset}" >> "$CHILD_LOG"
-printf 'readiness=%s\n' "${GROOT_QUEUE_READINESS_RESULT_FILE:-unset}" >> "$CHILD_LOG"
-printf 'legacy_preflight=%s\n' "${GROOT_QUEUE_GRID_PREFLIGHT_RESULT_FILE:-unset}" >> "$CHILD_LOG"
-printf 'copilot child complete\n'
-STUB
-
   cat > "$FAKE_BIN/curl" <<'STUB'
 #!/bin/bash
 set -euo pipefail
@@ -245,7 +235,7 @@ printf '%s' "$body" > "$output_file"
 printf '200'
 STUB
 
-  chmod 700 "$FAKE_BIN/claude" "$FAKE_BIN/codex" "$FAKE_BIN/copilot" "$FAKE_BIN/curl"
+  chmod 700 "$FAKE_BIN/claude" "$FAKE_BIN/codex" "$FAKE_BIN/curl"
 }
 
 reset_run_state() {

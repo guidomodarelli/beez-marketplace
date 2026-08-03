@@ -11,7 +11,6 @@ Guía canónica para instalar, configurar, diagnosticar, actualizar y desinstala
 |---|---|---|
 | Claude Code | Operacional y principal | Seguí esta guía de principio a fin. |
 | Codex | Operacional | Instalá con los comandos del [anexo Codex](#anexo-codex) y aplicá el mismo contrato de readiness. |
-| GitHub Copilot CLI | No operacional | El readiness técnico todavía no puede verificar su inventario. No intentes omitir el gate; consultá el contrato enlazado en [Fuentes de verdad](#fuentes-de-verdad). |
 
 El subcomando `setup` **diagnostica** el entorno y muestra remediaciones. No instala, autentica, habilita, actualiza ni modifica componentes automáticamente. Toda acción mutable requiere aprobación explícita.
 
@@ -487,5 +486,3 @@ codex plugin remove groot-queue@groot-marketplace
 ```
 
 No retires Grid Sharing, Fury Services ni marketplaces compartidos sin comprobar antes que otros plugins no los necesiten.
-
-GitHub Copilot CLI no tiene una secuencia operacional equivalente porque readiness aún no puede verificar su inventario. Hasta que el contrato técnico indique soporte, usá Claude Code o Codex para comandos operativos.

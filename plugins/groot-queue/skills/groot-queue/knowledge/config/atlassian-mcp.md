@@ -12,7 +12,6 @@ La fuente canónica para instalar, elegir una única integración y completar OA
 
 - **Claude Code**: seguir la sección canónica anterior.
 - **Codex**: seguir el [anexo Codex](installation.md#anexo-codex) y conservar este mismo contrato de OAuth, resolución dinámica de tools y `cloudId`.
-- **GitHub Copilot CLI**: el readiness no es operacional mientras no exista un inventario oficial verificable; consultar [Alcance y providers](installation.md#alcance-y-providers).
 
 Después de configurar el provider soportado, completar OAuth autorizando acceso a `mercadolibre.atlassian.net`. Los nombres de las tools pueden variar por provider; resolver capacidades equivalentes sin hardcodear prefijos.
 
