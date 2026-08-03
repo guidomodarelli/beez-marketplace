@@ -146,7 +146,7 @@ Antes de cada derive/discard aprobado, revalidar ticket. Si cambió de estado, a
 
 ### Ejecución
 
-- **Derivar:** Invocar el flujo de `$SKILL_DIR/subcommands/derive.md` para los tickets aprobados. La confirmación ya fue obtenida — omitir la confirmación interna de `derive.md`. Al registrar en el log de auditoría: `DERIVAR-AC` → `source = "auto-assign-autoconfianza"`; `DERIVAR` → `source = "auto-assign"`.
+- **Derivar:** Invocar el flujo de `$SKILL_DIR/subcommands/derive.md` para los tickets aprobados. La confirmación ya fue obtenida — omitir la confirmación interna de `derive.md`. El subflujo reconcilia watcher del ejecutor; no duplicar esa operación aquí. Al registrar en el log de auditoría: `DERIVAR-AC` → `source = "auto-assign-autoconfianza"`; `DERIVAR` → `source = "auto-assign"`.
 - **Descartar:** Invocar el flujo de `$SKILL_DIR/subcommands/discard.md` para los tickets aprobados. La confirmación ya fue obtenida — omitir la confirmación interna de `discard.md`. Al registrar: `DESCARTAR-AC` → `source = "auto-assign-autoconfianza"`, usar el **comentario universal** de `triage-rules.md`; `DESCARTAR` → `source = "auto-assign"`, usar el comentario sugerido de la regla.
 - Los tickets `REVISAR_MANUAL` y los ❓ omitidos **no generan ninguna escritura en Jira**.
 

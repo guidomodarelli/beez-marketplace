@@ -90,6 +90,12 @@ Cuando `MCP_AVAILABLE = false`, omitir todos los pasos que requieran el MCP y re
 
 ---
 
+## Identidad del ejecutor para watcher cleanup
+
+Cuando derive o discard necesite remover watcher del ejecutor, resolver identidad sólo mediante capacidad equivalente a `atlassianUserInfo` del MCP Atlassian. Usar su `accountId` únicamente en memoria para `acli jira workitem watcher remove`; no inferirlo desde TEAM, nombre, email, assignee o requester.
+
+Si MCP no expone identidad actual o ticket no devuelve assignee final verificable, la acción principal puede conservarse pero watcher cleanup queda `partial-error`. Nunca remover watcher con identidad ambigua.
+
 ## Uso de `commentVisibility` (nota interna)
 
 > ⚠️ **OBLIGATORIO**: el parámetro `commentVisibility` con valor `{"type": "role", "value": "Service Desk Team"}` es lo que hace que el comentario sea una **nota interna** (solo visible para agentes, no para el reporter en el portal). Sin este parámetro, `addCommentToJiraIssue` crea un comentario **público** que el reporter puede ver; esto expone información interna de diagnóstico y runbooks al cliente. Nunca omitir `commentVisibility`.

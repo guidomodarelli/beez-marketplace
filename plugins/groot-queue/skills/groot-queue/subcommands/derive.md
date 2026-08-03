@@ -55,6 +55,12 @@ Buscar cualquier tool cuyo nombre contenga `slack` y exponga capacidad de postea
    - Autenticación OK → `SLACK_MCP_AVAILABLE = true`.
    - Autenticación falla → `SLACK_MCP_AVAILABLE = false` + mismo warning.
 
+## Watcher del ejecutor
+
+Después de cada derivación Jira exitosa, aplicar `$SKILL_DIR/knowledge/config/shared-procedures.md` § Reconciliar watcher del ejecutor. Resolver actor mediante usuario Atlassian MCP actual y remover exclusivamente ese watcher si no coincide con assignee final. Esta limpieza es postacción: si no se puede listar, remover o verificar, derivación queda `partial-error` pero no se revierte transición ni asignación.
+
+`R-DER-05` no aplica: redirige por Slack y no muta ticket Jira. `assign-unassigned` y `classify` delegan este comportamiento al invocar derive; no lo duplican.
+
 ## Referencia de squads destino → IDs de Jira
 
 Usar el alias `DERIVATION_DESTINATION_SQUAD_FIELD` para referirse al campo Jira que define el squad destino de la transición "Derivar a otro equipo". El mapeo del alias al field id real está documentado en `$SKILL_DIR/knowledge/README.md`. Antes de llamar al MCP/Jira, expandir el alias al field id real; no enviar el alias literal en el payload.
@@ -146,7 +152,7 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 >    ```
 > 5. Verificar que `Assignee` == `<email>` después de ejecutar. Si no coincide, reintentar una vez.
 > 6. Si falla: registrar `✗ Asignación` en el resultado. **No abortar** — la nota interna ya fue posteada. Continuar al siguiente ticket.
-> 7. Continuar con el paso 4d (labels) si la asignación fue exitosa.
+> 7. Continuar con watcher cleanup y luego paso 4d (labels) si la asignación fue exitosa.
 
 Para **todas las demás reglas R-DER** (no R-DER-13):
 
@@ -177,6 +183,17 @@ Para **todas las demás reglas R-DER** (no R-DER-13):
   Ejemplo incorrecto: `"R-DER-09 — Error de tax id inválido..."` ← no incluir códigos de regla.
 
 - Si falla: registrar `✗ Transición` en el resultado. **No abortar** — la nota interna ya fue posteada. Continuar al siguiente ticket.
+
+**4c.1. Reconciliar watcher del ejecutor** (después de transición o asignación exitosa):
+
+Aplicar `$SKILL_DIR/knowledge/config/shared-procedures.md` § Reconciliar watcher del ejecutor.
+
+- Obtener ticket actualizado y assignee final verificable.
+- Resolver actor mediante MCP Atlassian actual.
+- Si actor es assignee final, conservar watcher (`actor_is_assignee`).
+- Si actor no es assignee final, remover sólo actor si está watcher y verificar su ausencia después de remover.
+- Nunca agregar, remover ni reemplazar otros watchers; no exponer ni persistir account IDs, emails o listas.
+- Si watcher cleanup falla, registrar `✗ Watcher` y `partial-error`; no revertir acción principal ni omitir labels de derivación.
 
 **4d. Escribir labels en Jira** (después de transición exitosa):
 
@@ -234,6 +251,8 @@ Aplicar procedimiento de `$SKILL_DIR/knowledge/config/shared-procedures.md` § R
 Campos específicos para derivación:
 - `action`: `"derive"`
 - `destination`: `"<equipo destino>"`
+- `watcher_cleanup`: estado seguro de reconciliación y conteos agregados opcionales; nunca identidades.
+- Si acción principal fue exitosa pero watcher cleanup falló, usar `result: "partial-error"`.
 - Ejemplo:
   ```bash
   printf '%s\n' '{"ts":"<ISO8601 UTC>","action":"derive","key":"<KEY>","rule":"R-DER-XX","source":"<source>","destination":"<equipo destino>","result":"<result>"}' >> "$SKILL_DIR/knowledge/audit-log-$(date -u +%Y).jsonl"
@@ -270,13 +289,13 @@ Si `SLACK_MCP_AVAILABLE = false`, omitir este paso completamente y mostrar los t
 ```
 Resultados de derivación (N tickets procesados):
 
-| Key           | Regla     | Destino                       | Nota interna | Transición | Labels | KB  | Slack |
-|---------------|-----------|-------------------------------|--------------|------------|--------|-----|-------|
-| SSHP-XXXXXX   | R-DER-10  | IAM Soporte                   | ✓            | ✓          | ✓      | ✓   | —     |
-| SSHP-YYYYYY   | R-DER-09  | IAM Soporte                   | ✓            | ✓          | ✓      | ✓   | —     |
-| SSHP-ZZZZZZ   | —         | NO_DERIVA                     | —            | —          | —      | —   | —     |
-| SSHP-VVVVVV   | R-DER-05  | #help-authz-internal-admins   | —            | —          | —      | —   | ✓     |
-| SSHP-WWWWWW   | R-DER-07  | IAM Soporte                   | ✓            | ✗ Bad Req  | —      | —   | —     |
+| Key           | Regla     | Destino                       | Nota interna | Transición | Watcher | Labels | KB  | Slack |
+|---------------|-----------|-------------------------------|--------------|------------|---------|--------|-----|-------|
+| SSHP-XXXXXX   | R-DER-10  | IAM Soporte                   | ✓            | ✓          | ✓ removido | ✓   | ✓   | —     |
+| SSHP-YYYYYY   | R-DER-09  | IAM Soporte                   | ✓            | ✓          | — actor assignee | ✓ | ✓ | — |
+| SSHP-ZZZZZZ   | —         | NO_DERIVA                     | —            | —          | — | — | — | — |
+| SSHP-VVVVVV   | R-DER-05  | #help-authz-internal-admins   | —            | —          | — no aplica | — | — | ✓ |
+| SSHP-WWWWWW   | R-DER-07  | IAM Soporte                   | ✓            | ✗ Bad Req  | — | — | — | — |
 
 Resumen: N derivados ✓  |  M sin acción  |  S Slack enviados ✓  |  K manuales pendiente  |  E con errores parciales
 ```

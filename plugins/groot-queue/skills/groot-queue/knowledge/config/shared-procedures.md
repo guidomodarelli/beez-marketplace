@@ -53,6 +53,24 @@ Cada subcomando define su propio path y frontmatter (ver `derive.md` § 4e y `di
 
 ---
 
+## Reconciliar watcher del ejecutor
+
+Aplicar después de una derivación o descarte cuya acción principal dejó un assignee final verificable. El objetivo es conservar todos los watchers salvo el ejecutor, excepto si ese ejecutor es el assignee final.
+
+1. Obtener `actorAccountId` mediante la capacidad equivalente a `atlassianUserInfo` del MCP Atlassian. Conservarlo sólo en memoria de la invocación; no imprimirlo ni persistirlo.
+2. Obtener el ticket actualizado y resolver `assignee.accountId` final. Si no se puede resolver actor o assignee, no revertir acción principal: registrar `partial-error` y `watcher_cleanup = identity_unverified`.
+3. Listar watchers con `acli jira workitem list-watchers --key <KEY> --json` y conservar únicamente el conteo y presencia del actor para auditoría.
+4. Si `actorAccountId == assignee.accountId`, conservar watcher del ejecutor y registrar `watcher_cleanup = actor_is_assignee`.
+5. Si actor no está en watchers, registrar `watcher_cleanup = actor_absent`; no hacer mutación.
+6. Si actor está watcher y no es assignee final, ejecutar exclusivamente:
+   ```bash
+   acli jira workitem watcher remove --key <KEY> --user <actorAccountId>
+   ```
+7. Listar watchers nuevamente y verificar que actor no esté. Nunca agregar, remover ni reemplazar otro watcher. Altas concurrentes se preservan porque la única mutación usa el ID exacto del actor.
+8. Si listar, remover o verificar falla, no revertir la acción principal ni tocar otros watchers. Registrar `partial-error` y warning seguro.
+
+Estados permitidos: `removed`, `actor_is_assignee`, `actor_absent`, `identity_unverified`, `list_failed`, `remove_failed`, `verification_failed`, `not_applicable`.
+
 ## Registrar en el log de auditoría
 
 Append-only — una línea JSON por ticket sobre el que se intentó una acción.
@@ -76,7 +94,7 @@ Append-only — una línea JSON por ticket sobre el que se intentó una acción.
 
 | Resultado | Valor |
 |-----------|-------|
-| Acciones principales exitosas | `"ok"` |
-| Parcialmente exitoso (nota OK + transición falla, o viceversa) | `"partial-error"` |
+| Acciones principales y watcher cleanup exitosos | `"ok"` |
+| Acción principal exitosa pero watcher cleanup parcial, o nota/transición parcial | `"partial-error"` |
 | No se completó ninguna acción en Jira | `"failed"` |
 | Regla requiere acción manual | `"manual"` |

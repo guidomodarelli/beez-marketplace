@@ -385,7 +385,6 @@
           "values": [
             "todos",
             "conjunto completo",
-            "primera página",
             "pagin"
           ]
         }
@@ -2878,6 +2877,72 @@
         {"type": "contains_any", "values": ["DESCARTAR", "DERIVAR", "Won't Do"]},
         {"type": "contains_any", "values": ["WMS", "owner", "responsable de la aplicación", "gestor de aplicación"]},
         {"type": "contains_any", "values": ["no compara", "no comparamos", "no corresponde consultar Kraken", "se resuelve por texto"]}
+      ]
+    },
+    {
+      "id": "derive-removes-only-executor-watcher",
+      "description": "successful Jira derivation removes only the executor watcher and preserves all others",
+      "input": "/groot-queue derive --help Explicá qué watchers se modifican después de una derivación Jira exitosa. No ejecutes Jira.",
+      "assertions": [
+        {"type": "contains_any", "values": ["watcher", "Watchers"]},
+        {"type": "contains_any", "values": ["ejecutor", "actor"]},
+        {"type": "contains_any", "values": ["solo", "exclusivamente", "únicamente"]}
+      ]
+    },
+    {
+      "id": "derive-keeps-watcher-when-actor-is-assignee",
+      "description": "executor watcher remains when executor is final assignee",
+      "input": "/groot-queue derive --help ¿Qué ocurre con watcher del ejecutor si termina como assignee final? No ejecutes Jira.",
+      "assertions": [
+        {"type": "contains_any", "values": ["conservar", "se conserva", "actor_is_assignee"]},
+        {"type": "contains_any", "values": ["assignee", "asignado"]}
+      ]
+    },
+    {
+      "id": "derive-slack-redirect-skips-watcher-cleanup",
+      "description": "R-DER-05 Slack redirects do not run Jira watcher cleanup",
+      "input": "/groot-queue derive --help ¿R-DER-05 modifica watchers? No ejecutes Jira ni Slack.",
+      "assertions": [
+        {"type": "contains_any", "values": ["no aplica", "Slack", "R-DER-05"]}
+      ]
+    },
+    {
+      "id": "discard-direct-assigns-current-user-before-close",
+      "description": "direct discard without assignee assigns currentUser before closing and preserves final assignee",
+      "input": "/groot-queue discard --help Explicá qué pasa si ticket no tiene assignee antes de descartar. No ejecutes Jira.",
+      "assertions": [
+        {"type": "contains_any", "values": ["currentUser", "current user", "ejecutor", "persona que ejecuta"]},
+        {"type": "contains_any", "values": ["assignee", "asignar"]},
+        {"type": "contains_any", "values": ["antes de descartar", "antes de cerrar", "verificar"]}
+      ]
+    },
+    {
+      "id": "batch-discard-uses-next-team-assignee",
+      "description": "assign-unassigned assigns the next shuffled TEAM member before discard",
+      "input": "/groot-queue assign-unassigned --help Explicá cómo descarta ticket sin assignee dentro de un lote. No ejecutes Jira.",
+      "assertions": [
+        {"type": "contains_any", "values": ["discardAssignee", "$QUEUE", "siguiente email", "próximo email", "responsable del turno"]},
+        {"type": "contains_any", "values": ["asignar", "assignee"]},
+        {"type": "contains_any", "values": ["descartar", "discard"]}
+      ]
+    },
+    {
+      "id": "watcher-cleanup-failure-is-partial-error",
+      "description": "watcher list or remove failure does not revert Jira action and reports partial error",
+      "input": "/groot-queue derive --help Si falla remover watcher del ejecutor después de transición exitosa, ¿qué resultado debe quedar? No ejecutes Jira.",
+      "assertions": [
+        {"type": "contains_any", "values": ["partial-error", "parcial"]},
+        {"type": "contains_any", "values": ["se mantienen", "labels", "No se revierte"]}
+      ]
+    },
+    {
+      "id": "team-assignment-removes-executor-watcher",
+      "description": "assign-unassigned removes executor watcher after verified assignment to another TEAM member",
+      "input": "/groot-queue assign-unassigned --help ¿Qué ocurre con watcher del ejecutor cuando ticket se asigna a otro miembro TEAM? No ejecutes Jira.",
+      "assertions": [
+        {"type": "contains_any", "values": ["watcher", "Watchers"]},
+        {"type": "contains_any", "values": ["remover", "elimina", "remueve"]},
+        {"type": "contains_any", "values": ["currentUser", "assignee final", "otro miembro"]}
       ]
     }
   ]
