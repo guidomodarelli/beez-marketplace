@@ -193,7 +193,7 @@ Mezclar derivaciones y descartes en el mismo loop ordenado por key (no separar e
 
    Para cada ticket `ASIGNAR` del lote activo:
 
-   0. Revalidar que ticket siga sin assignee y en estado elegible. Si cambió por otro actor, registrar `SKIP_CAMBIO_CONCURRENTE`, no consumir email y continuar.
+   0. Revalidar que ticket siga sin assignee, abierto (`resolution = Unresolved`) y en un estado resoluble hacia `IN_PROGRESS` según `$SKILL_DIR/knowledge/config/jira-field-options.md` § **Semántica de workflow Jira SSHP**. Si cambió por otro actor o el estado es desconocido/ambiguo, registrar `SKIP_CAMBIO_CONCURRENTE` o `SKIP_ESTADO_NO_RECONOCIDO`, no consumir email y continuar.
 
    a. `assignee` = primer email de `$QUEUE`:
       ```bash
@@ -201,11 +201,11 @@ Mezclar derivaciones y descartes en el mismo loop ordenado por key (no separar e
       ```
       Si `$QUEUE` está vacío, rellenarla con `cp "$ORDER" "$QUEUE"` y volver a leer.
 
-   b. **Transicionar a "En curso" PRIMERO** — en una llamada Bash **separada**:
-      ```bash
-      acli jira workitem transition --key <KEY> --status "En curso" --yes
-      ```
-      - Si falla: reportar el error, **NO eliminar la línea de `$QUEUE`** (el email queda al frente para que ese miembro no pierda su turno) y continuar con el siguiente ticket.
+   b. **Transicionar a `IN_PROGRESS` PRIMERO** — aplicar `$SKILL_DIR/knowledge/config/jira-field-options.md` § **Resolver y transicionar de forma segura** en una llamada Bash **separada**:
+      - Consultar las transiciones disponibles y resolver una única transición cuyo destino sea `IN_PROGRESS`; Jira puede exponer `In Progress`, `En progreso` o `En curso`.
+      - Ejecutar con el ID o nombre real devuelto por Jira. No pasar un alias fijo como `"En curso"` a ACLI.
+      - Releer el ticket y verificar que el estado final pertenezca a `IN_PROGRESS` antes de asignar responsable.
+      - Si resolución, transición o verificación falla: registrar `SKIP_ESTADO_NO_RECONOCIDO`, **NO eliminar la línea de `$QUEUE`** y continuar con el siguiente ticket.
       - ⚠️ **CRÍTICO**: la transición auto-asigna al usuario autenticado de ACLI, pisando cualquier asignación previa. Por eso la asignación debe ir en una llamada Bash **separada e independiente** — nunca encadenar ambos comandos con `&&` en un solo Bash call, ya que la transición puede completarse de forma asíncrona en Jira y terminar pisando el assign.
 
    c. Asignar responsable en una **nueva llamada Bash separada**, después de que la transición haya retornado:

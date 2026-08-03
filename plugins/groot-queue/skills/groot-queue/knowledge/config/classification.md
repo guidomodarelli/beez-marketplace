@@ -76,7 +76,7 @@ Calcular un score de urgencia basado en:
 |--------|------|---------|
 | **Prioridad Jira** | 30% | Highest=5, High=4, Medium=3, Low=2, Lowest=1 |
 | **Edad del ticket** | 25% | >72h=5, >48h=4, >24h=3, <24h=2 |
-| **Status sin respuesta** | 25% | "Esperando por Soporte" >24h sin asignar=5, <24h=3, otros=1 |
+| **Status sin respuesta** | 25% | `WAITING_FOR_SUPPORT` según `jira-field-options.md` >24h sin asignar=5, <24h=3, otros o estado no reconocido=1 |
 | **Sin asignar** | 20% | Sin assignee=+1 al score |
 
 Score final: promedio ponderado, redondeado a 1-5.

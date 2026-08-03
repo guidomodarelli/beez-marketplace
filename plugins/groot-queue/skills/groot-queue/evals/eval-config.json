@@ -2944,6 +2944,48 @@
         {"type": "contains_any", "values": ["remover", "elimina", "remueve"]},
         {"type": "contains_any", "values": ["currentUser", "assignee final", "otro miembro"]}
       ]
+    },
+    {
+      "id": "assign-resolves-in-progress-aliases",
+      "description": "assign-unassigned resolves real Jira transition targets across English and Spanish active-state aliases",
+      "input": "/groot-queue assign-unassigned --help Explicá cómo se debe transicionar un ticket si Jira expone como destino In Progress, En progreso o En curso. No ejecutes Jira.",
+      "assertions": [
+        {"type": "contains_any", "values": ["In Progress", "En progreso", "En curso", "IN_PROGRESS"]},
+        {"type": "contains_any", "values": ["transiciones disponibles", "transición disponible", "destino real", "ID"]},
+        {"type": "contains_any", "values": ["verificar", "releer", "confirmar"]},
+        {"type": "not_contains_any", "values": ["usar siempre un alias fijo", "usar únicamente En curso"]}
+      ]
+    },
+    {
+      "id": "discard-recognizes-bilingual-waiting-and-active-states",
+      "description": "discard recognizes bilingual waiting and active workflow states before closure",
+      "input": "/groot-queue discard --help Documentá la ruta de descarte para Waiting for support, Esperando por Soporte, Waiting for customer, Esperando al cliente, In Progress, En progreso y En curso. No ejecutes Jira.",
+      "assertions": [
+        {"type": "contains_any", "values": ["WAITING_FOR_SUPPORT", "Waiting for support", "Esperando por Soporte"]},
+        {"type": "contains_any", "values": ["WAITING_FOR_CUSTOMER", "Waiting for customer", "Esperando al cliente"]},
+        {"type": "contains_any", "values": ["IN_PROGRESS", "In Progress", "En progreso", "En curso"]},
+        {"type": "contains_any", "values": ["antes de descartar", "antes de cerrar", "verificar"]}
+      ]
+    },
+    {
+      "id": "workflow-state-unknown-fails-closed",
+      "description": "unknown or ambiguous workflow states block dependent Jira mutations",
+      "input": "/groot-queue discard --help Si Jira devuelve un estado desconocido o más de una transición posible hacia progreso, ¿qué debe hacer el flujo? No ejecutes Jira.",
+      "assertions": [
+        {"type": "contains_any", "values": ["SKIP_ESTADO_NO_RECONOCIDO", "REVISAR_MANUAL", "revisión manual"]},
+        {"type": "contains_any", "values": ["no asignar", "no comentar", "no descartar", "no cerrar", "no realizar mutaciones"]}
+      ]
+    },
+    {
+      "id": "alerts-and-history-normalize-jira-aliases",
+      "description": "alerts and analyze-history use workflow aliases without weakening SLA or historical evidence",
+      "input": "/groot-queue alerts --help Explicá cómo el fallback sin MCP identifica Waiting for support o Esperando por Soporte. Luego explicá cómo analyze-history interpreta resoluciones localizadas sin depender del nombre del estado cerrado. No ejecutes Jira ni Slack.",
+      "assertions": [
+        {"type": "contains_any", "values": ["WAITING_FOR_SUPPORT", "Waiting for support", "Esperando por Soporte"]},
+        {"type": "contains_any", "values": ["statusCategory = Done", "statusCategory", "Done"]},
+        {"type": "contains_any", "values": ["DISCARDED_RESOLUTION", "RESOLVED_RESOLUTION", "resolución"]},
+        {"type": "contains_any", "values": ["manual", "indeterminado", "no reconocido", "ambigu"]}
+      ]
     }
   ]
 }
