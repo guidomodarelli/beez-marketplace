@@ -73,3 +73,43 @@ Campo obligatorio en la transición `101` "Descartar" (pantalla JSM).
 | R-DESC-15 (roles incompatibles) | [R] Funcionalidad existente | `81170` |
 | R-DESC-17 (aplicación externa a Groot) | [R] Categoría incorrecta | `81175` |
 | R-DESC-19 (configuración operativa genérica) | [R] Funcionalidad existente | `81170` |
+
+---
+
+## Semántica de workflow Jira SSHP
+
+Los nombres visibles de estado y resolución pueden variar según idioma o configuración Jira. Esta sección es fuente única para compararlos en subcommands y referencias.
+
+### Normalización y match
+
+1. Aplicar `trim`, colapsar espacios repetidos, convertir a minúsculas y normalizar Unicode sin diacríticos.
+2. Comparar por igualdad exacta después de normalizar. No usar substrings, coincidencias parciales ni traducciones inferidas.
+3. Agregar aliases solo después de verificarlos contra transiciones, metadatos o tickets reales de SSHP.
+
+### Estados semánticos
+
+| Grupo | Aliases verificados |
+|-------|---------------------|
+| `WAITING_FOR_SUPPORT` | `Waiting for support`, `Esperando soporte`, `Esperando por Soporte` |
+| `WAITING_FOR_CUSTOMER` | `Waiting for customer`, `Esperando al cliente` |
+| `IN_PROGRESS` | `In Progress`, `En progreso`, `En curso` |
+
+Un ticket abierto se determina preferentemente con `resolution = Unresolved`; un ticket cerrado se determina con `statusCategory = Done`. No inferir esos estados desde aliases nominales.
+
+### Resoluciones históricas
+
+| Grupo | Aliases verificados |
+|-------|---------------------|
+| `DISCARDED_RESOLUTION` | `Won't Do`, `Cancelled`, `Withdrawn`, `Rechazado` |
+| `RESOLVED_RESOLUTION` | `Done`, `Fixed`, `Fix aplicado`, `Functionality`, `Cannot Reproduce` |
+
+En análisis histórico, estos grupos complementan changelog y comentarios contemporáneos. Si ninguna fuente determina el desenlace, usar revisión manual.
+
+### Resolver y transicionar de forma segura
+
+1. Leer y normalizar el nombre de estado actual; resolverlo contra un único grupo semántico.
+2. Para llegar a `IN_PROGRESS`, consultar transiciones disponibles y elegir una única transición cuyo destino pertenezca a `IN_PROGRESS`. Ejecutar con el ID o nombre real devuelto por Jira, nunca con un alias hardcodeado.
+3. Releer el ticket y confirmar que su estado final pertenece a `IN_PROGRESS` antes de ejecutar una mutación dependiente, como asignar, comentar, descartar o consumir turno.
+4. Si el estado no pertenece a un grupo, hay más de una transición candidata, no existe transición disponible o falla la verificación posterior, registrar `SKIP_ESTADO_NO_RECONOCIDO` o `REVISAR_MANUAL`. No realizar mutaciones dependientes.
+
+IDs de workflow conocidos para SSHP: transición hacia progreso `21`, descarte `101` y derivación `121`. Los IDs no reemplazan la validación de estado y transición real.

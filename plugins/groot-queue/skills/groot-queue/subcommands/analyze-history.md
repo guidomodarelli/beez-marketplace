@@ -15,8 +15,8 @@ Analizar tickets cerrados (DERIVADO / DESCARTADO / RESUELTO) de la cola Groot (S
   - Al explicar `--force` en modo ayuda, decir explícitamente: `no incluye` tickets con `groot-kb-manual-review`; siguen excluidos incluso con `--force`.
 - `--only <tipo>[,<tipo>...]` — filtrar por tipo de desenlace. Valores posibles: `derivados`, `descartados`, `resueltos`. Se pueden combinar con coma: `--only derivados,descartados`. Si se omite, se analizan los tres tipos (por defecto).
   - `derivados` → tickets que fueron derivados a otro equipo (el assignee actual ya no pertenece al equipo Groot, o el comentario de cierre menciona derivación).
-  - `descartados` → resolución `Won't Do`, `Cancelled`, `Withdrawn` sin derivación a equipo externo.
-  - `resueltos` → resolución `Done`, `Fixed`, `Fix aplicado`, `Functionality`, `Cannot Reproduce` (atendido por Groot directamente).
+  - `descartados` → resolución del grupo `DISCARDED_RESOLUTION` de `jira-field-options.md`, sin derivación a equipo externo.
+  - `resueltos` → resolución del grupo `RESOLVED_RESOLUTION` de `jira-field-options.md` (atendido por Groot directamente).
 
 ## Pre-requisitos
 
@@ -96,11 +96,11 @@ Analizar `changelog.histories` para identificar la **última transición de cier
 
 A partir del estado final y el comentario clave (ver 2c), clasificar:
 
-- **DERIVADO**: el ticket fue cerrado y el último comentario antes de la transición menciona explícitamente derivación ("derivar", "derivando", "encaminhar", "repassar") + nombre de equipo destino. También aplica si la resolución es `Won't Do` con nota de equipo externo.
-- **DESCARTADO**: la resolución es `Won't Do`, `Cancelled`, `Rechazado`, o el comentario indica que no corresponde a Groot (sin mención de equipo externo al que derivar).
-- **RESUELTO**: la resolución es `Done` / `Fixed` y el responsable de Groot aplicó una acción técnica o fix.
+- **DERIVADO**: el ticket fue cerrado y el último comentario antes de la transición menciona explícitamente derivación ("derivar", "derivando", "encaminhar", "repassar") + nombre de equipo destino. También aplica si la resolución pertenece a `DISCARDED_RESOLUTION` con nota de equipo externo.
+- **DESCARTADO**: la resolución pertenece a `DISCARDED_RESOLUTION`, o el comentario indica que no corresponde a Groot sin mención de equipo externo al que derivar.
+- **RESUELTO**: la resolución pertenece a `RESOLVED_RESOLUTION` y el responsable de Groot aplicó una acción técnica o fix.
 
-En caso de ambigüedad (no encaja en ninguno de los tres) → marcar el ticket con `groot-kb-manual-review` y pasar al siguiente sin preguntar al usuario.
+Resolver los grupos de resolución mediante `$SKILL_DIR/knowledge/config/jira-field-options.md` § **Semántica de workflow Jira SSHP**. En caso de ambigüedad o resolución no reconocida sin comentario/changelog concluyente, marcar el ticket con `groot-kb-manual-review` y pasar al siguiente sin preguntar al usuario.
 
 #### 2c. Extraer el comentario clave
 

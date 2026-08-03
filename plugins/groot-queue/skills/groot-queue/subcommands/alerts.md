@@ -144,7 +144,7 @@ La **edad** de cada ticket (VENCIDO o POR VENCER) se calcula `ahora - created` c
 
 **Si `ATLASSIAN_MCP_AVAILABLE = false` (degradado):**
 - Los **VENCIDOS ya están cubiertos** por Fetch B — no se pierden.
-- Para **POR VENCER**, aplicar la heurística de **"Esperando por Soporte"** sobre `por_vencer_candidatas`: status = "Esperando por Soporte" sin respuesta del equipo entre 24h y 48h → POR VENCER.
+- Para **POR VENCER**, aplicar la heurística `WAITING_FOR_SUPPORT` de `$SKILL_DIR/knowledge/config/jira-field-options.md` sobre `por_vencer_candidatas`: estado reconocido, sin respuesta del equipo entre 24h y 48h → POR VENCER. Estado no reconocido no se promueve por esta heurística.
 - La **edad** se obtiene best-effort con `acli jira workitem view <key>` para las pocas keys en riesgo; si no se puede, omitir el `Edad:` de ese ticket.
 - Mostrar el warning de degradación de la pre-condición MCP.
 
@@ -153,7 +153,7 @@ La **edad** de cada ticket (VENCIDO o POR VENCER) se calcula `ahora - created` c
 Si **Fetch B/C fallan** porque el entorno rechaza `'Time to resolution' = breached()` (error de JQL), degradar así:
 1. Usar el **universo completo** `alertables` de **Fetch A** (paginado).
 2. Con MCP disponible, traer `customfield_12400` por lotes de hasta 25 sobre **todo** `alertables` y clasificar con la estructura de abajo (`ongoingCycle.breached == true` → VENCIDO; `breachTime.jira - ahora ≤ 48h` → POR VENCER).
-3. Sin MCP, último recurso: evaluar **solo** la condición de "Esperando por Soporte" y avisar que los VENCIDOS pueden estar **subestimados**.
+3. Sin MCP, último recurso: evaluar solo `WAITING_FOR_SUPPORT` según `$SKILL_DIR/knowledge/config/jira-field-options.md` y avisar que los VENCIDOS pueden estar **subestimados**. Estado no reconocido no se considera evidencia de espera.
 
 **Estructura del campo `customfield_12400`** (usada por 3.2 y por el fallback 3.3):
 
@@ -184,12 +184,12 @@ Si **Fetch B/C fallan** porque el entorno rechaza `'Time to resolution' = breach
 
 | Estado | Condición | Indicador |
 |--------|-----------|-----------|
-| **VENCIDO** | key en Fetch B (`'Time to resolution' = breached()`) **O** (fallback 3.3) `ongoingCycle.breached == true` **O** (último recurso) status = "Esperando por Soporte" sin respuesta del equipo > 48h | 🔴 |
-| **POR VENCER** | candidato de Fetch C con `breachTime.jira - ahora` ≤ 48h calendario **O** (degradado) status = "Esperando por Soporte" sin respuesta del equipo entre 24h y 48h | 🟡 |
+| **VENCIDO** | key en Fetch B (`'Time to resolution' = breached()`) **O** (fallback 3.3) `ongoingCycle.breached == true` **O** (último recurso) `WAITING_FOR_SUPPORT` reconocido sin respuesta del equipo > 48h | 🔴 |
+| **POR VENCER** | candidato de Fetch C con `breachTime.jira - ahora` ≤ 48h calendario **O** (degradado) `WAITING_FOR_SUPPORT` reconocido sin respuesta del equipo entre 24h y 48h | 🟡 |
 
 - Un ticket VENCIDO **no** se evalúa además como POR VENCER (no se duplica).
 - Si un ticket no califica como VENCIDO ni POR VENCER, descartarlo del reporte.
-- "Sin respuesta del equipo" = no hay comentario interno posterior al último comentario del reporter o a la transición a "Esperando por Soporte".
+- "Sin respuesta del equipo" = no hay comentario interno posterior al último comentario del reporter o a la transición a un estado `WAITING_FOR_SUPPORT` reconocido.
 
 ### 4. Agrupar por responsable
 

@@ -65,14 +65,13 @@ Aplicar algoritmo first-match **completo** en orden definido por `triage-rules.m
 
 La transición de descarte en SSHP es **"Descartar" (id: `101`)**. No es necesario descubrirla cada vez.
 
-Para cada ticket, verificar su estado actual. **Los nombres de estado pueden aparecer en inglés o español** (depende de la configuración del proyecto/usuario); siempre matchear ambos idiomas:
+Para cada ticket, resolver estado mediante `$SKILL_DIR/knowledge/config/jira-field-options.md` § **Semántica de workflow Jira SSHP**:
 
-- Si está en **"Waiting for support"** / **"Esperando soporte"** → primero transicionar a **"En progreso" (id: `21`)**, luego aplicar "Descartar" (id: `101`).
-- Si está en **"In Progress"** / **"En progreso"** → aplicar directamente "Descartar" (id: `101`).
-- Si está en **"Waiting for customer"** / **"Esperando al cliente"** → primero transicionar a **"En progreso" (id: `21`)**, luego aplicar "Descartar" (id: `101`).
-- Si está en otro estado → obtener transiciones disponibles con `getTransitionsForJiraIssue` y buscar la ruta a "Descartar".
+- Si pertenece a `WAITING_FOR_SUPPORT` o `WAITING_FOR_CUSTOMER`, resolver una única transición cuyo destino sea `IN_PROGRESS`, ejecutarla y verificar estado final antes de continuar.
+- Si pertenece a `IN_PROGRESS`, aplicar directamente "Descartar" (id: `101`).
+- Si el estado no pertenece a un grupo reconocido, la transición hacia `IN_PROGRESS` no es única o la verificación falla, registrar `SKIP_ESTADO_NO_RECONOCIDO` y no asignar, comentar ni descartar.
 
-> ⚠️ **Nombres bilingües**: Jira puede devolver el estado en inglés o español indistintamente. Comparar siempre case-insensitive y considerar ambas variantes: "Waiting for support" = "Esperando soporte", "In Progress" = "En progreso", "Resolved" = "Resuelto", etc.
+> ⚠️ **Nombres bilingües**: usar solo aliases exactos normalizados de la fuente canónica. Jira puede devolver `Waiting for support`, `Esperando por Soporte`, `In Progress`, `En progreso` o `En curso`; no inferir traducciones nuevas.
 
 Guardar `CLOSE_TRANSITION_ID = "101"` y `CLOSE_TRANSITION_NAME = "Descartar"` para usar en todos los tickets.
 
@@ -122,13 +121,13 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 
 **5b. Transicionar, asignar y verificar antes de descartar**:
 
-1. Si ticket está en `Waiting for support` / `Waiting for customer`, transicionar a `En progreso` (id `21`) en llamada separada.
+1. Revalidar estado con `$SKILL_DIR/knowledge/config/jira-field-options.md` § **Resolver y transicionar de forma segura**. Si pertenece a un estado de espera, resolver y ejecutar transición única hacia `IN_PROGRESS` y verificarla en llamada separada; si ya pertenece a `IN_PROGRESS`, continuar. Estado desconocido, ambiguo o no verificable termina en `SKIP_ESTADO_NO_RECONOCIDO` sin mutaciones.
 2. En una llamada ACLI separada, asignar `discardAssignee`:
    ```bash
    acli jira workitem assign --key SSHP-XXXXXX --assignee <discardAssignee> --yes
    ```
 3. Verificar assignee mediante `acli jira workitem view`. Si no coincide, reintentar assign una sola vez. Si sigue sin coincidir, registrar `✗ Asignación previa` y no descartar.
-4. Si ticket ya estaba `In Progress`, asignar y verificar de la misma forma antes de continuar.
+4. Si ticket ya pertenecía a `IN_PROGRESS` según el catálogo, asignar y verificar de la misma forma antes de continuar.
 
 El assignee final recibe novedades de comentarios posteriores al descarte. Esta asignación conserva assignee existente en descarte directo o usa `currentUser()` cuando no había uno; desde `assign-unassigned` usa el miembro preseleccionado del TEAM.
 
@@ -148,7 +147,7 @@ El assignee final recibe novedades de comentarios posteriores al descarte. Esta 
 
 > ⚠️ **IMPORTANTE — Payload JSM "Descartar"**: La transición "Descartar" (id: `101`) en SSHP es una pantalla JSM que requiere **obligatoriamente** tanto el campo `customfield_19296` (Reason for rejection) como un comentario público en `update.comment` con la propiedad `sd.public.comment`. Sin ambos, el validador rechaza con "Por favor, ingresa un mensaje informando por qué se descarta..."
 
-**Workflow path**: Si el ticket está en "Waiting for support", primero transicionar a "En progreso" (id: `21`) y luego aplicar "Descartar" (id: `101`). Si ya está en "In Progress", aplicar directamente la transición `101`.
+**Workflow path**: Resolver primero el estado mediante `$SKILL_DIR/knowledge/config/jira-field-options.md` § **Semántica de workflow Jira SSHP**. Desde `WAITING_FOR_SUPPORT` o `WAITING_FOR_CUSTOMER`, transicionar y verificar `IN_PROGRESS` antes de aplicar "Descartar" (id `101`). Desde `IN_PROGRESS`, aplicar directamente transición `101`. Estado no reconocido, ambiguo o no verificable: no publicar comentario ni ejecutar transición `101`.
 
 **Payload completo para `transitionJiraIssue`**:
 
