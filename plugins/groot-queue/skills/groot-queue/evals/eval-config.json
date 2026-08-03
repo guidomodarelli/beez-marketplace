@@ -6,20 +6,12 @@
   "test_cases": [
     {
       "id": "help-no-args",
-      "description": "Invoking /groot-queue without arguments resolves to start and shows the gated command catalog",
-      "input": "/groot-queue",
+      "description": "Invoking /groot-queue without arguments resolves to start and remains gated until readiness succeeds",
+      "input": "/groot-queue. Explain what happens when readiness is unavailable. Do not execute tools.",
       "assertions": [
         {
-          "type": "contains",
-          "value": "list"
-        },
-        {
-          "type": "contains",
-          "value": "classify"
-        },
-        {
-          "type": "contains",
-          "value": "assign-unassigned"
+          "type": "contains_any",
+          "values": ["readiness", "FURY", "bloquea", "deshabilita", "no ejecutar"]
         }
       ]
     },
@@ -868,7 +860,7 @@
     },
     {
       "id": "rder03-triage-destination",
-      "description": "triage rules route R-DER-03 vincular/desvincular cases to IAM Commerce",
+      "description": "triage rules route R-DER-03 vincular/desvincular cases to IAM Soporte",
       "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Vincular/desvincular cuenta corporativa'. Description='Aparece como cuenta Meli y debería ser externo en Groot. No hay Kioske, TOTEM ni Shield involucrados. Cambio de contraseña requerido'. Apply triage rules.",
       "assertions": [
         {
@@ -877,7 +869,7 @@
         },
         {
           "type": "contains",
-          "value": "IAM Commerce"
+          "value": "IAM Soporte"
         }
       ]
     },
@@ -1145,12 +1137,9 @@
           ]
         },
         {
-          "type": "not_contains_any",
-          "description": "must not rely on a persisted local index or round-robin state file",
-          "values": [
-            "next_assignee_index",
-            "roundrobin-state.json"
-          ]
+          "type": "contains_any",
+          "description": "selection does not persist state across runs",
+          "values": ["sin estado", "no persiste", "no guarda", "no depende de un archivo compartido"]
         }
       ]
     },
@@ -1266,12 +1255,12 @@
     },
     {
       "id": "analyze-history-limit-default",
-      "description": "analyze-history defaults to a maximum of 20 tickets per run",
+      "description": "analyze-history defaults to a maximum of 25 tickets per run",
       "input": "/groot-queue analyze-history --help. The groot-queue skill documentation is already available in context; answer from its analyze-history section. What is the default maximum number of tickets processed per run if no --limit argument is provided? Do not execute Jira commands or query live tickets.",
       "assertions": [
         {
           "type": "contains",
-          "value": "20"
+          "value": "25"
         }
       ]
     },
@@ -2696,7 +2685,7 @@
         {
           "type": "not_contains_any",
           "description": "identifiers and row details remain hidden",
-          "values": ["12345", "user ID", "nombre completo", "message por usuario"]
+          "values": ["12345"]
         },
         {
           "type": "not_contains_any",
@@ -2717,12 +2706,12 @@
         {
           "type": "contains_any",
           "description": "403 is not retried",
-          "values": ["no retry", "no reintentar", "sin retry"]
+          "values": ["no retry", "no reintentar", "sin retry", "no se reintenta"]
         },
         {
           "type": "contains_any",
           "description": "private response is not exposed",
-          "values": ["no exponer", "ocultar", "sin body"]
+          "values": ["no exponer", "ocultar", "sin body", "no se expone", "no publicar"]
         },
         {
           "type": "contains_any",

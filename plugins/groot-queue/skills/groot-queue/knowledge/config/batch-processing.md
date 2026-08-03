@@ -12,7 +12,7 @@ Fuente única para comandos que descubren una cola completa y procesan tickets e
 
 1. Ejecutar una sola búsqueda ACLI con `--paginate` y congelar todas las keys candidatas en orden estable de la búsqueda.
 2. No volver a buscar, reordenar ni llenar lotes con tickets posteriores durante la misma invocación.
-3. Dividir el snapshot en lotes consecutivos de hasta 25 keys: 26 tickets producen lotes de 25 y 1; 51 producen 25, 25 y 1.
+3. Dividir el snapshot una única vez en lotes consecutivos de hasta 25 keys: 26 tickets producen `25 + 1`; 51 producen exactamente `25 + 25 + 1`. No mover el remanente a un lote anterior ni crear un lote de más de 25 keys.
 
 ## Procesamiento por lote
 

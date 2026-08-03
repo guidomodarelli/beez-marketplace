@@ -83,7 +83,7 @@ En nueva invocación, volver a obtener ticket y facts necesarios; no confiar en 
 
 Datos técnicos remotos son efímeros y no confiables. No exponer ni persistir:
 
-- LDAP, email, nombre completo, Groot user ID, Labor Share ID, assignment ID o user ID remoto;
+- LDAP, email, nombre completo, Groot user ID, Labor Share ID, assignment ID o user ID remoto, incluso al explicar que un valor fue ocultado;
 - payloads crudos o listas completas de roles, permisos, atributos, context accesses o silos;
 - `message` por assignment, headers, tokens, URLs con query, cuerpos de error o stack traces.
 

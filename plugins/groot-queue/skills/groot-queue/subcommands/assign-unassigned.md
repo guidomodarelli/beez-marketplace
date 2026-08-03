@@ -48,7 +48,7 @@ Aplicar **modo DEGRADAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/config/atla
 
 Si no hay tickets sin assignee, mostrar: "✅ No hay tickets sin assignee en la cola." y terminar.
 
-2a. Leer y aplicar `$SKILL_DIR/knowledge/config/batch-processing.md`. Dividir el snapshot, sin volver a buscar ni reordenar keys, en lotes consecutivos de hasta 25 tickets. Anunciar `Lote X/Y` antes de procesar cada uno.
+2a. Leer y aplicar `$SKILL_DIR/knowledge/config/batch-processing.md`. Dividir el snapshot una única vez, sin volver a buscar ni reordenar keys, en lotes consecutivos de hasta 25 tickets. Por ejemplo, 51 candidatos producen `Lote 1/3 = 25`, `Lote 2/3 = 25` y `Lote 3/3 = 1`; ningún lote absorbe remanentes ni supera 25. Anunciar `Lote X/Y` antes de procesar cada uno.
 
 2b. Para cada lote activo, pedir primero:
 ```
