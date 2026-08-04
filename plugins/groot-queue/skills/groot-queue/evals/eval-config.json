@@ -6,17 +6,38 @@
   "test_cases": [
     {
       "id": "help-no-args",
-      "description": "Invoking /groot-queue without arguments resolves to start and remains gated until readiness succeeds",
-      "input": "/groot-queue. Explain what happens when readiness is unavailable. Do not execute tools.",
+      "description": "Default groot-queue resolves to start and auto-delegates failed readiness to setup",
+      "input": "/groot-queue. Pregunta documental: readiness no está disponible. Explicá flujo automático sin ejecutar tools ni citar archivos internos.",
       "assertions": [
         {
           "type": "contains_any",
           "values": [
-            "readiness",
-            "FURY",
-            "bloquea",
-            "deshabilita",
-            "no ejecutar"
+            "ejecuta setup automáticamente",
+            "auto-delega",
+            "delegar automáticamente",
+            "corre setup automáticamente",
+            "`setup` automáticamente",
+            "setup se ejecuta automáticamente"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "continúa start",
+            "continuar start",
+            "dashboard",
+            "start continúa",
+            "continúa normalmente",
+            "retoma start"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "/reload-plugins",
+            "OAuth",
+            "VPN",
+            "restart"
           ]
         }
       ]
@@ -126,50 +147,116 @@
     },
     {
       "id": "setup-complete-without-provider-settings",
-      "description": "Setup queda completo sin settings persistentes cuando ACLI y readiness obligatorio están listos",
-      "input": "Escenario documental de `/groot-queue setup` en Claude Code: ACLI está instalado y autenticado para mercadolibre.atlassian.net, TEAM está configurado, todos los checks shell pasan y Fury runtime descubre furydocs con get_doc_structure y get_doc_file. No existe `.claude/settings.local.json`. Consultá las referencias bundled y mostrá el cierre y las filas relevantes sin ejecutar tools ni modificar archivos.",
+      "description": "Setup completo usa resumen y tabla por asset sin depender de settings persistentes",
+      "input": "Escenario documental de `/groot-queue setup` en Claude Code: ACLI está instalado, actualizado y autenticado; Atlassian MCP y Slack MCP están instalados y autenticados; TEAM está configurado; todos los checks shell pasan y Fury runtime descubre furydocs con get_doc_structure y get_doc_file. No existe `.claude/settings.local.json`. Mostrá output final autocontenido sin ejecutar tools ni modificar archivos.",
       "assertions": [
         {
           "type": "contains",
-          "description": "Ausencia de settings persistentes no bloquea setup",
+          "description": "Muestra estado global listo",
+          "value": "Estado: ✅ LISTO"
+        },
+        {
+          "type": "contains",
+          "description": "Muestra columnas principales",
+          "value": "| Asset | Instalado | Conectado | Up-to-date | Impacto | Próximo paso |"
+        },
+        {
+          "type": "contains_any",
+          "description": "Resume cantidad de assets listos",
+          "values": [
+            "7 assets listos",
+            "assets listos"
+          ]
+        },
+        {
+          "type": "contains",
+          "description": "Identifica provider activo",
+          "value": "Provider: Claude Code"
+        },
+        {
+          "type": "contains",
+          "description": "Cierra setup como completo",
           "value": "Setup completo"
         },
         {
           "type": "not_contains_any",
-          "description": "No presenta ausencia de settings como limitación",
+          "description": "Ausencia de settings no bloquea",
           "values": [
             "Setup incompleto",
-            "Permisos ACLI Claude",
-            "perfil amplio o read-only",
             "settings.local.json requerido",
             "settings.local.json obligatorio"
           ]
         },
         {
           "type": "not_contains_any",
-          "description": "No pide crear o configurar archivo local",
+          "description": "No muestra tabla técnica extensa",
           "values": [
-            "creá `.claude/settings.local.json`",
-            "crear `.claude/settings.local.json`",
-            "configurá `.claude/settings.local.json`"
+            "| Provider inventory |",
+            "| Fury manifest |",
+            "| Fury MCP declaration |",
+            "| Grid general read |",
+            "| Grid required document |"
           ]
         }
       ]
     },
     {
       "id": "setup-missing-dependencies-safe-diagnosis",
-      "description": "Setup informa dependencias faltantes y remite al onboarding sin mutar el entorno",
-      "input": "Escenario documental de `/groot-queue setup`: faltan dependencias locales como ACLI y jq. Consultá las referencias bundled y explicá el resultado visible, la remediación manual y si setup instala, habilita, configura o actualiza algo sin aprobación explícita. No invoques Bash, MCP, Jira, Slack ni servicios externos.",
+      "description": "Setup instala dependencias faltantes automáticamente y deja solo OAuth como paso humano",
+      "input": "Escenario documental de `/groot-queue setup`: faltan ACLI y jq. Podés leer referencias bundled, pero no ejecutar mutaciones ni servicios externos. Mostrá comandos exactos que setup ejecuta automáticamente, verificación posterior y paso humano, sin citar archivos internos.",
       "assertions": [
         {
+          "type": "contains",
+          "description": "Instala jq con comando exacto",
+          "value": "brew install jq"
+        },
+        {
+          "type": "contains",
+          "description": "Instala ACLI desde tap oficial",
+          "value": "brew tap atlassian/homebrew-acli"
+        },
+        {
+          "type": "contains",
+          "description": "Instala fórmula ACLI",
+          "value": "brew install acli"
+        },
+        {
           "type": "contains_any",
-          "description": "contract 1",
+          "description": "Incluye dependencias concretas detectadas",
           "values": [
-            "no instala",
-            "no autentica",
-            "no habilita",
-            "no configura",
-            "no actualiza"
+            "acli",
+            "jq"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Ejecuta instalación sin aprobación adicional",
+          "values": [
+            "Acción automática",
+            "instala automáticamente",
+            "ejecuta automáticamente"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No remite a archivos internos inaccesibles",
+          "values": [
+            "$SKILL_DIR",
+            "installation.md",
+            "setup.md",
+            "command-entrypoint.md",
+            "knowledge/config/",
+            "check-groot-queue-readiness.sh",
+            "consultá la guía"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No pide aprobación para acción allowlisted",
+          "values": [
+            "¿Querés que lo haga?",
+            "esperar aprobación",
+            "requiere tu aprobación"
           ]
         }
       ]
@@ -191,17 +278,37 @@
     },
     {
       "id": "start-counts-include-service-requests",
-      "description": "start uses the shared open-queue definition for banner counts, including Incident and Service Request tickets",
-      "input": "/groot-queue start --help. When explaining the express ticket counts in the banner, which Jira issue types are included in the open/unassigned/SLA-risk queries? Do not execute Jira commands.",
+      "description": "Start totals include supported issue types and honest priority heuristic",
+      "input": "/groot-queue start --help. Explicá tipos Jira y tres conteos totales: abiertos, sin asignar y alta prioridad +24h. No ejecutes Jira.",
       "assertions": [
+        {
+          "type": "contains",
+          "value": "Incident"
+        },
+        {
+          "type": "contains",
+          "value": "Service Request"
+        },
         {
           "type": "contains_any",
           "values": [
-            "Incident",
-            "Service Request",
-            "type IN",
-            "cola abierta compartida",
-            "open-queue definition"
+            "flag `--count`",
+            "con `--count`",
+            "usa `--count`",
+            "usando `--count`",
+            "usa --count"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "Alta prioridad +24h"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "riesgo SLA",
+            "en riesgo SLA",
+            "limit 25"
           ]
         }
       ]
@@ -336,31 +443,51 @@
       ]
     },
     {
-      "id": "start-sample-preserves-banner-latency",
-      "description": "start shows a first-page sample instead of blocking the banner for exhaustive queue counts",
-      "input": "/groot-queue start --help Explicá cómo muestra actividad de cola sin bloquear banner cuando ACLI tiene varias páginas. No ejecutes comandos Jira.",
+      "id": "start-totals-use-count-in-parallel",
+      "description": "Start fetches exact totals in parallel without page-derived counts",
+      "input": "/groot-queue start --help. Explicá cómo obtiene totales exactos manteniendo latencia baja y qué muestra si un conteo falla. No ejecutes Jira.",
       "assertions": [
-        {
-          "type": "contains",
-          "value": "primera página"
-        },
         {
           "type": "contains_any",
           "values": [
-            "best-effort",
-            "latencia",
-            "no bloquear",
-            "sin bloquear",
-            "no bloqueante",
-            "no demora"
+            "flag `--count`",
+            "con `--count`",
+            "usa `--count`",
+            "usando `--count`",
+            "usa --count"
           ]
         },
         {
           "type": "contains_any",
           "values": [
-            "stats",
-            "conteos completos",
-            "búsqueda"
+            "paralelo",
+            "en paralelo"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "No disponible",
+            "no disponible"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "timeout",
+            "sin retry",
+            "no reintenta"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "nunca `--limit`",
+            "no usa `--limit`",
+            "no deriva total desde primera página",
+            "no una página",
+            "sin paginar",
+            "primera página"
           ]
         }
       ]
@@ -663,17 +790,23 @@
     },
     {
       "id": "derive-listed-in-help",
-      "description": "invoking /groot-queue without args shows derive in the subcommands table",
-      "input": "/groot-queue start. Explain the readiness gate and what prevents dispatch when readiness is unavailable. Do not execute tools.",
+      "description": "default start catalog includes derive",
+      "input": "/groot-queue start. Pregunta documental: confirmá que catálogo completo siempre visible incluye derive. No ejecutes tools.",
       "assertions": [
+        {
+          "type": "contains",
+          "value": "derive"
+        },
+        {
+          "type": "contains",
+          "value": "catálogo completo"
+        },
         {
           "type": "contains_any",
           "values": [
-            "readiness",
-            "bloquea",
-            "deshabilita",
-            "FURY",
-            "no ejecutar"
+            "siempre",
+            "default",
+            "sin argumentos"
           ]
         }
       ]
@@ -923,17 +1056,23 @@
     },
     {
       "id": "discard-listed-in-help",
-      "description": "invoking /groot-queue without args shows discard in the subcommands table",
-      "input": "/groot-queue start. Explain the readiness gate and what prevents dispatch when readiness is unavailable. Do not execute tools.",
+      "description": "default start catalog includes discard",
+      "input": "/groot-queue start. Pregunta documental: confirmá que catálogo completo siempre visible incluye discard. No ejecutes tools.",
       "assertions": [
+        {
+          "type": "contains",
+          "value": "discard"
+        },
+        {
+          "type": "contains",
+          "value": "catálogo completo"
+        },
         {
           "type": "contains_any",
           "values": [
-            "readiness",
-            "bloquea",
-            "deshabilita",
-            "FURY",
-            "no ejecutar"
+            "siempre",
+            "default",
+            "sin argumentos"
           ]
         }
       ]
@@ -1102,17 +1241,23 @@
     },
     {
       "id": "analyze-history-listed-in-help",
-      "description": "invoking /groot-queue without args shows analyze-history in the subcommands table",
-      "input": "/groot-queue start. Explain the readiness gate and what prevents dispatch when readiness is unavailable. Do not execute tools.",
+      "description": "default start catalog includes analyze-history",
+      "input": "/groot-queue start. Pregunta documental: confirmá que catálogo completo siempre visible incluye analyze-history. No ejecutes tools.",
       "assertions": [
+        {
+          "type": "contains",
+          "value": "analyze-history"
+        },
+        {
+          "type": "contains",
+          "value": "catálogo completo"
+        },
         {
           "type": "contains_any",
           "values": [
-            "readiness",
-            "bloquea",
-            "deshabilita",
-            "FURY",
-            "no ejecutar"
+            "siempre",
+            "default",
+            "sin argumentos"
           ]
         }
       ]
@@ -1806,8 +1951,8 @@
     },
     {
       "id": "setup-help-uses-no-tools",
-      "description": "Setup help describe el diagnóstico y la guía canónica sin ejecutar tools ni cambiar el entorno",
-      "input": "Respondé `/groot-queue setup --help` usando metadata y onboarding bundled. Resumí qué verifica setup, nombrá la guía canónica y explicá qué no ejecuta o modifica. No invoques Bash, MCP, Jira, Slack ni servicios externos.",
+      "description": "Setup help explica recuperación autocontenida sin ejecutar tools",
+      "input": "Respondé `/groot-queue setup --help` usando metadata y onboarding bundled. Resumí qué verifica, cómo ayuda cuando falla un AI asset y qué no ejecuta o modifica. La respuesta debe ser autocontenida y no debe remitir a archivos internos. No invoques Bash, MCP, Jira, Slack ni servicios externos.",
       "assertions": [
         {
           "type": "contains",
@@ -1828,7 +1973,9 @@
             "no corre el checker",
             "no ejecuta tools",
             "sin tools",
-            "no ejecuta diagnósticos"
+            "no ejecuta diagnósticos",
+            "No ejecuta checker",
+            "no ejecuta checker"
           ]
         },
         {
@@ -1838,25 +1985,56 @@
             "no instala",
             "no modifica",
             "no realiza cambios",
-            "sin autorización explícita"
+            "sin autorización explícita",
+            "aprobación explícita",
+            "No modifica",
+            "No ejecuta",
+            "no modifica"
           ]
         },
         {
           "type": "contains_any",
-          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "description": "Explica auto-instalación de invocación normal",
           "values": [
-            "guía canónica",
-            "README.md",
-            "guía de instalación",
-            "onboarding"
+            "instala automáticamente",
+            "auto-instala",
+            "instalar o actualizar automáticamente"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Reserva acciones humanas inevitables",
+          "values": [
+            "OAuth",
+            "VPN",
+            "/reload-plugins",
+            "restart"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Muestra invocación directa de setup",
+          "values": [
+            "/groot-queue:setup",
+            "/groot-queue setup"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No muestra referencias internas",
+          "values": [
+            "$SKILL_DIR",
+            "installation.md",
+            "knowledge/config/",
+            "guía canónica"
           ]
         }
       ]
     },
     {
       "id": "start-reuses-combined-readiness",
-      "description": "start displays Grid and FuryDocs health without repeating readiness work",
-      "input": "Documentation-only contract question. Read bundled start/readiness references if needed. Assume dispatcher already validated shell schema 2 and Fury runtime during this invocation. State the separate health entries and whether start repeats checker, discovery, probes, or documentation calls. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "description": "Start reuses validated Grid/Fury readiness without duplicate probes",
+      "input": "Pregunta documental. Dispatcher ya validó shell schema 2 y runtime Fury en misma invocación. Explicá health de Knowledge y qué checks no repite start. No ejecutes tools.",
       "assertions": [
         {
           "type": "contains",
@@ -1872,7 +2050,7 @@
             "no repetir",
             "no repite",
             "no vuelve a ejecutar",
-            "sin repetir"
+            "reutiliza"
           ]
         },
         {
@@ -1880,7 +2058,14 @@
           "values": [
             "checker",
             "discovery",
-            "probes"
+            "probes Grid"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "get_doc_structure(",
+            "get_doc_file("
           ]
         }
       ]
@@ -1964,17 +2149,40 @@
     },
     {
       "id": "start-command",
-      "description": "start subcommand shows the welcome banner with version and command catalog",
-      "input": "/groot-queue start. Explain the readiness gate and what prevents dispatch when readiness is unavailable. Do not execute tools.",
+      "description": "Default start renders two tables and full catalog",
+      "input": "/groot-queue start. Pregunta documental: describí output default con entorno listo y totales disponibles. No ejecutes tools.",
       "assertions": [
         {
-          "type": "contains_any",
+          "type": "contains",
+          "value": "🌱 Groot Queue"
+        },
+        {
+          "type": "contains",
+          "value": "Estado: ✅ LISTO"
+        },
+        {
+          "type": "contains",
+          "value": "| Área | Estado | Detalle |"
+        },
+        {
+          "type": "contains",
+          "value": "| Métrica | Total |"
+        },
+        {
+          "type": "contains",
+          "value": "Acciones recomendadas"
+        },
+        {
+          "type": "contains",
+          "value": "catálogo completo"
+        },
+        {
+          "type": "not_contains_any",
           "values": [
-            "readiness",
-            "bloquea",
-            "deshabilita",
-            "FURY",
-            "no ejecutar"
+            "██████",
+            "Muestra parcial",
+            "25+",
+            "Ver todos comandos"
           ]
         }
       ]
@@ -3176,6 +3384,868 @@
             "Codex",
             "codex"
           ]
+        }
+      ]
+    },
+    {
+      "id": "setup-grid-assets-inline-recovery-claude",
+      "description": "Grid plugin o skill faltante produce instalación Claude copiable y recarga guiada",
+      "input": "Escenario documental de /groot-queue:setup en Claude Code: marketplace técnico, Grid Sharing y skill están ausentes; checker devuelve PLUGIN_NOT_INSTALLED y REQUIRED_SKILL_UNAVAILABLE. Podés leer referencias bundled, pero no ejecutar mutaciones. Mostrá comandos exactos automáticos, paso humano mínimo y validación, sin citar archivos internos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "claude plugin marketplace add --scope user git@github.com:melisource/fury_tech-plugins-marketplace.git"
+        },
+        {
+          "type": "contains",
+          "value": "claude plugin install --scope user grid-sharing@tech-plugins-marketplace"
+        },
+        {
+          "type": "contains",
+          "value": "/reload-plugins"
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue:setup"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Acción automática",
+            "instala automáticamente",
+            "ejecuta automáticamente"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "$SKILL_DIR",
+            "installation.md",
+            "setup.md",
+            "knowledge/config/",
+            "check-groot-queue-readiness.sh",
+            "ln -s"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "¿Querés que lo haga?",
+            "requiere tu aprobación",
+            "esperar aprobación"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-fury-runtime-inline-recovery-claude",
+      "description": "Runtime Fury faltante se recupera desde plugin propietario sin MCP duplicado",
+      "input": "Escenario documental de /groot-queue:setup en Claude Code: Fury Services figura instalado, pero aparecen FURY_RUNTIME_DISCOVERY_TOOLS_UNAVAILABLE y FURYDOCS_COMPONENT_UNAVAILABLE. Mostrá pasos prácticos inline para verificar, recargar, reiniciar y revalidar. No ejecutes tools ni hagas cambios.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "claude mcp get plugin:fury-services:fury"
+        },
+        {
+          "type": "contains",
+          "value": "/reload-plugins"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "reinici",
+            "cerrar y abrir"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue:setup"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "claude mcp add fury",
+            "mcp-remote-proxy https://",
+            "$SKILL_DIR",
+            "installation.md"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-vpn-identity-human-step",
+      "description": "Falla de identidad Grid indica VPN humana sin credenciales alternativas",
+      "input": "Escenario documental de /groot-queue setup: GRID_IDENTITY_UNAVAILABLE y GRID_IDENTITY_FORBIDDEN. Decime directamente qué tengo que hacer y cómo revalidar. No ejecutes tools ni cambies configuración.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "VPN"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "conect",
+            "Conect"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "/groot-queue:setup",
+            "/groot-queue setup"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No muestra referencias internas",
+          "values": [
+            "$SKILL_DIR",
+            "installation.md",
+            "setup.md",
+            "knowledge/config/"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No propone workarounds con credenciales manuales",
+          "values": [
+            "curl -H \"Authorization",
+            "curl -H 'Authorization",
+            "export TOKEN=",
+            "export AUTHORIZATION=",
+            "claude mcp add fury"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-atlassian-mcp-inline-recovery",
+      "description": "Atlassian MCP faltante muestra plugin oficial, OAuth humano y validación",
+      "input": "Escenario documental de /groot-queue:setup: Atlassian MCP no está disponible y plugin oficial está ausente sin conflictos. Mostrá instalación automática, paso OAuth dentro de Claude y validación. No ejecutes tools en este escenario documental.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "claude plugin install --scope user atlassian@claude-plugins-official"
+        },
+        {
+          "type": "contains",
+          "value": "/mcp"
+        },
+        {
+          "type": "contains",
+          "value": "OAuth"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Acción automática",
+            "instala automáticamente",
+            "ejecuta automáticamente"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "/groot-queue:setup",
+            "claude mcp list"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "cloudId:",
+            "$SKILL_DIR",
+            "installation.md",
+            "knowledge/config/"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "¿Querés que lo haga?",
+            "requiere tu aprobación",
+            "esperar aprobación"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-grid-fury-inline-recovery-codex",
+      "description": "Codex recibe comandos propios, restart y validación sin slash de Claude",
+      "input": "Escenario documental de /groot-queue setup bajo Codex: faltan Grid Sharing y Fury Services completos. Mostrá comandos que setup ejecuta automáticamente, paso manual final y revalidación. No ejecutes tools en este escenario documental.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "codex plugin marketplace add git@github.com:melisource/fury_tech-plugins-marketplace.git"
+        },
+        {
+          "type": "contains",
+          "value": "codex plugin add grid-sharing@tech-plugins-marketplace"
+        },
+        {
+          "type": "contains",
+          "value": "codex plugin add fury-services@tech-plugins-marketplace"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "reinici",
+            "cerrar y abrir"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue setup"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "$SKILL_DIR",
+            "installation.md",
+            "setup.md",
+            "knowledge/config/",
+            "codex mcp add fury"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Acción automática",
+            "instala automáticamente",
+            "ejecuta automáticamente"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "¿Querés que lo haga?",
+            "requiere tu aprobación",
+            "esperar aprobación"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-asset-summary-table-complete",
+      "description": "Setup listo presenta siete assets con iconos, impacto y acciones concisas",
+      "input": "Escenario documental de /groot-queue:setup en Claude Code: ACLI 1.3.22 está autenticado y sin update disponible; Atlassian y Slack están autenticados; TEAM tiene 8 integrantes; todos los checks shell y runtime pasan. Mostrá output final sin ejecutar tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "Estado: ✅ LISTO"
+        },
+        {
+          "type": "contains",
+          "value": "7 assets listos"
+        },
+        {
+          "type": "contains",
+          "value": "0 bloqueos"
+        },
+        {
+          "type": "contains",
+          "value": "| Asset | Instalado | Conectado | Up-to-date | Impacto | Próximo paso |"
+        },
+        {
+          "type": "contains",
+          "value": "🎫 ACLI"
+        },
+        {
+          "type": "contains",
+          "value": "🔗 Atlassian MCP"
+        },
+        {
+          "type": "contains",
+          "value": "💬 Slack MCP"
+        },
+        {
+          "type": "contains",
+          "value": "🧩 Grid Sharing"
+        },
+        {
+          "type": "contains",
+          "value": "🔥 Fury Services"
+        },
+        {
+          "type": "contains",
+          "value": "📚 FuryDocs"
+        },
+        {
+          "type": "contains",
+          "value": "👥 TEAM"
+        },
+        {
+          "type": "contains_any",
+          "description": "Impacto bloqueante visible",
+          "values": [
+            "🔴 Bloqueante"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Impacto degradable visible",
+          "values": [
+            "🟡 Degrada"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No lista checks internos como assets",
+          "values": [
+            "| Provider inventory |",
+            "| Fury manifest |",
+            "| Fury MCP declaration |",
+            "| Grid general read |",
+            "| Grid required document |"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No agrega detalle para asset listo",
+          "values": [
+            "### 🎫 ACLI",
+            "### 🧩 Grid Sharing",
+            "### 🔥 Fury Services"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-asset-summary-updates",
+      "description": "Setup muestra versiones verificadas y acciones para updates disponibles",
+      "input": "Escenario documental de /groot-queue:setup en Claude Code: ACLI reporta 1.3.21 instalada y 1.3.22 disponible; Grid Sharing reporta 2.4.0 instalada y update requerido 2.5.0. Todo demás está listo. Podés leer referencias bundled. Mostrá comandos exactos que setup ejecuta automáticamente, resumen, tabla final y pasos humanos posteriores. No ejecutes mutaciones ni cites archivos internos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "1.3.21"
+        },
+        {
+          "type": "contains",
+          "value": "1.3.22"
+        },
+        {
+          "type": "contains",
+          "value": "2.4.0"
+        },
+        {
+          "type": "contains",
+          "value": "2.5.0"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "2 updates",
+            "2 actualizaciones"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "brew upgrade acli"
+        },
+        {
+          "type": "contains",
+          "value": "claude plugin update --scope user grid-sharing@tech-plugins-marketplace"
+        },
+        {
+          "type": "contains_any",
+          "description": "Reporta acción automática",
+          "values": [
+            "Acción automática",
+            "actualiza automáticamente",
+            "ejecuta automáticamente"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Tabla final refleja versión actualizada",
+          "values": [
+            "✅ 1.3.22",
+            "✅ `1.3.22`"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Tabla final refleja Grid actualizado",
+          "values": [
+            "✅ 2.5.0",
+            "✅ `2.5.0`"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No pide aprobación para updates allowlisted",
+          "values": [
+            "¿Querés que lo haga?",
+            "requiere tu aprobación",
+            "esperar aprobación"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No afirma versión Fury desconocida como actualizada",
+          "values": [
+            "Fury Services | ✅ | ✅ | ✅"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-asset-summary-degraded",
+      "description": "Setup degradado detalla únicamente integraciones opcionales afectadas",
+      "input": "Escenario documental de /groot-queue:setup: ACLI, Grid, Fury Services y FuryDocs están listos. Slack MCP está ausente y TEAM está vacío. Atlassian está listo. Mostrá resumen, tabla, impacto, próximos pasos y detalles sin ejecutar tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "Estado: ⚠️ DEGRADADO"
+        },
+        {
+          "type": "contains",
+          "value": "💬 Slack MCP"
+        },
+        {
+          "type": "contains",
+          "value": "👥 TEAM"
+        },
+        {
+          "type": "contains",
+          "value": "🟡 Degrada"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Instalar plugin",
+            "Completar OAuth en /mcp"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "Configurar TEAM"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "### 💬 Slack MCP",
+            "### ⚠️ Slack MCP"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "### 👥 TEAM",
+            "### ⚠️ TEAM"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No detalla assets listos",
+          "values": [
+            "### 🎫 ACLI",
+            "### 🧩 Grid Sharing",
+            "### 🔥 Fury Services",
+            "### 📚 FuryDocs"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "Setup operativo con limitaciones"
+        }
+      ]
+    },
+    {
+      "id": "setup-asset-summary-blocked",
+      "description": "Setup bloqueado agrupa fallas técnicas bajo asset crítico",
+      "input": "Escenario documental de /groot-queue:setup: Grid Sharing devuelve PLUGIN_NOT_INSTALLED y REQUIRED_SKILL_UNAVAILABLE; todos los demás assets están listos. Mostrá resumen, tabla, detalle y cierre sin ejecutar tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "Estado: ❌ BLOQUEADO"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "1 bloqueo",
+            "1 bloqueos"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "🧩 Grid Sharing"
+        },
+        {
+          "type": "contains",
+          "value": "🔴 Bloqueante"
+        },
+        {
+          "type": "contains",
+          "value": "Instalar plugin"
+        },
+        {
+          "type": "contains",
+          "value": "PLUGIN_NOT_INSTALLED"
+        },
+        {
+          "type": "contains",
+          "value": "REQUIRED_SKILL_UNAVAILABLE"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "### 🧩 Grid Sharing",
+            "### ❌ Grid Sharing"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "Setup bloqueado"
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No convierte checks internos en filas",
+          "values": [
+            "| Provider inventory |",
+            "| Grid Sharing skill |",
+            "| Grid network + ping |",
+            "| Grid identity + VPN |"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-auto-repair-reruns-once",
+      "description": "Setup instala assets conocidos y repite diagnóstico una sola vez",
+      "input": "Pregunta documental: /groot-queue:setup detecta marketplace técnico, Grid Sharing y Fury Services ausentes en Claude Code. Podés leer referencias bundled. Mostrá comandos exactos de secuencia automática, verificación posterior, límite de un rerun y paso humano si runtime queda stale. No ejecutes mutaciones ni cites archivos internos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "claude plugin marketplace add --scope user git@github.com:melisource/fury_tech-plugins-marketplace.git"
+        },
+        {
+          "type": "contains",
+          "value": "claude plugin install --scope user grid-sharing@tech-plugins-marketplace"
+        },
+        {
+          "type": "contains",
+          "value": "claude plugin install --scope user fury-services@tech-plugins-marketplace"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "una sola vez",
+            "solo una vez",
+            "1 vez"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "/reload-plugins"
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue:setup"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "¿Querés que lo haga?",
+            "requiere tu aprobación",
+            "loop infinito",
+            "claude mcp add fury"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-auto-repair-stops-on-conflict",
+      "description": "Setup no elimina ni reemplaza integraciones ambiguas automáticamente",
+      "input": "Pregunta documental: /groot-queue:setup encuentra plugin oficial Atlassian y una conexión manual Atlassian activas al mismo tiempo. Explicá qué hace automáticamente y qué decisión pide al usuario. No ejecutes tools.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "conflicto",
+            "duplicad",
+            "ambigu"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "elegir",
+            "elección",
+            "decidir",
+            "decisión"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "desinstala automáticamente",
+            "elimina automáticamente",
+            "borra automáticamente",
+            "reemplaza automáticamente"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "cloudId:",
+            "API token",
+            "Authorization:"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-auto-setup-continues-when-repaired",
+      "description": "Start auto-runs setup and continues when repair needs no human action",
+      "input": "Escenario documental: /groot-queue start falla readiness por jq ausente; setup lo instala y diagnóstico queda completamente listo sin reload. Podés leer referencias bundled. Mostrá únicamente output final y acciones automáticas, sin citar archivos internos ni ejecutar tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "brew install jq"
+        },
+        {
+          "type": "contains",
+          "value": "Reparaciones: ✅"
+        },
+        {
+          "type": "contains",
+          "value": "Estado: ✅ LISTO"
+        },
+        {
+          "type": "contains",
+          "value": "🌱 Groot Queue"
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No duplica output completo de setup",
+          "values": [
+            "🔧 Setup — Groot Queue",
+            "| Asset | Instalado | Conectado |"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-auto-setup-stops-for-human-action",
+      "description": "Start stops after setup when reload or OAuth is required",
+      "input": "Escenario documental: /groot-queue start falla readiness porque Fury Services se instala pero runtime necesita reload. Mostrá únicamente output final de setup y paso humano; no ejecutes tools ni cites archivos internos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "🔧 Setup — Groot Queue"
+        },
+        {
+          "type": "contains",
+          "value": "/reload-plugins"
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue:setup"
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No renderiza dashboard start antes de readiness",
+          "values": [
+            "🌱 Groot Queue",
+            "📬 Muestra de cola",
+            "Acciones recomendadas"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-dynamic-actions-priority",
+      "description": "Start recommends actions from exact totals in priority order",
+      "input": "Escenario documental de /groot-queue start: conteos exactos devuelven 42 abiertos, 4 sin asignar y 2 de alta prioridad +24h. Mostrá únicamente tablas y acciones recomendadas. No ejecutes tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "| 📬 Abiertos | 42 |"
+        },
+        {
+          "type": "contains",
+          "value": "| 👤 Sin asignar | 4 |"
+        },
+        {
+          "type": "contains",
+          "value": "| 🔥 Alta prioridad +24h | 2 |"
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue alerts --dry-run"
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue assign-unassigned"
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue stats"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "riesgo SLA",
+            "Muestra parcial",
+            "25+"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-zero-urgent-actions",
+      "description": "Start reports no urgent actions when exact totals are zero",
+      "input": "Escenario documental de /groot-queue start: tres conteos exactos devuelven cero. Mostrá tabla y cierre resultante. No ejecutes tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "| 📬 Abiertos | 0 |"
+        },
+        {
+          "type": "contains",
+          "value": "| 👤 Sin asignar | 0 |"
+        },
+        {
+          "type": "contains",
+          "value": "| 🔥 Alta prioridad +24h | 0 |"
+        },
+        {
+          "type": "contains",
+          "value": "✅ Cola sin acciones urgentes"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "/groot-queue alerts --dry-run",
+            "/groot-queue assign-unassigned"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-total-failure-fallback",
+      "description": "Start always shows totals table with unavailable values on timeout",
+      "input": "Escenario documental de /groot-queue start: conteo de abiertos falla por timeout, sin asignar devuelve 4 y alta prioridad +24h devuelve 1. Mostrá únicamente output final esperado. No ejecutes tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "| Métrica | Total |"
+        },
+        {
+          "type": "contains",
+          "value": "| 📬 Abiertos | No disponible |"
+        },
+        {
+          "type": "contains",
+          "value": "| 👤 Sin asignar | 4 |"
+        },
+        {
+          "type": "contains",
+          "value": "| 🔥 Alta prioridad +24h | 1 |"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "Muestra parcial",
+            "Abiertos: 0",
+            "Error ACLI"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-mcp-health-uses-real-probes",
+      "description": "Start health distinguishes installed, authenticated and unverifiable MCP states",
+      "input": "Pregunta documental: ¿cómo /groot-queue start determina estados Atlassian y Slack? Atlassian probe autentica, Slack tool existe pero devuelve auth error. Respondé directo, sin tools ni citar archivos internos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "Atlassian"
+        },
+        {
+          "type": "contains",
+          "value": "✅ Conectado"
+        },
+        {
+          "type": "contains",
+          "value": "Slack"
+        },
+        {
+          "type": "contains",
+          "value": "❌ No autenticado"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "probe read-only",
+            "perfil actual",
+            "recursos accesibles"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Descarta grep como prueba de conexión",
+          "values": [
+            "no usa `mcp list | grep`",
+            "no usar `mcp list | grep`",
+            "no depende de mcp list",
+            "no usa grep",
+            "No usar `mcp list | grep`",
+            "No usa grep"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-rejects-removed-all-flag",
+      "description": "start rejects removed --all flag without running tools",
+      "input": "/groot-queue start --all. Respondé únicamente output esperado, sin explicación ni tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "Uso: /groot-queue start"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "🌱 Groot Queue",
+            "| Área | Estado | Detalle |",
+            "catálogo completo",
+            "🔍 INVESTIGAR"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "start.md",
+            "contrato",
+            "§",
+            "readiness"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-count-parses-current-acli-output",
+      "description": "Start parses current ACLI textual count format",
+      "input": "Escenario documental de /groot-queue start: ACLI devuelve `✓ Number of work items in the search: 132` para abiertos, 27 para sin asignar y 3 para alta prioridad +24h. Mostrá tabla final. No ejecutes tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "| 📬 Abiertos | 132 |"
+        },
+        {
+          "type": "contains",
+          "value": "| 👤 Sin asignar | 27 |"
+        },
+        {
+          "type": "contains",
+          "value": "| 🔥 Alta prioridad +24h | 3 |"
+        },
+        {
+          "type": "not_contains",
+          "value": "No disponible"
         }
       ]
     }

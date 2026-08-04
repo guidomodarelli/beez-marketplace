@@ -21,7 +21,7 @@ Aplicar este orden sin adelantar lecturas, tools ni acciones del subcomando.
 Si cualquier argumento es exactamente `--help` o `-h`:
 
 - No ejecutar el gate, shell, MCP, Jira, Slack ni ninguna acción del subcomando.
-- Para `setup`, responder directamente que diagnostica ACLI, integraciones, Grid Sharing y Fury Services/FuryDocs sin inspeccionar settings del provider ni instalar o modificar nada sin autorización explícita. La ayuda no ejecuta checker, discovery MCP, Bash, Jira, Slack ni diagnósticos; remitir a `$SKILL_DIR/knowledge/config/installation.md#9-recargar-y-validar` como guía canónica y no duplicar sus pasos.
+- Para `setup`, responder directamente que diagnostica ACLI, integraciones, Grid Sharing y Fury Services/FuryDocs sin inspeccionar settings del provider. Explicar que invocación normal instala o actualiza automáticamente assets conocidos cuando sea necesario y deja OAuth, VPN, `/reload-plugins`, restart, acceso o conflictos ambiguos como pasos humanos. Incluir `/groot-queue:setup` para Claude Code y `/groot-queue setup` para Codex. Incluir frase explícita: `Esta ayuda no ejecuta checker, discovery MCP, Bash, Jira, Slack ni diagnósticos; tampoco modifica el entorno.` No mencionar ni citar archivos, nombres de archivos, paths, anchors, secciones, fuentes internas ni repositorio.
 - Para cualquier otro subcomando, leer únicamente `$SKILL_DIR/subcommands/<subcomando-canónico>.md` y responder su ayuda sin ejecutar sus acciones.
 - No tratar como ayuda coincidencias parciales como `--help=true` ni texto que solo contenga esas cadenas.
 - Deshabilitar la ejecución y detener la invocación después de responder.
@@ -37,8 +37,10 @@ Para cualquier otro subcomando, incluido `start`:
 1. Antes de leer el archivo del subcomando, usar Jira o Slack o realizar escrituras, leer y aplicar `$SKILL_DIR/knowledge/config/groot-queue-readiness.md`.
 2. Ejecutar `$SKILL_DIR/scripts/check-groot-queue-readiness.sh --provider <provider>`. Si existe `GROOT_QUEUE_READINESS_RESULT_FILE`, pasar además `--reuse-result "$GROOT_QUEUE_READINESS_RESULT_FILE"`; nunca confiar directamente en la variable ni leer el archivo por cuenta propia.
 3. Continuar solo si el checker termina con exit code `0` y su único objeto JSON contiene simultáneamente `schema_version: 2`, `scope: "shell"`, `ok: true` y `exit_code: 0`.
-4. Ante cualquier otro resultado, deshabilitar la ejecución, detener la invocación y presentar en español las remediaciones correspondientes a sus failure codes según `groot-queue-readiness.md`, sin exponer el payload completo, bodies, identidad, tokens ni paths de instalación.
-5. Conservar el JSON exitoso únicamente como resultado validado de la fase shell durante la invocación actual.
+4. Ante cualquier otro resultado:
+   - si subcomando canónico es `start`, leer y ejecutar `subcommands/setup.md` automáticamente con provider resuelto. `setup` aplica reparación allowlisted y diagnóstico fresco. Si termina con shell + runtime completamente listos, no renderizar tabla ni cierre completo de `setup`: conservar estado combinado, continuar `start` y transmitir solo resumen seguro para línea `Reparaciones: ✅ ...`. Si requiere acción humana o sigue bloqueado, mostrar output autocontenido de `setup` sin reemplazar cierre ni comando de revalidación y detener `start`. Para Claude Code debe terminar con `/groot-queue:setup`; para Codex con `/groot-queue setup`;
+   - para cualquier otro subcomando, deshabilitar ejecución, detener invocación y presentar remediaciones correspondientes sin exponer payload completo, bodies, identidad, tokens ni paths.
+5. Conservar JSON exitoso únicamente como resultado validado de fase shell durante invocación actual.
 
 ### 4. Aplicar la fase runtime MCP
 
@@ -51,8 +53,10 @@ Inmediatamente después del éxito shell y todavía antes de leer el archivo del
 5. Invocar **solo** `list_tools` con `component="furydocs"`. Si la llamada falla o la respuesta es inválida, fallar con `FURY_TOOL_DISCOVERY_FAILED`.
 6. Exigir los nombres exactos `get_doc_structure` y `get_doc_file`; permitir tools adicionales. Si falta alguno, fallar con `FURYDOCS_REQUIRED_TOOLS_UNAVAILABLE`.
 7. No invocar `get_doc_structure`, `get_doc_file` ni ninguna otra tool documental. No mostrar ni persistir payloads completos de discovery.
-8. Ante cualquier fallo, deshabilitar la ejecución, detener la invocación y presentar la remediación segura en español según `groot-queue-readiness.md`.
-9. Conservar el éxito runtime solo como estado conceptual en memoria durante esta invocación; no serializarlo, guardarlo ni reutilizarlo en otra invocación.
+8. Ante cualquier fallo:
+   - si subcomando canónico es `start`, ejecutar `setup` automáticamente. Si reparación + diagnóstico fresco dejan runtime listo, suprimir output completo de `setup`, continuar `start` con estado combinado y mostrar solo línea segura de reparaciones; si requiere `/reload-plugins`, restart u otra acción humana, mostrar output de `setup` sin alterar comando de revalidación (`/groot-queue:setup` en Claude Code o `/groot-queue setup` en Codex) y detener `start`;
+   - para cualquier otro subcomando, deshabilitar ejecución, detener invocación y presentar remediación segura.
+9. Conservar éxito runtime solo como estado conceptual en memoria durante esta invocación; no serializarlo, guardarlo ni reutilizarlo en otra invocación.
 
 ### 5. Habilitar ejecución y conservar continuidad
 

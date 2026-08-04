@@ -1,5 +1,5 @@
 ---
-description: Muestra el banner de bienvenida con la versión y el catálogo de comandos disponibles con hints de uso.
+description: Muestra estado, totales exactos, acciones recomendadas y catálogo completo de comandos.
 ---
 
 Leé y aplicá `${CLAUDE_PLUGIN_ROOT}/skills/groot-queue/knowledge/config/command-entrypoint.md` para el subcomando canónico `start`, los argumentos `$ARGUMENTS` y el provider `claude`.
