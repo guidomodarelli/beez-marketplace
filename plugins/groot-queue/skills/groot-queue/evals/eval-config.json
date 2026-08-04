@@ -1866,8 +1866,15 @@
             "no modifica",
             "no realiza cambios",
             "sin autorización explícita",
-            "aprobación explícita",
-            "Instala"
+            "aprobación explícita"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Vincula instalación con aprobación explícita",
+          "values": [
+            "Instala con aprobación",
+            "instala con aprobación"
           ]
         },
         {
