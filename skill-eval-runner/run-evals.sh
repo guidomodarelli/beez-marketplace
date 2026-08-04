@@ -284,8 +284,10 @@ validate_eval_config() {
         and (.test_cases | type == "array" and length > 0)
         and ([.test_cases[].id] | all(type == "string" and length > 0) and length == (unique | length))
         and all(.test_cases[]; .input | type == "string")
-        and all(.test_cases[]; .assertions | type == "array")
-        and all(.test_cases[].assertions[]?; .type | type == "string")
+        and all(.test_cases[];
+            (.assertions | type == "array")
+            and all(.assertions[]; .type | type == "string")
+        )
     ' "$config_file" >/dev/null 2>&1
 }
 

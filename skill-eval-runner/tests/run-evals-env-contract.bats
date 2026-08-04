@@ -41,6 +41,30 @@ setup() {
     [[ ! -s "$CLAUDE_ARGS_LOG" ]]
 }
 
+@test "rejects null assertions before invoking Claude" {
+    local config_file="${SKILL_DIR}/evals/eval-config.json"
+    jq '.test_cases[0].assertions = null' "$config_file" > "${config_file}.tmp"
+    mv "${config_file}.tmp" "$config_file"
+
+    run_eval_runner
+
+    [ "$status" -eq 1 ]
+    [[ "$stderr" == *"Invalid eval-config.json"* ]]
+    [[ ! -s "$CLAUDE_ARGS_LOG" ]]
+}
+
+@test "rejects missing assertions before invoking Claude" {
+    local config_file="${SKILL_DIR}/evals/eval-config.json"
+    jq 'del(.test_cases[0].assertions)' "$config_file" > "${config_file}.tmp"
+    mv "${config_file}.tmp" "$config_file"
+
+    run_eval_runner
+
+    [ "$status" -eq 1 ]
+    [[ "$stderr" == *"Invalid eval-config.json"* ]]
+    [[ ! -s "$CLAUDE_ARGS_LOG" ]]
+}
+
 @test "reports infrastructure failure as JSONL" {
     install_failures_touch_stub
 
