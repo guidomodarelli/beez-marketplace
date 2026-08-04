@@ -8,7 +8,7 @@ Recibir conceptualmente:
 
 - el subcomando canónico ya resuelto;
 - los argumentos completos de la invocación, conservando sus tokens;
-- el provider resuelto por el caller: `claude`, `codex`, `copilot` o `auto`.
+- el provider resuelto por el caller: `claude`, `codex` o `auto`.
 
 Usar como `$SKILL_DIR` el directorio del skill desde el que se leyó este contrato. El dispatcher debe resolver el provider y los aliases antes de aplicarlo; los wrappers Claude deben pasar su subcomando canónico y el provider `claude`.
 
@@ -21,7 +21,7 @@ Aplicar este orden sin adelantar lecturas, tools ni acciones del subcomando.
 Si cualquier argumento es exactamente `--help` o `-h`:
 
 - No ejecutar el gate, shell, MCP, Jira, Slack ni ninguna acción del subcomando.
-- Para `setup`, responder directamente que diagnostica ACLI, integraciones, Grid Sharing y Fury Services/FuryDocs sin inspeccionar settings del provider ni instalar o modificar nada sin autorización explícita, y remitir a `$SKILL_DIR/knowledge/config/installation.md#9-recargar-y-validar` como guía canónica; no duplicar sus pasos.
+- Para `setup`, responder directamente que diagnostica ACLI, integraciones, Grid Sharing y Fury Services/FuryDocs sin inspeccionar settings del provider ni instalar o modificar nada sin autorización explícita. La ayuda no ejecuta checker, discovery MCP, Bash, Jira, Slack ni diagnósticos; remitir a `$SKILL_DIR/knowledge/config/installation.md#9-recargar-y-validar` como guía canónica y no duplicar sus pasos.
 - Para cualquier otro subcomando, leer únicamente `$SKILL_DIR/subcommands/<subcomando-canónico>.md` y responder su ayuda sin ejecutar sus acciones.
 - No tratar como ayuda coincidencias parciales como `--help=true` ni texto que solo contenga esas cadenas.
 - Deshabilitar la ejecución y detener la invocación después de responder.

@@ -133,6 +133,23 @@ teardown() {
   assert_labor_share_private_values_hidden
 }
 
+@test "mixed valid and invalid assignments invalidate the entire execution body" {
+  LABOR_SHARE_TEST_SCENARIO=mixed-invalid-execution-schema
+  run run_labor_share_data execution --labor-share-id 424242
+
+  [ "$status" -eq 0 ]
+  assert_labor_share_json '.status == "indeterminate" and .facts == {} and .warnings == ["INVALID_LABOR_SHARE_RESPONSE"]' "one invalid assignment must suppress all partial facts"
+  assert_labor_share_private_values_hidden
+}
+
+@test "execution output never echoes an input identifier" {
+  run run_labor_share_data execution --labor-share-id 12345
+
+  [ "$status" -eq 0 ]
+  ! grep -Fq '12345' "$STDOUT_FILE"
+  ! grep -Fq '12345' "$STDERR_FILE"
+}
+
 @test "empty execution response remains indeterminate" {
   LABOR_SHARE_TEST_SCENARIO=empty-execution
   run run_labor_share_data execution --labor-share-id 424242

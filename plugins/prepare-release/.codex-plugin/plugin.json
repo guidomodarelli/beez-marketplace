@@ -1,6 +1,6 @@
 {
   "name": "prepare-release",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Automates release branch creation from develop and PR to master. Reads last tag from master, calculates next MINOR version, and opens release/x.x.x PR.",
   "author": {
     "name": "lpadularrosa",

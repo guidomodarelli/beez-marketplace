@@ -27,7 +27,7 @@ setup() {
   assert_file_empty "$MCP_LOG" "setup launcher must not inspect Fury MCP"
   assert_file_empty "$CURL_LOG" "setup must not invoke Grid in the launcher"
   assert_match_count 1 '^codex child args=' "$CHILD_LOG" "setup should invoke exactly one Codex child"
-  assert_match_count 1 '^(claude|codex|copilot) child args=' "$CHILD_LOG" "setup must invoke exactly one provider child"
+  assert_match_count 1 '^(claude|codex) child args=' "$CHILD_LOG" "setup must invoke exactly one provider child"
   assert_file_contains "$CHILD_LOG" '/groot-queue setup' "setup prompt was not forwarded"
   assert_file_contains "$CHILD_LOG" 'readiness=unset' "setup child must not receive parent or reusable readiness"
   assert_file_contains "$CHILD_LOG" 'legacy_preflight=unset' "setup child must not trust the legacy preflight variable"
@@ -44,7 +44,7 @@ setup() {
   assert_file_empty "$MCP_LOG" "setup help must not inspect Fury MCP"
   assert_file_empty "$CURL_LOG" "setup help must not invoke Grid"
   assert_match_count 1 '^codex child args=' "$CHILD_LOG" "setup help should invoke exactly one Codex child"
-  assert_match_count 1 '^(claude|codex|copilot) child args=' "$CHILD_LOG" "setup help must not invoke any additional provider child"
+  assert_match_count 1 '^(claude|codex) child args=' "$CHILD_LOG" "setup help must not invoke any additional provider child"
   assert_file_contains "$CHILD_LOG" '/groot-queue setup --help' "setup help prompt was not forwarded"
   assert_file_contains "$CHILD_LOG" 'readiness=unset' "setup help child must not receive parent readiness"
   assert_file_contains "$CHILD_LOG" 'legacy_preflight=unset' "setup help child must not receive legacy preflight"
@@ -61,7 +61,7 @@ setup() {
   assert_file_empty "$MCP_LOG" "subcommand help must not inspect Fury MCP"
   assert_file_empty "$CURL_LOG" "subcommand help must not invoke Grid"
   assert_match_count 1 '^codex child args=' "$CHILD_LOG" "subcommand help should invoke exactly one Codex child"
-  assert_match_count 1 '^(claude|codex|copilot) child args=' "$CHILD_LOG" "subcommand help must invoke exactly one provider child"
+  assert_match_count 1 '^(claude|codex) child args=' "$CHILD_LOG" "subcommand help must invoke exactly one provider child"
   assert_file_contains "$CHILD_LOG" '/groot-queue list --help' "list help prompt was not forwarded"
   assert_file_contains "$CHILD_LOG" 'readiness=unset' "help child must not receive parent readiness"
   assert_file_contains "$CHILD_LOG" 'legacy_preflight=unset' "help child must not receive legacy preflight"
@@ -91,7 +91,7 @@ setup() {
   assert_fixed_count 1 'claude inventory' "$INVENTORY_LOG" "Claude readiness should inspect plugin inventory exactly once"
   assert_fixed_count 1 'claude mcp' "$MCP_LOG" "Claude readiness should inspect Fury MCP CLI exactly once"
   assert_match_count 1 '^claude child args=' "$CHILD_LOG" "Claude child should launch exactly once"
-  assert_match_count 1 '^(claude|codex|copilot) child args=' "$CHILD_LOG" "only one provider child should launch"
+  assert_match_count 1 '^(claude|codex) child args=' "$CHILD_LOG" "only one provider child should launch"
   assert_match_count 5 '.+' "$CURL_LOG" "Claude readiness should perform exactly five Grid requests"
   assert_fixed_count 1 '/ping' "$CURL_LOG" "Claude readiness should ping Grid exactly once"
   assert_file_contains "$CHILD_LOG" '/groot-queue list' "operational prompt was not forwarded"
@@ -112,10 +112,9 @@ setup() {
   assert_fixed_count 1 'claude mcp' "$MCP_LOG" "complete Claude should inspect Fury MCP exactly once"
   assert_match_count 5 '.+' "$CURL_LOG" "operational auto should perform Grid requests only for selected Claude"
   assert_fixed_count 1 '/ping' "$CURL_LOG" "operational auto must probe Grid once for selected Claude"
-  assert_file_excludes "$CHILD_LOG" 'copilot child' "unsupported Copilot must not be selected"
   assert_file_excludes "$CHILD_LOG" 'codex child args=' "incomplete Codex must not receive the prompt"
   assert_match_count 1 '^claude child args=' "$CHILD_LOG" "Claude should be selected exactly once"
-  assert_match_count 1 '^(claude|codex|copilot) child args=' "$CHILD_LOG" "auto mode should invoke exactly one provider child"
+  assert_match_count 1 '^(claude|codex) child args=' "$CHILD_LOG" "auto mode should invoke exactly one provider child"
   assert_file_contains "$CHILD_LOG" 'provider=claude' "auto mode should expose Claude as active provider"
 }
 
@@ -127,7 +126,7 @@ setup() {
   assert_fixed_count 1 'codex mcp' "$MCP_LOG" "Codex readiness should inspect Fury MCP CLI exactly once"
   assert_file_excludes "$INVENTORY_LOG" 'claude inventory' "explicit Codex must not inspect Claude"
   assert_match_count 1 '^codex child args=' "$CHILD_LOG" "Codex child should launch exactly once"
-  assert_match_count 1 '^(claude|codex|copilot) child args=' "$CHILD_LOG" "only one provider child should launch"
+  assert_match_count 1 '^(claude|codex) child args=' "$CHILD_LOG" "only one provider child should launch"
   assert_match_count 5 '.+' "$CURL_LOG" "Codex readiness should perform exactly five Grid requests"
   assert_fixed_count 1 '/ping' "$CURL_LOG" "Codex readiness should ping Grid exactly once"
   assert_file_contains "$CHILD_LOG" 'provider=codex' "Codex child should receive active provider"
@@ -140,6 +139,8 @@ setup() {
   assert_invalid_launcher_case 'missing model option value' list --model
   assert_invalid_launcher_case 'missing effort option value' list --reasoning-effort
   assert_invalid_launcher_case 'invalid provider' --provider invalid list
+  local removed_provider="co""pilot"
+  assert_invalid_launcher_case 'removed provider' --provider "$removed_provider" list
   assert_invalid_launcher_case 'invalid effort' --reasoning-effort extreme list
 }
 

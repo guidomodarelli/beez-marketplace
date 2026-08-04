@@ -1,49 +1,51 @@
 {
-  "skill_name": "prepare-release",
-  "evals": [
+  "schema_version": 2,
+  "skill": "prepare-release",
+  "test_cases": [
     {
-      "id": 1,
-      "prompt": "/prepare-release",
-      "expected_output": "Fetches tags from master, proposes next MINOR version, and asks for confirmation",
+      "id": "prepare-release-default-command",
+      "description": "fetches tags, proposes a minor version, and requests confirmation",
+      "input": "/prepare-release",
       "assertions": [
         {
+          "id": "mentions-tag-discovery",
           "type": "contains_any",
           "values": ["git fetch", "git tag", "versión", "version", "master"],
           "description": "Should mention fetching tags from master"
         },
         {
+          "id": "requests-version-confirmation",
           "type": "contains_any",
           "values": ["Confirmás", "confirm", "próxima versión", "next version"],
           "description": "Should ask for version confirmation"
         }
-      ],
-      "files": []
+      ]
     },
     {
-      "id": 2,
-      "prompt": "quiero preparar el release",
-      "expected_output": "Triggers the prepare-release skill and starts the release flow",
+      "id": "prepare-release-natural-language",
+      "description": "triggers the release preparation flow from natural language",
+      "input": "quiero preparar el release",
       "assertions": [
         {
+          "id": "mentions-release-flow",
           "type": "contains_any",
           "values": ["release", "master", "develop", "versión", "tag"],
           "description": "Should activate the release preparation flow"
         }
-      ],
-      "files": []
+      ]
     },
     {
-      "id": 3,
-      "prompt": "crear release",
-      "expected_output": "Triggers the prepare-release skill",
+      "id": "prepare-release-create-request",
+      "description": "triggers release branch preparation from a concise request",
+      "input": "crear release",
       "assertions": [
         {
+          "id": "mentions-branch-or-pr",
           "type": "contains_any",
           "values": ["release", "rama", "branch", "PR", "master"],
           "description": "Should start the release branch creation flow"
         }
-      ],
-      "files": []
+      ]
     }
   ]
 }

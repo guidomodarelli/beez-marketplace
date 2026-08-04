@@ -30,6 +30,12 @@ Consultar solamente cuando se cumplan todas estas condiciones:
 
 Recolectar todos candidatos antes de elegir. Repeticiones decimales equivalentes pueden canonicalizarse; cero candidatos no disparan red y múltiples valores distintos dejan evidencia `indeterminate`. El script vuelve a validar todos candidatos como defensa en profundidad.
 
+## Wrapper upstream y sanitización
+
+Los subcomandos consultan Labour Share exclusivamente mediante `$SKILL_DIR/scripts/query-labor-share-data.sh`, que encapsula Shipping Users Management. No construyen HTTP, URLs, headers, credenciales, retries ni requests directos. El wrapper aplica el contrato de transporte y schema, y entrega únicamente evidencia normalizada y sanitizada.
+
+Nunca repetir valores de identificadores no confiables, aunque se explique que fueron ocultados. Usar referencias neutras como “el identificador reportado” o “la ejecución consultada”; esta regla incluye disclaimers, tablas, mensajes de error y citas.
+
 ## Semántica de ejecución
 
 | Respuesta | Interpretación permitida |
@@ -39,7 +45,7 @@ Recolectar todos candidatos antes de elegir. Repeticiones decimales equivalentes
 | `404` | Recurso no verificable desde esta consulta; no convertir en ausencia histórica ni ticket inválido |
 | `401`, `403`, `429`, transporte, `5xx`, body/schema inválido | `indeterminate` |
 
-Estados individuales permitidos: `SUCCESS` y `FAIL`. Aunque todos assignments observados sean `SUCCESS`, no afirmar que Labor Share global terminó ni que todos usuarios esperados están presentes: API no expone estado padre ni cantidad total esperada.
+Estados individuales permitidos: `SUCCESS` y `FAIL`. La validación de un body `200` es atómica: cada fila y campo requerido debe ser válido. Una sola fila con status desconocido o fecha inválida invalida el body entero; el resultado queda `indeterminate` con `facts: {}` y sin conteos, consistencia ni fechas parciales. Aunque todos assignments observados sean `SUCCESS`, no afirmar que Labor Share global terminó ni que todos usuarios esperados están presentes: API no expone estado padre ni cantidad total esperada.
 
 `return_date` es fecha programada enviada como `apply_date_time`. No prueba retorno efectivo, restauración de roles, cambio de warehouse, cancelación ni finalización.
 

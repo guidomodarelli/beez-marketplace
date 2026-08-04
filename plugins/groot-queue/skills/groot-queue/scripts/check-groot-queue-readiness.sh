@@ -181,7 +181,7 @@ parse_arguments() {
   done
 
   case "$REQUESTED_PROVIDER" in
-    claude|codex|copilot|auto) ;;
+    claude|codex|auto) ;;
     *) emit_constant_failure 2 "INVALID_PROVIDER" "arguments" ;;
   esac
 
@@ -517,12 +517,6 @@ load_provider_inventory() {
   local provider="$1"
 
   PROVIDER_INVENTORY_FILE="$TEMP_DIRECTORY/${provider}-inventory.json"
-
-  if [ "$provider" = "copilot" ]; then
-    PROVIDER_INVENTORY_FAILURE_CODE="PROVIDER_INVENTORY_UNSUPPORTED"
-    PROVIDER_INVENTORY_EXIT_CODE=2
-    return 0
-  fi
 
   if ! command -v "$provider" >/dev/null 2>&1; then
     PROVIDER_INVENTORY_FAILURE_CODE="PROVIDER_CLI_UNAVAILABLE"

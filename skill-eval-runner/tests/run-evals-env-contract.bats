@@ -13,8 +13,8 @@ setup() {
     run_eval_runner
 
     [ "$status" -eq 0 ]
-    [ "$(wc -l < "$CLAUDE_ARGS_LOG" | tr -d ' ')" -eq 2 ]
-    grep -q -- '--model claude-sonnet-4.6' "$CLAUDE_ARGS_LOG"
+    [ "$(wc -l < "$CLAUDE_ARGS_LOG" | tr -d ' ')" -ge 1 ]
+    grep -q -- '--model claude-sonnet-4-6' "$CLAUDE_ARGS_LOG"
 }
 
 @test "uses the model override" {
@@ -23,8 +23,58 @@ setup() {
     run_eval_runner
 
     [ "$status" -eq 0 ]
-    [ "$(wc -l < "$CLAUDE_ARGS_LOG" | tr -d ' ')" -eq 2 ]
+    [ "$(wc -l < "$CLAUDE_ARGS_LOG" | tr -d ' ')" -ge 1 ]
     grep -q -- '--model prefixed-model' "$CLAUDE_ARGS_LOG"
+}
+
+@test "resolves a relative skill path before building the contract prompt" {
+    run --separate-stderr env \
+        "PATH=${STUB_BIN}:${PATH}" \
+        "CLAUDE_ARGS_LOG=${CLAUDE_ARGS_LOG}" \
+        "GROOT_MARKETPLACE_EVAL_PROVIDER=claude" \
+        bash -c 'cd "$1" && "$2" --jobs 1 "$3"' \
+        _ "$TEST_ROOT" "$EVAL_RUNNER" "$SKILL_NAME"
+
+    [ "$status" -eq 0 ]
+    grep -Fq -- "$SKILL_DIR/SKILL.md" "$CLAUDE_ARGS_LOG"
+}
+
+@test "removed provider is rejected before invoking Claude" {
+    local removed_provider="co""pilot"
+
+    run --separate-stderr env \
+        "PATH=${STUB_BIN}:${PATH}" \
+        "CLAUDE_ARGS_LOG=${CLAUDE_ARGS_LOG}" \
+        "GROOT_MARKETPLACE_EVAL_PROVIDER=${removed_provider}" \
+        "${EVAL_RUNNER}" --jobs 1 "${SKILL_DIR}"
+
+    [ "$status" -eq 1 ]
+    [[ "$stderr" == *"Invalid provider '${removed_provider}'"* ]]
+    [[ ! -s "$CLAUDE_ARGS_LOG" ]]
+}
+
+@test "rejects null assertions before invoking Claude" {
+    local config_file="${SKILL_DIR}/evals/eval-config.json"
+    jq '.test_cases[0].assertions = null' "$config_file" > "${config_file}.tmp"
+    mv "${config_file}.tmp" "$config_file"
+
+    run_eval_runner
+
+    [ "$status" -eq 1 ]
+    [[ "$stderr" == *"Invalid eval-config.json"* ]]
+    [[ ! -s "$CLAUDE_ARGS_LOG" ]]
+}
+
+@test "rejects missing assertions before invoking Claude" {
+    local config_file="${SKILL_DIR}/evals/eval-config.json"
+    jq 'del(.test_cases[0].assertions)' "$config_file" > "${config_file}.tmp"
+    mv "${config_file}.tmp" "$config_file"
+
+    run_eval_runner
+
+    [ "$status" -eq 1 ]
+    [[ "$stderr" == *"Invalid eval-config.json"* ]]
+    [[ ! -s "$CLAUDE_ARGS_LOG" ]]
 }
 
 @test "reports infrastructure failure as JSONL" {

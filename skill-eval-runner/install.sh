@@ -61,5 +61,5 @@ echo -e "  ${GREEN}run-evals${NC}                     Run evals for skill in cur
 echo -e "  ${GREEN}run-evals path/to/skill${NC}       Run evals for a specific skill"
 echo -e "  ${GREEN}run-evals --all${NC}               Run evals for all skills"
 echo -e "  ${GREEN}run-evals --pretty${NC}            Human-readable colored report"
-echo -e "  ${GREEN}run-evals --provider copilot${NC}  Override provider"
+echo -e "  ${GREEN}run-evals --provider codex${NC}    Override provider"
 echo ""

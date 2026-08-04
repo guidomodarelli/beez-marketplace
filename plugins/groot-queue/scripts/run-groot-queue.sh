@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # run-groot-queue.sh — Execute groot-queue commands using the configured provider.
-# Non-operational auto order: copilot > codex > claude.
-# Operational auto order: codex > claude (Copilot has no readiness inventory API).
+# Auto provider order: codex > claude.
 
 set -euo pipefail
 umask 077
@@ -61,9 +60,9 @@ usage() {
     printf 'Opciones del launcher:\n'
     printf '  --model M, -m M                    Sobrescribir modelo\n'
     printf '  --reasoning-effort E, -e E         Sobrescribir esfuerzo (low/medium/high/max)\n'
-    printf '  --provider P                       Usar provider (auto/copilot/codex/claude)\n'
+    printf '  --provider P                       Usar provider (auto/codex/claude)\n'
     printf '  --help, -h                         Mostrar esta ayuda antes del subcomando\n\n'
-    printf 'En comandos operativos, auto evalúa codex y claude; setup/help también admite copilot.\n'
+    printf 'Auto evalúa Codex y Claude Code en ese orden.\n'
 }
 
 fail() {
@@ -112,7 +111,7 @@ resolve_provider_without_readiness() {
         return 0
     fi
 
-    for candidate_provider in copilot codex claude; do
+    for candidate_provider in codex claude; do
         if command -v "$candidate_provider" >/dev/null 2>&1; then
             RESOLVED_EVAL_PROVIDER="$candidate_provider"
             return 0
@@ -291,8 +290,8 @@ if [ "${#COMMAND_ARGUMENTS[@]}" -gt 0 ]; then
 fi
 
 case "$GROOT_MARKETPLACE_EVAL_PROVIDER" in
-    auto|copilot|codex|claude) ;;
-    *) fail "provider inválido: $GROOT_MARKETPLACE_EVAL_PROVIDER. Usá auto, copilot, codex o claude." ;;
+    auto|codex|claude) ;;
+    *) fail "provider inválido: $GROOT_MARKETPLACE_EVAL_PROVIDER. Usá auto, codex o claude." ;;
 esac
 
 if [ -z "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT" ]; then
@@ -327,8 +326,7 @@ if ! SKILL_ABSOLUTE_PATH="$(CDPATH= cd -- "$SKILL_PATH" && pwd -P)"; then
     exit 70
 fi
 
-mkdir -p "$SKILL_CWD/.agents/skills" "$SKILL_CWD/.claude/skills" "$SKILL_CWD/.codex/skills"
-ln -s "$SKILL_ABSOLUTE_PATH" "$SKILL_CWD/.agents/skills/groot-queue"
+mkdir -p "$SKILL_CWD/.claude/skills" "$SKILL_CWD/.codex/skills"
 ln -s "$SKILL_ABSOLUTE_PATH" "$SKILL_CWD/.claude/skills/groot-queue"
 ln -s "$SKILL_ABSOLUTE_PATH" "$SKILL_CWD/.codex/skills/groot-queue"
 
@@ -358,7 +356,7 @@ fi
 if [ -z "$GROOT_MARKETPLACE_EVAL_MODEL" ]; then
     case "$RESOLVED_EVAL_PROVIDER" in
         codex) GROOT_MARKETPLACE_EVAL_MODEL='gpt-5.4-mini' ;;
-        *) GROOT_MARKETPLACE_EVAL_MODEL='claude-sonnet-4.6' ;;
+        *) GROOT_MARKETPLACE_EVAL_MODEL='claude-sonnet-4-6' ;;
     esac
 fi
 
@@ -384,20 +382,6 @@ printf '%bProvider:%b %s\n' "$BLUE" "$NC" "$RESOLVED_EVAL_PROVIDER" >&2
 printf '%bIniciando groot-queue.%b\n\n' "$GREEN" "$NC" >&2
 
 case "$RESOLVED_EVAL_PROVIDER" in
-    copilot)
-        COPILOT_EFFORT_FLAGS=()
-        if [ -n "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT" ]; then
-            COPILOT_EFFORT_FLAGS=(--effort "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT")
-        fi
-        (
-            cd "$SKILL_CWD"
-            env "${CHILD_ENVIRONMENT[@]}" \
-                copilot -p "$PROMPT" \
-                --model "$GROOT_MARKETPLACE_EVAL_MODEL" \
-                "${COPILOT_EFFORT_FLAGS[@]}" \
-                --allow-all
-        )
-        ;;
     claude)
         (
             cd "$SKILL_CWD"

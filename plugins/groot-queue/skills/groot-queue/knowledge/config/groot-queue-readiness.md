@@ -29,7 +29,7 @@ Solo se continúa cuando ambas fases están listas. Una variable de entorno, la 
 El checker acepta exclusivamente:
 
 ```text
---provider claude|codex|copilot|auto
+--provider claude|codex|auto
 [--reuse-result FILE]
 ```
 
@@ -37,8 +37,7 @@ No acepta flags repetidos, valores faltantes ni argumentos adicionales.
 
 - `claude`: usa los inventarios oficiales de plugins y MCP de Claude Code.
 - `codex`: usa los inventarios oficiales de Codex para `tech-plugins-marketplace` y su CLI MCP.
-- `copilot`: falla de forma cerrada porque actualmente no existe un inventario oficial que permita verificar instalación, estado, versión y path.
-- `auto`: intenta primero `codex` y luego `claude`, y selecciona el primer provider cuyo readiness shell completo sea verificable. No selecciona Copilot por mera presencia del ejecutable.
+- `auto`: intenta primero `codex` y luego `claude`, y selecciona el primer provider cuyo readiness shell completo sea verificable.
 
 Un provider explícito nunca hace fallback a otro provider.
 
@@ -50,7 +49,7 @@ El checker conserva el resultado de cada capa en `checks` y los fallos en `failu
 |---|---|
 | `dependencies` | `LOCAL_DEPENDENCY_UNAVAILABLE` |
 | `configuration` | `CONFIGURATION_INVALID` |
-| `provider_inventory` | `PROVIDER_CLI_UNAVAILABLE`, `PROVIDER_INVENTORY_UNSUPPORTED`, `PROVIDER_INVENTORY_FAILED`, `PROVIDER_INVENTORY_INVALID` |
+| `provider_inventory` | `PROVIDER_CLI_UNAVAILABLE`, `PROVIDER_INVENTORY_FAILED`, `PROVIDER_INVENTORY_INVALID` |
 | `grid_plugin` | `PLUGIN_NOT_INSTALLED`, `PLUGIN_DISABLED`, `PLUGIN_INVENTORY_AMBIGUOUS`, `PLUGIN_INVENTORY_INVALID` |
 | `grid_required_skill` | `REQUIRED_SKILL_UNAVAILABLE` |
 | `fury_plugin` | `FURY_PLUGIN_NOT_INSTALLED`, `FURY_PLUGIN_DISABLED`, `FURY_PLUGIN_INVENTORY_AMBIGUOUS`, `FURY_PLUGIN_INVENTORY_INVALID` |
@@ -159,7 +158,7 @@ No mostrar ni persistir payloads completos de discovery, bodies remotos, headers
 | Exit code | Categoría | Remediación |
 |---:|---|---|
 | `0` | Shell ready | Ejecutar la fase runtime MCP. |
-| `2` | Argumentos o provider | Corregir flags/valores. Para Copilot, usar Claude Code o Codex hasta que exista inventario oficial verificable. |
+| `2` | Argumentos o provider | Corregir flags o usar un provider permitido: Claude Code o Codex. |
 | `10` | Inventario, plugins, skills o MCP local | Instalar, habilitar o reparar el recurso correcto. No hacerlo sin aprobación explícita. |
 | `20` | Red o servicio | Verificar conectividad y disponibilidad de Grid; reintentar cuando el servicio esté accesible. |
 | `21` | Versión | Actualizar el plugin con aprobación explícita y volver a ejecutar readiness. |

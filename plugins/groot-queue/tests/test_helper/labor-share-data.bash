@@ -122,6 +122,12 @@ case "$scenario" in
   invalid-execution-schema)
     body='[{"id":7001,"user_id":8001,"fullname":"Private Person","status":"UNKNOWN","return_date":"not-a-date"}]'
     ;;
+  mixed-invalid-execution-schema)
+    body='[
+      {"id":7001,"user_id":8001,"fullname":"Private Person","status":"SUCCESS","return_date":"2026-08-01T12:00:00Z"},
+      {"id":7002,"user_id":8002,"fullname":"Another Private Person","status":"UNKNOWN","return_date":"not-a-date"}
+    ]'
+    ;;
   empty-execution)
     body='[]'
     ;;

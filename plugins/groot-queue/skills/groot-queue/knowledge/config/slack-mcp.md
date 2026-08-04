@@ -12,7 +12,6 @@ La fuente canónica para instalar y completar OAuth es la sección [Slack MCP de
 
 - **Claude Code**: seguir la sección canónica anterior.
 - **Codex**: seguir el [anexo Codex](installation.md#anexo-codex) y aplicar el mismo contrato de capacidades y OAuth.
-- **GitHub Copilot CLI**: el readiness no es operacional mientras no exista un inventario oficial verificable; consultar [Alcance y providers](installation.md#alcance-y-providers).
 
 ## Contrato de capacidades y degradación
 
