@@ -158,18 +158,43 @@
     },
     {
       "id": "setup-missing-dependencies-safe-diagnosis",
-      "description": "Setup informa dependencias faltantes y remite al onboarding sin mutar el entorno",
-      "input": "Escenario documental de `/groot-queue setup`: faltan dependencias locales como ACLI y jq. Consultá las referencias bundled y explicá el resultado visible, la remediación manual y si setup instala, habilita, configura o actualiza algo sin aprobación explícita. No invoques Bash, MCP, Jira, Slack ni servicios externos.",
+      "description": "Setup muestra comandos copiables para dependencias faltantes y ofrece instalación aprobada",
+      "input": "Escenario documental de `/groot-queue setup`: faltan dependencias locales como ACLI y jq. Explicá resultado visible y mostrale al usuario remediación completa en chat, sin mencionar archivos internos. Indicá qué podés ejecutar con aprobación y qué paso queda manual. No invoques Bash, MCP, Jira, Slack ni servicios externos.",
       "assertions": [
         {
+          "type": "contains",
+          "description": "Muestra comando Homebrew directamente en chat",
+          "value": "brew install"
+        },
+        {
           "type": "contains_any",
-          "description": "contract 1",
+          "description": "Incluye dependencias concretas detectadas",
           "values": [
-            "no instala",
-            "no autentica",
-            "no habilita",
-            "no configura",
-            "no actualiza"
+            "acli",
+            "jq"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Ofrece automatización únicamente con aprobación",
+          "values": [
+            "por vos",
+            "aprobación",
+            "autorización",
+            "¿Querés que lo haga?"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No remite a archivos internos inaccesibles",
+          "values": [
+            "$SKILL_DIR",
+            "installation.md",
+            "setup.md",
+            "command-entrypoint.md",
+            "knowledge/config/",
+            "check-groot-queue-readiness.sh",
+            "consultá la guía"
           ]
         }
       ]
@@ -1806,8 +1831,8 @@
     },
     {
       "id": "setup-help-uses-no-tools",
-      "description": "Setup help describe el diagnóstico y la guía canónica sin ejecutar tools ni cambiar el entorno",
-      "input": "Respondé `/groot-queue setup --help` usando metadata y onboarding bundled. Resumí qué verifica setup, nombrá la guía canónica y explicá qué no ejecuta o modifica. No invoques Bash, MCP, Jira, Slack ni servicios externos.",
+      "description": "Setup help explica recuperación autocontenida sin ejecutar tools",
+      "input": "Respondé `/groot-queue setup --help` usando metadata y onboarding bundled. Resumí qué verifica, cómo ayuda cuando falla un AI asset y qué no ejecuta o modifica. La respuesta debe ser autocontenida y no debe remitir a archivos internos. No invoques Bash, MCP, Jira, Slack ni servicios externos.",
       "assertions": [
         {
           "type": "contains",
@@ -1828,7 +1853,9 @@
             "no corre el checker",
             "no ejecuta tools",
             "sin tools",
-            "no ejecuta diagnósticos"
+            "no ejecuta diagnósticos",
+            "No ejecuta checker",
+            "no ejecuta checker"
           ]
         },
         {
@@ -1838,17 +1865,37 @@
             "no instala",
             "no modifica",
             "no realiza cambios",
-            "sin autorización explícita"
+            "sin autorización explícita",
+            "aprobación explícita",
+            "Instala"
           ]
         },
         {
           "type": "contains_any",
-          "description": "Valida un elemento observable del contrato de onboarding o remediación",
+          "description": "Explica salida práctica y automatización aprobada",
           "values": [
-            "guía canónica",
-            "README.md",
-            "guía de instalación",
-            "onboarding"
+            "comandos copiables",
+            "por vos",
+            "parte automatizable",
+            "autorización explícita"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Muestra invocación directa de setup",
+          "values": [
+            "/groot-queue:setup",
+            "/groot-queue setup"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No muestra referencias internas",
+          "values": [
+            "$SKILL_DIR",
+            "installation.md",
+            "knowledge/config/",
+            "guía canónica"
           ]
         }
       ]
@@ -3175,6 +3222,212 @@
           "values": [
             "Codex",
             "codex"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-grid-assets-inline-recovery-claude",
+      "description": "Grid plugin o skill faltante produce instalación Claude copiable y recarga guiada",
+      "input": "Escenario documental de /groot-queue:setup en Claude Code: el checker devuelve PLUGIN_NOT_INSTALLED y REQUIRED_SKILL_UNAVAILABLE para Grid Sharing. Mostrá recuperación completa en chat, qué podés ejecutar con aprobación, qué tengo que hacer yo y cómo validar. No ejecutes tools ni cambies configuración.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "claude plugin marketplace add --scope user git@github.com:melisource/fury_tech-plugins-marketplace.git"
+        },
+        {
+          "type": "contains",
+          "value": "claude plugin install --scope user grid-sharing@tech-plugins-marketplace"
+        },
+        {
+          "type": "contains",
+          "value": "/reload-plugins"
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue:setup"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "por vos",
+            "¿Querés que lo haga?",
+            "aprobación explícita"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "$SKILL_DIR",
+            "installation.md",
+            "setup.md",
+            "knowledge/config/",
+            "check-groot-queue-readiness.sh",
+            "ln -s"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-fury-runtime-inline-recovery-claude",
+      "description": "Runtime Fury faltante se recupera desde plugin propietario sin MCP duplicado",
+      "input": "Escenario documental de /groot-queue:setup en Claude Code: Fury Services figura instalado, pero aparecen FURY_RUNTIME_DISCOVERY_TOOLS_UNAVAILABLE y FURYDOCS_COMPONENT_UNAVAILABLE. Mostrá pasos prácticos inline para verificar, recargar, reiniciar y revalidar. No ejecutes tools ni hagas cambios.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "claude mcp get plugin:fury-services:fury"
+        },
+        {
+          "type": "contains",
+          "value": "/reload-plugins"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "reinici",
+            "cerrar y abrir"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue:setup"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "claude mcp add fury",
+            "mcp-remote-proxy https://",
+            "$SKILL_DIR",
+            "installation.md"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-vpn-identity-human-step",
+      "description": "Falla de identidad Grid indica VPN humana sin credenciales alternativas",
+      "input": "Escenario documental de /groot-queue setup: GRID_IDENTITY_UNAVAILABLE y GRID_IDENTITY_FORBIDDEN. Decime directamente qué tengo que hacer y cómo revalidar. No ejecutes tools ni cambies configuración.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "VPN"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "conect",
+            "Conect"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "/groot-queue:setup",
+            "/groot-queue setup"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No muestra referencias internas",
+          "values": [
+            "$SKILL_DIR",
+            "installation.md",
+            "setup.md",
+            "knowledge/config/"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No propone workarounds con credenciales manuales",
+          "values": [
+            "curl -H \"Authorization",
+            "curl -H 'Authorization",
+            "export TOKEN=",
+            "export AUTHORIZATION=",
+            "claude mcp add fury"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-atlassian-mcp-inline-recovery",
+      "description": "Atlassian MCP faltante muestra plugin oficial, OAuth humano y validación",
+      "input": "Escenario documental de /groot-queue:setup: Atlassian MCP no está disponible. Mostrá solución recomendada que pueda copiar fuera de Claude, paso dentro de Claude y oferta de configurarlo por mí. No ejecutes tools ni cambies configuración.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "claude plugin install --scope user atlassian@claude-plugins-official"
+        },
+        {
+          "type": "contains",
+          "value": "/mcp"
+        },
+        {
+          "type": "contains",
+          "value": "OAuth"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "por vos",
+            "¿Querés que lo haga?",
+            "aprobación"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "/groot-queue:setup",
+            "claude mcp list"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "cloudId:",
+            "$SKILL_DIR",
+            "installation.md",
+            "knowledge/config/"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-grid-fury-inline-recovery-codex",
+      "description": "Codex recibe comandos propios, restart y validación sin slash de Claude",
+      "input": "Escenario documental de /groot-queue setup bajo Codex: faltan Grid Sharing y Fury Services completos. Mostrá comandos copiables, parte automatizable con aprobación, paso manual final y revalidación. No ejecutes tools ni cambies configuración.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "codex plugin marketplace add git@github.com:melisource/fury_tech-plugins-marketplace.git"
+        },
+        {
+          "type": "contains",
+          "value": "codex plugin add grid-sharing@tech-plugins-marketplace"
+        },
+        {
+          "type": "contains",
+          "value": "codex plugin add fury-services@tech-plugins-marketplace"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "reinici",
+            "cerrar y abrir"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue setup"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "$SKILL_DIR",
+            "installation.md",
+            "setup.md",
+            "knowledge/config/",
+            "codex mcp add fury"
           ]
         }
       ]

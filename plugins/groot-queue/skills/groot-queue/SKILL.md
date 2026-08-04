@@ -82,7 +82,7 @@ Ejemplos:
 | Subcomando | Alias | Acción |
 |------------|-------|--------|
 | `start` | — | Mostrar banner de bienvenida, versión y catálogo de comandos con hints de uso |
-| `setup` | — | Diagnosticar ACLI, integraciones y readiness de Grid Sharing + Fury Services/FuryDocs; no instala ni modifica componentes sin aprobación explícita |
+| `setup` | — | Diagnosticar ACLI y AI assets; mostrar comandos copiables y ofrecer recuperación automatizada con aprobación explícita |
 | `list` | `ls` | Listar todos los incidentes abiertos |
 | `classify` | `cl` | Clasificar y agrupar por tipo de problema + urgencia |
 | `detail SSHP-XXXXXX` | `d` | Detalle completo de un ticket con clasificación y sugerencia |
@@ -210,7 +210,7 @@ El orden de la lista **no** define el turno: en cada corrida, `assign-unassigned
 
 ## Onboarding y diagnóstico
 
-La [guía completa de Groot Queue](knowledge/config/installation.md) es la fuente canónica para instalar, configurar, diagnosticar, actualizar y desinstalar el entorno. El subcomando `setup` solo diagnostica y propone remediaciones; no instala, autentica, habilita, configura ni actualiza componentes sin aprobación explícita.
+La [guía completa de Groot Queue](knowledge/config/installation.md) es fuente interna para instalar, configurar, diagnosticar, actualizar y desinstalar entorno. `setup` debe transformar esa información en respuesta autocontenida: comandos copiables, pasos humanos mínimos y oferta de ejecutar parte automatizable después de aprobación explícita. Nunca debe remitir usuario a paths o archivos bundled.
 
 ---
 

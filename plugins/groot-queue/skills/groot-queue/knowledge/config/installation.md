@@ -12,7 +12,81 @@ Guía canónica para instalar, configurar, diagnosticar, actualizar y desinstala
 | Claude Code | Operacional y principal | Seguí esta guía de principio a fin. |
 | Codex | Operacional | Instalá con los comandos del [anexo Codex](#anexo-codex) y aplicá el mismo contrato de readiness. |
 
-El subcomando `setup` **diagnostica** el entorno y muestra remediaciones. No instala, autentica, habilita, actualiza ni modifica componentes automáticamente. Toda acción mutable requiere aprobación explícita.
+El subcomando `setup` **diagnostica** el entorno y muestra remediaciones completas en el chat. Puede ejecutar la parte automatizable después de recibir aprobación explícita; nunca inicia por cuenta propia instalaciones, updates, cambios MCP ni autenticaciones. OAuth, VPN, `/reload-plugins` y el reinicio del provider requieren intervención de la persona.
+
+<a id="recuperacion-conversacional-de-ai-assets"></a>
+## 🧭 Recuperación conversacional de AI assets
+
+Cuando `setup` detecte un plugin, skill, MCP, CLI o acceso faltante, esta guía funciona como fuente interna para construir respuesta. Persona que usa plugin puede no tener repositorio disponible: **no mostrar paths, nombres de archivos, anchors ni instrucciones como “consultá guía”**. Tampoco citar documentos internos, secciones, fuentes ni contratos aunque prompt pida explicar fundamento. Leer procedimiento aplicable y reproducir directamente en chat comandos y pasos necesarios; respuesta debe parecer conocimiento operativo nativo, no resumen de archivos.
+
+### Formato obligatorio de la remediación
+
+Agrupar failures que compartan causa y responder una sola vez por recurso con este orden:
+
+- `### <Recurso> — <estado o failure code seguro>`
+- `Puedo hacerlo por vos`: acción automatizable exacta y aviso de aprobación requerida.
+- `Tenés que hacer vos`: OAuth, VPN, `/reload-plugins` o restart, si aplica.
+- `Comandos para copiar y pegar`: bloque `bash` con comandos exactos para provider activo.
+- `Validación`: bloque `text` o `bash` con slash command o comando read-only.
+
+Omitir bloques vacíos. Si una acción no puede automatizarse desde la sesión actual, decirlo de forma directa y mantener comando copiable. No afirmar que recurso quedó listo hasta verificarlo.
+
+### Política de automatización
+
+- Ejecutar checks read-only sin aprobación adicional cuando formen parte de `setup`.
+- Antes de `brew install`, agregar marketplace, instalar/habilitar/actualizar plugin o crear una conexión MCP, mostrar comando exacto y pedir aprobación explícita.
+- Tras aprobación, ejecutar solo acciones enumeradas. No ampliar alcance a otros plugins, marketplaces, settings o MCPs.
+- Después de mutación, ejecutar verificaciones read-only posibles. Si runtime activo todavía conserva inventario anterior, pedir `/reload-plugins`; si sigue stale, pedir cerrar y abrir provider.
+- No intentar ejecutar slash commands desde Bash. Presentarlos como paso manual dentro de sesión activa.
+- No automatizar login OAuth, selección de workspace, conexión VPN, solicitud de ACL ni reinicio del provider. Se puede iniciar CLI de login solo si persona lo pidió explícitamente y está disponible interacción necesaria.
+- No desinstalar, reemplazar configuración existente ni agregar integración alternativa para “probar”. Si existe conflicto o inventario ambiguo, mostrar estado y pedir elección antes de cambiarlo.
+
+### Matriz de recuperación
+
+| Failure o síntoma | Causa agrupada | Acción que debe aparecer inline |
+|---|---|---|
+| `LOCAL_DEPENDENCY_UNAVAILABLE` | Dependencia local | Mostrar checks y comando Homebrew específico para herramienta faltante. |
+| `PROVIDER_CLI_UNAVAILABLE` | Provider ausente | Mostrar instalación de Claude Code o indicar instalación/actualización de Codex según provider activo. |
+| `PLUGIN_NOT_INSTALLED`, `REQUIRED_SKILL_UNAVAILABLE` | Grid Sharing incompleto | Agregar marketplace técnico si falta, instalar o actualizar `grid-sharing`, recargar plugins y revalidar. Nunca copiar skill ni crear symlink manual. |
+| `PLUGIN_DISABLED` | Grid Sharing deshabilitado | Mostrar comando oficial de habilitación si CLI lo soporta; si no, indicar gestión desde `/plugin`. Recargar y revalidar. |
+| `FURY_PLUGIN_NOT_INSTALLED`, `FURY_REQUIRED_SKILL_UNAVAILABLE`, `FURY_MANIFEST_UNAVAILABLE`, `FURY_MCP_DECLARATION_UNAVAILABLE`, `FURY_MCP_NOT_CONFIGURED` | Fury Services incompleto | Instalar o actualizar `fury-services` desde marketplace técnico. No crear otro MCP `fury`; plugin es propietario de declaración. Recargar/reiniciar y revalidar. |
+| `FURY_PLUGIN_DISABLED` | Fury Services deshabilitado | Habilitar plugin existente, recargar y revalidar; no agregar segunda instalación. |
+| `FURY_MCP_CONNECTION_UNAVAILABLE`, `FURY_RUNTIME_DISCOVERY_TOOLS_UNAVAILABLE`, `FURY_COMPONENT_DISCOVERY_FAILED`, `FURYDOCS_COMPONENT_UNAVAILABLE`, `FURY_TOOL_DISCOVERY_FAILED`, `FURYDOCS_REQUIRED_TOOLS_UNAVAILABLE` | Runtime Fury stale o incompleto | Verificar plugin y MCP, ejecutar `/reload-plugins`, reiniciar si persiste y repetir `setup`. No reconstruir transporte ni invocar tools documentales como probe. |
+| `GRID_TRANSPORT_FAILED`, `GRID_SERVICE_UNAVAILABLE`, `GRID_PING_FAILED` | Red o servicio Grid | Confirmar VPN/conectividad, esperar si servicio no está disponible y repetir invocación. |
+| `GRID_RATE_LIMITED` | Rate limit | Mostrar espera segura sanitizada cuando exista; no hacer loop ni reintento agresivo. |
+| `PLUGIN_VERSION_INCOMPATIBLE` | Grid desactualizado | Mostrar update acotado de `grid-sharing`, pedir aprobación, reiniciar provider y revalidar. |
+| `GRID_IDENTITY_UNAVAILABLE`, `GRID_IDENTITY_FORBIDDEN` | VPN o identidad edge | Pedir conectar/reconectar VPN aprobada. No sugerir tokens, cookies ni headers manuales. |
+| `GENERAL_READ_FORBIDDEN`, `REQUIRED_DOCUMENT_FORBIDDEN`, `REQUIRED_DOCUMENT_NOT_FOUND` | ACL o recurso requerido | Pedir acceso autorizado al recurso indicado por nombre seguro. No mostrar IDs internos ni probar otros recursos. |
+| ACLI ausente o no autenticado | Jira CLI | Mostrar instalación Homebrew, login web, status y revalidación. Login queda como paso humano. |
+| Atlassian MCP ausente o no autenticado | Integración Atlassian | Recomendar plugin oficial, OAuth desde `/mcp`, una única integración y validación. No hardcodear `cloudId`. |
+| Slack MCP ausente o no autenticado | Integración Slack | Recomendar plugin oficial, OAuth desde `/mcp` y validar solo con `alerts --dry-run`. |
+
+### Comandos por provider
+
+Para **Claude Code**, tomar comandos exactos de secciones de instalación, actualización, recarga y troubleshooting de esta misma guía. Mostrar solo comandos necesarios para failures presentes. Cuando falten Grid y Fury, agregar marketplace técnico una sola vez y luego instalar ambos plugins.
+
+Para **Codex**, tomar comandos exactos de anexo Codex. Codex requiere reinicio después de cambios de plugins o MCP; no presentar `/reload-plugins` como disponible. Si una capacidad de instalación/update no está documentada para recurso, no inventar comando: explicar paso manual verificable.
+
+### Cierre de recuperación
+
+Después de listar recursos:
+
+1. Ofrecer ejecutar en bloque únicamente acciones automatizables enumeradas: `Puedo ejecutar esos comandos por vos. ¿Querés que lo haga?`
+2. Si persona aprueba, ejecutar comandos, reportar éxito/falla real y correr inventarios read-only.
+3. Mostrar pasos humanos pendientes en orden mínimo.
+4. Terminar con comando de revalidación del provider activo:
+
+```text
+/groot-queue:setup
+```
+
+Para Codex:
+
+```text
+/groot-queue setup
+```
+
+Si revalidación vuelve a fallar, responder solo con failures actuales; no repetir recursos ya verificados ni afirmar éxito parcial como setup completo. Detener respuesta después de revalidación u oferta de ejecución: no agregar postscript, explicación de fuentes, “qué hice y por qué” ni detalles internos del checker.
 
 <a id="fuentes-de-verdad"></a>
 ## 🧭 Fuentes de verdad

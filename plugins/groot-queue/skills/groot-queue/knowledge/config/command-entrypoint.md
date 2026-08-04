@@ -21,7 +21,7 @@ Aplicar este orden sin adelantar lecturas, tools ni acciones del subcomando.
 Si cualquier argumento es exactamente `--help` o `-h`:
 
 - No ejecutar el gate, shell, MCP, Jira, Slack ni ninguna acción del subcomando.
-- Para `setup`, responder directamente que diagnostica ACLI, integraciones, Grid Sharing y Fury Services/FuryDocs sin inspeccionar settings del provider ni instalar o modificar nada sin autorización explícita. La ayuda no ejecuta checker, discovery MCP, Bash, Jira, Slack ni diagnósticos; remitir a `$SKILL_DIR/knowledge/config/installation.md#9-recargar-y-validar` como guía canónica y no duplicar sus pasos.
+- Para `setup`, responder directamente que diagnostica ACLI, integraciones, Grid Sharing y Fury Services/FuryDocs sin inspeccionar settings del provider. Explicar que ante una falla muestra comandos copiables, ofrece ejecutar parte automatizable solo con autorización explícita y deja OAuth, VPN, `/reload-plugins` o restart como pasos humanos. Incluir `/groot-queue:setup` para Claude Code y `/groot-queue setup` para Codex. Incluir frase explícita: `Esta ayuda no ejecuta checker, discovery MCP, Bash, Jira, Slack ni diagnósticos; tampoco modifica el entorno.` No mencionar ni citar archivos, nombres de archivos, paths, anchors, secciones, fuentes internas ni repositorio.
 - Para cualquier otro subcomando, leer únicamente `$SKILL_DIR/subcommands/<subcomando-canónico>.md` y responder su ayuda sin ejecutar sus acciones.
 - No tratar como ayuda coincidencias parciales como `--help=true` ni texto que solo contenga esas cadenas.
 - Deshabilitar la ejecución y detener la invocación después de responder.

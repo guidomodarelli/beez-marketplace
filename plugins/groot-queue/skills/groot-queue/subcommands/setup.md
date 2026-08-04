@@ -4,20 +4,20 @@ description: Verifica ACLI, integraciones y el readiness completo de Grid Sharin
 
 # Subcomando: setup
 
-**Propósito**: Verificar el entorno requerido por `groot-queue`, diagnosticar dependencias y mostrar remediaciones seguras sin asumir que una integración está disponible.
+**Propósito**: Verificar el entorno requerido por `groot-queue`, diagnosticar dependencias y resolver faltantes con instrucciones autocontenidas y asistencia automatizada bajo aprobación explícita.
 
 > **Re-ejecutable**: este subcomando es idempotente. Correrlo de nuevo no rompe nada; revalida lo configurado y señala lo que falta.
 
 ## Ayuda sin tools
 
-Antes de cualquier tool o lectura adicional, inspeccionar los argumentos. Si contienen el token exacto `--help` o `-h`, explicar brevemente qué verifica `setup`, que Grid Sharing y FuryDocs son obligatorios para completar el setup y que no se realizan instalaciones ni cambios sin autorización explícita. Detenerse después de responder la ayuda.
+Antes de cualquier tool o lectura adicional, inspeccionar los argumentos. Si contienen el token exacto `--help` o `-h`, explicar brevemente qué verifica `setup`, que Grid Sharing y FuryDocs son obligatorios, y que ante una falla muestra directamente comandos copiables, ofrece ejecutar la parte automatizable con autorización explícita y separa los pasos humanos como OAuth, VPN, `/reload-plugins` o restart. Incluir `/groot-queue:setup` para Claude Code y `/groot-queue setup` para Codex como invocaciones de diagnóstico. Incluir frase explícita: `Esta ayuda no ejecuta checker, discovery MCP, Bash, Jira, Slack ni diagnósticos; tampoco modifica el entorno.` No mencionar archivos ni paths internos. Detenerse después de responder ayuda.
 
 ## 1. ACLI (Atlassian CLI)
 
 - Verificar `acli --version`.
-- Si ACLI no está disponible, marcar el check como fallido y remitir al anchor canónico `$SKILL_DIR/knowledge/config/installation.md#1-prerrequisitos-en-macos`; no duplicar comandos ni instalar automáticamente.
+- Si ACLI no está disponible, marcar el check como fallido, leer la sección ACLI de `$SKILL_DIR/knowledge/config/installation.md` y mostrar inline los comandos de instalación, login web y status. Ofrecer ejecutar la instalación después de aprobación; login queda como paso humano.
 - Si está disponible, verificar autenticación con `acli jira auth status`.
-- Si la autenticación falla o corresponde a otro sitio, marcar el check como fallido y remitir al mismo anchor canónico; no ejecutar login automáticamente.
+- Si la autenticación falla o corresponde a otro sitio, marcar el check como fallido y mostrar inline `acli jira auth login --web` seguido de `acli jira auth status`; no ejecutar login automáticamente.
 
 ## 2. Atlassian MCP
 
@@ -26,7 +26,7 @@ El subcomando `derive` usa el MCP de Atlassian para ejecutar la transición "Der
 - Verificar si el contexto expone un MCP de Atlassian compatible.
 - Si el provider no expone esas tools, informar que la derivación automática debe completarse manualmente en Jira.
 - Si solo permite comentarios públicos y no notas internas de Jira Service Management, no automatizar la derivación.
-- Si no está disponible o la autenticación falla, marcar el check según el contrato y remitir al anchor canónico `$SKILL_DIR/knowledge/config/installation.md#4-atlassian-mcp`; no duplicar comandos ni instalar, habilitar o autenticar automáticamente.
+- Si no está disponible o autenticación falla, marcar check según contrato, leer sección Atlassian MCP de `$SKILL_DIR/knowledge/config/installation.md` y mostrar inline opción oficial recomendada, comando copiable, OAuth desde `/mcp` y validación. Ofrecer instalar plugin oficial después de aprobación; no instalar, habilitar ni autenticar antes de recibirla.
 - Si está disponible, verificar autenticación y resolver el `cloudId` con las tools del provider actual. No hardcodearlo.
 
 ## 3. Slack MCP
@@ -34,8 +34,8 @@ El subcomando `derive` usa el MCP de Atlassian para ejecutar la transición "Der
 El subcomando `alerts` usa Slack MCP para enviar DMs de SLA. Los nombres de las tools varían según provider y configuración.
 
 - Buscar capacidades compatibles para localizar usuarios y enviar mensajes, sin depender de un nombre exacto de tool.
-- Si no existen, informar que `alerts` solo puede ejecutarse con `--dry-run` y remitir al anchor canónico `$SKILL_DIR/knowledge/config/installation.md#5-slack-mcp`.
-- Si existen pero no están autenticadas, mantener el modo degradado y remitir al mismo anchor; no duplicar comandos ni iniciar OAuth automáticamente.
+- Si no existen, informar que `alerts` solo puede ejecutarse con `--dry-run`, leer sección Slack MCP de `$SKILL_DIR/knowledge/config/installation.md` y mostrar inline instalación oficial, OAuth y validación dry-run. Ofrecer instalar plugin después de aprobación.
+- Si existen pero no están autenticadas, mantener modo degradado y mostrar directamente paso OAuth desde `/mcp`; no iniciar OAuth automáticamente.
 - Si están autenticadas, marcar el check como listo.
 
 ## 4. Autorización interactiva de ACLI
@@ -59,7 +59,7 @@ Este diagnóstico es propio de `setup` y se ejecuta independientemente de cualqu
 
 La fase shell solo está lista con exit code `0`, `schema_version: 2`, `scope: "shell"`, `ok: true` y `exit_code: 0`. La presencia textual de una skill, plugin o declaración MCP no reemplaza ninguna capa del checker.
 
-Si la fase shell falla, no instalar, habilitar, configurar ni actualizar nada. Mostrar cada failure code seguro y la remediación en español asociada a su exit code en el contrato central. Para fallos de Grid Sharing o sus permisos/red, remitir además a `$SKILL_DIR/knowledge/config/installation.md#6-grid-sharing-y-vpn`; para fallos de Fury Services/FuryDocs, remitir a `$SKILL_DIR/knowledge/config/installation.md#7-fury-services-y-furydocs`. No duplicar allí comandos de remediación. Cualquier acción mutable requiere aprobación explícita del usuario antes de ejecutarse.
+Si fase shell falla, no instalar, habilitar, configurar ni actualizar nada todavía. Mostrar cada failure code seguro y leer `$SKILL_DIR/knowledge/config/installation.md#recuperacion-conversacional-de-ai-assets` junto con secciones del recurso afectado. Agrupar failures por causa y reproducir directamente en chat comandos, pasos humanos y validación; nunca remitir persona a archivo, path o anchor. Ofrecer ejecutar acciones automatizables enumeradas y esperar aprobación explícita antes de cualquier mutación.
 
 ## 7. Fase runtime MCP — diagnóstico independiente
 
@@ -70,7 +70,7 @@ Ejecutar este diagnóstico después del intento shell incluso cuando la fase she
 3. Si la respuesta es válida, exigir un componente cuyo `name` sea exactamente `furydocs`.
 4. Si el componente existe, invocar **solo** `list_tools` con `component="furydocs"`. Exigir los nombres exactos `get_doc_structure` y `get_doc_file`; permitir tools adicionales.
 5. No invocar `get_doc_structure`, `get_doc_file` ni ninguna otra tool documental.
-6. Si las tools de discovery no están disponibles o una capa falla, registrar el check y failure code exactos definidos en `$SKILL_DIR/knowledge/config/groot-queue-readiness.md`, remitir a `$SKILL_DIR/knowledge/config/installation.md#7-fury-services-y-furydocs` y continuar armando el diagnóstico sin presentar la fase como exitosa. No duplicar comandos ni instalar o configurar componentes automáticamente.
+6. Si tools de discovery no están disponibles o una capa falla, registrar check y failure code exactos definidos en `$SKILL_DIR/knowledge/config/groot-queue-readiness.md`. Leer protocolo conversacional y sección Fury Services/FuryDocs de `$SKILL_DIR/knowledge/config/installation.md`; mostrar inline verificación, `/reload-plugins`, restart y revalidación. Si inventario indica plugin ausente o incompleto, incluir comando de instalación/update y ofrecer ejecutarlo con aprobación. No crear conexión MCP `fury` alternativa ni reconstruir transporte.
 
 Esta fase es independiente y no serializable: no escribir su estado en archivos ni variables de entorno y no inferirla desde el JSON shell.
 
@@ -123,7 +123,13 @@ Si una capa no corrió, mostrarla como no ejecutada con su failure code seguro; 
 
 ### Cierre
 
-- Considerar críticos locales en todos los providers soportados únicamente ACLI instalado y autenticado. Los permisos persistentes del provider no forman parte del readiness; las operaciones mutables quedan sujetas a autorización cuando se ejecutan. Un TEAM vacío limita `assign-unassigned`, pero no bloquea el resto del readiness.
-- Mostrar `✅ Setup completo. Podés usar /groot-queue list para empezar.` únicamente cuando los críticos locales estén listos, la fase shell esté lista y todos los checks runtime estén listos.
-- En cualquier otro caso, mostrar `⚠️ Setup incompleto`, listar cada limitación comprobada y su remediación en español, y no afirmar que los comandos operativos están disponibles mientras cualquiera de las dos fases obligatorias no haya pasado.
-- No instalar, habilitar, configurar ni actualizar componentes durante `setup` sin aprobación explícita del usuario.
+- Considerar críticos locales en todos providers soportados únicamente ACLI instalado y autenticado. Permisos persistentes del provider no forman parte de readiness; operaciones mutables quedan sujetas a autorización cuando se ejecutan. TEAM vacío limita `assign-unassigned`, pero no bloquea resto de readiness.
+- Mostrar `✅ Setup completo. Podés usar /groot-queue list para empezar.` únicamente cuando críticos locales estén listos, fase shell esté lista y todos checks runtime estén listos.
+- En cualquier otro caso, mostrar `⚠️ Setup incompleto`, listar cada limitación comprobada y remediación completa en español, y no afirmar que comandos operativos están disponibles mientras cualquiera de dos fases obligatorias no haya pasado.
+- No mostrar referencias visibles a archivos, nombres como `setup.md` o `installation.md`, `$SKILL_DIR`, repo, anchors, secciones, tablas de fuentes ni “guía canónica”. No citar contratos internos aunque usuario pida fundamento. Esos recursos son inputs silenciosos para redactar instrucciones autocontenidas.
+- Separar recuperación en `Puedo hacerlo por vos`, `Tenés que hacer vos`, `Comandos para copiar y pegar` y `Validación`, omitiendo secciones vacías.
+- Si existen acciones automatizables, cerrar con `Puedo ejecutar esos comandos por vos. ¿Querés que lo haga?` y esperar respuesta. No ejecutar mutaciones en misma respuesta del diagnóstico.
+- Cuando usuario apruebe en turno posterior, ejecutar solo comandos ofrecidos, reportar resultado real y verificar inventario read-only. Después pedir pasos humanos pendientes (`/reload-plugins`, OAuth, VPN o restart) y terminar con `/groot-queue:setup` para Claude Code o `/groot-queue setup` para Codex.
+- Si no existen acciones automatizables, mostrar pasos humanos y revalidación directamente.
+- Nunca sugerir tokens, cookies o headers manuales; nunca hardcodear `cloudId`; nunca crear segundo MCP `fury`.
+- Detener respuesta después de comando de revalidación u oferta `¿Querés que lo haga?`. No agregar “qué hice y por qué”, citas, fuentes ni explicación interna del checker.
