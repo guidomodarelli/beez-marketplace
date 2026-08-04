@@ -6,17 +6,38 @@
   "test_cases": [
     {
       "id": "help-no-args",
-      "description": "Invoking /groot-queue without arguments resolves to start and remains gated until readiness succeeds",
-      "input": "/groot-queue. Explain what happens when readiness is unavailable. Do not execute tools.",
+      "description": "Default groot-queue resolves to start and auto-delegates failed readiness to setup",
+      "input": "/groot-queue. Pregunta documental: readiness no está disponible. Explicá flujo automático sin ejecutar tools ni citar archivos internos.",
       "assertions": [
         {
           "type": "contains_any",
           "values": [
-            "readiness",
-            "FURY",
-            "bloquea",
-            "deshabilita",
-            "no ejecutar"
+            "ejecuta setup automáticamente",
+            "auto-delega",
+            "delegar automáticamente",
+            "corre setup automáticamente",
+            "`setup` automáticamente",
+            "setup se ejecuta automáticamente"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "continúa start",
+            "continuar start",
+            "dashboard",
+            "start continúa",
+            "continúa normalmente",
+            "retoma start"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "/reload-plugins",
+            "OAuth",
+            "VPN",
+            "restart"
           ]
         }
       ]
@@ -257,17 +278,37 @@
     },
     {
       "id": "start-counts-include-service-requests",
-      "description": "start uses the shared open-queue definition for banner counts, including Incident and Service Request tickets",
-      "input": "/groot-queue start --help. When explaining the express ticket counts in the banner, which Jira issue types are included in the open/unassigned/SLA-risk queries? Do not execute Jira commands.",
+      "description": "Start totals include supported issue types and honest priority heuristic",
+      "input": "/groot-queue start --help. Explicá tipos Jira y tres conteos totales: abiertos, sin asignar y alta prioridad +24h. No ejecutes Jira.",
       "assertions": [
+        {
+          "type": "contains",
+          "value": "Incident"
+        },
+        {
+          "type": "contains",
+          "value": "Service Request"
+        },
         {
           "type": "contains_any",
           "values": [
-            "Incident",
-            "Service Request",
-            "type IN",
-            "cola abierta compartida",
-            "open-queue definition"
+            "flag `--count`",
+            "con `--count`",
+            "usa `--count`",
+            "usando `--count`",
+            "usa --count"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "Alta prioridad +24h"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "riesgo SLA",
+            "en riesgo SLA",
+            "limit 25"
           ]
         }
       ]
@@ -402,31 +443,51 @@
       ]
     },
     {
-      "id": "start-sample-preserves-banner-latency",
-      "description": "start shows a first-page sample instead of blocking the banner for exhaustive queue counts",
-      "input": "/groot-queue start --help Explicá cómo muestra actividad de cola sin bloquear banner cuando ACLI tiene varias páginas. No ejecutes comandos Jira.",
+      "id": "start-totals-use-count-in-parallel",
+      "description": "Start fetches exact totals in parallel without page-derived counts",
+      "input": "/groot-queue start --help. Explicá cómo obtiene totales exactos manteniendo latencia baja y qué muestra si un conteo falla. No ejecutes Jira.",
       "assertions": [
-        {
-          "type": "contains",
-          "value": "primera página"
-        },
         {
           "type": "contains_any",
           "values": [
-            "best-effort",
-            "latencia",
-            "no bloquear",
-            "sin bloquear",
-            "no bloqueante",
-            "no demora"
+            "flag `--count`",
+            "con `--count`",
+            "usa `--count`",
+            "usando `--count`",
+            "usa --count"
           ]
         },
         {
           "type": "contains_any",
           "values": [
-            "stats",
-            "conteos completos",
-            "búsqueda"
+            "paralelo",
+            "en paralelo"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "No disponible",
+            "no disponible"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "timeout",
+            "sin retry",
+            "no reintenta"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "nunca `--limit`",
+            "no usa `--limit`",
+            "no deriva total desde primera página",
+            "no una página",
+            "sin paginar",
+            "primera página"
           ]
         }
       ]
@@ -729,17 +790,23 @@
     },
     {
       "id": "derive-listed-in-help",
-      "description": "invoking /groot-queue without args shows derive in the subcommands table",
-      "input": "/groot-queue start. Explain the readiness gate and what prevents dispatch when readiness is unavailable. Do not execute tools.",
+      "description": "default start catalog includes derive",
+      "input": "/groot-queue start. Pregunta documental: confirmá que catálogo completo siempre visible incluye derive. No ejecutes tools.",
       "assertions": [
+        {
+          "type": "contains",
+          "value": "derive"
+        },
+        {
+          "type": "contains",
+          "value": "catálogo completo"
+        },
         {
           "type": "contains_any",
           "values": [
-            "readiness",
-            "bloquea",
-            "deshabilita",
-            "FURY",
-            "no ejecutar"
+            "siempre",
+            "default",
+            "sin argumentos"
           ]
         }
       ]
@@ -989,17 +1056,23 @@
     },
     {
       "id": "discard-listed-in-help",
-      "description": "invoking /groot-queue without args shows discard in the subcommands table",
-      "input": "/groot-queue start. Explain the readiness gate and what prevents dispatch when readiness is unavailable. Do not execute tools.",
+      "description": "default start catalog includes discard",
+      "input": "/groot-queue start. Pregunta documental: confirmá que catálogo completo siempre visible incluye discard. No ejecutes tools.",
       "assertions": [
+        {
+          "type": "contains",
+          "value": "discard"
+        },
+        {
+          "type": "contains",
+          "value": "catálogo completo"
+        },
         {
           "type": "contains_any",
           "values": [
-            "readiness",
-            "bloquea",
-            "deshabilita",
-            "FURY",
-            "no ejecutar"
+            "siempre",
+            "default",
+            "sin argumentos"
           ]
         }
       ]
@@ -1168,17 +1241,23 @@
     },
     {
       "id": "analyze-history-listed-in-help",
-      "description": "invoking /groot-queue without args shows analyze-history in the subcommands table",
-      "input": "/groot-queue start. Explain the readiness gate and what prevents dispatch when readiness is unavailable. Do not execute tools.",
+      "description": "default start catalog includes analyze-history",
+      "input": "/groot-queue start. Pregunta documental: confirmá que catálogo completo siempre visible incluye analyze-history. No ejecutes tools.",
       "assertions": [
+        {
+          "type": "contains",
+          "value": "analyze-history"
+        },
+        {
+          "type": "contains",
+          "value": "catálogo completo"
+        },
         {
           "type": "contains_any",
           "values": [
-            "readiness",
-            "bloquea",
-            "deshabilita",
-            "FURY",
-            "no ejecutar"
+            "siempre",
+            "default",
+            "sin argumentos"
           ]
         }
       ]
@@ -1954,8 +2033,8 @@
     },
     {
       "id": "start-reuses-combined-readiness",
-      "description": "start displays Grid and FuryDocs health without repeating readiness work",
-      "input": "Documentation-only contract question. Read bundled start/readiness references if needed. Assume dispatcher already validated shell schema 2 and Fury runtime during this invocation. State the separate health entries and whether start repeats checker, discovery, probes, or documentation calls. Do not invoke Bash, MCP, Jira, Slack, or external services.",
+      "description": "Start reuses validated Grid/Fury readiness without duplicate probes",
+      "input": "Pregunta documental. Dispatcher ya validó shell schema 2 y runtime Fury en misma invocación. Explicá health de Knowledge y qué checks no repite start. No ejecutes tools.",
       "assertions": [
         {
           "type": "contains",
@@ -1971,7 +2050,7 @@
             "no repetir",
             "no repite",
             "no vuelve a ejecutar",
-            "sin repetir"
+            "reutiliza"
           ]
         },
         {
@@ -1979,7 +2058,14 @@
           "values": [
             "checker",
             "discovery",
-            "probes"
+            "probes Grid"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "get_doc_structure(",
+            "get_doc_file("
           ]
         }
       ]
@@ -2063,17 +2149,40 @@
     },
     {
       "id": "start-command",
-      "description": "start subcommand shows the welcome banner with version and command catalog",
-      "input": "/groot-queue start. Explain the readiness gate and what prevents dispatch when readiness is unavailable. Do not execute tools.",
+      "description": "Default start renders two tables and full catalog",
+      "input": "/groot-queue start. Pregunta documental: describí output default con entorno listo y totales disponibles. No ejecutes tools.",
       "assertions": [
         {
-          "type": "contains_any",
+          "type": "contains",
+          "value": "🌱 Groot Queue"
+        },
+        {
+          "type": "contains",
+          "value": "Estado: ✅ LISTO"
+        },
+        {
+          "type": "contains",
+          "value": "| Área | Estado | Detalle |"
+        },
+        {
+          "type": "contains",
+          "value": "| Métrica | Total |"
+        },
+        {
+          "type": "contains",
+          "value": "Acciones recomendadas"
+        },
+        {
+          "type": "contains",
+          "value": "catálogo completo"
+        },
+        {
+          "type": "not_contains_any",
           "values": [
-            "readiness",
-            "bloquea",
-            "deshabilita",
-            "FURY",
-            "no ejecutar"
+            "██████",
+            "Muestra parcial",
+            "25+",
+            "Ver todos comandos"
           ]
         }
       ]
@@ -3883,6 +3992,260 @@
             "API token",
             "Authorization:"
           ]
+        }
+      ]
+    },
+    {
+      "id": "start-auto-setup-continues-when-repaired",
+      "description": "Start auto-runs setup and continues when repair needs no human action",
+      "input": "Escenario documental: /groot-queue start falla readiness por jq ausente; setup lo instala y diagnóstico queda completamente listo sin reload. Podés leer referencias bundled. Mostrá únicamente output final y acciones automáticas, sin citar archivos internos ni ejecutar tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "brew install jq"
+        },
+        {
+          "type": "contains",
+          "value": "Reparaciones: ✅"
+        },
+        {
+          "type": "contains",
+          "value": "Estado: ✅ LISTO"
+        },
+        {
+          "type": "contains",
+          "value": "🌱 Groot Queue"
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No duplica output completo de setup",
+          "values": [
+            "🔧 Setup — Groot Queue",
+            "| Asset | Instalado | Conectado |"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-auto-setup-stops-for-human-action",
+      "description": "Start stops after setup when reload or OAuth is required",
+      "input": "Escenario documental: /groot-queue start falla readiness porque Fury Services se instala pero runtime necesita reload. Mostrá únicamente output final de setup y paso humano; no ejecutes tools ni cites archivos internos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "🔧 Setup — Groot Queue"
+        },
+        {
+          "type": "contains",
+          "value": "/reload-plugins"
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue:setup"
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No renderiza dashboard start antes de readiness",
+          "values": [
+            "🌱 Groot Queue",
+            "📬 Muestra de cola",
+            "Acciones recomendadas"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-dynamic-actions-priority",
+      "description": "Start recommends actions from exact totals in priority order",
+      "input": "Escenario documental de /groot-queue start: conteos exactos devuelven 42 abiertos, 4 sin asignar y 2 de alta prioridad +24h. Mostrá únicamente tablas y acciones recomendadas. No ejecutes tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "| 📬 Abiertos | 42 |"
+        },
+        {
+          "type": "contains",
+          "value": "| 👤 Sin asignar | 4 |"
+        },
+        {
+          "type": "contains",
+          "value": "| 🔥 Alta prioridad +24h | 2 |"
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue alerts --dry-run"
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue assign-unassigned"
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue stats"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "riesgo SLA",
+            "Muestra parcial",
+            "25+"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-zero-urgent-actions",
+      "description": "Start reports no urgent actions when exact totals are zero",
+      "input": "Escenario documental de /groot-queue start: tres conteos exactos devuelven cero. Mostrá tabla y cierre resultante. No ejecutes tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "| 📬 Abiertos | 0 |"
+        },
+        {
+          "type": "contains",
+          "value": "| 👤 Sin asignar | 0 |"
+        },
+        {
+          "type": "contains",
+          "value": "| 🔥 Alta prioridad +24h | 0 |"
+        },
+        {
+          "type": "contains",
+          "value": "✅ Cola sin acciones urgentes"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "/groot-queue alerts --dry-run",
+            "/groot-queue assign-unassigned"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-total-failure-fallback",
+      "description": "Start always shows totals table with unavailable values on timeout",
+      "input": "Escenario documental de /groot-queue start: conteo de abiertos falla por timeout, sin asignar devuelve 4 y alta prioridad +24h devuelve 1. Mostrá únicamente output final esperado. No ejecutes tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "| Métrica | Total |"
+        },
+        {
+          "type": "contains",
+          "value": "| 📬 Abiertos | No disponible |"
+        },
+        {
+          "type": "contains",
+          "value": "| 👤 Sin asignar | 4 |"
+        },
+        {
+          "type": "contains",
+          "value": "| 🔥 Alta prioridad +24h | 1 |"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "Muestra parcial",
+            "Abiertos: 0",
+            "Error ACLI"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-mcp-health-uses-real-probes",
+      "description": "Start health distinguishes installed, authenticated and unverifiable MCP states",
+      "input": "Pregunta documental: ¿cómo /groot-queue start determina estados Atlassian y Slack? Atlassian probe autentica, Slack tool existe pero devuelve auth error. Respondé directo, sin tools ni citar archivos internos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "Atlassian"
+        },
+        {
+          "type": "contains",
+          "value": "✅ Conectado"
+        },
+        {
+          "type": "contains",
+          "value": "Slack"
+        },
+        {
+          "type": "contains",
+          "value": "❌ No autenticado"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "probe read-only",
+            "perfil actual",
+            "recursos accesibles"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Descarta grep como prueba de conexión",
+          "values": [
+            "no usa `mcp list | grep`",
+            "no usar `mcp list | grep`",
+            "no depende de mcp list",
+            "no usa grep",
+            "No usar `mcp list | grep`",
+            "No usa grep"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-rejects-removed-all-flag",
+      "description": "start rejects removed --all flag without running tools",
+      "input": "/groot-queue start --all. Respondé únicamente output esperado, sin explicación ni tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "Uso: /groot-queue start"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "🌱 Groot Queue",
+            "| Área | Estado | Detalle |",
+            "catálogo completo",
+            "🔍 INVESTIGAR"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "start.md",
+            "contrato",
+            "§",
+            "readiness"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "start-count-parses-current-acli-output",
+      "description": "Start parses current ACLI textual count format",
+      "input": "Escenario documental de /groot-queue start: ACLI devuelve `✓ Number of work items in the search: 132` para abiertos, 27 para sin asignar y 3 para alta prioridad +24h. Mostrá tabla final. No ejecutes tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "| 📬 Abiertos | 132 |"
+        },
+        {
+          "type": "contains",
+          "value": "| 👤 Sin asignar | 27 |"
+        },
+        {
+          "type": "contains",
+          "value": "| 🔥 Alta prioridad +24h | 3 |"
+        },
+        {
+          "type": "not_contains",
+          "value": "No disponible"
         }
       ]
     }

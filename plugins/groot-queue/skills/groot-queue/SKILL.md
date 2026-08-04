@@ -81,7 +81,7 @@ Ejemplos:
 
 | Subcomando | Alias | Acción |
 |------------|-------|--------|
-| `start` | — | Mostrar banner de bienvenida, versión y catálogo de comandos con hints de uso |
+| `start` | — | Mostrar estado, totales exactos, acciones recomendadas y catálogo completo |
 | `setup` | — | Diagnosticar ACLI y AI assets; auto-instalar/actualizar faltantes conocidos y pedir solo pasos humanos inevitables |
 | `list` | `ls` | Listar todos los incidentes abiertos |
 | `classify` | `cl` | Clasificar y agrupar por tipo de problema + urgencia |
