@@ -12,7 +12,7 @@ Guía canónica para instalar, configurar, diagnosticar, actualizar y desinstala
 | Claude Code | Operacional y principal | Seguí esta guía de principio a fin. |
 | Codex | Operacional | Instalá con los comandos del [anexo Codex](#anexo-codex) y aplicá el mismo contrato de readiness. |
 
-El subcomando `setup` **diagnostica** el entorno y muestra remediaciones completas en el chat. Puede ejecutar la parte automatizable después de recibir aprobación explícita; nunca inicia por cuenta propia instalaciones, updates, cambios MCP ni autenticaciones. OAuth, VPN, `/reload-plugins` y el reinicio del provider requieren intervención de la persona.
+El subcomando `setup` **diagnostica y repara automáticamente** dependencias y AI assets conocidos cuando detecta evidencia inequívoca de instalación o update necesario. Invocar `setup` autoriza esas remediaciones acotadas. OAuth, VPN, `/reload-plugins`, reinicio del provider, solicitudes de acceso y decisiones ante conflictos siguen requiriendo intervención de la persona.
 
 <a id="recuperacion-conversacional-de-ai-assets"></a>
 ## 🧭 Recuperación conversacional de AI assets
@@ -24,8 +24,8 @@ Cuando `setup` detecte un plugin, skill, MCP, CLI o acceso faltante, esta guía 
 Agrupar failures que compartan causa y responder una sola vez por recurso con este orden:
 
 - `### <Recurso> — <estado o failure code seguro>`
-- `Puedo hacerlo por vos`: acción automatizable exacta y aviso de aprobación requerida.
-- `Tenés que hacer vos`: OAuth, VPN, `/reload-plugins` o restart, si aplica.
+- `Acción automática`: comando ejecutado, resultado real y verificación posterior.
+- `Tenés que hacer vos`: OAuth, VPN, `/reload-plugins`, restart, acceso o decisión ambigua, si aplica.
 - `Comandos para copiar y pegar`: bloque `bash` con comandos exactos para provider activo.
 - `Validación`: bloque `text` o `bash` con slash command o comando read-only.
 
@@ -33,13 +33,25 @@ Omitir bloques vacíos. Si una acción no puede automatizarse desde la sesión a
 
 ### Política de automatización
 
-- Ejecutar checks read-only sin aprobación adicional cuando formen parte de `setup`.
-- Antes de `brew install`, agregar marketplace, instalar/habilitar/actualizar plugin o crear una conexión MCP, mostrar comando exacto y pedir aprobación explícita.
-- Tras aprobación, ejecutar solo acciones enumeradas. No ampliar alcance a otros plugins, marketplaces, settings o MCPs.
-- Después de mutación, ejecutar verificaciones read-only posibles. Si runtime activo todavía conserva inventario anterior, pedir `/reload-plugins`; si sigue stale, pedir cerrar y abrir provider.
+Invocar `setup` otorga autorización permanente para ejecutar remediaciones idempotentes de allowlist cuando estado observado demuestra que son necesarias:
+
+- instalar dependencias locales documentadas mediante Homebrew (`bash`, `jq`, `curl`, `acli`);
+- agregar marketplaces oficiales conocidos de Groot o Tech Plugins cuando falten;
+- instalar, habilitar o actualizar plugins conocidos: `groot-queue`, `grid-sharing`, `fury-services`, `atlassian` y `slack`;
+- actualizar ACLI cuando propia CLI reporte versión nueva;
+- actualizar Grid Sharing cuando check `skill_version` reporte `update_required: true`;
+- ejecutar inventarios y checks read-only después de cada bloque mutable.
+
+Aplicar límites:
+
+- Inspeccionar estado antes de mutar y ejecutar solo acción mínima necesaria. No reinstalar ni actualizar un asset listo sin evidencia de update.
+- Usar exclusivamente IDs, scopes y repositorios oficiales documentados. Para tap ACLI no confiable, verificar origen exacto `https://github.com/atlassian/homebrew-acli.git` antes de confiarlo; cualquier otro origen requiere decisión humana.
+- Reintentar diagnóstico una sola vez después de reparaciones locales. No crear loops de instalación/update.
+- Si runtime activo conserva inventario anterior, pedir `/reload-plugins`; si sigue stale, pedir cerrar y abrir provider.
 - No intentar ejecutar slash commands desde Bash. Presentarlos como paso manual dentro de sesión activa.
 - No automatizar login OAuth, selección de workspace, conexión VPN, solicitud de ACL ni reinicio del provider. Se puede iniciar CLI de login solo si persona lo pidió explícitamente y está disponible interacción necesaria.
-- No desinstalar, reemplazar configuración existente ni agregar integración alternativa para “probar”. Si existe conflicto o inventario ambiguo, mostrar estado y pedir elección antes de cambiarlo.
+- No desinstalar, reemplazar configuración existente, resolver inventarios ambiguos, elegir entre integraciones duplicadas ni ampliar permisos automáticamente. Mostrar conflicto y pedir decisión.
+- No crear conexión MCP `fury` manual: `fury-services` es propietario de esa declaración.
 
 ### Matriz de recuperación
 
@@ -54,7 +66,7 @@ Omitir bloques vacíos. Si una acción no puede automatizarse desde la sesión a
 | `FURY_MCP_CONNECTION_UNAVAILABLE`, `FURY_RUNTIME_DISCOVERY_TOOLS_UNAVAILABLE`, `FURY_COMPONENT_DISCOVERY_FAILED`, `FURYDOCS_COMPONENT_UNAVAILABLE`, `FURY_TOOL_DISCOVERY_FAILED`, `FURYDOCS_REQUIRED_TOOLS_UNAVAILABLE` | Runtime Fury stale o incompleto | Verificar plugin y MCP, ejecutar `/reload-plugins`, reiniciar si persiste y repetir `setup`. No reconstruir transporte ni invocar tools documentales como probe. |
 | `GRID_TRANSPORT_FAILED`, `GRID_SERVICE_UNAVAILABLE`, `GRID_PING_FAILED` | Red o servicio Grid | Confirmar VPN/conectividad, esperar si servicio no está disponible y repetir invocación. |
 | `GRID_RATE_LIMITED` | Rate limit | Mostrar espera segura sanitizada cuando exista; no hacer loop ni reintento agresivo. |
-| `PLUGIN_VERSION_INCOMPATIBLE` | Grid desactualizado | Mostrar update acotado de `grid-sharing`, pedir aprobación, reiniciar provider y revalidar. |
+| `PLUGIN_VERSION_INCOMPATIBLE` | Grid desactualizado | Actualizar automáticamente `grid-sharing`, verificar inventario y pedir reload/restart cuando runtime lo requiera. |
 | `GRID_IDENTITY_UNAVAILABLE`, `GRID_IDENTITY_FORBIDDEN` | VPN o identidad edge | Pedir conectar/reconectar VPN aprobada. No sugerir tokens, cookies ni headers manuales. |
 | `GENERAL_READ_FORBIDDEN`, `REQUIRED_DOCUMENT_FORBIDDEN`, `REQUIRED_DOCUMENT_NOT_FOUND` | ACL o recurso requerido | Pedir acceso autorizado al recurso indicado por nombre seguro. No mostrar IDs internos ni probar otros recursos. |
 | ACLI ausente o no autenticado | Jira CLI | Mostrar instalación Homebrew, login web, status y revalidación. Login queda como paso humano. |
@@ -69,12 +81,13 @@ Para **Codex**, tomar comandos exactos de anexo Codex. Codex requiere reinicio d
 
 ### Cierre de recuperación
 
-Después de listar recursos:
+Después de diagnosticar recursos:
 
-1. Ofrecer ejecutar en bloque únicamente acciones automatizables enumeradas: `Puedo ejecutar esos comandos por vos. ¿Querés que lo haga?`
-2. Si persona aprueba, ejecutar comandos, reportar éxito/falla real y correr inventarios read-only.
-3. Mostrar pasos humanos pendientes en orden mínimo.
-4. Terminar con comando de revalidación del provider activo:
+1. Ejecutar automáticamente acciones de allowlist necesarias y agruparlas por asset.
+2. Reportar comando, éxito/falla real y verificación read-only; no afirmar reparación sin evidencia.
+3. Repetir diagnóstico local una sola vez.
+4. Mostrar pasos humanos pendientes en orden mínimo.
+5. Terminar con comando de revalidación del provider activo:
 
 ```text
 /groot-queue:setup
@@ -340,7 +353,7 @@ Validá en este orden:
 ```
 
 1. `setup --help` explica el diagnóstico sin ejecutar tools.
-2. `setup` verifica ACLI, integraciones, TEAM y readiness completo; no inspecciona settings del provider ni instala o modifica nada.
+2. `setup` verifica ACLI, integraciones, TEAM y readiness completo; auto-instala/actualiza assets allowlisted cuando sea necesario y no inspecciona ni modifica settings del provider.
 3. Ejecutá un comando operativo solo cuando `setup` indique que las fases obligatorias están listas. No omitas ni fuerces el gate de readiness.
 
 ## 🖥️ 10. Launcher opcional
@@ -387,7 +400,7 @@ Empezá siempre por `/groot-queue:setup`; reportá solo estados, nombres de chec
 **Síntomas:** plugin desactualizado, edge sin identidad, lectura general prohibida o documento requerido inaccesible.
 
 1. Para identidad, reconectá la VPN y verificá que usás el acceso corporativo correcto.
-2. Para versión, actualizá solo con aprobación explícita y reiniciá Claude Code.
+2. Para versión, `setup` actualiza automáticamente cuando check confirma update requerido; después reiniciá Claude Code si runtime sigue stale.
 3. Para permisos, solicitá acceso por el canal corporativo; no pruebes otros IDs ni copies el ID requerido desde la configuración.
 4. No interpretes un plugin instalado como readiness exitoso: todas las capas deben pasar.
 
@@ -472,7 +485,7 @@ claude plugin update --scope user atlassian@claude-plugins-official
 claude plugin update --scope user slack@claude-plugins-official
 ```
 
-Reiniciá Claude Code y repetí la [secuencia de validación](#9-recargar-y-validar). Si usás el launcher opcional, ejecutá de nuevo `./scripts/install.sh` desde la copia actualizada para refrescar su wrapper. No actualices componentes automáticamente desde `setup`.
+Reiniciá Claude Code y repetí la [secuencia de validación](#9-recargar-y-validar). Si usás launcher opcional, ejecutá de nuevo `./scripts/install.sh` desde copia actualizada para refrescar wrapper. `setup` aplica updates allowlisted solo con evidencia; esta sección conserva comandos manuales para lifecycle deliberado.
 
 ## 🗑️ Desinstalar de forma conservadora
 

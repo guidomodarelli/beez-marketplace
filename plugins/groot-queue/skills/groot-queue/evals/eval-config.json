@@ -126,45 +126,78 @@
     },
     {
       "id": "setup-complete-without-provider-settings",
-      "description": "Setup queda completo sin settings persistentes cuando ACLI y readiness obligatorio están listos",
-      "input": "Escenario documental de `/groot-queue setup` en Claude Code: ACLI está instalado y autenticado para mercadolibre.atlassian.net, TEAM está configurado, todos los checks shell pasan y Fury runtime descubre furydocs con get_doc_structure y get_doc_file. No existe `.claude/settings.local.json`. Consultá las referencias bundled y mostrá el cierre y las filas relevantes sin ejecutar tools ni modificar archivos.",
+      "description": "Setup completo usa resumen y tabla por asset sin depender de settings persistentes",
+      "input": "Escenario documental de `/groot-queue setup` en Claude Code: ACLI está instalado, actualizado y autenticado; Atlassian MCP y Slack MCP están instalados y autenticados; TEAM está configurado; todos los checks shell pasan y Fury runtime descubre furydocs con get_doc_structure y get_doc_file. No existe `.claude/settings.local.json`. Mostrá output final autocontenido sin ejecutar tools ni modificar archivos.",
       "assertions": [
         {
           "type": "contains",
-          "description": "Ausencia de settings persistentes no bloquea setup",
+          "description": "Muestra estado global listo",
+          "value": "Estado: ✅ LISTO"
+        },
+        {
+          "type": "contains",
+          "description": "Muestra columnas principales",
+          "value": "| Asset | Instalado | Conectado | Up-to-date | Impacto | Próximo paso |"
+        },
+        {
+          "type": "contains_any",
+          "description": "Resume cantidad de assets listos",
+          "values": [
+            "7 assets listos",
+            "assets listos"
+          ]
+        },
+        {
+          "type": "contains",
+          "description": "Identifica provider activo",
+          "value": "Provider: Claude Code"
+        },
+        {
+          "type": "contains",
+          "description": "Cierra setup como completo",
           "value": "Setup completo"
         },
         {
           "type": "not_contains_any",
-          "description": "No presenta ausencia de settings como limitación",
+          "description": "Ausencia de settings no bloquea",
           "values": [
             "Setup incompleto",
-            "Permisos ACLI Claude",
-            "perfil amplio o read-only",
             "settings.local.json requerido",
             "settings.local.json obligatorio"
           ]
         },
         {
           "type": "not_contains_any",
-          "description": "No pide crear o configurar archivo local",
+          "description": "No muestra tabla técnica extensa",
           "values": [
-            "creá `.claude/settings.local.json`",
-            "crear `.claude/settings.local.json`",
-            "configurá `.claude/settings.local.json`"
+            "| Provider inventory |",
+            "| Fury manifest |",
+            "| Fury MCP declaration |",
+            "| Grid general read |",
+            "| Grid required document |"
           ]
         }
       ]
     },
     {
       "id": "setup-missing-dependencies-safe-diagnosis",
-      "description": "Setup muestra comandos copiables para dependencias faltantes y ofrece instalación aprobada",
-      "input": "Escenario documental de `/groot-queue setup`: faltan dependencias locales como ACLI y jq. Explicá resultado visible y mostrale al usuario remediación completa en chat, sin mencionar archivos internos. Indicá qué podés ejecutar con aprobación y qué paso queda manual. No invoques Bash, MCP, Jira, Slack ni servicios externos.",
+      "description": "Setup instala dependencias faltantes automáticamente y deja solo OAuth como paso humano",
+      "input": "Escenario documental de `/groot-queue setup`: faltan ACLI y jq. Podés leer referencias bundled, pero no ejecutar mutaciones ni servicios externos. Mostrá comandos exactos que setup ejecuta automáticamente, verificación posterior y paso humano, sin citar archivos internos.",
       "assertions": [
         {
           "type": "contains",
-          "description": "Muestra comando Homebrew directamente en chat",
-          "value": "brew install"
+          "description": "Instala jq con comando exacto",
+          "value": "brew install jq"
+        },
+        {
+          "type": "contains",
+          "description": "Instala ACLI desde tap oficial",
+          "value": "brew tap atlassian/homebrew-acli"
+        },
+        {
+          "type": "contains",
+          "description": "Instala fórmula ACLI",
+          "value": "brew install acli"
         },
         {
           "type": "contains_any",
@@ -176,12 +209,11 @@
         },
         {
           "type": "contains_any",
-          "description": "Ofrece automatización únicamente con aprobación",
+          "description": "Ejecuta instalación sin aprobación adicional",
           "values": [
-            "por vos",
-            "aprobación",
-            "autorización",
-            "¿Querés que lo haga?"
+            "Acción automática",
+            "instala automáticamente",
+            "ejecuta automáticamente"
           ]
         },
         {
@@ -195,6 +227,15 @@
             "knowledge/config/",
             "check-groot-queue-readiness.sh",
             "consultá la guía"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No pide aprobación para acción allowlisted",
+          "values": [
+            "¿Querés que lo haga?",
+            "esperar aprobación",
+            "requiere tu aprobación"
           ]
         }
       ]
@@ -1866,25 +1907,29 @@
             "no modifica",
             "no realiza cambios",
             "sin autorización explícita",
-            "aprobación explícita"
+            "aprobación explícita",
+            "No modifica",
+            "No ejecuta",
+            "no modifica"
           ]
         },
         {
           "type": "contains_any",
-          "description": "Vincula instalación con aprobación explícita",
+          "description": "Explica auto-instalación de invocación normal",
           "values": [
-            "Instala con aprobación",
-            "instala con aprobación"
+            "instala automáticamente",
+            "auto-instala",
+            "instalar o actualizar automáticamente"
           ]
         },
         {
           "type": "contains_any",
-          "description": "Explica salida práctica y automatización aprobada",
+          "description": "Reserva acciones humanas inevitables",
           "values": [
-            "comandos copiables",
-            "por vos",
-            "parte automatizable",
-            "autorización explícita"
+            "OAuth",
+            "VPN",
+            "/reload-plugins",
+            "restart"
           ]
         },
         {
@@ -3236,7 +3281,7 @@
     {
       "id": "setup-grid-assets-inline-recovery-claude",
       "description": "Grid plugin o skill faltante produce instalación Claude copiable y recarga guiada",
-      "input": "Escenario documental de /groot-queue:setup en Claude Code: el checker devuelve PLUGIN_NOT_INSTALLED y REQUIRED_SKILL_UNAVAILABLE para Grid Sharing. Mostrá recuperación completa en chat, qué podés ejecutar con aprobación, qué tengo que hacer yo y cómo validar. No ejecutes tools ni cambies configuración.",
+      "input": "Escenario documental de /groot-queue:setup en Claude Code: marketplace técnico, Grid Sharing y skill están ausentes; checker devuelve PLUGIN_NOT_INSTALLED y REQUIRED_SKILL_UNAVAILABLE. Podés leer referencias bundled, pero no ejecutar mutaciones. Mostrá comandos exactos automáticos, paso humano mínimo y validación, sin citar archivos internos.",
       "assertions": [
         {
           "type": "contains",
@@ -3257,9 +3302,9 @@
         {
           "type": "contains_any",
           "values": [
-            "por vos",
-            "¿Querés que lo haga?",
-            "aprobación explícita"
+            "Acción automática",
+            "instala automáticamente",
+            "ejecuta automáticamente"
           ]
         },
         {
@@ -3271,6 +3316,14 @@
             "knowledge/config/",
             "check-groot-queue-readiness.sh",
             "ln -s"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "¿Querés que lo haga?",
+            "requiere tu aprobación",
+            "esperar aprobación"
           ]
         }
       ]
@@ -3359,7 +3412,7 @@
     {
       "id": "setup-atlassian-mcp-inline-recovery",
       "description": "Atlassian MCP faltante muestra plugin oficial, OAuth humano y validación",
-      "input": "Escenario documental de /groot-queue:setup: Atlassian MCP no está disponible. Mostrá solución recomendada que pueda copiar fuera de Claude, paso dentro de Claude y oferta de configurarlo por mí. No ejecutes tools ni cambies configuración.",
+      "input": "Escenario documental de /groot-queue:setup: Atlassian MCP no está disponible y plugin oficial está ausente sin conflictos. Mostrá instalación automática, paso OAuth dentro de Claude y validación. No ejecutes tools en este escenario documental.",
       "assertions": [
         {
           "type": "contains",
@@ -3376,9 +3429,9 @@
         {
           "type": "contains_any",
           "values": [
-            "por vos",
-            "¿Querés que lo haga?",
-            "aprobación"
+            "Acción automática",
+            "instala automáticamente",
+            "ejecuta automáticamente"
           ]
         },
         {
@@ -3396,13 +3449,21 @@
             "installation.md",
             "knowledge/config/"
           ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "¿Querés que lo haga?",
+            "requiere tu aprobación",
+            "esperar aprobación"
+          ]
         }
       ]
     },
     {
       "id": "setup-grid-fury-inline-recovery-codex",
       "description": "Codex recibe comandos propios, restart y validación sin slash de Claude",
-      "input": "Escenario documental de /groot-queue setup bajo Codex: faltan Grid Sharing y Fury Services completos. Mostrá comandos copiables, parte automatizable con aprobación, paso manual final y revalidación. No ejecutes tools ni cambies configuración.",
+      "input": "Escenario documental de /groot-queue setup bajo Codex: faltan Grid Sharing y Fury Services completos. Mostrá comandos que setup ejecuta automáticamente, paso manual final y revalidación. No ejecutes tools en este escenario documental.",
       "assertions": [
         {
           "type": "contains",
@@ -3435,6 +3496,392 @@
             "setup.md",
             "knowledge/config/",
             "codex mcp add fury"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Acción automática",
+            "instala automáticamente",
+            "ejecuta automáticamente"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "¿Querés que lo haga?",
+            "requiere tu aprobación",
+            "esperar aprobación"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-asset-summary-table-complete",
+      "description": "Setup listo presenta siete assets con iconos, impacto y acciones concisas",
+      "input": "Escenario documental de /groot-queue:setup en Claude Code: ACLI 1.3.22 está autenticado y sin update disponible; Atlassian y Slack están autenticados; TEAM tiene 8 integrantes; todos los checks shell y runtime pasan. Mostrá output final sin ejecutar tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "Estado: ✅ LISTO"
+        },
+        {
+          "type": "contains",
+          "value": "7 assets listos"
+        },
+        {
+          "type": "contains",
+          "value": "0 bloqueos"
+        },
+        {
+          "type": "contains",
+          "value": "| Asset | Instalado | Conectado | Up-to-date | Impacto | Próximo paso |"
+        },
+        {
+          "type": "contains",
+          "value": "🎫 ACLI"
+        },
+        {
+          "type": "contains",
+          "value": "🔗 Atlassian MCP"
+        },
+        {
+          "type": "contains",
+          "value": "💬 Slack MCP"
+        },
+        {
+          "type": "contains",
+          "value": "🧩 Grid Sharing"
+        },
+        {
+          "type": "contains",
+          "value": "🔥 Fury Services"
+        },
+        {
+          "type": "contains",
+          "value": "📚 FuryDocs"
+        },
+        {
+          "type": "contains",
+          "value": "👥 TEAM"
+        },
+        {
+          "type": "contains_any",
+          "description": "Impacto bloqueante visible",
+          "values": [
+            "🔴 Bloqueante"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Impacto degradable visible",
+          "values": [
+            "🟡 Degrada"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No lista checks internos como assets",
+          "values": [
+            "| Provider inventory |",
+            "| Fury manifest |",
+            "| Fury MCP declaration |",
+            "| Grid general read |",
+            "| Grid required document |"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No agrega detalle para asset listo",
+          "values": [
+            "### 🎫 ACLI",
+            "### 🧩 Grid Sharing",
+            "### 🔥 Fury Services"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-asset-summary-updates",
+      "description": "Setup muestra versiones verificadas y acciones para updates disponibles",
+      "input": "Escenario documental de /groot-queue:setup en Claude Code: ACLI reporta 1.3.21 instalada y 1.3.22 disponible; Grid Sharing reporta 2.4.0 instalada y update requerido 2.5.0. Todo demás está listo. Podés leer referencias bundled. Mostrá comandos exactos que setup ejecuta automáticamente, resumen, tabla final y pasos humanos posteriores. No ejecutes mutaciones ni cites archivos internos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "1.3.21"
+        },
+        {
+          "type": "contains",
+          "value": "1.3.22"
+        },
+        {
+          "type": "contains",
+          "value": "2.4.0"
+        },
+        {
+          "type": "contains",
+          "value": "2.5.0"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "2 updates",
+            "2 actualizaciones"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "brew upgrade acli"
+        },
+        {
+          "type": "contains",
+          "value": "claude plugin update --scope user grid-sharing@tech-plugins-marketplace"
+        },
+        {
+          "type": "contains_any",
+          "description": "Reporta acción automática",
+          "values": [
+            "Acción automática",
+            "actualiza automáticamente",
+            "ejecuta automáticamente"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Tabla final refleja versión actualizada",
+          "values": [
+            "✅ 1.3.22",
+            "✅ `1.3.22`"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "description": "Tabla final refleja Grid actualizado",
+          "values": [
+            "✅ 2.5.0",
+            "✅ `2.5.0`"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No pide aprobación para updates allowlisted",
+          "values": [
+            "¿Querés que lo haga?",
+            "requiere tu aprobación",
+            "esperar aprobación"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No afirma versión Fury desconocida como actualizada",
+          "values": [
+            "Fury Services | ✅ | ✅ | ✅"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-asset-summary-degraded",
+      "description": "Setup degradado detalla únicamente integraciones opcionales afectadas",
+      "input": "Escenario documental de /groot-queue:setup: ACLI, Grid, Fury Services y FuryDocs están listos. Slack MCP está ausente y TEAM está vacío. Atlassian está listo. Mostrá resumen, tabla, impacto, próximos pasos y detalles sin ejecutar tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "Estado: ⚠️ DEGRADADO"
+        },
+        {
+          "type": "contains",
+          "value": "💬 Slack MCP"
+        },
+        {
+          "type": "contains",
+          "value": "👥 TEAM"
+        },
+        {
+          "type": "contains",
+          "value": "🟡 Degrada"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Instalar plugin",
+            "Completar OAuth en /mcp"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "Configurar TEAM"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "### 💬 Slack MCP",
+            "### ⚠️ Slack MCP"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "### 👥 TEAM",
+            "### ⚠️ TEAM"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No detalla assets listos",
+          "values": [
+            "### 🎫 ACLI",
+            "### 🧩 Grid Sharing",
+            "### 🔥 Fury Services",
+            "### 📚 FuryDocs"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "Setup operativo con limitaciones"
+        }
+      ]
+    },
+    {
+      "id": "setup-asset-summary-blocked",
+      "description": "Setup bloqueado agrupa fallas técnicas bajo asset crítico",
+      "input": "Escenario documental de /groot-queue:setup: Grid Sharing devuelve PLUGIN_NOT_INSTALLED y REQUIRED_SKILL_UNAVAILABLE; todos los demás assets están listos. Mostrá resumen, tabla, detalle y cierre sin ejecutar tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "Estado: ❌ BLOQUEADO"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "1 bloqueo",
+            "1 bloqueos"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "🧩 Grid Sharing"
+        },
+        {
+          "type": "contains",
+          "value": "🔴 Bloqueante"
+        },
+        {
+          "type": "contains",
+          "value": "Instalar plugin"
+        },
+        {
+          "type": "contains",
+          "value": "PLUGIN_NOT_INSTALLED"
+        },
+        {
+          "type": "contains",
+          "value": "REQUIRED_SKILL_UNAVAILABLE"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "### 🧩 Grid Sharing",
+            "### ❌ Grid Sharing"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "Setup bloqueado"
+        },
+        {
+          "type": "not_contains_any",
+          "description": "No convierte checks internos en filas",
+          "values": [
+            "| Provider inventory |",
+            "| Grid Sharing skill |",
+            "| Grid network + ping |",
+            "| Grid identity + VPN |"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-auto-repair-reruns-once",
+      "description": "Setup instala assets conocidos y repite diagnóstico una sola vez",
+      "input": "Pregunta documental: /groot-queue:setup detecta marketplace técnico, Grid Sharing y Fury Services ausentes en Claude Code. Podés leer referencias bundled. Mostrá comandos exactos de secuencia automática, verificación posterior, límite de un rerun y paso humano si runtime queda stale. No ejecutes mutaciones ni cites archivos internos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "claude plugin marketplace add --scope user git@github.com:melisource/fury_tech-plugins-marketplace.git"
+        },
+        {
+          "type": "contains",
+          "value": "claude plugin install --scope user grid-sharing@tech-plugins-marketplace"
+        },
+        {
+          "type": "contains",
+          "value": "claude plugin install --scope user fury-services@tech-plugins-marketplace"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "una sola vez",
+            "solo una vez",
+            "1 vez"
+          ]
+        },
+        {
+          "type": "contains",
+          "value": "/reload-plugins"
+        },
+        {
+          "type": "contains",
+          "value": "/groot-queue:setup"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "¿Querés que lo haga?",
+            "requiere tu aprobación",
+            "loop infinito",
+            "claude mcp add fury"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "setup-auto-repair-stops-on-conflict",
+      "description": "Setup no elimina ni reemplaza integraciones ambiguas automáticamente",
+      "input": "Pregunta documental: /groot-queue:setup encuentra plugin oficial Atlassian y una conexión manual Atlassian activas al mismo tiempo. Explicá qué hace automáticamente y qué decisión pide al usuario. No ejecutes tools.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "conflicto",
+            "duplicad",
+            "ambigu"
+          ]
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "elegir",
+            "elección",
+            "decidir",
+            "decisión"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "desinstala automáticamente",
+            "elimina automáticamente",
+            "borra automáticamente",
+            "reemplaza automáticamente"
+          ]
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "cloudId:",
+            "API token",
+            "Authorization:"
           ]
         }
       ]

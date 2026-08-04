@@ -1,5 +1,5 @@
 ---
-description: Diagnostica AI assets y ofrece recuperación guiada con comandos copiables y automatización aprobada
+description: Diagnostica AI assets, instala o actualiza faltantes y pide solo acciones humanas necesarias
 ---
 
 Leé y aplicá `${CLAUDE_PLUGIN_ROOT}/skills/groot-queue/knowledge/config/command-entrypoint.md` para el subcomando canónico `setup`, los argumentos `$ARGUMENTS` y el provider `claude`.
