@@ -27,6 +27,18 @@ setup() {
     grep -q -- '--model prefixed-model' "$CLAUDE_ARGS_LOG"
 }
 
+@test "resolves a relative skill path before building the contract prompt" {
+    run --separate-stderr env \
+        "PATH=${STUB_BIN}:${PATH}" \
+        "CLAUDE_ARGS_LOG=${CLAUDE_ARGS_LOG}" \
+        "GROOT_MARKETPLACE_EVAL_PROVIDER=claude" \
+        bash -c 'cd "$1" && "$2" --jobs 1 "$3"' \
+        _ "$TEST_ROOT" "$EVAL_RUNNER" "$SKILL_NAME"
+
+    [ "$status" -eq 0 ]
+    grep -Fq -- "$SKILL_DIR/SKILL.md" "$CLAUDE_ARGS_LOG"
+}
+
 @test "removed provider is rejected before invoking Claude" {
     local removed_provider="co""pilot"
 

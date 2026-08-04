@@ -663,6 +663,8 @@ run_skill_evals() {
 
     local skill_name
     skill_name=$(jq -r '.skill' "$config_file")
+    local canonical_skill_path
+    canonical_skill_path=$(cd "$skill_path" && pwd)
     local total
     total=$(jq '.test_cases | length' "$config_file")
 
@@ -682,9 +684,9 @@ run_skill_evals() {
     skill_cwd=$(mktemp -d)
     baseline_cwd=$(mktemp -d)
     mkdir -p "$skill_cwd/.claude/skills"
-    ln -s "$(cd "$skill_path" && pwd)" "$skill_cwd/.claude/skills/$skill_name"
+    ln -s "$canonical_skill_path" "$skill_cwd/.claude/skills/$skill_name"
     mkdir -p "$skill_cwd/.codex/skills"
-    ln -s "$(cd "$skill_path" && pwd)" "$skill_cwd/.codex/skills/$skill_name"
+    ln -s "$canonical_skill_path" "$skill_cwd/.codex/skills/$skill_name"
     skill_codex_home=""
     baseline_codex_home=""
     if [ "$RESOLVED_EVAL_PROVIDER" = "codex" ]; then
@@ -692,7 +694,7 @@ run_skill_evals() {
         baseline_codex_home=$(mktemp -d)
         create_codex_eval_home "$skill_codex_home"
         create_codex_eval_home "$baseline_codex_home"
-        ln -s "$(cd "$skill_path" && pwd)" "$skill_codex_home/skills/$skill_name"
+        ln -s "$canonical_skill_path" "$skill_codex_home/skills/$skill_name"
     fi
     trap "rm -rf '$skill_cwd' '$baseline_cwd' '$skill_codex_home' '$baseline_codex_home'" RETURN
 
@@ -732,7 +734,7 @@ run_skill_evals() {
             [ ${#pids[@]} -ge "$EVAL_JOBS" ] && sleep 0.2
         done
 
-        run_single_case "$i" "$config_file" "$workspace" "$total" "$output_dir" "$result_dir" "$skill_cwd" "$baseline_cwd" "$skill_codex_home" "$baseline_codex_home" "$skill_path" &
+        run_single_case "$i" "$config_file" "$workspace" "$total" "$output_dir" "$result_dir" "$skill_cwd" "$baseline_cwd" "$skill_codex_home" "$baseline_codex_home" "$canonical_skill_path" &
         pids+=($!)
     done
 
