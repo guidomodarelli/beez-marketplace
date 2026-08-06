@@ -120,7 +120,9 @@ No enviar el alias literal como nombre de campo.
 ## Cómo agregar una solución concreta
 
 1. Ejecutar `/groot-queue save SSHP-XXXXX` (la skill genera el archivo automáticamente), o
-2. Crear manualmente un `.md` en la carpeta de categoría correspondiente siguiendo este formato:
+2. Crear manualmente un `.md` en la carpeta de categoría correspondiente siguiendo este formato.
+
+Antes de guardar por cualquier vía, aplicar `rules/triage-rules.md` § **Política transversal — configuración de usuarios**. Una solución histórica no puede recomendar restaurar, asignar, remover ni determinar roles, permisos, atributos o accesos; documentar evidencia, ownership y escalación en lugar de un workaround de configuración.
 
 ```markdown
 ---

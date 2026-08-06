@@ -129,6 +129,8 @@ Del `summary` + `description` del ticket, extraer 2–4 señales concretas en **
 
 #### 2g. Mostrar propuesta al usuario
 
+Antes de generar una propuesta materializable, leer y aplicar `triage-rules.md` § **Política transversal — configuración de usuarios**. Si comentario, desenlace o solución histórica prescribe restaurar, reasignar, copiar, remover o definir roles, permisos, atributos o accesos, marcar el ticket `groot-kb-manual-review`. No proponer materialización ni delegar a `add-rule` o `save`; presentar únicamente que el antecedente requiere revisión humana para extraer, si existe, un patrón técnico seguro o una redirección de ownership.
+
 ```
 ─────────────────────────────────────────────────
 [N/M] https://mercadolibre.atlassian.net/browse/SSHP-XXXXXXX

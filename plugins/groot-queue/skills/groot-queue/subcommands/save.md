@@ -15,15 +15,16 @@ Guardar la resolución real de un ticket en la knowledge base. Argumentos: la ke
    acli jira workitem view SSHP-XXXXXX
    ```
 3. Aplicar gate de `ticket-evidence.md`: verificar autónomamente facts actuales decisivos que tengan contrato soportado. No usar estado actual para probar causa histórica. Si solución o causa no están demostradas por evidencia histórica o confirmación explícita del usuario, detener materialización y pedir confirmación; no guardar `effectiveness: confirmed` por inferencia.
-4. Detectar categoría usando lógica de Dimensión 1.
-5. Generar slug del archivo: `<ticket-key>-<primeras-3-palabras-del-summary>.md` (minúsculas, guiones)
+4. Leer y aplicar `triage-rules.md` § **Política transversal — configuración de usuarios** antes de materializar. Si la descripción prescribe restaurar, reasignar, copiar, remover, habilitar o cambiar roles, permisos, atributos o accesos, no crear ni sobrescribir el archivo. Pedir una reformulación segura centrada en evidencia, fallo técnico, ownership, escalación y resultado observado; un antecedente histórico no vuelve esa configuración un procedimiento reusable.
+5. Detectar categoría usando lógica de Dimensión 1.
+6. Generar slug del archivo: `<ticket-key>-<primeras-3-palabras-del-summary>.md` (minúsculas, guiones)
    - Ejemplo: `SSHP-1407882-referencia-circular-lider.md`
-6. Buscar si ya existe un archivo para ese ticket en `$SKILL_DIR/knowledge/solutions/<categoria>/`:
+7. Buscar si ya existe un archivo para ese ticket en `$SKILL_DIR/knowledge/solutions/<categoria>/`:
    - Antes de leer o escribir, asegurar que la carpeta exista: `mkdir -p "$SKILL_DIR/knowledge/solutions/<categoria>"`.
    - Leer los frontmatter `ticket:` de cada archivo `.md` de esa carpeta.
    - Si ya existe: mostrar `⚠️ Ya existe una solución para SSHP-XXXXXX en <path>. ¿Querés sobrescribir? (sí/no)`.
    - Si el usuario dice no: abortar.
-7. Crear el archivo markdown en `$SKILL_DIR/knowledge/solutions/<categoria>/`:
+8. Crear el archivo markdown en `$SKILL_DIR/knowledge/solutions/<categoria>/`:
 
 ```markdown
 ---
@@ -47,7 +48,7 @@ effectiveness: confirmed
 <keywords sanitizadas, sin LDAP, email, nombre ni IDs, separadas por coma>
 ```
 
-8. Mostrar confirmación:
+9. Mostrar confirmación:
 ```
 ✅ Solución guardada en:
    $SKILL_DIR/knowledge/solutions/<categoria>/<slug>.md

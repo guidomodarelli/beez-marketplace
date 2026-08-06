@@ -34,8 +34,9 @@ Groot Soporte no define ni ejecuta configuración funcional de usuarios. Esta po
 - **No comparar ni copiar configuraciones** entre usuarios, líderes, pares o cuentas de referencia. Señales: ES "comparar configuración", "copiar permisos", "dejar igual que otro usuario"; PT "comparar configuração", "copiar permissões", "deixar igual a outro usuário"; EN "compare configuration", "copy permissions", "make the user match another user".
 - **No determinar configuración objetivo**: Groot no decide qué rol, permiso, atributo, acceso, bolha, CAD, facility, warehouse o valor necesita una persona. Señales: ES "qué rol necesita", "qué permiso falta", "qué atributo debe tener"; PT "qual role precisa", "qual permissão falta", "qual atributo deve ter"; EN "which role is needed", "which permission is missing", "which attribute should be set".
 - **No modificar ni aplicar configuración**: Groot no asigna, remueve, cambia, restaura ni replica roles, permisos, atributos o valores. Señales: ES "asignar/quitar/cambiar rol o atributo"; PT "atribuir/remover/trocar role ou atributo"; EN "assign/remove/change role or attribute".
+- **No convertir antecedentes en workarounds**: una solución histórica puede describir un hecho pasado, pero no autoriza restaurar, reasignar ni replicar configuración de un usuario en otro caso.
 
-Estas solicitudes se resuelven por texto, sin consultar Kraken ni otra persona para descubrir o validar una configuración deseada, y corresponden al gestor de usuarios, gestor de aplicación u owner operativo.
+Estas solicitudes se resuelven por texto, sin consultar Kraken ni otra persona para descubrir o validar una configuración deseada, y corresponden al responsable de gestión de usuarios de la operación, gestor de aplicación u owner operativo. Cuando falte evidencia decisiva o la historia no pruebe causalidad, usar `REVISAR_MANUAL`; no convertir el antecedente en una acción de configuración.
 
 **Excepción limitada**: un `500`, timeout, crash, rollback o fallo inesperado de persistencia en una herramienta Groot puede ser `VALIDO_GROOT`. La excepción habilita diagnosticar y corregir el sistema, recopilar evidencia y escalar; nunca comparar personas, decidir configuración ni aplicar cambios manuales como workaround. Un mensaje de validación claro sigue `R-DER-24`.
 
@@ -242,13 +243,13 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
 - **Razón**: Desde el 14 de marzo no se exceptúan incompatibilidades de roles por pedido del equipo de auditoría. Usuarios con roles incompatibles asignados previamente pueden perder progresivamente esa concurrencia cuando pasan por flujos de roles temporales.
 - **Verificación previa**: Aplicar `roles`, `temporary-status` y `role-incompatibilities` de `kraken-user-data.md`. La incompatibilidad actual es evidencia necesaria, pero no demuestra causalidad histórica: también debe confirmarse que el rol temporal se aplicó, expiró, ejecutó retorno y que la pérdida se limita a roles conflictivos. Sin secuencia completa → `REVISAR_MANUAL`; roles compatibles → continuar algoritmo; consulta indeterminada → `REVISAR_MANUAL`.
 - **⚠️ NO APLICA cuando**:
-  - El rol temporal **nunca impactó** en la operación (no se reflejó en la HH, el usuario nunca pudo trabajar con el rol asignado). Eso es un **bug real** → `VALIDO_GROOT`.
-  - El usuario reporta que el **proceso de rol temporal falló completamente** (asignación no efectiva, retorno no ejecutado, el sistema no procesó el cambio). Eso es un **error sistémico** → `VALIDO_GROOT`.
-  - El ticket menciona roles temporales usados **justamente para evitar compliance** en procesos operativos (ej: Picking temporal para cubrir turno). Estos roles se usan dentro del diseño del sistema; si no funcionan, es un bug.
-  - **Aplica SOLO cuando**: el usuario se queja de que **perdió roles que antes tenía** (roles incompatibles que coexistían) después de pasar por un flujo de roles temporales, y la pérdida se debe a que ya no se exceptúan incompatibilidades desde el 14 de marzo.
-- **Acción**: Cerrar como `Won't Do`.
-- **Comentario sugerido** (nota interna):
-  > "Usuarios con roles incompatibles previamente asignados desde el 14 de marzo esto se dejo de exceptuar incompatibilidades por pedido del equipo de auditoria esto hace que usuario con roles asignados previamente cuando entren en estos procesos empiecen a perder paultatinamente la concurrencia de roles incompatibles"
+  - Existe evidencia técnica de que el rol temporal nunca impactó en la operación, el retorno no se ejecutó o el proceso falló completamente. Eso es un **bug real** → `VALIDO_GROOT`.
+  - El ticket menciona roles temporales usados dentro del diseño de un proceso operativo y existe evidencia técnica de que el flujo no funcionó.
+  - La secuencia histórica solo está reportada, es parcial o no permite separar un fallo del flujo de una incompatibilidad. Mantener `REVISAR_MANUAL`.
+  - **Aplica SOLO cuando**: la secuencia completa confirma que el retorno se ejecutó y no restauró exclusivamente roles incompatibles.
+- **Acción**: Cerrar como `Won't Do` y redirigir al responsable de gestión de usuarios de la operación para que determine y gestione el acceso compatible. Groot no restaura ni reasigna roles, permisos o accesos contextuales.
+- **Comentario sugerido**:
+  > "Hola. Desde Groot Soporte no asignamos ni restablecemos roles, permisos ni accesos contextuales. El flujo temporal no puede restaurar combinaciones incompatibles por la política de auditoría. Para gestionar el acceso necesario, contactá al responsable de gestión de usuarios de tu operación."
 - **Fuente**: groot-queue:analyze-history, SSHP-1482125, 2026-06-14.
 
 ### R-DESC-16 — Jerarquía/gestor reportado como incorrecto en Groot pero coincide con SSFF → cambio debe gestionarse en SSFF
@@ -494,7 +495,7 @@ Para `list` agregar columna **Triage**. Para `classify` agregar una sección ext
   - EN: "reactivate disabled user", "account disabled", "expired", "cannot reactivate", "error reactivating", "account expired", "disabled user cannot be reactivated".
   - El líder o el usuario reporta que una cuenta aparece como desactivada/expirada en Groot o MeliHelp y no hay opción para reactivarla desde la autogestión.
 - **Razón**: Cuando la desactivación involucra bloqueos de SuccessFactors, IAM o sincronización de HR, Groot Soporte no tiene herramientas para desbloquear. El equipo de IAM Soporte tiene acceso directo para resolver estos casos.
-- **Verificación previa**: Confirmar que el usuario realmente aparece como desativado/expirado en Groot. Si el usuario está activo pero con permisos faltantes → reclasificar como `VALIDO_GROOT`.
+- **Verificación previa**: Confirmar que el usuario realmente aparece como desactivado/expirado en Groot. Si está activo, R-DER-15 no aplica y el algoritmo debe continuar. Un reporte de permisos o accesos faltantes no es `VALIDO_GROOT` por sí solo: aplicar política transversal y derivar a una regla de configuración operativa, salvo que exista evidencia de un fallo sistémico observable de Groot.
 - **Acción**: Derivar a **IAM Soporte**.
 - **Comentario sugerido**:
   > "Hola, la reactivación de cuentas desactivadas/expiradas que no se resuelve por autogestión requiere intervención del equipo de IAM. Derivamos para que puedan ayudarte."
@@ -654,7 +655,7 @@ Para cada ticket abierto, aplicar primero `Política transversal — configuraci
 35. **R-DESC-11** ⚡ → si el problema ocurre en un sistema externo a Groot/Kraken (ej. HCM Rostering) y no hay error en ninguna herramienta de Groot.
 36. **R-DESC-12** ⚠️ _[pendiente validación — clasificar como `REVISAR_MANUAL` hasta confirmar copy con Francisco Gonzalez]_ → si el reporte es una jerarquía que cambió automáticamente en LMS (sin solicitud manual) y el contexto apunta a un sync de Rostering, clasificar como `REVISAR_MANUAL` hasta validar el copy de descarte.
 37. **R-DESC-14** ⚡ → si un usuario interno dado de baja en SSFF aparece inactivo en Groot y no puede reactivarse manualmente.
-38. **R-DESC-15** → si roles previos no se restauran tras expirar un rol temporal **por incompatibilidades de roles que ya no se exceptúan** (regla de auditoría del 14 de marzo). ⚠️ **NO aplicar** si el rol temporal nunca impactó en la operación, el retorno no se ejecutó, o el proceso falló completamente — en esos casos el veredicto es `VALIDO_GROOT` (bug real del proceso de roles temporales).
+38. **R-DESC-15** → solo con secuencia histórica completa que confirme retorno ejecutado y pérdida limitada a roles incompatibles no exceptuados por auditoría. Sin esa causalidad → `REVISAR_MANUAL`; con evidencia técnica de que el flujo temporal no impactó, no retornó o falló completamente → `VALIDO_GROOT`.
 39. **R-DESC-16** → si el usuario reporta jerarquía/gestor incorrecto en Groot pero la verificación confirma que el valor coincide con SSFF (SuccessFactors).
 40. **R-DESC-17** → si el usuario reporta que no puede acceder a sistemas/tools cuyas URLs NO pertenecen al dominio de Groot (`envios.adminml.com/tools/auth/*`).
 41. **R-DESC-19** ⚡ → si la solicitud pide ejecutar una operación estándar que la tool ya provee por autogestión, sin error técnico, y no matchea ninguna regla más específica anterior.

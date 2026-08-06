@@ -279,6 +279,7 @@ Ejecutar este paso al cierre de cada lote, solo para tickets del lote clasificad
    - Resolver carpeta real de `solutions/` usando mapeo de `classification.md`.
    - Buscar casos previos similares como antecedentes históricos, no como autorización para comparar o modificar configuración.
 4. Generar nota siguiendo estrictamente template y filtrar cualquier paso que determine o aplique roles, permisos o atributos:
+   - Si evidencia confirmada identifica una necesidad de configuración operativa, indicar únicamente que el responsable de gestión de usuarios de la operación debe gestionarla; no nombrar ni proponer la configuración.
    - Completar cada campo (`{CATEGORIA}`, `{DIAGNOSTICO}`, `{PASOS_RESOLUCION}`, etc.) según las reglas de llenado del template.
    - Respetar las restricciones: español neutro, sin códigos de regla, sin PII, sin texto verbatim no sanitizado.
    - **Incluir siempre el slug `<!-- groot-auto-guide -->` como última línea del body** (requerido para detección de idempotencia).

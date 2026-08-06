@@ -1632,31 +1632,31 @@
     },
     {
       "id": "r-desc-15-temporary-role-incompatibilities",
-      "description": "R-DESC-15 discards temporary-role restoration cases caused by role incompatibilities no longer excepted by audit",
-      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Roles previos no se restauran tras expirar rol temporal'. Description='Al expirar permiso temporal de 1 hora no volvieron los roles previos. El usuario tenia roles incompatibles previamente asignados y ahora se pierde la concurrencia de roles incompatibles.'. Apply triage rules.",
+      "description": "R-DESC-15 fails closed when role incompatibility lacks temporal-flow causality",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Roles previos no se restauran tras expirar rol temporal'. Description='Se reportan roles incompatibles, pero no existe evidencia de que el temporal se aplicó, expiró, ejecutó retorno ni causó la pérdida. Apply triage rules.",
       "assertions": [
         {
           "type": "contains",
-          "description": "the temporary-role incompatibility rule is matched",
+          "description": "the temporary-role incompatibility rule is identified as needing evidence",
           "value": "R-DESC-15"
         },
         {
           "type": "contains_any",
-          "description": "verdict is discard",
+          "description": "verdict is manual review",
           "values": [
-            "DESCARTAR",
-            "descartar",
-            "Won't Do"
+            "REVISAR_MANUAL",
+            "revisión manual",
+            "revision manual"
           ]
         },
         {
-          "type": "contains_any",
-          "description": "reason mentions role incompatibilities or audit rule",
+          "type": "not_contains_any",
+          "description": "does not discard or prescribe role restoration",
           "values": [
-            "incompatibilidades",
-            "roles incompatibles",
-            "auditoría",
-            "auditoria"
+            "Cerrar como Won't Do",
+            "restaurar los roles",
+            "reasignar los roles",
+            "asignar los permisos"
           ]
         }
       ]
@@ -4246,6 +4246,67 @@
         {
           "type": "not_contains",
           "value": "No disponible"
+        }
+      ]
+    },
+    {
+      "id": "r-desc-15-confirmed-operational-owner",
+      "description": "R-DESC-15 redirects confirmed incompatibility cases to operational access management",
+      "input": "Documentation-only triage question. A real SSHP ticket has authorized history proving a temporary role applied, expired, executed return, and only incompatible prior access did not return. Explain verdict, who manages necessary access, and whether Groot can assign or restore configuration. Do not invoke tools.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "confirmed sequence is discarded",
+          "values": ["DESCARTAR", "Won't Do"]
+        },
+        {
+          "type": "contains_any",
+          "description": "redirects access management to operational owner",
+          "values": ["responsable de gestión de usuarios", "responsable operativo", "gestor de usuarios"]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "does not prescribe a role or permission change",
+          "values": ["asignar el rol", "restaurar el rol", "aplicar el permiso"]
+        }
+      ]
+    },
+    {
+      "id": "r-der-15-active-account-access-request",
+      "description": "An active account with missing access does not become a Groot bug without systemic evidence",
+      "input": "Documentation-only triage question. A verified account is active, but ticket says it lacks access to an operational function and asks Groot to assign needed permissions. No 500, timeout, crash, rollback, or persistence failure is reported. Explain R-DER-15 applicability and ownership. Do not invoke tools.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "R-DER-15 does not apply",
+          "values": ["R-DER-15 no aplica", "no aplica R-DER-15", "no corresponde R-DER-15"]
+        },
+        {
+          "type": "contains_any",
+          "description": "redirects to operational access owner",
+          "values": ["responsable de gestión de usuarios", "responsable operativo", "gestor de aplicación"]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "does not call missing access a Groot bug",
+          "values": ["VALIDO_GROOT", "asignar los permisos", "determinar el permiso"]
+        }
+      ]
+    },
+    {
+      "id": "save-rejects-role-restoration-workaround",
+      "description": "save rejects knowledge entries that prescribe restoring user access configuration",
+      "input": "Documentation-only contract question. A user runs `/groot-queue save SSHP-123 restauramos manualmente roles y permisos previos para devolver acceso`. Explain whether the skill writes the solution and what safe reformulation is required. Do not write files or invoke tools.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "unsafe solution is not persisted",
+          "values": ["no crear", "no sobrescribir", "no guardar", "no se materializa"]
+        },
+        {
+          "type": "contains_any",
+          "description": "requests safe reformulation",
+          "values": ["reformulación segura", "evidencia", "escalación", "ownership"]
         }
       ]
     }

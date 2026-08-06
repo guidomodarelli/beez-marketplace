@@ -27,6 +27,8 @@ Sumar una nueva regla de triage a `triage-rules.md` mediante un flujo interactiv
    i. **Fuente** (texto): formato `<autor>, <ticket o contexto>, <fecha YYYY-MM-DD>`. Si el usuario no provee fecha, usar la fecha actual.
    j. **Posición en el algoritmo** (single-select): mostrar la lista numerada actual del bloque "Algoritmo de triage" y preguntar después de qué número insertar. Sugerir default según el tipo (FIX_APLICADO al inicio, DERIVAR con señal específica antes que genérica, DESCARTAR al final).
 
+2a. **Validar política de configuración**: antes de construir una regla, leer y aplicar `triage-rules.md` § **Política transversal — configuración de usuarios**. Rechazar una regla si sus señales, razón, acción o comentario sugerido indican restaurar, reasignar, copiar, remover o definir roles, permisos, atributos o accesos. Para configuración operativa, reformular la acción como redirección al responsable de gestión de usuarios de la operación, gestor de aplicación u owner operativo. Solo un fallo sistémico observable puede describirse como diagnóstico y escalación de Groot, sin proponer cambios manuales de configuración.
+
 3. **Calcular nuevo ID**: incrementar el contador del tipo elegido. Ej: si la última `R-DER-XX` es `R-DER-12` → la nueva es `R-DER-13`.
 
 4. **Construir bloque de la regla** con el siguiente formato exacto (mismo que las reglas existentes):
