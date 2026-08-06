@@ -4252,7 +4252,7 @@
     {
       "id": "r-desc-15-confirmed-operational-owner",
       "description": "R-DESC-15 redirects confirmed incompatibility cases to operational access management",
-      "input": "Documentation-only triage question. A real SSHP ticket has authorized history proving a temporary role applied, expired, executed return, and only incompatible prior access did not return. Explain verdict, who manages necessary access, and whether Groot can assign or restore configuration. Do not invoke tools.",
+      "input": "Documentation-only triage question. A real SSHP ticket has authorized history proving a temporary role applied, expired, executed return, and only incompatible prior access did not return. Respondé en español con el veredicto canónico y explicá quién gestiona el acceso necesario y si Groot puede asignar o restaurar configuración. Podés leer referencias locales bundleadas; no invoques Jira, Slack, Kraken ni servicios externos.",
       "assertions": [
         {
           "type": "contains_any",
@@ -4265,9 +4265,19 @@
           "values": ["responsable de gestión de usuarios", "responsable operativo", "gestor de usuarios"]
         },
         {
+          "type": "contains_any",
+          "description": "explicitly denies role or permission assignment by Groot",
+          "values": ["no puede asignar", "no asigna", "no asignamos", "cannot assign", "cannot grant", "does not assign", "does not grant"]
+        },
+        {
+          "type": "contains_any",
+          "description": "explicitly denies role or permission restoration by Groot",
+          "values": ["no puede restaurar", "no restaura", "no restauramos", "no asignamos ni restablecemos", "no asigna ni restaura", "no puede asignar ni restaurar", "no puede asignar el rol ni restaurar", "cannot restore", "does not restore", "cannot assign or restore", "cannot grant or restore", "cannot grant, restore"]
+        },
+        {
           "type": "not_contains_any",
           "description": "does not prescribe a role or permission change",
-          "values": ["asignar el rol", "restaurar el rol", "aplicar el permiso"]
+          "values": ["Groot debe asignar", "Groot puede asignar", "Groot debe restaurar", "Groot puede restaurar", "Groot should assign", "Groot can assign", "Groot must assign", "Groot should restore", "Groot can restore", "Groot must restore"]
         }
       ]
     },
@@ -4307,6 +4317,43 @@
           "type": "contains_any",
           "description": "requests safe reformulation",
           "values": ["reformulación segura", "evidencia", "escalación", "ownership"]
+        }
+      ]
+    },
+    {
+      "id": "add-rule-preserves-configuration-request-matchers",
+      "description": "add-rule preserves requested configuration wording in trilingual signals while keeping rule output non-prescriptive",
+      "input": "Documentation-only `/groot-queue add-rule` contract question. Proposed matcher signals are ES `restablecer acceso de warehouse`, PT `restaurar acesso ao warehouse`, and EN `restore warehouse access`. Proposed action and comment redirect access management to the operational user manager and state that Groot does not assign roles. Explain which wording is preserved and which fields policy validates. Do not edit files or invoke tools.",
+      "assertions": [
+        {
+          "type": "contains",
+          "description": "preserves Spanish matcher wording",
+          "value": "restablecer acceso de warehouse"
+        },
+        {
+          "type": "contains",
+          "description": "preserves Portuguese matcher wording",
+          "value": "restaurar acesso ao warehouse"
+        },
+        {
+          "type": "contains",
+          "description": "preserves English matcher wording",
+          "value": "restore warehouse access"
+        },
+        {
+          "type": "contains_any",
+          "description": "validates prescriptive output fields",
+          "values": ["Razón", "Acción", "Comentario sugerido", "acción y el comentario"]
+        },
+        {
+          "type": "contains_any",
+          "description": "routes access management to the operational owner",
+          "values": ["responsable de gestión de usuarios", "responsable operativo", "gestor de usuarios"]
+        },
+        {
+          "type": "not_contains_any",
+          "description": "does not reject the rule because matcher signals name the request",
+          "values": ["rechazar la regla por las señales", "eliminar las señales", "no conservar las señales"]
         }
       ]
     }
