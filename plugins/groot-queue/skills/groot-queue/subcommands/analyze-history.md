@@ -129,7 +129,14 @@ Del `summary` + `description` del ticket, extraer 2–4 señales concretas en **
 
 #### 2g. Mostrar propuesta al usuario
 
-Antes de generar una propuesta materializable, leer y aplicar `triage-rules.md` § **Política transversal — configuración de usuarios**. Si comentario, desenlace o solución histórica prescribe restaurar, reasignar, copiar, remover o definir roles, permisos, atributos o accesos, marcar el ticket `groot-kb-manual-review`. No proponer materialización ni delegar a `add-rule` o `save`; presentar únicamente que el antecedente requiere revisión humana para extraer, si existe, un patrón técnico seguro o una redirección de ownership.
+Antes de generar una propuesta materializable, leer y aplicar `triage-rules.md` § **Política transversal — configuración de usuarios**. Si comentario, desenlace o solución histórica prescribe restaurar, reasignar, copiar, remover o definir roles, permisos, atributos o accesos, aplicar este guard clause:
+
+1. Marcar resultado local como `MANUAL_REVIEW_UNSAFE_HISTORY` y seleccionar label `groot-kb-manual-review`.
+2. Mostrar únicamente que antecedente requiere revisión humana para extraer, si existe, patrón técnico seguro o redirección de ownership.
+3. Ejecutar inmediatamente paso 2i para mergear `groot-kb-manual-review`.
+4. Después del intento de escritura —exitoso o fallido tras manejo/reintento de 2i— registrar resultado local y ejecutar `continue` hacia siguiente ticket.
+
+En esta rama no renderizar bloque `📋 Propuesta`, no invocar `AskUserQuestion`, no ejecutar paso 2h y no delegar a `add-rule` o `save`.
 
 ```
 ─────────────────────────────────────────────────

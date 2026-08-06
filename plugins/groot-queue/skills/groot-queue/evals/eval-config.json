@@ -4356,6 +4356,38 @@
           "values": ["rechazar la regla por las señales", "eliminar las señales", "no conservar las señales"]
         }
       ]
+    },
+    {
+      "id": "analyze-history-unsafe-access-skips-materialization",
+      "description": "analyze-history labels unsafe access history for manual review and skips proposal and materialization",
+      "input": "Documentation-only `/groot-queue analyze-history` contract question. A closed ticket comment says `restauramos manualmente roles y permisos para devolver acceso`. Explain exact control flow, including what happens if the manual-review label write fails, proposal, confirmation, delegation, and next-ticket behavior. Podés leer referencias locales bundleadas; no invoques Jira ni servicios externos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "description": "marks unsafe history for manual review",
+          "value": "groot-kb-manual-review"
+        },
+        {
+          "type": "contains_any",
+          "description": "skips proposal rendering and confirmation",
+          "values": ["No se muestra", "No se pregunta", "no se renderiza", "no se invoca AskUserQuestion", "sin propuesta ni confirmación", "No hay propuesta materializable"]
+        },
+        {
+          "type": "contains_any",
+          "description": "skips materialization delegation",
+          "values": ["No se ejecuta materialización", "No se ejecuta el paso 2h", "No se delega a `add-rule`", "no se ejecuta el paso 2h", "no se delega a `add-rule`", "sin materialización"]
+        },
+        {
+          "type": "contains_any",
+          "description": "continues to next ticket after label attempt",
+          "values": ["continue", "siguiente ticket", "próximo ticket"]
+        },
+        {
+          "type": "contains_any",
+          "description": "label failure does not reopen materialization path",
+          "values": ["Si falla por permisos, avisa y sigue", "sigue sin bloquear", "si falta permiso, avisa y sigue", "Si la escritura de labels falla", "error no bloquea", "write falla por permisos, avisa pero igual sigue", "exitoso o no", "exitoso o fallido", "aunque falle"]
+        }
+      ]
     }
   ]
 }
