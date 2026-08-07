@@ -44,10 +44,11 @@ teams/               Rosters operativos de equipos internos:
 
 templates/           Templates operativos reutilizables:
   assignment-note-template.md
-                       Template estándar para la nota interna de resolución que
-                       se postea en cada ticket al asignarlo con
-                       /groot-queue assign-unassigned. Define estructura,
-                       reglas de llenado y restricciones.
+                       Template estándar para nota interna de resolución que
+                       se postea al asignar con /groot-queue assign-unassigned.
+  history-materialization-template.md
+                       Validación de destinos y respuestas sintetizadas para
+                       materializar historial sin copiar texto Jira no confiable.
 
 solutions/           Casos concretos resueltos, agrupados por categoría:
   hierarchy-leader/        ← Jerarquía/Líder
