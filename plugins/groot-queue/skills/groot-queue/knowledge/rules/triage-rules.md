@@ -36,6 +36,20 @@ Groot Soporte no define ni ejecuta configuración funcional de usuarios. Esta po
 - **No modificar ni aplicar configuración**: Groot no asigna, remueve, cambia, restaura ni replica roles, permisos, atributos o valores. Señales: ES "asignar/quitar/cambiar rol o atributo"; PT "atribuir/remover/trocar role ou atributo"; EN "assign/remove/change role or attribute".
 - **No convertir antecedentes en workarounds**: una solución histórica puede describir un hecho pasado, pero no autoriza restaurar, reasignar ni replicar configuración de un usuario en otro caso.
 
+### Señales trilingües canónicas de acciones de configuración
+
+Aplicar estas señales cuando operación actúe sobre configuración de usuario, incluyendo conjugaciones y sustantivos equivalentes:
+
+| Operación | ES | PT | EN |
+|---|---|---|---|
+| Asignar | `asignar`, `asignamos`, `asignación`, `otorgar` | `atribuir`, `atribuímos`, `atribuição`, `conceder` | `assign`, `assigned`, `assigning`, `grant` |
+| Restaurar | `restaurar`, `restauramos`, `restablecer`, `devolver` | `restaurar`, `restauramos`, `restabelecer`, `devolver` | `restore`, `restored`, `restoring`, `reinstate` |
+| Copiar | `copiar`, `copiamos`, `replicar` | `copiar`, `copiamos`, `replicar` | `copy`, `copied`, `replicate` |
+| Remover | `remover`, `removimos`, `quitar`, `revocar` | `remover`, `removemos`, `retirar`, `revogar` | `remove`, `removed`, `revoke` |
+| Definir | `definir`, `definimos`, `determinar` | `definir`, `definimos`, `determinar` | `define`, `defined`, `determine` |
+
+Objetos mínimos: ES `rol/roles`, `permiso/permisos`, `atributo/atributos`, `acceso/accesos`, `acceso contextual`, `acceso de warehouse`; PT `role/roles`, `permissão/permissões`, `atributo/atributos`, `acesso/acessos`, `acesso contextual`, `acesso ao warehouse`; EN `role/roles`, `permission/permissions`, `attribute/attributes`, `access`, `contextual access`, `warehouse access`.
+
 Estas solicitudes se resuelven por texto, sin consultar Kraken ni otra persona para descubrir o validar una configuración deseada, y corresponden al responsable de gestión de usuarios de la operación, gestor de aplicación u owner operativo. Cuando falte evidencia decisiva o la historia no pruebe causalidad, usar `REVISAR_MANUAL`; no convertir el antecedente en una acción de configuración.
 
 **Excepción limitada**: un `500`, timeout, crash, rollback o fallo inesperado de persistencia en una herramienta Groot puede ser `VALIDO_GROOT`. La excepción habilita diagnosticar y corregir el sistema, recopilar evidencia y escalar; nunca comparar personas, decidir configuración ni aplicar cambios manuales como workaround. Un mensaje de validación claro sigue `R-DER-24`.

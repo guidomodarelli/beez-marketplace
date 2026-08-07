@@ -4326,6 +4326,60 @@
       ]
     },
     {
+      "id": "save-rejects-english-role-restoration-workaround",
+      "description": "save rejects English role restoration descriptions before knowledge persistence",
+      "input": "Documentation-only `/groot-queue save` contract question. Invocation: `/groot-queue save SSHP-123 we restored roles and permissions to recover warehouse access`. Identificá señales EN y explicá persistencia y reformulación segura. Incluí literalmente: `No crear ni sobrescribir el archivo.` y `No guardar effectiveness: confirmed.` Podés leer referencias locales bundleadas; no escribas archivos ni invoques Jira o servicios externos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "identifies English unsafe save signal",
+          "values": ["restored roles and permissions", "restore", "warehouse access"]
+        },
+        {
+          "type": "contains",
+          "description": "blocks English file creation",
+          "value": "No crear ni sobrescribir el archivo."
+        },
+        {
+          "type": "contains",
+          "description": "blocks confirmed effectiveness for English workaround",
+          "value": "No guardar effectiveness: confirmed."
+        },
+        {
+          "type": "contains_any",
+          "description": "requests safe English reformulation",
+          "values": ["reformulación segura", "evidencia", "escalación", "ownership"]
+        }
+      ]
+    },
+    {
+      "id": "save-rejects-portuguese-role-restoration-workaround",
+      "description": "save rejects Portuguese role restoration descriptions before knowledge persistence",
+      "input": "Documentation-only `/groot-queue save` contract question. Invocação: `/groot-queue save SSHP-123 restauramos roles e permissões para devolver o acesso ao warehouse`. Identificá señales PT y explicá persistencia y reformulación segura. Incluí literalmente: `No crear ni sobrescribir el archivo.` y `No guardar effectiveness: confirmed.` Podés leer referencias locales bundleadas; no escribas archivos ni invoques Jira o servicios externos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "identifies Portuguese unsafe save signal",
+          "values": ["restauramos", "permissões", "acesso ao warehouse"]
+        },
+        {
+          "type": "contains",
+          "description": "blocks Portuguese file creation",
+          "value": "No crear ni sobrescribir el archivo."
+        },
+        {
+          "type": "contains",
+          "description": "blocks confirmed effectiveness for Portuguese workaround",
+          "value": "No guardar effectiveness: confirmed."
+        },
+        {
+          "type": "contains_any",
+          "description": "requests safe Portuguese reformulation",
+          "values": ["reformulación segura", "evidencia", "escalación", "ownership"]
+        }
+      ]
+    },
+    {
       "id": "add-rule-preserves-configuration-request-matchers",
       "description": "add-rule preserves requested configuration wording in trilingual signals while keeping rule output non-prescriptive",
       "input": "Documentation-only `/groot-queue add-rule` contract question. Proposed matcher signals are ES `restablecer acceso de warehouse`, PT `restaurar acesso ao warehouse`, and EN `restore warehouse access`. Proposed action and comment redirect access management to the operational user manager and state that Groot does not assign roles. Explain which wording is preserved and which fields policy validates. Do not edit files or invoke tools.",
