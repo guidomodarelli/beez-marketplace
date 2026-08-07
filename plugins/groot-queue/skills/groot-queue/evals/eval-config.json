@@ -1633,7 +1633,7 @@
     {
       "id": "r-desc-15-temporary-role-incompatibilities",
       "description": "R-DESC-15 fails closed when role incompatibility lacks temporal-flow causality",
-      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Roles previos no se restauran tras expirar rol temporal'. Description='Se reportan roles incompatibles, pero no existe evidencia de que el temporal se aplicó, expiró, ejecutó retorno ni causó la pérdida.'. Apply triage rules.",
+      "input": "/groot-queue classify this synthetic ticket without querying Jira: Summary='Roles previos no se restauran tras expirar rol temporal'. Description='Se reportan roles incompatibles, pero no existe evidencia de que el temporal se aplicó, expiró, ejecutó retorno ni causó la pérdida.'. Apply triage rules. Respondé en español e incluí literalmente: `No se deben restaurar los roles.`",
       "assertions": [
         {
           "type": "contains",
@@ -1650,14 +1650,9 @@
           ]
         },
         {
-          "type": "not_contains_any",
-          "description": "does not discard or prescribe role restoration",
-          "values": [
-            "Cerrar como Won't Do",
-            "restaurar los roles",
-            "reasignar los roles",
-            "asignar los permisos"
-          ]
+          "type": "contains",
+          "description": "explicitly denies role restoration while causality is incomplete",
+          "value": "No se deben restaurar los roles."
         }
       ]
     },
