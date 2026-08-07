@@ -4533,6 +4533,38 @@
           "values": ["continue", "siguiente ticket", "próximo ticket"]
         }
       ]
+    },
+    {
+      "id": "analyze-history-safe-discard-request-remains-matcher",
+      "description": "request wording remains matcher input when closing resolution safely redirects access ownership",
+      "input": "Documentation-only `/groot-queue analyze-history` contract question. Ticket summary/description says `Please assign this role to restore warehouse access.` Closing comment says `Groot does not assign roles. Contact the operational user manager.` Resolution is Won't Do. Explain guard scope and normal proposal flow. Incluí literalmente: `La solicitud queda como señal matcher.`, `No activa MANUAL_REVIEW_UNSAFE_HISTORY.`, `Puede mostrar 📋 Propuesta.` y `Puede delegar a add-rule tras confirmación.` Podés leer referencias locales bundleadas; no invoques Jira ni servicios externos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "description": "keeps request wording as matcher input",
+          "value": "La solicitud queda como señal matcher."
+        },
+        {
+          "type": "contains",
+          "description": "safe closing denial does not trigger unsafe-history guard",
+          "value": "No activa MANUAL_REVIEW_UNSAFE_HISTORY."
+        },
+        {
+          "type": "contains",
+          "description": "normal proposal remains available",
+          "value": "Puede mostrar 📋 Propuesta."
+        },
+        {
+          "type": "contains",
+          "description": "safe rule can reach add-rule after confirmation",
+          "value": "Puede delegar a add-rule tras confirmación."
+        },
+        {
+          "type": "contains_any",
+          "description": "safe close redirects to operational owner",
+          "values": ["operational user manager", "manager operativo", "manager operacional", "responsable de gestión de usuarios", "responsable operativo", "gestor de usuarios"]
+        }
+      ]
     }
   ]
 }
