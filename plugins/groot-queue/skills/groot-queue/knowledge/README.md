@@ -44,10 +44,11 @@ teams/               Rosters operativos de equipos internos:
 
 templates/           Templates operativos reutilizables:
   assignment-note-template.md
-                       Template estándar para la nota interna de resolución que
-                       se postea en cada ticket al asignarlo con
-                       /groot-queue assign-unassigned. Define estructura,
-                       reglas de llenado y restricciones.
+                       Template estándar para nota interna de resolución que
+                       se postea al asignar con /groot-queue assign-unassigned.
+  history-materialization-template.md
+                       Validación de destinos y respuestas sintetizadas para
+                       materializar historial sin copiar texto Jira no confiable.
 
 solutions/           Casos concretos resueltos, agrupados por categoría:
   hierarchy-leader/        ← Jerarquía/Líder
@@ -120,7 +121,9 @@ No enviar el alias literal como nombre de campo.
 ## Cómo agregar una solución concreta
 
 1. Ejecutar `/groot-queue save SSHP-XXXXX` (la skill genera el archivo automáticamente), o
-2. Crear manualmente un `.md` en la carpeta de categoría correspondiente siguiendo este formato:
+2. Crear manualmente un `.md` en la carpeta de categoría correspondiente siguiendo este formato.
+
+Antes de guardar por cualquier vía, aplicar `rules/triage-rules.md` § **Política transversal — configuración de usuarios**. Una solución histórica no puede recomendar restaurar, asignar, remover ni determinar roles, permisos, atributos o accesos; documentar evidencia, ownership y escalación en lugar de un workaround de configuración.
 
 ```markdown
 ---

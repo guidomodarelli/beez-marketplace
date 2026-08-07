@@ -116,6 +116,7 @@ Para cada ticket elegible del lote activo, revalidar inmediatamente que siga abi
    - Resolver carpeta real de `solutions/` usando mapeo de `classification.md`.
    - Buscar casos previos similares como antecedentes históricos, no como autorización para comparar o modificar configuración.
 3. Generar nota siguiendo estrictamente template y filtrar cualquier paso que determine o aplique roles, permisos o atributos:
+   - Si evidencia confirmada identifica una necesidad de configuración operativa, indicar únicamente que el responsable de gestión de usuarios de la operación debe gestionarla; no nombrar ni proponer la configuración.
    - Completar cada campo (`{CATEGORIA}`, `{DIAGNOSTICO}`, `{PASOS_RESOLUCION}`, etc.) según las reglas de llenado del template y evidence sanitizada ya obtenida; no repetir consultas.
    - Para Labour Share, usar solo procesamiento, conteos agregados, consistencia, fecha programada o catálogo mínimo. No afirmar lifecycle global, retorno ejecutado ni Team Leader.
    - Respetar las restricciones: español neutro, sin códigos de regla, sin PII, sin texto verbatim no sanitizado.

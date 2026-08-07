@@ -18,7 +18,7 @@ Sumar una nueva regla de triage a `triage-rules.md` mediante un flujo interactiv
 
    a. **Tipo de regla** (single-select): `DESCARTAR` / `DERIVAR` / `FIX_APLICADO`
    b. **Título corto** (texto): frase breve que describe el patrón (ej: "Tax ID inválido → IAM Soporte")
-   c. **Señales** (texto multilínea): bullets concretos (summary/description matchers, URLs, contexto). Pedir al menos 2 señales.
+   c. **Señales** (texto multilínea): bullets concretos (summary/description matchers, URLs, contexto). Pedir al menos 2 señales y conservar el wording de la operación solicitada en variantes ES + PT + EN. Expresiones como "restablecer acceso", "restaurar acesso" o "restore access" describen el input que activa la regla; no son una acción autorizada para Groot.
    d. **Razón** (texto): por qué corresponde el veredicto (1-3 oraciones)
    e. **Verificación previa** (texto, opcional): condiciones que invalidarían la regla y deberían reclasificar. Si el usuario dice "ninguna" o vacío, omitir el campo.
    f. **Acción** (texto): qué hacer concretamente — para `DESCARTAR`: "Cerrar como Won't Do / Cancelled". Para `DERIVAR`: "Derivar a **<Equipo>**". Para `FIX_APLICADO`: "Cerrar como Done tras verificar query".
@@ -26,6 +26,8 @@ Sumar una nueva regla de triage a `triage-rules.md` mediante un flujo interactiv
    h. **Verificación SQL** (solo si `FIX_APLICADO`, texto): query para confirmar que el fix está aplicado.
    i. **Fuente** (texto): formato `<autor>, <ticket o contexto>, <fecha YYYY-MM-DD>`. Si el usuario no provee fecha, usar la fecha actual.
    j. **Posición en el algoritmo** (single-select): mostrar la lista numerada actual del bloque "Algoritmo de triage" y preguntar después de qué número insertar. Sugerir default según el tipo (FIX_APLICADO al inicio, DERIVAR con señal específica antes que genérica, DESCARTAR al final).
+
+2a. **Validar política de configuración**: antes de construir una regla, leer y aplicar `triage-rules.md` § **Política transversal — configuración de usuarios**. Las señales y el título describen contenido reportado: conservar la operación solicitada y sus variantes trilingües aunque nombren restaurar, reasignar, copiar, remover, definir, cambiar o modificar acceso. No interpretarlas como autorización ni reescribirlas hasta perder capacidad de match. Validar `Razón`, `Verificación previa`, `Acción` y `Comentario sugerido`: rechazar o reformular esos campos si indican que Groot debe restaurar, reasignar, copiar, remover, definir, cambiar o modificar roles, permisos, atributos o accesos. Para configuración operativa, la acción y el comentario deben redirigir al responsable de gestión de usuarios de la operación, gestor de aplicación u owner operativo. Solo un fallo sistémico observable puede describirse como diagnóstico y escalación de Groot, sin proponer cambios manuales de configuración.
 
 3. **Calcular nuevo ID**: incrementar el contador del tipo elegido. Ej: si la última `R-DER-XX` es `R-DER-12` → la nueva es `R-DER-13`.
 
