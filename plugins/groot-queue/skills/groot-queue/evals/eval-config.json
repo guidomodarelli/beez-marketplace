@@ -4425,6 +4425,60 @@
           "values": ["continue", "siguiente ticket", "próximo ticket"]
         }
       ]
+    },
+    {
+      "id": "analyze-history-english-restoration-signal-is-unsafe",
+      "description": "English restoration wording triggers unsafe-history manual review",
+      "input": "Documentation-only `/groot-queue analyze-history` contract question. Jira comment: `We restored roles and permissions to recover warehouse access.` Identify the English unsafe-history signals and explain label, materialization, and next-ticket behavior. Podés leer referencias locales bundleadas; no invoques Jira ni servicios externos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "identifies English restoration signal",
+          "values": ["restored", "restore", "roles and permissions", "warehouse access"]
+        },
+        {
+          "type": "contains",
+          "description": "marks English history for manual review",
+          "value": "groot-kb-manual-review"
+        },
+        {
+          "type": "contains_any",
+          "description": "blocks English history materialization",
+          "values": ["No renderizar", "No ejecutar", "No delegar", "No se muestra", "No se ejecuta", "No se entra al paso", "no se debe materializar", "no se puede convertir en patrón materializable", "no se materializa", "no materializar", "no se delega", "sin propuesta"]
+        },
+        {
+          "type": "contains_any",
+          "description": "continues after English history label attempt",
+          "values": ["continue", "siguiente ticket", "próximo ticket"]
+        }
+      ]
+    },
+    {
+      "id": "analyze-history-portuguese-restoration-signal-is-unsafe",
+      "description": "Portuguese restoration wording triggers unsafe-history manual review",
+      "input": "Documentation-only `/groot-queue analyze-history` contract question. Comentário Jira: `Restauramos roles e permissões para devolver o acesso ao warehouse.` Identificá sinais PT de histórico inseguro e explicá label, materialização e comportamento do próximo ticket. Podés leer referencias locales bundleadas; no invoques Jira ni servicios externos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "description": "identifies Portuguese restoration signal",
+          "values": ["Restauramos", "restaurar", "permissões", "acesso ao warehouse"]
+        },
+        {
+          "type": "contains",
+          "description": "marks Portuguese history for manual review",
+          "value": "groot-kb-manual-review"
+        },
+        {
+          "type": "contains_any",
+          "description": "blocks Portuguese history materialization",
+          "values": ["No se muestra", "No se ejecuta", "No se entra al paso", "no se debe materializar", "no se puede convertir en patrón materializable", "prohíbe `📋 Propuesta`", "não materializar", "no se materializa", "no materializar", "sin propuesta"]
+        },
+        {
+          "type": "contains_any",
+          "description": "continues after Portuguese history label attempt",
+          "values": ["continue", "siguiente ticket", "próximo ticket"]
+        }
+      ]
     }
   ]
 }
