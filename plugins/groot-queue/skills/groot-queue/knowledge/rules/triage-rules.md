@@ -47,6 +47,7 @@ Aplicar estas señales cuando operación actúe sobre configuración de usuario,
 | Copiar | `copiar`, `copiamos`, `replicar` | `copiar`, `copiamos`, `replicar` | `copy`, `copied`, `replicate` |
 | Remover | `remover`, `removimos`, `quitar`, `revocar` | `remover`, `removemos`, `retirar`, `revogar` | `remove`, `removed`, `revoke` |
 | Definir | `definir`, `definimos`, `determinar` | `definir`, `definimos`, `determinar` | `define`, `defined`, `determine` |
+| Cambiar / Modificar | `cambiar`, `cambiamos`, `cambió`, `modificar`, `modificamos`, `modificó`, `alterar`, `alteramos` | `trocar`, `trocamos`, `trocou`, `alterar`, `alteramos`, `alterou`, `modificar`, `modificamos`, `modificou` | `change`, `changed`, `changing`, `modify`, `modified`, `modifying`, `update`, `updated` |
 
 Objetos mínimos: ES `rol/roles`, `permiso/permisos`, `atributo/atributos`, `acceso/accesos`, `acceso contextual`, `acceso de warehouse`; PT `role/roles`, `permissão/permissões`, `atributo/atributos`, `acesso/acessos`, `acesso contextual`, `acesso ao warehouse`; EN `role/roles`, `permission/permissions`, `attribute/attributes`, `access`, `contextual access`, `warehouse access`.
 
