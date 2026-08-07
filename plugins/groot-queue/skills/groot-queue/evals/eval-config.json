@@ -4323,7 +4323,7 @@
     {
       "id": "save-rejects-english-role-restoration-workaround",
       "description": "save rejects English role restoration descriptions before knowledge persistence",
-      "input": "Documentation-only `/groot-queue save` contract question. Invocation: `/groot-queue save SSHP-123 we restored roles and permissions to recover warehouse access`. Identificá señales EN y explicá persistencia y reformulación segura. Incluí literalmente: `No crear ni sobrescribir el archivo.` y `No guardar effectiveness: confirmed.` Podés leer referencias locales bundleadas; no escribas archivos ni invoques Jira o servicios externos.",
+      "input": "Documentation-only `/groot-queue save` contract question. Invocation: `/groot-queue save SSHP-123 we restored roles and permissions to recover warehouse access`. Identificá señales EN, explicá si puede crear o sobrescribir archivo, si puede registrar `effectiveness: confirmed` y cómo reformular de forma segura. Podés leer referencias locales bundleadas; no escribas archivos ni invoques Jira o servicios externos.",
       "assertions": [
         {
           "type": "contains_any",
@@ -4331,14 +4331,14 @@
           "values": ["restored roles and permissions", "restore", "warehouse access"]
         },
         {
-          "type": "contains",
+          "type": "contains_any",
           "description": "blocks English file creation",
-          "value": "No crear ni sobrescribir el archivo."
+          "values": ["no crear", "no sobrescribir", "no puede crear", "no puede sobrescribir", "no debe crear", "no debe sobrescribir", "no se crea", "no se escribe", "no persistir"]
         },
         {
-          "type": "contains",
+          "type": "contains_any",
           "description": "blocks confirmed effectiveness for English workaround",
-          "value": "No guardar effectiveness: confirmed."
+          "values": ["no guardar `effectiveness: confirmed`", "no guardar effectiveness: confirmed", "no puede registrar `effectiveness: confirmed`", "no puede registrar effectiveness: confirmed", "no usar `effectiveness: confirmed`", "sin `effectiveness: confirmed`", "no marcar como confirmed", "no se debe persistir como confirmed"]
         },
         {
           "type": "contains_any",
@@ -4350,7 +4350,7 @@
     {
       "id": "save-rejects-portuguese-role-restoration-workaround",
       "description": "save rejects Portuguese role restoration descriptions before knowledge persistence",
-      "input": "Documentation-only `/groot-queue save` contract question. Invocação: `/groot-queue save SSHP-123 restauramos roles e permissões para devolver o acesso ao warehouse`. Identificá señales PT y explicá persistencia y reformulación segura. Incluí literalmente: `No crear ni sobrescribir el archivo.` y `No guardar effectiveness: confirmed.` Podés leer referencias locales bundleadas; no escribas archivos ni invoques Jira o servicios externos.",
+      "input": "Documentation-only `/groot-queue save` contract question. Invocação: `/groot-queue save SSHP-123 restauramos roles e permissões para devolver o acesso ao warehouse`. Identificá señales PT, explicá si puede crear o sobrescribir archivo, si puede registrar `effectiveness: confirmed` y cómo reformular de forma segura. Podés leer referencias locales bundleadas; no escribas archivos ni invoques Jira o servicios externos.",
       "assertions": [
         {
           "type": "contains_any",
@@ -4358,14 +4358,14 @@
           "values": ["restauramos", "permissões", "acesso ao warehouse"]
         },
         {
-          "type": "contains",
+          "type": "contains_any",
           "description": "blocks Portuguese file creation",
-          "value": "No crear ni sobrescribir el archivo."
+          "values": ["no crear", "no sobrescribir", "no puede crear", "no puede sobrescribir", "no debe crear", "no debe sobrescribir", "no se crea", "no se escribe", "no persistir", "não criar", "não sobrescrever", "não persistir"]
         },
         {
-          "type": "contains",
+          "type": "contains_any",
           "description": "blocks confirmed effectiveness for Portuguese workaround",
-          "value": "No guardar effectiveness: confirmed."
+          "values": ["no guardar `effectiveness: confirmed`", "no guardar effectiveness: confirmed", "no puede registrar `effectiveness: confirmed`", "no puede registrar effectiveness: confirmed", "no usar `effectiveness: confirmed`", "sin `effectiveness: confirmed`", "no marcar como confirmed", "no se debe persistir como confirmed", "não salvar `effectiveness: confirmed`", "não usar `effectiveness: confirmed`"]
         },
         {
           "type": "contains_any",
