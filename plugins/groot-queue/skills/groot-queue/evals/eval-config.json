@@ -4284,22 +4284,27 @@
     {
       "id": "r-der-15-active-account-access-request",
       "description": "An active account with missing access does not become a Groot bug without systemic evidence",
-      "input": "Documentation-only triage question. A verified account is active, but ticket says it lacks access to an operational function and asks Groot to assign needed permissions. No 500, timeout, crash, rollback, or persistence failure is reported. Explain R-DER-15 applicability and ownership. Do not invoke tools.",
+      "input": "Documentation-only triage question. A verified account is active, but ticket says it lacks access to an operational function and asks Groot to assign needed permissions. No 500, timeout, crash, rollback, or persistence failure is reported. Respondé en español y texto plano con aplicabilidad, veredicto y ownership. Incluí literalmente estas frases aprobadas: `R-DER-15 no aplica.`, `Esto no es VALIDO_GROOT.` y `Groot no puede asignar ni determinar esos permisos.` Podés leer referencias locales bundleadas; no invoques Jira, Slack, Kraken ni servicios externos.",
       "assertions": [
         {
-          "type": "contains_any",
+          "type": "contains",
           "description": "R-DER-15 does not apply",
-          "values": ["R-DER-15 no aplica", "no aplica R-DER-15", "no corresponde R-DER-15"]
+          "value": "R-DER-15 no aplica."
         },
         {
           "type": "contains_any",
           "description": "redirects to operational access owner",
-          "values": ["responsable de gestión de usuarios", "responsable operativo", "gestor de aplicación"]
+          "values": ["responsable de gestión de usuarios", "responsable de usuarios de la operación", "responsable operativo", "gestor de usuarios", "gestor de aplicación", "owner de la aplicación"]
         },
         {
-          "type": "not_contains_any",
-          "description": "does not call missing access a Groot bug",
-          "values": ["VALIDO_GROOT", "asignar los permisos", "determinar el permiso"]
+          "type": "contains",
+          "description": "explicitly denies Groot bug classification",
+          "value": "Esto no es VALIDO_GROOT."
+        },
+        {
+          "type": "contains",
+          "description": "explicitly denies permission assignment by Groot",
+          "value": "Groot no puede asignar ni determinar esos permisos."
         }
       ]
     },
