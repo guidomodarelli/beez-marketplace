@@ -19,6 +19,40 @@ Equipo encargado de la **gestión de cuentas LDAP**. Resuelve problemas de:
 
 ---
 
+## SMO (Randall)
+
+Equipo responsable de **App Nav y shell de navegación** fuera de configuración de usuarios Groot.
+
+**Señales**:
+- ES: "app nav", "navegación de la app", "no aparecen aplicaciones".
+- PT: "app nav", "navegação do app", "aplicações não aparecem".
+- EN: "app nav", "app navigation", "applications do not appear".
+
+**Criterio de derivación**: problemas de navegación/App Nav sin fallo de configuración Groot corresponden a **SMO**, squad **Randall**. Referencia canónica de triage: `R-DER-02`.
+
+---
+
+## Helpdesk IA
+
+Cola de ruteo para casos cuyo owner está fuera de Groot y no tiene destino Jira directo o requiere desambiguación interna, por ejemplo componentes PlatSec/Randall o dominio Logistics/FOS.
+
+**Criterio de derivación**: usar solo cuando regla R-DER versionada define **Helpdesk IA** como destino canónico; no usar como fallback inventado desde comentario Jira.
+
+---
+
+## SHE / AppSheet
+
+Equipo responsable de aplicaciones AppSheet de SHE/GEMBA.
+
+**Señales**:
+- ES: "error AppSheet", "no carga SHE", "no carga GEMBA".
+- PT: "erro no AppSheet", "não carrega SHE", "não carrega GEMBA".
+- EN: "AppSheet error", "SHE does not load", "GEMBA does not load".
+
+**Criterio de derivación**: errores funcionales en URL `appsheet.com` para SHE/GEMBA corresponden a **SHE**. Referencia canónica de triage: `R-DER-23`.
+
+---
+
 ## FBM (WMS)
 
 Equipo grande encargado de **todas las apps de gestión en los fulfillment** y en los procesos UTR (Unidad de Trabajo Resolutiva).
@@ -94,6 +128,7 @@ Equipo de **gestión de usuarios**. Brinda herramientas de configuración de usu
 
 Para resolver casos donde el operador menciona un sistema pero el problema pertenece a otro equipo, consultar el **algoritmo de triage** en `$SKILL_DIR/knowledge/rules/triage-rules.md` § "Algoritmo de triage". Las reglas relevantes para desambiguación cross-equipo:
 
+- **R-DER-02** — App Nav / navegación de aplicaciones → SMO (Randall)
 - **R-DER-12** — Horas de Be a Rep → LMS (no WMS ni Groot)
 - **R-DER-17** — Error funcional de WMS/Logistics con permisos OK en Groot → Helpdesk IA
 - **R-DER-18** — Solicitud operativa de WMS (paquetes/envíos) → Helpdesk IA

@@ -53,6 +53,19 @@ Campo obligatorio en la transición `101` "Descartar" (pantalla JSM).
 | [R] Usuario no valido para generar la solicitud | `81174` |
 | [R] Cancelado por el usuario | `96919` |
 
+### Razones estructuradas de descarte fuera de alcance
+
+Solo estas opciones prueban por sí mismas que cierre corresponde a pedido fuera del alcance de Groot y permiten materialización histórica como `DESCARTADO`:
+
+| Razón | ID |
+|---|---|
+| [R] Funcionalidad existente | `81170` |
+| [R] Canal invalido | `81172` |
+| [R] Categoría incorrecta | `81175` |
+| [R] Procedimiento operativo indicado | `81171` |
+
+`[R] Cancelado por el usuario`, duplicados, agrupación, rechazo de aprobadores, usuario no válido o datos incorrectos no prueban fuera de alcance sistémico y no habilitan una regla R-DESC histórica sin match versionado independiente.
+
 ### Mapeo por regla R-DESC
 
 | Regla | Rejection Reason | ID |

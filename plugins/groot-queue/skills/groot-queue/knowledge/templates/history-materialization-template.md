@@ -11,10 +11,12 @@ Fuente única para convertir evidencia histórica de Jira en propuestas de regla
 ## Validación de destino derivado
 
 1. Extraer nombre mencionado en comentario únicamente como `destinationCandidate` no confiable.
-2. Resolver dominio mediante señales sanitizadas y `$SKILL_DIR/knowledge/teams/support-queues.md`.
-3. Resolver nombre canónico y opción Jira mediante `$SKILL_DIR/knowledge/config/jira-field-options.md`.
-4. Aceptar destino solo cuando exactamente un owner versionado sea consistente con dominio y tenga nombre canónico utilizable. Comentario por sí solo nunca confirma destino.
-5. Si candidato falta, es ambiguo, contradice ownership o no existe en fuentes versionadas: usar `[equipo desconocido]`, marcar `groot-kb-manual-review`, escribir label y continuar sin propuesta/materialización.
+2. Resolver nombre canónico y opción Jira mediante `$SKILL_DIR/knowledge/config/jira-field-options.md`.
+3. Corroborar dominio por al menos una fuente versionada independiente del comentario:
+   - ownership de `$SKILL_DIR/knowledge/teams/support-queues.md`; o
+   - match confirmado de regla R-DER en `$SKILL_DIR/knowledge/rules/triage-rules.md` cuyo destino canónico coincida con opción Jira.
+4. Aceptar destino solo cuando exactamente una opción Jira canónica quede corroborada. Comentario por sí solo nunca confirma destino; ownership y R-DER contradictorios producen ambigüedad.
+5. Si candidato falta, es ambiguo, contradice fuentes versionadas o no existe como opción Jira canónica: usar `[equipo desconocido]`, marcar `groot-kb-manual-review`, escribir label y continuar sin propuesta/materialización.
 
 ## Campos sintetizados
 
@@ -26,6 +28,8 @@ Fuente única para convertir evidencia histórica de Jira en propuestas de regla
   > Hola. Este caso corresponde a {DESTINO_CANONICO} según el ownership vigente. Derivamos para que el equipo responsable continúe el análisis.
 
 ### DESCARTADO
+
+**Precondición**: usar template solo después de confirmar razón estructurada de descarte fuera de alcance o match R-DESC versionado. `Cancelled`, `Withdrawn`, `Won't Do` o `Rechazado` sin esa evidencia no habilitan este template y quedan `groot-kb-manual-review`.
 
 - **Razón**: `El pedido reportado no corresponde al alcance de errores sistémicos de Groot Soporte según la política versionada.`
 - **Acción**: `Cerrar como Won't Do.`
