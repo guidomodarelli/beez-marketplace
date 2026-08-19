@@ -262,12 +262,12 @@ validate_configuration() {
     ($config.fury_services.expected_mcp_server.name == "fury") and
     ($config.fury_services.expected_mcp_server.command == "mcp-remote-proxy") and
     ($config.fury_services.expected_mcp_server.args == [
-      "https://mcp-services-gateway.furycloud.io/v1/servers/fury",
+      "https://services-gateway-mcp.melioffice.com/v1/servers/fury",
       "--headers",
       "x-origin",
       "fury-services-plugin",
       "--timeout",
-      "300"
+      "5"
     ]) and
 
     ($config.fury_runtime | type == "object") and

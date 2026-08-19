@@ -39,12 +39,12 @@
       "name": "fury",
       "command": "mcp-remote-proxy",
       "args": [
-        "https://mcp-services-gateway.furycloud.io/v1/servers/fury",
+        "https://services-gateway-mcp.melioffice.com/v1/servers/fury",
         "--headers",
         "x-origin",
         "fury-services-plugin",
         "--timeout",
-        "300"
+        "5"
       ]
     }
   },
