@@ -71,30 +71,35 @@ Rules:
 ## Step 4 — Write the test
 
 ```ts
-import { RestClient } from 'nordic/restclient';
+import { config } from 'nordic/config';
+import { Mock } from 'nordic-dev/mocks';
 import { getResource } from '../index';
 
-jest.mock('nordic/restclient');
+const baseUrl = config.get('restclient.baseUrl');
+let mock;
+
+beforeAll(() => {
+  mock = Mock();
+  mock.intercept(baseUrl, ['/resources/*'], {
+    ignoreParams: ['access_token', 'caller.id', 'scope'],
+  });
+});
+
+afterAll(() => {
+  mock.restore(baseUrl);
+});
 
 describe('getResource', () => {
   it('returns the resource when the API responds successfully', async () => {
-    const mockGet = jest.fn().mockResolvedValue({ data: { id: '1', name: 'test' } });
-    (RestClient as jest.Mock).mockImplementation(() => ({ get: mockGet }));
-
     const result = await getResource('1');
 
-    expect(result).toEqual({ id: '1', name: 'test' });
-    expect(mockGet).toHaveBeenCalledWith('/resources/1');
-  });
-
-  it('propagates errors from the API', async () => {
-    const mockGet = jest.fn().mockRejectedValue(new Error('Network error'));
-    (RestClient as jest.Mock).mockImplementation(() => ({ get: mockGet }));
-
-    await expect(getResource('1')).rejects.toThrow('Network error');
+    expect(result.id).toBe('1');
+    expect(result.name).toBeDefined();
   });
 });
 ```
+
+Usá fixtures de `nordic-dev/mocks` para escenarios de error, en lugar de mockear `nordic/restclient`. En la primera ejecución, el interceptor captura la respuesta y crea el fixture; commitealo para que CI pueda ejecutar el test sin red.
 
 ---
 
