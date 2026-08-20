@@ -58,16 +58,16 @@ Inspect the project root. Use this priority order:
 
 ```bash
 detect_stack() {
-  if [[ -f "go.mod" ]]; then
-    echo "go"
-  elif [[ -f "pom.xml" || -f "build.gradle" || -f "build.gradle.kts" ]]; then
-    echo "java"
-  elif [[ -f "package.json" ]]; then
+  if [[ -f "package.json" ]]; then
     if grep -qE '"react"|"nordic"|"@andes"' package.json 2>/dev/null; then
       echo "frontend"
     else
       echo "node"
     fi
+  elif [[ -f "pom.xml" || -f "build.gradle" || -f "build.gradle.kts" ]]; then
+    echo "java"
+  elif [[ -f "go.mod" ]]; then
+    echo "go"
   else
     echo ""
   fi
