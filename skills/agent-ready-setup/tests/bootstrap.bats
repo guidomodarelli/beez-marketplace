@@ -48,6 +48,22 @@ run_bootstrap() {
   [[ "$output" == *"Providers: Claude Code + Codex-compatible shared tree"* ]]
 }
 
+@test "nested skills receive valid Codex adapters with their directory names" {
+  run_bootstrap frontend
+
+  [ "$status" -eq 0 ]
+  for skill_name in api-endpoint component-creation karpathy-guidelines logger service; do
+    skill_path=".agents/skills/$skill_name/SKILL.md"
+    [ -f "$skill_path" ]
+    [ "$(sed -n '1p' "$skill_path")" = '---' ]
+    grep -Fxq "name: $skill_name" <(sed -n '2p' "$skill_path")
+    [ "$(sed -n '4p' "$skill_path")" = '---' ]
+  done
+  [ -f .agents/skills/karpathy-guidelines/EXAMPLES.md ]
+  [ ! -e .agents/skills/SKILL/SKILL.md ]
+  [ ! -e .agents/skills/EXAMPLES/SKILL.md ]
+}
+
 @test "second bootstrap is idempotent and preserves generated files" {
   run_bootstrap node
   [ "$status" -eq 0 ]

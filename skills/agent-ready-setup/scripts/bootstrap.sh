@@ -220,7 +220,11 @@ create_skill_adapter() {
     printf 'name: %s\n' "$skill_name"
     printf 'description: Provider-neutral reusable workflow for %s.\n' "$skill_name"
     printf '%s\n\n' '---'
-    cat "$src"
+    awk '
+      NR == 1 && $0 == "---" { in_frontmatter = 1; next }
+      in_frontmatter && $0 == "---" { in_frontmatter = 0; next }
+      !in_frontmatter { print }
+    ' "$src"
   } > "$dst"
   record_created "$dst"
 }
@@ -236,13 +240,24 @@ while IFS= read -r -d '' file; do
     copy_if_missing "$file" "$CLAUDE_DIR/$relative"
   else
     copy_if_missing "$file" "$CLAUDE_DIR/$relative"
-    copy_if_missing "$file" "$SHARED_DIR/$relative"
 
     case "$relative" in
+      skills/*/SKILL.md)
+        skill_name="${relative#skills/}"
+        skill_name="${skill_name%/SKILL.md}"
+        create_skill_adapter "$file" "$skill_name"
+        ;;
+      skills/*/*.md)
+        copy_if_missing "$file" "$SHARED_DIR/$relative"
+        ;;
       agents/*.md|commands/*.md|skills/*.md)
+        copy_if_missing "$file" "$SHARED_DIR/$relative"
         skill_name="${relative##*/}"
         skill_name="${skill_name%.md}"
         create_skill_adapter "$file" "$skill_name"
+        ;;
+      *)
+        copy_if_missing "$file" "$SHARED_DIR/$relative"
         ;;
     esac
   fi
