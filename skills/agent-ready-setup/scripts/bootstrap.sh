@@ -122,12 +122,16 @@ is_plain_claude_proxy() {
   [[ -f "$CLAUDE_FILE" ]] && [[ "$(cat "$CLAUDE_FILE")" == "$CLAUDE_PROXY" ]]
 }
 
+create_root_agents_from_template() {
+  mkdir -p -- "$(dirname -- "$AGENTS_FILE")"
+  sed -e 's|@\./rules/|@.agents/rules/|g' "$SRC/CLAUDE.md" > "$AGENTS_FILE"
+  record_created "$AGENTS_FILE"
+}
+
 # Build root instruction files without maintaining two independent templates.
 # Existing non-proxy CLAUDE.md is promoted only when AGENTS.md is absent or
 # already contains the same bytes. Divergent files remain untouched.
 normalize_root_instructions() {
-  local template="$SRC/CLAUDE.md"
-
   if [[ -L "$CLAUDE_FILE" || -L "$AGENTS_FILE" ]]; then
     CONFLICTS+=("$CLAUDE_FILE and $AGENTS_FILE include symlinked instructions; neither was followed or overwritten")
     return
@@ -148,6 +152,8 @@ normalize_root_instructions() {
       record_skipped "$CLAUDE_FILE"
       if [[ -e "$AGENTS_FILE" || -L "$AGENTS_FILE" ]]; then
         record_skipped "$AGENTS_FILE"
+      else
+        create_root_agents_from_template
       fi
       return
     fi
@@ -179,9 +185,7 @@ normalize_root_instructions() {
 
   # The template is the single source. Only path references need adaptation
   # for the neutral shared tree consumed through AGENTS.md.
-  mkdir -p -- "$(dirname -- "$AGENTS_FILE")"
-  sed -e 's|@\./rules/|@.agents/rules/|g' "$template" > "$AGENTS_FILE"
-  record_created "$AGENTS_FILE"
+  create_root_agents_from_template
   cp -- "$ROOT_CLAUDE_TEMPLATE" "$CLAUDE_FILE"
   record_created "$CLAUDE_FILE"
 }

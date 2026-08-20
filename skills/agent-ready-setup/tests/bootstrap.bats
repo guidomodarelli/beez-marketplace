@@ -133,6 +133,19 @@ EOF
   grep -Fq '## Centralización recursiva de instrucciones' AGENTS.md
 }
 
+@test "orphaned normalized root CLAUDE proxy recreates canonical AGENTS" {
+  cp "$skill_dir/assets/root-claude.md" CLAUDE.md
+
+  run_bootstrap java
+
+  [ "$status" -eq 0 ]
+  [ -f AGENTS.md ]
+  grep -Fq '# [Project Name]' AGENTS.md
+  grep -Fxq '## Centralización recursiva de instrucciones' AGENTS.md
+  grep -Fxq '@AGENTS.md' CLAUDE.md
+  grep -Fxq '## Regla de centralización de instrucciones' CLAUDE.md
+}
+
 @test "identical instruction files collapse to canonical AGENTS" {
   cat > AGENTS.md <<'EOF'
 # Shared instructions
