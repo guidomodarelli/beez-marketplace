@@ -103,6 +103,38 @@
           "description": "Reporta configuración MCP creada"
         }
       ]
+    },
+    {
+      "id": "multi-provider-codex-assets",
+      "description": "Explica salida neutral compartida y bridge Codex sin duplicar instrucciones.",
+      "input": "Explicá qué genera agent-ready-setup para que el mismo proyecto funcione con Claude Code, Codex y futuros providers. Incluí el rol de AGENTS.md, CLAUDE.md, .agents/skills, .codex/hooks y .codex/.mcp.json. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "AGENTS.md",
+          "description": "Identifica instrucciones canónicas"
+        },
+        {
+          "type": "contains",
+          "value": "@AGENTS.md",
+          "description": "Identifica proxy de Claude"
+        },
+        {
+          "type": "contains",
+          "value": ".agents/skills",
+          "description": "Identifica skills descubribles por Codex"
+        },
+        {
+          "type": "contains",
+          "value": ".codex/hooks",
+          "description": "Identifica hooks específicos de Codex"
+        },
+        {
+          "type": "contains",
+          "value": ".codex/.mcp.json",
+          "description": "Identifica MCP específico de Codex"
+        }
+      ]
     }
   ]
 }
