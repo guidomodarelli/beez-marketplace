@@ -221,6 +221,44 @@ EOF
   done
 }
 
+@test "harness hooks inspect Claude and shared-agent paths" {
+  fake_bin="$test_root/bin"
+  invocation_log="$test_root/claude-invocation.log"
+  mkdir -p "$fake_bin"
+  cat > "$fake_bin/claude" <<'EOF'
+#!/bin/bash
+printf '%s\n' "$*" > "$CLAUDE_INVOCATION_LOG"
+EOF
+  chmod +x "$fake_bin/claude"
+
+  for stack in frontend node java go; do
+    hook="$skill_dir/assets/stacks/$stack/hooks/check-harness-consistency.sh"
+    for provider_root in .claude .agents; do
+      : > "$invocation_log"
+      CLAUDE_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
+        bash "$hook" <<< "{\"tool_input\":{\"file_path\":\"$provider_root/rules/security.md\"}}"
+      grep -Fq "Read all .md files in $provider_root/rules/" "$invocation_log"
+      grep -Fq "all SKILL.md files in $provider_root/skills/*/" "$invocation_log"
+    done
+  done
+}
+
+@test "harness hooks ignore unrelated paths" {
+  fake_bin="$test_root/bin"
+  invocation_log="$test_root/claude-invocation.log"
+  mkdir -p "$fake_bin"
+  cat > "$fake_bin/claude" <<'EOF'
+#!/bin/bash
+printf '%s\n' "$*" > "$CLAUDE_INVOCATION_LOG"
+EOF
+  chmod +x "$fake_bin/claude"
+
+  CLAUDE_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
+    bash "$skill_dir/assets/stacks/frontend/hooks/check-harness-consistency.sh" \
+    <<< '{"tool_input":{"file_path":"README.md"}}'
+  [ ! -e "$invocation_log" ]
+}
+
 @test "rejects unsupported stack and missing arguments" {
   run bash "$skill_dir/scripts/bootstrap.sh" --stack rust --skill-dir "$skill_dir"
   [ "$status" -ne 0 ]

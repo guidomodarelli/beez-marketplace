@@ -15,13 +15,18 @@ except:
     print('')
 " 2>/dev/null || echo "")
 
-if ! echo "$FILE_PATH" | grep -qE "\.claude/(rules/|skills/|CLAUDE\.md)"; then
+HARNESS_ROOT=""
+if [[ "$FILE_PATH" =~ (^|/)\.claude/(rules/|skills/|CLAUDE\.md) ]]; then
+  HARNESS_ROOT=".claude"
+elif [[ "$FILE_PATH" =~ (^|/)\.agents/(rules/|skills/) ]]; then
+  HARNESS_ROOT=".agents"
+else
   exit 0
 fi
 
 echo "[harness-check] $FILE_PATH modified — running consistency check..."
 
 claude --print \
-  "Read all .md files in .claude/rules/ and all SKILL.md files in .claude/skills/*/. \
+  "Read all .md files in $HARNESS_ROOT/rules/ and all SKILL.md files in $HARNESS_ROOT/skills/*/. \
 Check for contradictions or inconsistencies (conflicting mocking strategies, directory conventions, naming rules, etc). \
 Output ONLY the conflicts found as a bullet list, or a single line 'No contradictions found.' if all is consistent. Be concise."
