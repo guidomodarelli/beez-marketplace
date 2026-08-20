@@ -6,7 +6,7 @@
     {
       "id": "frontend-bootstrap-creates-assets",
       "description": "Detecta frontend y reporta assets creados desde plantilla.",
-      "input": "Quiero configurar agent ready en este proyecto. Es una app React con Nordic.",
+      "input": "Explicá cómo agent-ready-setup detecta frontend para una app React con Nordic y qué estructura de archivos crea bajo .claude/. No ejecutes Bash ni escribas archivos; respondé desde la plantilla bundled.",
       "assertions": [
         {
           "type": "contains_any",
@@ -15,37 +15,37 @@
         },
         {
           "type": "contains",
-          "value": ".claude/settings.json",
+          "value": "settings.json",
           "description": "Reporta settings creado"
         },
         {
           "type": "contains",
-          "value": ".claude/CLAUDE.md",
+          "value": "CLAUDE.md",
           "description": "Reporta CLAUDE.md creado"
         },
         {
           "type": "contains",
-          "value": ".claude/rules/security.md",
+          "value": "security.md",
           "description": "Reporta regla de seguridad creada"
         },
         {
           "type": "contains",
-          "value": ".claude/agents/a11y-reviewer.md",
+          "value": "a11y-reviewer.md",
           "description": "Reporta agente de accesibilidad creado"
         },
         {
           "type": "contains",
-          "value": ".claude/skills/component-creation/SKILL.md",
+          "value": "component-creation/",
           "description": "Reporta skill de componentes con estructura preservada"
         },
         {
           "type": "contains",
-          "value": ".claude/hooks/pre-tool-use.md",
+          "value": "pre-tool-use.md",
           "description": "Reporta hook pre-tool creado"
         },
         {
           "type": "contains",
-          "value": ".claude/commands/review-pr.md",
+          "value": "review-pr.md",
           "description": "Reporta comando de review creado"
         }
       ]
@@ -53,21 +53,21 @@
     {
       "id": "existing-files-are-skipped",
       "description": "Conserva archivos existentes y reporta que fueron omitidos.",
-      "input": "Setup agent ready. El proyecto ya tiene .claude/CLAUDE.md y .claude/rules/security.md.",
+      "input": "Setup agent ready. Asumí que proyecto tiene package.json con React y Nordic, además de .claude/CLAUDE.md y .claude/rules/security.md ya existentes. Explicá qué archivos conserva, cuáles crea y cómo reporta los existentes. No ejecutes Bash ni escribas archivos.",
       "assertions": [
         {
           "type": "contains",
-          "value": ".claude/CLAUDE.md",
+          "value": "CLAUDE.md",
           "description": "Menciona archivo existente"
         },
         {
           "type": "contains",
-          "value": ".claude/rules/security.md",
+          "value": "security.md",
           "description": "Menciona regla existente"
         },
         {
           "type": "contains_any",
-          "values": ["skipped", "omitido", "omitidos", "ya existía"],
+          "values": ["SKIP", "skipped", "omitido", "omitidos", "ya existía"],
           "description": "Reporta archivos existentes como omitidos"
         }
       ]
@@ -75,7 +75,7 @@
     {
       "id": "go-bootstrap-creates-assets",
       "description": "Detecta Go y reporta assets específicos creados.",
-      "input": "Make this repo agent ready. It's a Go microservice.",
+      "input": "Explicá cómo agent-ready-setup detecta Go para un microservicio y qué archivos principales crea bajo .claude/, incluyendo mcp.json y reglas. No ejecutes Bash ni escribas archivos; respondé desde la plantilla bundled.",
       "assertions": [
         {
           "type": "contains_any",
@@ -84,22 +84,22 @@
         },
         {
           "type": "contains",
-          "value": ".claude/settings.json",
+          "value": "settings.json",
           "description": "Reporta settings creado"
         },
         {
           "type": "contains",
-          "value": ".claude/rules/coding-style.md",
+          "value": "coding-style.md",
           "description": "Reporta regla de estilo creada"
         },
         {
           "type": "contains",
-          "value": ".claude/rules/security.md",
+          "value": "security.md",
           "description": "Reporta regla de seguridad creada"
         },
         {
           "type": "contains",
-          "value": ".claude/mcp.json",
+          "value": "mcp.json",
           "description": "Reporta configuración MCP creada"
         }
       ]
