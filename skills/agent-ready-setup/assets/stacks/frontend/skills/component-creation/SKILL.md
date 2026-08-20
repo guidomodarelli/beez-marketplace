@@ -14,8 +14,8 @@ Before writing code, answer:
 - What does this component display or do?
 - Does it need server-side data? → If yes, the data comes from a server hook, not fetched inside the component.
 - Does Andes already have a component for this? → Consult `frontender-web-mcp` first.
-- Is it reusable across multiple pages? → `app/ui-components/<ComponentName>/`
-- Is it specific to a single page? → `app/nordic-pages/<page>/<ComponentName>/`
+- Is it reusable across multiple pages? → `app/ui-components/<component-name>/`
+- Is it specific to a single page? → `app/nordic-pages/<page>/<component-name>/`
 
 ---
 
@@ -25,17 +25,17 @@ Use the location decided in Step 1:
 
 ```
 # Reusable component
-app/ui-components/<ComponentName>/
+app/ui-components/<component-name>/
 ├── index.tsx
 └── styles.scss   ← only if custom styles are needed
 
 # Page-specific component
-app/nordic-pages/<page>/<ComponentName>/
+app/nordic-pages/<page>/<component-name>/
 ├── index.tsx
 └── styles.scss   ← only if custom styles are needed
 ```
 
-Use PascalCase for the directory and component name. One component per file — `index.tsx` exports only `<ComponentName>`.
+Use PascalCase for component names and kebab-case for directories and filenames. One component per file — `index.tsx` exports only `<ComponentName>`.
 
 ---
 
@@ -69,7 +69,7 @@ Only create this file if Andes props are not sufficient. Keep custom CSS minimal
 
 ---
 
-## Step 5 — Write the test (`__tests__/<ComponentName>.spec.tsx`)
+## Step 5 — Write the test (`__tests__/<component-name>.spec.tsx`)
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -113,7 +113,7 @@ Test checklist:
 If the component lives in `app/ui-components/`, add it to the barrel file `app/ui-components/index.ts`:
 
 ```ts
-export { <ComponentName> } from './<ComponentName>';
+export { <ComponentName> } from './<component-name>';
 ```
 
 Page-specific components are not exported from a barrel — they are imported directly by the page that uses them.

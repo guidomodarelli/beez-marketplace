@@ -11,9 +11,9 @@ Coding conventions for this stack. Always consult `frontender-web-mcp` for Nordi
 - Extract complex logic into custom hooks (`use<Name>`).
 - Avoid prop drilling beyond two levels — use context or a state manager.
 - Never use rest props (`...rest`) — declare all props explicitly.
-- **One component per file** — never export more than one component from a single file. A file named `UserCard.tsx` exports only `UserCard`.
+- **One component per file** — never export more than one component from a single file. A file named `user-card.tsx` exports only `UserCard`.
 - **Component placement by scope**:
-  - Reusable across pages → `app/ui-components/<ComponentName>/`
+  - Reusable across pages → `app/ui-components/<component-name>/`
   - Used only within one page → colocated inside `app/nordic-pages/<page>/`
 - **Atomic size** — keep components at the smallest meaningful unit. A component that mixes concerns (layout + data formatting + interaction) must be split.
 
