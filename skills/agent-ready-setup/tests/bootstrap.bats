@@ -64,6 +64,24 @@ run_bootstrap() {
   [ ! -e .agents/skills/EXAMPLES/SKILL.md ]
 }
 
+@test "flat deploy templates become discoverable skills for Claude and shared agents" {
+  for stack in go java node; do
+    stack_project="$test_root/$stack-project"
+    mkdir -p "$stack_project"
+    cd "$stack_project"
+
+    run_bootstrap "$stack"
+
+    [ "$status" -eq 0 ]
+    for provider_root in .claude .agents; do
+      skill_path="$provider_root/skills/fury-deploy/SKILL.md"
+      [ -f "$skill_path" ]
+      [ "$(sed -n '1p' "$skill_path")" = '---' ]
+      grep -Eq '^description: .+' "$skill_path"
+    done
+  done
+}
+
 @test "second bootstrap is idempotent and preserves generated files" {
   run_bootstrap node
   [ "$status" -eq 0 ]
