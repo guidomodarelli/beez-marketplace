@@ -59,8 +59,8 @@ Rules:
 ### Implement the handler
 
 ```ts
-import { logError } from '../../api/logger';
-import { getProduct } from '../../services/product';
+import { logError } from '../../../api/logger';
+import { getProduct } from '../../../src/services/product';
 
 export async function getServerSideProps(req) {
   if (!paramsSchema.validate(req.params, { traceRequestId: req.traceRequestId })) {
@@ -108,7 +108,7 @@ api/
 import * as iv from '@meli/input-validation';
 import Ragnar from 'nordic/ragnar';
 import { logError } from '../logger';
-import { getProduct, createProduct } from '../../services/product';
+import { getProduct, createProduct } from '../../src/services/product';
 
 const router = Ragnar.router();
 
