@@ -44,7 +44,7 @@ Rules:
 ## Step 3 — Implement the service functions
 
 ```ts
-import { client } from './client'; // restclient instance
+// Continue in the same index.ts file and reuse the client declared in Step 2.
 
 export async function getResource(id: string): Promise<Resource> {
   // id must be validated by the caller before reaching here
