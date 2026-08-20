@@ -10,3 +10,9 @@
 
 ## Architecture
 <!-- Describe folder structure and main conventions -->
+
+## Rules
+
+@./rules/coding-style.md
+@./rules/security.md
+@./rules/testing.md

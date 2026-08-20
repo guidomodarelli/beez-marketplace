@@ -79,6 +79,9 @@ run_bootstrap() {
       [ "$(sed -n '1p' "$skill_path")" = '---' ]
       grep -Eq '^description: .+' "$skill_path"
     done
+    grep -Fq '@.agents/rules/coding-style.md' AGENTS.md
+    grep -Fq '@.agents/rules/security.md' AGENTS.md
+    grep -Fq '@.agents/rules/testing.md' AGENTS.md
   done
 }
 
