@@ -26,7 +26,8 @@ run_bootstrap() {
   [ "$status" -eq 0 ]
   [ -f AGENTS.md ]
   [ -f CLAUDE.md ]
-  [ "$(cat CLAUDE.md)" = "@AGENTS.md" ]
+  grep -Fxq '@AGENTS.md' CLAUDE.md
+  grep -Fxq '## Regla de centralización de instrucciones' CLAUDE.md
   [ -f .claude/settings.json ]
   [ -f .claude/rules/security.md ]
   [ -f .agents/rules/security.md ]
@@ -40,6 +41,7 @@ run_bootstrap() {
   [ ! -f .claude/CLAUDE.md ]
   [ ! -d .codex/agents ]
   grep -Fq '@.agents/rules/security.md' AGENTS.md
+  grep -Fxq '## Centralización recursiva de instrucciones' AGENTS.md
   jq -n --slurpfile claude .claude/mcp.json --slurpfile codex .codex/.mcp.json \
     '$claude[0].mcpServers == $codex[0].mcpServers' >/dev/null
   jq -e '.hooks.SessionStart[0].matcher == "startup|clear|resume"' .codex/hooks/hooks.json >/dev/null
@@ -74,8 +76,11 @@ EOF
   run_bootstrap go
 
   [ "$status" -eq 0 ]
-  [ "$(cat AGENTS.md)" = $'# Existing project instructions\n\nRun the project test command before merging.' ]
-  [ "$(cat CLAUDE.md)" = "@AGENTS.md" ]
+  grep -Fq '# Existing project instructions' AGENTS.md
+  grep -Fq 'Run the project test command before merging.' AGENTS.md
+  grep -Fxq '## Centralización recursiva de instrucciones' AGENTS.md
+  grep -Fxq '@AGENTS.md' CLAUDE.md
+  grep -Fxq '## Regla de centralización de instrucciones' CLAUDE.md
   [[ "$output" == *"Normalized instructions:"* ]]
 }
 
@@ -90,8 +95,26 @@ EOF
   run_bootstrap java
 
   [ "$status" -eq 0 ]
-  [ "$(cat AGENTS.md)" = $'# Canonical instructions\n\nKeep changes backwards compatible.' ]
-  [ "$(cat CLAUDE.md)" = "@AGENTS.md" ]
+  grep -Fq '# Canonical instructions' AGENTS.md
+  grep -Fq 'Keep changes backwards compatible.' AGENTS.md
+  grep -Fxq '## Centralización recursiva de instrucciones' AGENTS.md
+  grep -Fxq '@AGENTS.md' CLAUDE.md
+  grep -Fxq '## Regla de centralización de instrucciones' CLAUDE.md
+}
+
+@test "normalized root CLAUDE proxy with centralization rule is preserved" {
+  cat > AGENTS.md <<'EOF'
+# Canonical instructions
+EOF
+  cp "$skill_dir/assets/root-claude.md" CLAUDE.md
+  claude_hash_before="$(shasum CLAUDE.md | cut -d ' ' -f 1)"
+
+  run_bootstrap java
+
+  [ "$status" -eq 0 ]
+  [ "$(shasum CLAUDE.md | cut -d ' ' -f 1)" = "$claude_hash_before" ]
+  grep -Fq '# Canonical instructions' AGENTS.md
+  grep -Fq '## Centralización recursiva de instrucciones' AGENTS.md
 }
 
 @test "identical instruction files collapse to canonical AGENTS" {
@@ -105,8 +128,10 @@ EOF
   run_bootstrap java
 
   [ "$status" -eq 0 ]
-  [ "$(cat AGENTS.md)" = $'# Shared instructions\n\nRun checks before merging.' ]
-  [ "$(cat CLAUDE.md)" = "@AGENTS.md" ]
+  grep -Fq '# Shared instructions' AGENTS.md
+  grep -Fq 'Run checks before merging.' AGENTS.md
+  grep -Fxq '@AGENTS.md' CLAUDE.md
+  grep -Fxq '## Regla de centralización de instrucciones' CLAUDE.md
   [[ "$output" == *"Normalized instructions:"* ]]
 }
 

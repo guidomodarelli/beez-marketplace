@@ -2,7 +2,7 @@
 # bootstrap.sh
 # Projects Agent Ready templates into Claude, shared-agent, and Codex trees.
 # Existing assets are never overwritten. Root instructions are normalized so
-# AGENTS.md is canonical and CLAUDE.md remains a one-line proxy.
+# AGENTS.md is canonical and CLAUDE.md is a proxy with root-only guidance.
 #
 # Usage:
 #   bash bootstrap.sh --stack <frontend|node|java|go> --skill-dir <path>
@@ -51,6 +51,8 @@ fi
 
 SRC="$SKILL_DIR/assets/stacks/$STACK"
 CODEX_ASSETS="$SKILL_DIR/assets/codex"
+ROOT_CLAUDE_TEMPLATE="$SKILL_DIR/assets/root-claude.md"
+CENTRALIZATION_TEMPLATE="$SKILL_DIR/assets/instruction-centralization.md"
 
 if [[ ! -d "$SRC" ]]; then
   echo "ERROR: No template found for stack '$STACK' at $SRC" >&2
@@ -64,6 +66,16 @@ fi
 
 if [[ ! -f "$CODEX_ASSETS/hooks.json" ]]; then
   echo "ERROR: Codex hook template is missing: $CODEX_ASSETS/hooks.json" >&2
+  exit 1
+fi
+
+if [[ ! -f "$ROOT_CLAUDE_TEMPLATE" ]]; then
+  echo "ERROR: Root CLAUDE.md template is missing: $ROOT_CLAUDE_TEMPLATE" >&2
+  exit 1
+fi
+
+if [[ ! -f "$CENTRALIZATION_TEMPLATE" ]]; then
+  echo "ERROR: Instruction centralization template is missing: $CENTRALIZATION_TEMPLATE" >&2
   exit 1
 fi
 
@@ -102,6 +114,14 @@ copy_if_missing() {
   fi
 }
 
+is_normalized_root_claude() {
+  [[ -f "$CLAUDE_FILE" ]] && cmp -s "$CLAUDE_FILE" "$ROOT_CLAUDE_TEMPLATE"
+}
+
+is_plain_claude_proxy() {
+  [[ -f "$CLAUDE_FILE" ]] && [[ "$(cat "$CLAUDE_FILE")" == "$CLAUDE_PROXY" ]]
+}
+
 # Build root instruction files without maintaining two independent templates.
 # Existing non-proxy CLAUDE.md is promoted only when AGENTS.md is absent or
 # already contains the same bytes. Divergent files remain untouched.
@@ -124,7 +144,7 @@ normalize_root_instructions() {
   fi
 
   if [[ -e "$CLAUDE_FILE" ]]; then
-    if [[ -f "$CLAUDE_FILE" ]] && [[ "$(cat "$CLAUDE_FILE")" == "$CLAUDE_PROXY" ]]; then
+    if is_normalized_root_claude; then
       record_skipped "$CLAUDE_FILE"
       if [[ -e "$AGENTS_FILE" || -L "$AGENTS_FILE" ]]; then
         record_skipped "$AGENTS_FILE"
@@ -134,14 +154,17 @@ normalize_root_instructions() {
 
     if [[ ! -e "$AGENTS_FILE" && ! -L "$AGENTS_FILE" ]]; then
       cp -- "$CLAUDE_FILE" "$AGENTS_FILE"
-      printf '%s\n' "$CLAUDE_PROXY" > "$CLAUDE_FILE"
+      cp -- "$ROOT_CLAUDE_TEMPLATE" "$CLAUDE_FILE"
       MIGRATED+=("$CLAUDE_FILE -> $AGENTS_FILE")
       return
     fi
 
     if [[ -f "$CLAUDE_FILE" && -f "$AGENTS_FILE" ]] && cmp -s "$CLAUDE_FILE" "$AGENTS_FILE"; then
-      printf '%s\n' "$CLAUDE_PROXY" > "$CLAUDE_FILE"
+      cp -- "$ROOT_CLAUDE_TEMPLATE" "$CLAUDE_FILE"
       MIGRATED+=("$CLAUDE_FILE -> $AGENTS_FILE")
+    elif is_plain_claude_proxy; then
+      cp -- "$ROOT_CLAUDE_TEMPLATE" "$CLAUDE_FILE"
+      MIGRATED+=("$CLAUDE_FILE -> root instruction proxy")
     else
       CONFLICTS+=("$CLAUDE_FILE and $AGENTS_FILE differ; neither was overwritten")
     fi
@@ -150,7 +173,7 @@ normalize_root_instructions() {
 
   if [[ -e "$AGENTS_FILE" || -L "$AGENTS_FILE" ]]; then
     record_skipped "$AGENTS_FILE"
-    copy_if_missing <(printf '%s\n' "$CLAUDE_PROXY") "$CLAUDE_FILE"
+    copy_if_missing "$ROOT_CLAUDE_TEMPLATE" "$CLAUDE_FILE"
     return
   fi
 
@@ -159,11 +182,27 @@ normalize_root_instructions() {
   mkdir -p -- "$(dirname -- "$AGENTS_FILE")"
   sed -e 's|@\./rules/|@.agents/rules/|g' "$template" > "$AGENTS_FILE"
   record_created "$AGENTS_FILE"
-  printf '%s\n' "$CLAUDE_PROXY" > "$CLAUDE_FILE"
+  cp -- "$ROOT_CLAUDE_TEMPLATE" "$CLAUDE_FILE"
   record_created "$CLAUDE_FILE"
 }
 
 normalize_root_instructions
+
+ensure_root_centralization_rule() {
+  if [[ ${#CONFLICTS[@]} -gt 0 || ! -f "$AGENTS_FILE" ]]; then
+    return 0
+  fi
+
+  if grep -Fqx '## Centralización recursiva de instrucciones' "$AGENTS_FILE"; then
+    return 0
+  fi
+
+  printf '\n' >> "$AGENTS_FILE"
+  cat "$CENTRALIZATION_TEMPLATE" >> "$AGENTS_FILE"
+  MIGRATED+=("centralization rule -> $AGENTS_FILE")
+}
+
+ensure_root_centralization_rule
 
 create_skill_adapter() {
   local src="$1"

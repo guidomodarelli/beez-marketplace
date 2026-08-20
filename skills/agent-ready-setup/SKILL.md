@@ -28,8 +28,9 @@ operación. El bootstrap mantiene tres planos con responsabilidades distintas:
   porque Codex no los consume como componentes independientes.
 - `.codex/`: bridge provider-specific para MCP (`.mcp.json`) y hooks Codex.
 
-`AGENTS.md` es la fuente única de instrucciones en la raíz. `CLAUDE.md` solo
-contiene `@AGENTS.md`; nunca se mantienen dos clones de instrucciones.
+`AGENTS.md` es la fuente canónica. `CLAUDE.md` raíz contiene `@AGENTS.md` más
+regla breve de centralización; `CLAUDE.md` en subdirectorios contiene únicamente
+`@AGENTS.md`. Nunca se mantienen dos clones de instrucciones.
 
 Templates viven en `assets/stacks/<stack>/` y reflejan estructura de assets.
 Agregar o editar una dimensión para stack consiste en editar template fuente.
@@ -106,18 +107,24 @@ bash "$SKILL_DIR/scripts/bootstrap.sh" \
 Script proyecta assets faltantes a `.claude/`, `.agents/` y `.codex/`.
 También normaliza instrucciones raíz:
 
-1. Si `CLAUDE.md` contiene exactamente `@AGENTS.md`, no hace nada.
-2. Si falta `AGENTS.md`, copia contenido de template a `AGENTS.md` y crea
-   `CLAUDE.md` con exactamente `@AGENTS.md`.
-3. Si existe `CLAUDE.md` con instrucciones y falta `AGENTS.md`, promueve ese
-   contenido a `AGENTS.md` y reemplaza `CLAUDE.md` por el proxy.
-4. Si ambos contienen mismo contenido, conserva uno en `AGENTS.md` y deja
-   `CLAUDE.md` como proxy.
-5. Si ambos difieren, no sobrescribe ninguno: reporta conflicto para resolución
+1. Si `CLAUDE.md` raíz contiene proxy más regla de centralización, lo considera
+   normalizado y no lo modifica.
+2. Si `CLAUDE.md` raíz contiene solo `@AGENTS.md`, agrega regla de centralización
+   sin modificar contenido de `AGENTS.md`.
+3. Si falta `AGENTS.md`, copia contenido de template a `AGENTS.md` y crea
+   `CLAUDE.md` según ubicación: proxy más regla en raíz, solo proxy en
+   subdirectorio.
+4. Si existe `CLAUDE.md` con instrucciones y falta `AGENTS.md`, promueve ese
+   contenido a `AGENTS.md` y reemplaza `CLAUDE.md` según ubicación.
+5. Si ambos contienen mismo contenido, conserva uno en `AGENTS.md` y deja
+   `CLAUDE.md` como proxy correspondiente.
+6. Si ambos difieren, no sobrescribe ninguno: reporta conflicto para resolución
    manual y continúa con assets.
 
-No ejecuta scripts ni hooks copiados durante bootstrap. No modifica
-`~/.codex/config.toml`, `~/.claude/settings.json` ni otra configuración global.
+Bootstrap asegura regla de centralización una sola vez en `AGENTS.md` raíz;
+no la duplica en `AGENTS.md` de subdirectorios. No ejecuta scripts ni hooks
+copiados durante bootstrap. No modifica `~/.codex/config.toml`,
+`~/.claude/settings.json` ni otra configuración global.
 
 ---
 

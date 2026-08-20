@@ -75,7 +75,7 @@ Cada registro luego referencia la ruta del subdirectorio de su proveedor (ej. `.
 
 ```text
 AGENTS.md                  # instrucciones canónicas
-CLAUDE.md                  # proxy de una línea: @AGENTS.md
+CLAUDE.md                  # raíz: proxy + regla; subdirectorios: @AGENTS.md
 .claude/                   # Agent Ready Score y configuración Claude
 .agents/skills/            # skills compartidas y descubribles por Codex
 .agents/rules/             # reglas compartidas
