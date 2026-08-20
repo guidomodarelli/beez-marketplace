@@ -51,6 +51,28 @@
       ]
     },
     {
+      "id": "frontend-review-uses-remote-default-branch",
+      "description": "Explica fallback portable cuando no hay PR seleccionable.",
+      "input": "Explicá qué hace el comando review-pr si gh pr diff no puede seleccionar un PR y el repositorio usa master o trunk en vez de main. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["origin/HEAD", "remote default branch", "branch por defecto remoto"],
+          "description": "Explica cómo resolver branch base remoto"
+        },
+        {
+          "type": "contains",
+          "value": "git diff",
+          "description": "Indica comando de comparación fallback"
+        },
+        {
+          "type": "contains_any",
+          "values": ["master", "trunk"],
+          "description": "Cubre nombres de branch distintos de main"
+        }
+      ]
+    },
+    {
       "id": "existing-files-are-skipped",
       "description": "Conserva archivos existentes y reporta que fueron omitidos.",
       "input": "Setup agent ready. Asumí que proyecto tiene package.json con React y Nordic, además de .claude/CLAUDE.md y .claude/rules/security.md ya existentes. Explicá qué archivos conserva, cuáles crea y cómo reporta los existentes. No ejecutes Bash ni escribas archivos.",

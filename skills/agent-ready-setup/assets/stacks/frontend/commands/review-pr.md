@@ -10,7 +10,14 @@ Run a full review of the current PR by orchestrating all specialized agents in s
 gh pr diff
 ```
 
-If no PR is open, use `git diff main...HEAD`.
+If no PR is open, resolve remote default branch and compare against it:
+
+```bash
+BASE_BRANCH="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD)"
+git diff "$BASE_BRANCH"...HEAD
+```
+
+If `origin/HEAD` is not configured locally, set it with `git remote set-head origin --auto` and rerun the fallback.
 
 ### 2. Run agents in sequence
 
