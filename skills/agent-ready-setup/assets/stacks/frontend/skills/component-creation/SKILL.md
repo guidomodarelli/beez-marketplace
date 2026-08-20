@@ -79,7 +79,7 @@ import { <ComponentName> } from '../index';
 describe('<ComponentName>', () => {
   it('renders <expected output>', () => {
     // Arrange
-    render(<<ComponentName> />);
+    render(<ComponentName />);
 
     // Assert
     expect(screen.getByRole('...')).toBeInTheDocument();
@@ -88,7 +88,7 @@ describe('<ComponentName>', () => {
   it('handles <user interaction>', async () => {
     // Arrange
     const user = userEvent.setup();
-    render(<<ComponentName> />);
+    render(<ComponentName />);
 
     // Act
     await user.click(screen.getByRole('button', { name: /label/i }));
