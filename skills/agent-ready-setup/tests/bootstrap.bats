@@ -204,6 +204,23 @@ EOF
   [[ "$output" == *"Instruction conflicts (manual resolution required):"* ]]
 }
 
+@test "rejects symlinked provider roots before writing assets" {
+  for provider_root in .claude .agents .codex; do
+    outside_root="$test_root/$provider_root"
+    mkdir -p "$outside_root"
+    ln -s "$outside_root" "$provider_root"
+
+    run_bootstrap frontend
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Provider root conflicts (manual resolution required):"* ]]
+    [ -z "$(find "$outside_root" -mindepth 1 -print -quit)" ]
+    [ -L "$provider_root" ]
+
+    rm "$provider_root"
+  done
+}
+
 @test "rejects unsupported stack and missing arguments" {
   run bash "$skill_dir/scripts/bootstrap.sh" --stack rust --skill-dir "$skill_dir"
   [ "$status" -ne 0 ]

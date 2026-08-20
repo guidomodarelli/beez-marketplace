@@ -89,6 +89,29 @@ CREATED=()
 SKIPPED=()
 MIGRATED=()
 CONFLICTS=()
+PROVIDER_ROOT_CONFLICTS=()
+
+validate_provider_roots() {
+  local provider_root
+
+  for provider_root in "$CLAUDE_DIR" "$SHARED_DIR" "$CODEX_DIR"; do
+    if [[ -L "$provider_root" ]]; then
+      PROVIDER_ROOT_CONFLICTS+=("$provider_root is a symlink; neither provider asset was changed")
+    elif [[ -e "$provider_root" && ! -d "$provider_root" ]]; then
+      PROVIDER_ROOT_CONFLICTS+=("$provider_root is not a directory; neither provider asset was changed")
+    fi
+  done
+
+  if [[ ${#PROVIDER_ROOT_CONFLICTS[@]} -gt 0 ]]; then
+    echo "Provider root conflicts (manual resolution required):" >&2
+    for conflict in "${PROVIDER_ROOT_CONFLICTS[@]}"; do
+      printf '  ! %s\n' "$conflict" >&2
+    done
+    exit 1
+  fi
+}
+
+validate_provider_roots
 
 record_created() {
   CREATED+=("$1")
