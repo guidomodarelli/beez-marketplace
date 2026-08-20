@@ -4,23 +4,51 @@ Base de conocimiento **única** del equipo de soporte Groot. La skill `groot-que
 
 La idea es que todo el conocimiento del día a día del equipo crezca en este directorio, sin tocar la skill.
 
+Para instalar y preparar el entorno, consultar la [guía canónica de onboarding de Groot Queue](config/installation.md). Esta knowledge base conserva contratos operativos; no duplica los pasos de instalación.
+
 ## Estructura
 
 ```
-triage-rules.md      Reglas transversales R-DESC-XX / R-DER-XX.
-                     Algoritmo de triage para los veredictos (DESCARTAR,
-                     DERIVAR, VALIDO_GROOT, REVISAR_MANUAL).
-                     Se consulta en /groot-queue list y /groot-queue classify.
+rules/               Reglas de negocio y procedimientos de resolución:
+  triage-rules.md      Reglas transversales R-DESC-XX / R-DER-XX.
+                       Algoritmo de triage para los veredictos (DESCARTAR,
+                       DERIVAR, VALIDO_GROOT, REVISAR_MANUAL).
+                       Se consulta en /groot-queue list y /groot-queue classify.
+  runbooks.md          Runbook procedural por categoría de problema
+                       (Jerarquía, Warehouse, Roles, Atributos, CAD/Perfil, etc.)
+                       Se consulta en /groot-queue solve.
 
-runbooks.md          Runbook procedural por categoría de problema
-                     (Jerarquía, Warehouse, Roles, Atributos, CAD/Perfil, etc.)
-                     Se consulta en /groot-queue solve.
+config/              Configuración de tooling externo y opciones de Jira:
+  ticket-evidence.md   Gate general de verificación y provenance.
+  kraken-user-data.*   Facts actuales de usuario y contrato Kraken.
+  labor-share-data.*   Ejecución y catálogo Labour Share read-only.
+  atlassian-mcp.md     Precondiciones y uso seguro del MCP de Atlassian.
+                       Fuente de verdad de `commentVisibility` (nota interna).
+  slack-mcp.md         Capacidades y degradación segura del MCP de Slack.
+  classification.md    JQL base y lógica de clasificación compartida entre commands.
+  jira-field-options.md
+                       Fuente de verdad centralizada de option IDs de campos
+                       custom de Jira en SSHP (customfield_13781 squads destino,
+                       customfield_14924 motivos de derivación, etc.).
+                       Se consulta en /groot-queue derive.
+  shared-procedures.md Procedimientos compartidos entre subcommands: labels en
+                       Jira, evaluación de novedad KB, log de auditoría.
+  untrusted-content.md Regla de aislamiento de contenido no confiable de tickets.
 
-assignment-note-template.md
-                     Template estándar para la nota interna de resolución que
-                     se postea en cada ticket al asignarlo con
-                     /groot-queue assign-unassigned. Define estructura,
-                     reglas de llenado y restricciones.
+teams/               Rosters operativos de equipos internos:
+  groot-team.md        Identidad del equipo Groot: células (Kraken y Nexus),
+                       sistemas a cargo, sistemas externos relacionados.
+                       Fuente de verdad de quiénes somos.
+  nexus-team.md        Célula Nexus completa: dominio, productos, miembros
+                       y criterio de asignación (R-DER-13).
+
+templates/           Templates operativos reutilizables:
+  assignment-note-template.md
+                       Template estándar para nota interna de resolución que
+                       se postea al asignar con /groot-queue assign-unassigned.
+  history-materialization-template.md
+                       Validación de destinos y respuestas sintetizadas para
+                       materializar historial sin copiar texto Jira no confiable.
 
 solutions/           Casos concretos resueltos, agrupados por categoría:
   hierarchy-leader/        ← Jerarquía/Líder
@@ -58,7 +86,9 @@ la forma:
 
 Campos: `ts` (ISO8601 UTC), `action` (`derive`/`discard`), `key`, `rule`,
 `source` (`auto-assign`/`manual`), `destination` (solo derive), `result`
-(`ok`/`partial-error`/`failed`/`manual`).
+(`ok`/`partial-error`/`failed`/`manual`), `watcher_cleanup` (estado seguro) y conteos agregados opcionales `watchers_before_count` / `watchers_after_count`.
+
+Nunca registrar account IDs, emails ni listas de watchers.
 
 Ejemplos de consulta para auditoría:
 
@@ -91,7 +121,9 @@ No enviar el alias literal como nombre de campo.
 ## Cómo agregar una solución concreta
 
 1. Ejecutar `/groot-queue save SSHP-XXXXX` (la skill genera el archivo automáticamente), o
-2. Crear manualmente un `.md` en la carpeta de categoría correspondiente siguiendo este formato:
+2. Crear manualmente un `.md` en la carpeta de categoría correspondiente siguiendo este formato.
+
+Antes de guardar por cualquier vía, aplicar `rules/triage-rules.md` § **Política transversal — configuración de usuarios**. Una solución histórica no puede recomendar restaurar, asignar, remover ni determinar roles, permisos, atributos o accesos; documentar evidencia, ownership y escalación en lugar de un workaround de configuración.
 
 ```markdown
 ---
@@ -112,7 +144,7 @@ effectiveness: confirmed | unconfirmed
 
 ## Cómo agregar una regla de triage transversal
 
-Editar `triage-rules.md`. Nueva numeración según corresponda:
+Editar `rules/triage-rules.md`. Nueva numeración según corresponda:
 - `R-DESC-XX` para descartes
 - `R-DER-XX` para derivaciones a otro equipo
 
@@ -122,9 +154,9 @@ Luego, actualizar el bloque **Algoritmo de triage** de ese mismo archivo para qu
 
 ## Cómo agregar/modificar un runbook
 
-Editar `runbooks.md`. Si aparece una categoría nueva, agregar su sección. Si hay un paso nuevo conocido (ej. una validación previa), insertarlo respetando el orden.
+Editar `rules/runbooks.md`. Si aparece una categoría nueva, agregar su sección. Si hay un paso nuevo conocido (ej. una validación previa), insertarlo respetando el orden.
 
-Cuando un runbook tenga un shortcut por regla de triage (como `R-DESC-03` en CAD/Perfil), referenciar explícitamente `triage-rules.md` para mantener la trazabilidad.
+Cuando un runbook tenga un shortcut por regla de triage (como `R-DESC-03` en CAD/Perfil), referenciar explícitamente `rules/triage-rules.md` para mantener la trazabilidad.
 
 ## Cómo buscar soluciones
 

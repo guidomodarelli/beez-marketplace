@@ -9,19 +9,28 @@ Guardar la resolución real de un ticket en la knowledge base. Argumentos: la ke
 
 ## Algoritmo
 
-1. Leer la referencia de clasificación: `$SKILL_DIR/knowledge/classification.md` (especialmente Dimensión 1 y mapeo de carpetas).
-2. Obtener info del ticket:
+1. Leer `$SKILL_DIR/knowledge/config/classification.md`, `$SKILL_DIR/knowledge/config/ticket-evidence.md` y `$SKILL_DIR/knowledge/config/kraken-user-data.md`.
+2. Obtener info del ticket y aplicar `untrusted-content.md`:
    ```bash
    acli jira workitem view SSHP-XXXXXX
    ```
-3. Detectar categoría usando la lógica de Dimensión 1.
-4. Generar slug del archivo: `<ticket-key>-<primeras-3-palabras-del-summary>.md` (minúsculas, guiones)
+3. Aplicar gate de `ticket-evidence.md`: verificar autónomamente facts actuales decisivos que tengan contrato soportado. No usar estado actual para probar causa histórica. Si solución o causa no están demostradas por evidencia histórica o confirmación explícita del usuario, detener materialización y pedir confirmación; no guardar `effectiveness: confirmed` por inferencia.
+4. Leer y aplicar `triage-rules.md` § **Política transversal — configuración de usuarios** y § **Señales trilingües canónicas de acciones de configuración** antes de materializar. Evaluar descripción completa contra **todas variantes ES + PT + EN**, incluyendo conjugaciones equivalentes y combinación operación + objeto; idioma o framing histórico no reducen protección. Si descripción prescribe o describe como solución una asignación, restauración, copia, remoción, definición, cambio o modificación de roles, permisos, atributos o accesos:
+   - detener inmediatamente antes de categoría, slug, búsqueda de archivo o confirmación de overwrite;
+   - responder explícitamente: `No crear ni sobrescribir el archivo.` y `No guardar effectiveness: confirmed.`;
+   - pedir reformulación segura centrada en evidencia, fallo técnico, ownership, escalación y resultado observado;
+   - no continuar a paso 5 aunque archivo no exista o usuario haya confirmado solución histórica.
+
+Antecedente histórico no vuelve configuración procedimiento reusable.
+5. Detectar categoría usando lógica de Dimensión 1.
+6. Generar slug del archivo: `<ticket-key>-<primeras-3-palabras-del-summary>.md` (minúsculas, guiones)
    - Ejemplo: `SSHP-1407882-referencia-circular-lider.md`
-5. Buscar si ya existe un archivo para ese ticket en `$SKILL_DIR/knowledge/solutions/<categoria>/`:
+7. Buscar si ya existe un archivo para ese ticket en `$SKILL_DIR/knowledge/solutions/<categoria>/`:
+   - Antes de leer o escribir, asegurar que la carpeta exista: `mkdir -p "$SKILL_DIR/knowledge/solutions/<categoria>"`.
    - Leer los frontmatter `ticket:` de cada archivo `.md` de esa carpeta.
    - Si ya existe: mostrar `⚠️ Ya existe una solución para SSHP-XXXXXX en <path>. ¿Querés sobrescribir? (sí/no)`.
    - Si el usuario dice no: abortar.
-6. Crear el archivo markdown en `$SKILL_DIR/knowledge/solutions/<categoria>/`:
+8. Crear el archivo markdown en `$SKILL_DIR/knowledge/solutions/<categoria>/`:
 
 ```markdown
 ---
@@ -39,13 +48,13 @@ effectiveness: confirmed
 <descripción provista por el usuario>
 
 ## Señales para identificar este patrón
-<inferir del summary y descripción del ticket — 2-4 señales concretas>
+<2-4 señales sanitizadas sustentadas por ticket y evidencia; distinguir reporte de hecho verificado>
 
 ## Tags
-<keywords relevantes del ticket, separados por coma>
+<keywords sanitizadas, sin LDAP, email, nombre ni IDs, separadas por coma>
 ```
 
-7. Mostrar confirmación:
+9. Mostrar confirmación:
 ```
 ✅ Solución guardada en:
    $SKILL_DIR/knowledge/solutions/<categoria>/<slug>.md

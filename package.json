@@ -3,6 +3,13 @@
   "private": true,
   "description": "Multi-provider marketplace of skills and plugins for AI agents at Mercado Libre.",
   "scripts": {
-    "create-version": "node scripts/create-version.js"
+    "create-version": "node scripts/create-version.js",
+    "test": "npm run test:shell",
+    "test:shell": "bats plugins/groot-queue/tests/check-groot-queue-readiness.bats plugins/groot-queue/tests/query-kraken-user-data.bats plugins/groot-queue/tests/query-labor-share-data.bats plugins/groot-queue/tests/run-groot-queue.bats plugins/groot-queue/tests/install.bats plugins/groot-queue/tests/render-catalog.bats skill-eval-runner/tests/run-evals-env-contract.bats",
+    "test:e2e": "bats plugins/groot-queue/tests/setup-e2e.bats",
+    "test:all": "npm run test:shell && npm run test:e2e"
+  },
+  "devDependencies": {
+    "bats": "1.13.0"
   }
 }

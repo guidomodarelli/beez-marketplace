@@ -1,0 +1,61 @@
+{
+  "schema_version": 2,
+  "grid_sharing": {
+    "plugin": {
+      "id": "grid-sharing@tech-plugins-marketplace",
+      "required_skill_path": "skills/grid/SKILL.md"
+    },
+    "api": {
+      "base_url": "https://grid.melioffice.com",
+      "endpoints": {
+        "ping": "/ping",
+        "skill_version": "/skill/version",
+        "identity": "/api/v1/me",
+        "documents": "/api/v1/documents"
+      }
+    },
+    "required_document": {
+      "name": "Guía Labour Share",
+      "id": "01KWVJRP5DBAN5RD41PDQ518D1",
+      "viewer_url": "https://grid.adminml.com/d/01KWVJRP5DBAN5RD41PDQ518D1/view"
+    },
+    "network": {
+      "connect_timeout_seconds": 5,
+      "max_time_seconds": 15,
+      "max_retries": 1
+    }
+  },
+  "fury_services": {
+    "plugin": {
+      "id": "fury-services@tech-plugins-marketplace",
+      "required_skill_path": "skills/fury-services-documentation/SKILL.md"
+    },
+    "provider_manifest_paths": {
+      "claude": ".claude-plugin/plugin.json",
+      "codex": ".codex-plugin/plugin.json"
+    },
+    "mcp_manifest_path": ".mcp.json",
+    "expected_mcp_server": {
+      "name": "fury",
+      "command": "mcp-remote-proxy",
+      "args": [
+        "https://services-gateway-mcp.melioffice.com/v1/servers/fury",
+        "--headers",
+        "x-origin",
+        "fury-services-plugin",
+        "--timeout",
+        "5"
+      ]
+    }
+  },
+  "fury_runtime": {
+    "component": "furydocs",
+    "required_tools": [
+      "get_doc_structure",
+      "get_doc_file"
+    ]
+  },
+  "reuse_result": {
+    "max_age_seconds": 300
+  }
+}

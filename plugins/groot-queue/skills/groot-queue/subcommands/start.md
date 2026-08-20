@@ -1,158 +1,160 @@
 # Subcomando: start
 
-**Propósito**: Mostrar un banner de bienvenida con la versión actual del plugin, un health-check del entorno, un resumen express de la cola, y un catálogo interactivo de todos los comandos disponibles agrupados por intención con hints user-friendly.
+**Propósito**: Mostrar dashboard operativo con tabla de capacidades, totales exactos de cola, acciones recomendadas y catálogo completo de comandos con descripción.
 
----
+## Higiene de salida
 
-## Instrucciones
+Usar conocimiento interno silenciosamente en toda respuesta, incluidas preguntas documentales y ayuda. No citar ni nombrar archivos, paths, secciones, contratos, scripts, checker o `$SKILL_DIR`. Antes de responder, eliminar `.md`, `§`, paths internos y análisis meta.
 
-Al ejecutar este subcomando, realizar los siguientes pasos **en orden**:
+Cuando usuario pida output esperado para escenario, renderizar únicamente output final; no anteponer razonamiento ni agregar explicación posterior.
 
-### Paso 1: Resolver datos dinámicos
+## 1. Argumentos
 
-Ejecutar **en paralelo** (para minimizar latencia):
+- Sin argumentos: dashboard + totales + catálogo completo.
+- `--help` o `-h`: entrypoint responde ayuda sin tools.
+- Cualquier otro argumento, incluido `--all`: responder exactamente `Uso: /groot-queue start` y nada más; detenerse sin tools ni explicación.
 
-1. **Versión**: Leer `plugin.json` del plugin. Buscar en este orden:
-   - `$SKILL_DIR/../../.claude-plugin/plugin.json`
-   - `$SKILL_DIR/../../.codex-plugin/plugin.json`
-   - Si no se encuentra, usar `(unknown)`.
+## 2. Readiness y auto-recuperación
 
-2. **Nombre del usuario**: Ejecutar `git config user.name`. Si falla, usar `"developer"`.
+Consumir estado combinado validado por dispatcher durante misma invocación. No repetir checker, discovery Fury ni probes Grid.
 
-3. **Health-check del entorno** (cada check es independiente):
-   - **ACLI**: Ejecutar `which acli`. Si retorna 0 → `✅ ACLI`. Si falla → `❌ ACLI`.
-   - **MCP Atlassian**: Verificar si existe MCP Atlassian configurado (buscar en la config del agente o con `claude mcp list 2>/dev/null | grep -i atlassian`). Si existe → `✅ Atlassian MCP`. Si no → `❌ Atlassian MCP`.
-   - **MCP Slack**: Verificar si existe MCP Slack configurado (`claude mcp list 2>/dev/null | grep -i slack`). Si existe → `✅ Slack MCP`. Si no → `❌ Slack MCP`.
-   - Si algún check falla por error de permisos o tool no disponible, marcar como `⚠️ <nombre> (no verificable)`.
+Si readiness falla, entrypoint ejecuta `setup` automáticamente. Si `setup` deja entorno listo dentro de misma invocación, reutilizar estado y continuar. Si requiere OAuth, VPN, `/reload-plugins`, restart, acceso o decisión ambigua, mostrar output de `setup` y detener `start`.
 
-4. **Conteo express de tickets**: Ejecutar con ACLI:
-   ```bash
-   acli jira issue list --project SSHP --jql "project = SSHP AND \"Squad\" = Groot AND type = Incident AND statusCategory != Done" --output json 2>/dev/null
-   ```
-   Del resultado extraer:
-   - **Total abiertos**: Cantidad total de tickets.
-   - **Sin asignar**: Tickets donde `assignee` es null/vacío.
-   - **En riesgo SLA**: Tickets con prioridad `Highest` o `High` creados hace más de 24hs (comparar `created` con fecha actual).
-   
-   Si ACLI falla o no está disponible, omitir esta sección completamente (no mostrar conteo con errores).
+ACLI instalado y autenticado también es precondición. Verificar `acli --version` y `acli jira auth status` de forma read-only. Si falla, ejecutar `setup` automáticamente.
 
-### Paso 2: Mostrar el output
+## 3. Datos dinámicos
 
-Renderizar el siguiente bloque, reemplazando los placeholders:
-- `{{VERSION}}` → versión del plugin
-- `{{USER_NAME}}` → primer nombre del usuario (primer token de git config user.name)
-- `{{HEALTH_LINE}}` → línea de health-checks separados por ` | `
-- `{{TICKET_LINE}}` → línea de conteo (o vacío si no disponible)
+Después de readiness completo, obtener en paralelo versión, capacidades opcionales, TEAM y tres conteos Jira.
 
-```
-╔══════════════════════════════════════════════════════════════════╗
-║                                                                  ║
-║    ██████╗ ██████╗  ██████╗  ██████╗ ████████╗                   ║
-║   ██╔════╝ ██╔══██╗██╔═══██╗██╔═══██╗╚══██╔══╝                  ║
-║   ██║  ███╗██████╔╝██║   ██║██║   ██║   ██║                     ║
-║   ██║   ██║██╔══██╗██║   ██║██║   ██║   ██║                     ║
-║   ╚██████╔╝██║  ██║╚██████╔╝╚██████╔╝   ██║                     ║
-║    ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝                    ║
-║                                              QUEUE  v{{VERSION}} ║
-║                                                                  ║
-╚══════════════════════════════════════════════════════════════════╝
+### Versión y provider
 
- 👋 Hola, {{USER_NAME}}!
+Leer versión desde manifest del provider activo. Si no existe versión verificable, mostrar `unknown`; no fallar. Mostrar provider resuelto (`Claude Code` o `Codex`) sin inferir por archivos de otro provider.
 
- ┌─ Entorno ───────────────────────────────────────────────────────┐
- │ {{HEALTH_LINE}}                                                  │
- └──────────────────────────────────────────────────────────────────┘
-```
+### Capacidades opcionales con probes reales
 
-Si hay conteo de tickets disponible, agregar inmediatamente después:
+No usar `mcp list | grep` como prueba de conexión.
 
-```
- ┌─ Cola ahora ────────────────────────────────────────────────────┐
- │ 📬 {{TOTAL}} abiertos | 👤 {{UNASSIGNED}} sin asignar | 🔥 {{SLA_RISK}} en riesgo SLA │
- └──────────────────────────────────────────────────────────────────┘
+- **Atlassian MCP**:
+  - tool compatible ausente → `— No instalado`;
+  - probe read-only de recursos exitoso y workspace corporativo presente → `✅ Conectado`;
+  - error auth → `❌ No autenticado`;
+  - otro fallo → `⚠️ No verificable`.
+- **Slack MCP**:
+  - tool compatible ausente → `— No instalado`;
+  - probe read-only de perfil actual exitoso → `✅ Conectado`;
+  - error auth → `❌ No autenticado`;
+  - otro fallo → `⚠️ No verificable`.
+
+No mostrar payloads, identidad, email, account IDs, cloudId ni perfil.
+
+### TEAM
+
+Contar entradas verificadas. Mostrar `✅ Configurado` con `N integrantes` o `⚠️ Vacío` con `Sin integrantes`. No listar identidades.
+
+### Totales exactos de cola
+
+Ejecutar tres búsquedas ACLI en paralelo usando `--count`; no usar `--limit` ni derivar total desde primera página:
+
+```bash
+# Abiertos
+acli jira workitem search --count --jql 'project = SSHP AND Squad = Groot AND type IN (Incident, "Service Request") AND resolution = Unresolved'
+
+# Sin asignar
+acli jira workitem search --count --jql 'project = SSHP AND Squad = Groot AND type IN (Incident, "Service Request") AND resolution = Unresolved AND assignee IS EMPTY'
+
+# Alta prioridad con más de 24h
+acli jira workitem search --count --jql 'project = SSHP AND Squad = Groot AND type IN (Incident, "Service Request") AND resolution = Unresolved AND priority IN (Highest, High) AND created <= -24h'
 ```
 
-Si algún valor de riesgo SLA es > 0, agregar debajo:
-```
- ⚠️  Hay tickets en riesgo — considerá correr /groot-queue alerts
-```
+Cada consulta es read-only, independiente, con timeout corto y sin retry. Aceptar resultado solo cuando sea:
 
-Luego continuar con:
+- entero no negativo en texto plano;
+- formato ACLI exacto `✓ Number of work items in the search: <N>`;
+- número JSON no negativo;
+- objeto JSON con campo inequívoco `count` o `total` entero no negativo.
 
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- ¿Qué querés hacer hoy?
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Cualquier otro formato → `No disponible`. Nunca inventar cero.
 
- 🚀 EMPEZAR
- ┃
- ┣━ /groot-queue setup
- ┃  └─ ¿Primera vez usando esta tool? Corré esto para configurar tu entorno.
- ┃
- ┣━ /groot-queue list
- ┃  └─ Mirá qué tickets están abiertos ahora mismo en la cola.
- ┃
- ┣━ /groot-queue stats
- ┃  └─ Necesitás un resumen rápido de cómo está la cola hoy.
+Tabla de totales se muestra siempre, incluso con fallos parciales. Etiqueta tercera métrica debe ser **`Alta prioridad +24h`**, nunca “riesgo SLA”: es heurística de prioridad/edad, no SLA autoritativo.
 
- 🔍 INVESTIGAR
- ┃
- ┣━ /groot-queue classify
- ┃  └─ Agrupá los tickets por tipo de problema y urgencia de un vistazo.
- ┃
- ┣━ /groot-queue detail <SSHP-XXXXXX>
- ┃  └─ Profundizá en un ticket puntual: qué pasó, clasificación y sugerencia.
- ┃
- ┣━ /groot-queue solve <SSHP-XXXXXX>
- ┃  └─ ¿No sabés cómo resolver un ticket? Te sugiero una solución paso a paso.
+## 4. Output
 
- ⚡ ACTUAR
- ┃
- ┣━ /groot-queue assign-unassigned
- ┃  └─ Repartí equitativamente los tickets sin dueño entre el equipo.
- ┃
- ┣━ /groot-queue derive <SSHP-XXXXXX>
- ┃  └─ Este ticket no es nuestro — derivalo al equipo correcto.
- ┃
- ┣━ /groot-queue discard <SSHP-XXXXXX>
- ┃  └─ El ticket no corresponde a soporte Groot — cerralo con justificación.
- ┃
- ┣━ /groot-queue backfill-guides
- ┃  └─ Posteá guías de resolución en tickets asignados que todavía no tienen una.
+No usar logo ASCII, cajas de ancho fijo ni saludo basado en Git.
 
- 🚨 ALERTAS
- ┃
- ┣━ /groot-queue alerts
- ┃  └─ ¿Algún ticket está por romper SLA? Detectalos y notificá por Slack.
-
- 📚 KNOWLEDGE BASE
- ┃
- ┣━ /groot-queue save <SSHP-XXXXXX> <desc>
- ┃  └─ Resolviste un ticket? Guardá la solución para que el equipo la reutilice.
- ┃
- ┣━ /groot-queue add-rule
- ┃  └─ Agregá una nueva regla de triage para mejorar la clasificación automática.
- ┃
- ┣━ /groot-queue analyze-history
- ┃  └─ Analizá tickets cerrados y extraé patrones para nutrir la knowledge base.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- 💡 Tip: Usá /groot-queue <comando> --help para ver detalles de cada uno.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```text
+🌱 Groot Queue · v<VERSION>
+Estado: ✅ LISTO · <PROVIDER>
 ```
 
-3. **Después del output**, preguntar al usuario:
+### Estado
 
-> ¿Qué comando querés correr? Podés escribirlo directamente o decirme qué necesitás y te guío.
+| Área | Estado | Detalle |
+|---|---|---|
+| Entorno | ✅ Operativo | <PROVIDER> |
+| Jira | <estado Atlassian> | ACLI ✅ |
+| Slack | <estado Slack> | <OAuth activo, no autenticado, no instalado o no verificable> |
+| Knowledge | ✅ Operativo | Grid Sharing + FuryDocs |
+| TEAM | <✅ Configurado o ⚠️ Vacío> | <N integrantes o Sin integrantes> |
 
-4. **No ejecutar ningún otro subcomando automáticamente**. Solo mostrar el banner y esperar input.
+No combinar varias capacidades dentro de columna Estado. Usar Detalle para provider, ACLI, OAuth, componentes Knowledge y cantidad TEAM.
 
----
+Si auto-setup completó reparaciones sin pasos humanos pendientes, agregar después de tabla:
+
+```text
+Reparaciones: ✅ <assets instalados/actualizados>
+```
+
+No repetir output completo de `setup`.
+
+### Totales de cola
+
+Mostrar siempre:
+
+| Métrica | Total |
+|---|---:|
+| 📬 Abiertos | <N o No disponible> |
+| 👤 Sin asignar | <N o No disponible> |
+| 🔥 Alta prioridad +24h | <N o No disponible> |
+
+No agregar nota de muestra parcial: valores disponibles provienen de `--count` y son totales exactos.
+
+## 5. Acciones recomendadas
+
+Construir máximo tres acciones, en orden:
+
+1. Si `Alta prioridad +24h > 0`: `🚨 /groot-queue alerts --dry-run`.
+2. Si `Sin asignar > 0`: `👤 /groot-queue assign-unassigned`.
+3. Si `Abiertos > 0`: `📊 /groot-queue stats`.
+4. Si tres totales son `0`: mostrar `✅ Cola sin acciones urgentes.` sin lista.
+5. Si algún total es `No disponible` y no existen acciones derivables: recomendar `📋 /groot-queue list` y `📊 /groot-queue stats`.
+
+```text
+Acciones recomendadas
+
+1. 🚨 `/groot-queue alerts --dry-run`
+2. 👤 `/groot-queue assign-unassigned`
+3. 📊 `/groot-queue stats`
+```
+
+No ejecutar acciones automáticamente. `alerts` se recomienda con `--dry-run`; `assign-unassigned` conserva confirmaciones propias.
+
+## 6. Catálogo completo siempre visible
+
+Después de acciones, ejecutar `$SKILL_DIR/scripts/render-catalog.sh` mediante Bash. Tratar stdout como artefacto opaco: copiar byte por byte, sin abreviar, reindentar ni recrear.
+
+Si renderer falla, informar error después de dashboard; no sintetizar catálogo manualmente.
+
+Antes de responder, verificar que catálogo contiene entrada `setup` y línea final `analyze-history`. Si falta alguna, usar stdout original sin transformaciones.
+
+En respuestas documentales, describir output visible sin mencionar implementación interna.
 
 ## Reglas
 
-- Si ACLI no está disponible, **no fallar** — simplemente omitir la sección de conteo y marcar ACLI como ❌ en el health-check.
-- Si `claude mcp list` no está disponible (ej: Codex), marcar MCP checks como `⚠️ (no verificable)`.
-- Si el usuario responde con un comando válido después del prompt, dispatchar al subcomando correspondiente.
-- El output debe renderizarse tal cual, respetando los caracteres Unicode box-drawing y los emojis.
-- Mantener la latencia al mínimo: ejecutar los checks en paralelo siempre que sea posible.
+- Mantener latencia baja: datos independientes en paralelo.
+- No repetir readiness validado.
+- No invocar tools documentales Fury.
+- No ejecutar `stats`, `alerts`, `assign-unassigned` ni otro subcomando automáticamente.
+- No llamar heurística “riesgo SLA”.
+- No mostrar PII ni payloads MCP.
+- Mostrar siempre tablas Estado y Totales de cola.
+- Catálogo completo siempre aparece en `start`.

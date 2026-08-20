@@ -16,5 +16,13 @@ No se identificó la causa raíz exacta del problema. Se presume que un proceso 
 ## Solucion Aplicada
 Se corrigieron manualmente los líderes de los 8 usuarios afectados en Groot, alineándolos con sus líderes correspondientes según la información registrada en SSFF (SuccessFactors), que es la fuente de verdad para la jerarquía organizacional.
 
+## Señales para identificar este patron
+
+- ES: "usuario aparece como su propio líder", "líder directo es él mismo", "usuarios WMS con self-leader", "se ven como supervisores de sí mismos", "ciclo en lider directo".
+- PT: "usuário aparece como seu próprio líder", "líder direto é ele mesmo", "usuários WMS com self-leader", "aparecem como supervisores de si mesmos", "ciclo no líder direto".
+- EN: "user appears as their own leader", "direct leader is themselves", "WMS users with self-leader", "showing as supervisor of themselves", "cycle in direct leader".
+- Patrón bulk: múltiples usuarios del mismo site o warehouse afectados simultáneamente.
+- La corrección requiere alinear con SSFF (SuccessFactors) como fuente de verdad.
+
 ## Tags
 self-leader, wms, mxcd09, correccion-masiva, ssff, jerarquia, 8-usuarios

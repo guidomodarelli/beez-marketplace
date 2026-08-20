@@ -15,10 +15,12 @@ Esta skill funciona como **índice + dispatcher** de subcomandos. La lógica con
 
 Antes de leer o escribir archivos del skill, resolver una variable conceptual `SKILL_DIR`:
 
-1. Si existe la variable de entorno `GROOT_QUEUE_SKILL_DIR`, usar ese valor.
-2. Si no existe y está disponible `~/.codex/skills/groot-queue/SKILL.md`, usar `~/.codex/skills/groot-queue`.
-3. Si no existe y está disponible `~/.claude/skills/groot-queue/SKILL.md`, usar `~/.claude/skills/groot-queue`.
-4. Si se está trabajando dentro del repositorio marketplace, usar `plugins/groot-queue/skills/groot-queue`.
+1. Si existe `GROOT_QUEUE_SKILL_DIR` y contiene `SKILL.md`, usar ese valor.
+2. Si Claude Code cargó el plugin y `${CLAUDE_PLUGIN_ROOT}/skills/groot-queue/SKILL.md` existe, usar `${CLAUDE_PLUGIN_ROOT}/skills/groot-queue`.
+3. Si `GROOT_QUEUE_ACTIVE_PROVIDER=codex` y `~/.codex/skills/groot-queue/SKILL.md` existe, usar `~/.codex/skills/groot-queue`.
+4. Si `GROOT_QUEUE_ACTIVE_PROVIDER=claude` y `~/.claude/skills/groot-queue/SKILL.md` existe, usar `~/.claude/skills/groot-queue`.
+5. Fuera del launcher, usar el directorio desde el cual el provider cargó esta skill; no seleccionar el árbol de otro provider por mera existencia.
+6. Si se está trabajando dentro del repositorio marketplace, usar `plugins/groot-queue/skills/groot-queue`.
 
 En los subcomandos, `$SKILL_DIR` refiere a ese directorio resuelto. No asumir un path exclusivo de Claude o Codex. Si se usa `GROOT_QUEUE_SKILL_DIR` desde `.zshrc`, debe estar exportada en el entorno que inicia el agente; los shells `bash` invocados después solo heredan variables ya exportadas. Cuando un snippet Bash use `$SKILL_DIR` y la variable no esté en el entorno, definirla en la misma llamada Bash con el path resuelto.
 
@@ -26,11 +28,39 @@ En los subcomandos, `$SKILL_DIR` refiere a ese directorio resuelto. No asumir un
 
 ## Dispatcher (importante)
 
-Al activarse la skill, parsear el primer token del input del usuario después de `/groot-queue` como subcomando:
+Al activarse la skill, aplicar este orden sin adelantar lecturas, tools ni acciones del subcomando.
 
-- Si el subcomando coincide con uno de la tabla → **leer `subcommands/<subcomando>.md` y seguir literalmente sus instrucciones**, pasando el resto del input como argumentos.
-- Si el input contiene `--help`, igual debe tratarse como una consulta del subcomando: **no ejecutar Jira ni shell**, pero sí responder desde las instrucciones del archivo `subcommands/<subcomando>.md`.
-- Si el subcomando no existe o no se provee → **ejecutar `subcommands/start.md`** (equivalente a `/groot-queue start`).
+### Paso 1 — Resolver comando y alias
+
+Parsear el primer token después de `/groot-queue`. Si coincide con un alias, reemplazarlo por el subcomando canónico:
+
+| Alias | Subcomando canónico |
+|-------|---------------------|
+| `cl` | `classify` |
+| `ls` | `list` |
+| `d` | `detail` |
+| `s` | `solve` |
+| `der` | `derive` |
+| `dis` | `discard` |
+| `aa` | `assign-unassigned` |
+| `assign` | `assign-unassigned` |
+| `ah` | `analyze-history` |
+| `history` | `analyze-history` |
+| `bf` | `backfill-guides` |
+| `backfill` | `backfill-guides` |
+| `ar` | `add-rule` |
+
+Si el token resuelto no corresponde a un subcomando disponible, o si no hay token, resolver la invocación a `start`. La entrada vacía y la desconocida no son ayuda ni están exentas del gate.
+
+### Paso 2 — Resolver provider y aplicar el entrypoint
+
+Identificar el provider activo como `claude` o `codex`. Usar `GROOT_QUEUE_ACTIVE_PROVIDER` cuando el launcher lo haya definido con uno de esos valores; en otro caso usar el provider que ejecuta esta skill. Usar `auto` solamente cuando el contexto no permita distinguirlo.
+
+Antes de leer el archivo del subcomando, leer y aplicar `$SKILL_DIR/knowledge/config/command-entrypoint.md` con el subcomando canónico resuelto, los tokens completos de la invocación y el provider. Si el entrypoint deshabilita la ejecución, detenerse.
+
+### Paso 3 — Despachar
+
+Solo si el entrypoint habilita la ejecución, leer `$SKILL_DIR/subcommands/<subcomando-resuelto>.md`, seguir literalmente sus instrucciones y pasarle los argumentos restantes junto con el estado combinado de readiness ya validado cuando corresponda.
 
 Ejemplos:
 
@@ -43,50 +73,43 @@ Ejemplos:
 | `/groot-queue analyze-history --help` | `subcommands/analyze-history.md` | `--help` |
 | `/groot-queue` | `subcommands/start.md` | — |
 
-Path resuelto: `$SKILL_DIR/subcommands/<nombre>.md`.
-
-**Nota para Claude Code**: si el usuario invoca `/groot-queue:<nombre>` (sintaxis de slash command de plugin), Claude carga directamente `commands/<nombre>.md` del plugin — un wrapper que apunta al mismo `subcommands/<nombre>.md`. La fuente de verdad es la misma; el dispatcher de esta skill solo se ejecuta cuando se entra por la skill (Codex o Claude tipeando `/groot-queue` sin `:`).
+**Nota para Claude Code**: si el usuario invoca `/groot-queue:<nombre>`, Claude carga directamente `commands/<nombre>.md`. Esos wrappers aplican el mismo contrato central con provider `claude` y luego apuntan al mismo archivo de subcomando.
 
 ---
 
 ## Subcomandos disponibles
 
-| Subcomando | Acción |
-|------------|--------|
-| `start` | Mostrar banner de bienvenida, versión y catálogo de comandos con hints de uso |
-| `setup` | Verificar e instalar dependencias necesarias (ACLI, Atlassian MCP, Slack MCP, permisos) |
-| `list` | Listar todos los incidentes abiertos |
-| `classify` | Clasificar y agrupar por tipo de problema + urgencia |
-| `detail SSHP-XXXXXX` | Detalle completo de un ticket con clasificación y sugerencia |
-| `solve SSHP-XXXXXX` | Sugerir solución basada en runbooks + análisis |
-| `alerts [--dry-run]` | Detectar tickets vencidos y por vencer, agrupar por responsable del TEAM y enviar un resumen por Slack DM a cada uno |
-| `stats` | Estadísticas agregadas de la cola |
-| `assign-unassigned` | Asignar en Jira todos los tickets sin responsable repartiéndolos de forma equitativa entre el TEAM (stateless) |
-| `derive SSHP-XXXXXX` | Derivar un ticket al equipo correcto: detecta regla R-DER y, si hay MCP Atlassian compatible, postea nota interna y transiciona estado |
-| `discard SSHP-XXXXXX` | Descartar un ticket que no corresponde a Groot Soporte: detecta regla R-DESC y, si hay MCP Atlassian compatible, postea comentario público y cierra el ticket |
-| `save SSHP-XXXXXX <desc>` | Guardar la solución aplicada a un ticket en la knowledge base |
-| `add-rule` | Agregar una nueva regla de triage a la knowledge base |
-| `backfill-guides` | Postear guías de resolución (nota interna) en tickets abiertos y asignados que aún no tienen guía — backfill retroactivo idempotente |
-| `analyze-history [--limit N] [--since YYYY-MM-DD] [--force]` | Analizar tickets cerrados históricos y extraer patrones para la knowledge base |
-| _(sin argumento)_ | Ejecutar `start` (banner + catálogo de comandos) |
+| Subcomando | Alias | Acción |
+|------------|-------|--------|
+| `start` | — | Mostrar estado, totales exactos, acciones recomendadas y catálogo completo |
+| `setup` | — | Diagnosticar ACLI y AI assets; auto-instalar/actualizar faltantes conocidos y pedir solo pasos humanos inevitables |
+| `list` | `ls` | Listar todos los incidentes abiertos |
+| `classify` | `cl` | Clasificar y agrupar por tipo de problema + urgencia |
+| `detail SSHP-XXXXXX` | `d` | Detalle completo de un ticket con clasificación y sugerencia |
+| `solve SSHP-XXXXXX` | `s` | Sugerir solución basada en runbooks + análisis |
+| `alerts [--dry-run]` | — | Detectar tickets vencidos y por vencer, agrupar por responsable del TEAM y enviar un resumen por Slack DM a cada uno |
+| `stats` | — | Estadísticas agregadas de la cola |
+| `assign-unassigned` | `aa`, `assign` | Asignar en Jira todos los tickets sin responsable repartiéndolos de forma equitativa entre el TEAM (stateless) |
+| `derive SSHP-XXXXXX` | `der` | Derivar un ticket al equipo correcto: detecta regla R-DER y, si hay MCP Atlassian compatible, postea nota interna y transiciona estado |
+| `discard SSHP-XXXXXX` | `dis` | Descartar un ticket que no corresponde a Groot Soporte: detecta regla R-DESC y, si hay MCP Atlassian compatible, postea comentario público y cierra el ticket |
+| `save SSHP-XXXXXX <desc>` | — | Guardar la solución aplicada a un ticket en la knowledge base |
+| `add-rule` | `ar` | Agregar una nueva regla de triage a la knowledge base |
+| `backfill-guides` | `bf`, `backfill` | Postear guías de resolución (nota interna) en tickets abiertos y asignados que aún no tienen guía — backfill retroactivo idempotente |
+| `analyze-history [--limit N] [--since YYYY-MM-DD] [--force]` | `ah`, `history` | Analizar tickets cerrados históricos y extraer patrones para la knowledge base |
+| _(sin argumento)_ | — | Ejecutar `start` (banner + catálogo de comandos) |
 
 ---
 
 ## Resumen Operativo De `analyze-history`
 
-Este resumen existe para consultas rápidas de ayuda. Para ejecutar o explicar detalles no cubiertos acá, leer `subcommands/analyze-history.md`.
+Para detalles completos, leer `subcommands/analyze-history.md`.
 
-- Requiere MCP Atlassian para consultar tickets cerrados, leer changelog/comentarios y escribir labels. Si no está disponible, abortar con instrucciones para habilitar `https://mcp.atlassian.com/v1/mcp` y completar OAuth.
-- Por defecto procesa como máximo `20` tickets. `--limit N` cambia ese máximo.
-- Consulta tickets cerrados con JQL sobre `project = SSHP`, `Squad = Groot`, `type = Incident`, `statusCategory = Done`.
-- La idempotencia vive en Jira: el JQL base incluye tickets sin labels con `labels IS EMPTY` y excluye tickets con `groot-kb-analyzed` o `groot-kb-manual-review`.
-- `--force` permite re-analizar tickets con `groot-kb-analyzed`, pero los tickets con `groot-kb-manual-review` siguen excluidos.
-- `--since YYYY-MM-DD` agrega un filtro de fecha al JQL: `updated >= "YYYY-MM-DD"`.
-- Clasifica cada ticket cerrado como `DERIVADO`, `DESCARTADO` o `RESUELTO` usando la última transición de cierre del `changelog`, la resolución y el comentario clave previo a esa transición.
-- Si no puede extraer el comentario clave, no hay visibilidad suficiente de notas internas o el desenlace es ambiguo, marca el ticket con `groot-kb-manual-review` y continúa.
-- Las señales para reglas se derivan de `summary` y `description`; deben cubrir ES + PT + EN y partir del wording real del ticket.
-- Si el usuario confirma materialización: `DESCARTADO` y `DERIVADO` delegan en `add-rule` para escribir `triage-rules.md` (`R-DESC` / `R-DER`) con campos pre-poblados; `RESUELTO` delega en `save` para crear una solución.
-- El resumen final muestra conteos de procesados, materializados, descartados, saltados, manual review, reglas agregadas (`R-DESC` / `R-DER`) y soluciones guardadas.
+- Requiere MCP Atlassian para consultar tickets cerrados, leer changelog/comentarios y escribir labels.
+- Por defecto procesa máximo `25` tickets (`--limit N` cambia ese máximo y se procesa en lotes de 25).
+- Idempotencia vía labels en Jira: `groot-kb-analyzed` / `groot-kb-manual-review`.
+- `--force` re-analiza tickets con `groot-kb-analyzed` (no `groot-kb-manual-review`).
+- `--since YYYY-MM-DD` filtra por fecha de actualización.
+- `--only derivados|descartados|resueltos` filtra por tipo de desenlace.
 
 ---
 
@@ -113,14 +136,24 @@ $SKILL_DIR/
 │   ├── add-rule.md
 │   └── analyze-history.md
 └── knowledge/
-    ├── classification.md   ← JQL base + Dimensión 1 + Dimensión 2 + mapeo a solutions/
-    ├── triage-rules.md     ← Reglas R-DESC / R-DER / R-FIX + algoritmo de triage
-    ├── runbooks.md         ← Runbooks procedurales por categoría
-    ├── solutions/          ← Casos concretos resueltos, por categoría
-    └── apis/               ← Docs de endpoints (a futuro)
+    ├── config/
+    │   ├── ticket-evidence.md  ← Contrato general de verificación y provenance
+    │   ├── kraken-user-data.md ← Facts actuales de usuario y protocolo Kraken
+    │   ├── labor-share-data.md ← Ejecución y catálogo Labour Share read-only
+    │   └── classification.md   ← JQL base + Dimensión 1 + Dimensión 2
+    ├── rules/
+    │   ├── triage-rules.md     ← Reglas R-DESC / R-DER / R-FIX + algoritmo
+    │   └── runbooks.md         ← Runbooks procedurales por categoría
+    ├── teams/                  ← Identidad, células, productos y ownership
+    ├── solutions/              ← Casos concretos resueltos, por categoría
+    └── apis/                   ← Docs de endpoints (a futuro)
 ```
 
-Los subcomandos **deben leer estos archivos** cada vez que los necesiten (sin cachear). Si cualquiera de estos archivos no existe, avisar al usuario y seguir con los datos mínimos.
+Para preguntas documentales sobre el equipo, sus células o productos, leer `knowledge/teams/groot-team.md` y seguir la referencia a la célula correspondiente. Para Nexus y el alcance de Godric, Pidgey o Alfred, leer `knowledge/teams/nexus-team.md#productos-a-cargo`.
+
+Todo subcomando que clasifique, diagnostique, excluya, recomiende, mute o persista información de tickets debe leer y aplicar primero `knowledge/config/ticket-evidence.md`. Cuando ese contrato determine que hacen falta facts actuales de usuario, aplicar `knowledge/config/kraken-user-data.md`. `detail`, `solve`, `assign-unassigned` y `backfill-guides` también aplican `knowledge/config/labor-share-data.md` cuando una ejecución o catálogo Labour Share puede cambiar diagnóstico; demás subcomandos no disparan esta integración. Verificar autónomamente todos los hechos decisivos disponibles sin esperar otro pedido del usuario, consultar solo facts mínimos y reutilizar evidencia normalizada durante la misma invocación.
+
+Los subcomandos **deben leer estos archivos** cada vez que los necesiten (sin cachear entre invocaciones). Si cualquiera no existe, avisar al usuario y seguir solo con datos mínimos; una verificación decisiva ausente queda `REVISAR_MANUAL`.
 
 ---
 
@@ -132,27 +165,35 @@ Lista de miembros entre los que se reparten los tickets. Editá esta lista para 
 TEAM:
   - username: frgonzalez
     email: francisco.gonzalez@mercadolibre.com
+    accountId: 5cd4929cc9167e0d6ea2312d
     name: Francisco Gonzalez
   - username: maescobar
     email: matias.escobar@mercadolibre.com
+    accountId: 600061b51051d10075eac0b8
     name: Matias Joel Escobar
   - username: jgibelli
     email: julian.gibelli@mercadolibre.com
+    accountId: "712020:43d9d55a-f958-4256-b2b7-9a0485c717ff"
     name: Julian Nicolas Gibelli
   - username: nicogutierre
     email: nicolasj.gutierrez@mercadolibre.com
+    accountId: "712020:13bb4a44-bc51-4ee3-b443-8d8cc17acc7b"
     name: Julio Nicolas Gutierrez
   - username: hfurs
     email: hectoranibal.furs@mercadolibre.com
+    accountId: 5ea6e12306a3eb0b7ec96e32
     name: Hector Furs
   - username: gsosa
     email: gustavo.sosa@mercadolibre.com
+    accountId: 609eebec2614ec006877ad99
     name: Gustavo Gabriel Sosa Sotelo
   - username: levillanueva
     email: leonardo.villanueva@mercadolibre.com
+    accountId: 62cf1c0f10fcc6f7ae3ea200
     name: Leonardo Manuel Villanueva
   - username: gmodarelli
     email: guido.modarelli@mercadolibre.com
+    accountId: "712020:8300527c-0cb7-4412-8303-0306dac20649"
     name: Guido Modarelli
 ```
 
@@ -167,25 +208,9 @@ El orden de la lista **no** define el turno: en cada corrida, `assign-unassigned
 
 ---
 
-## Inicialización del entorno de desarrollo
+## Onboarding y diagnóstico
 
-- [ ] **Primer paso**: tener instalado acli:
-   ```bash
-   brew tap atlassian-labs/acli
-   brew install acli
-   ```
-- [ ] **Segundo paso**: configurar acli con tus credenciales de Atlassian:
-   ```bash
-   acli jira auth login --web
-   ```
-   y seleccionar https://mercadolibre.atlassian.net.
-- [ ] **Tercer paso**: habilitar el MCP de Atlassian en Claude Code:
-   ```bash
-   claude mcp add --transport http "Atlassian" https://mcp.atlassian.com/v1/mcp
-   ```
-   Luego ejecutar `/mcp` dentro de Claude Code y completar el flujo OAuth para `mercadolibre.atlassian.net`.
-   Requerido para que `/groot-queue:derive` pueda ejecutar la transición "Derivar a otro equipo".
-- [ ] **Cuarto paso**: correr el subcomando `setup` para verificar e instalar el resto del entorno.
+La [guía completa de Groot Queue](knowledge/config/installation.md) es fuente interna para instalar, configurar, diagnosticar, actualizar y desinstalar entorno. `setup` debe auto-instalar o actualizar assets conocidos cuando diagnóstico demuestre necesidad, verificar resultado y pedir únicamente pasos humanos inevitables. Nunca debe remitir usuario a paths o archivos bundled.
 
 ---
 

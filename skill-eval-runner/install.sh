@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Installer for run-evals command
-# Installs the central eval runner globally so it can be run from anywhere
+# Installer for the run-evals command
 
 set -e
 
@@ -13,12 +12,11 @@ NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_SCRIPT="$SCRIPT_DIR/run-evals.sh"
-
 INSTALL_DIR="$HOME/.local/bin"
 TARGET_SCRIPT="$INSTALL_DIR/run-evals"
 
 echo -e "${BLUE}════════════════════════════════════════${NC}"
-echo -e "${BLUE}  Run-Evals Global Installer${NC}"
+echo -e "${BLUE}  Run-Evals Installer${NC}"
 echo -e "${BLUE}════════════════════════════════════════${NC}"
 echo ""
 
@@ -44,16 +42,13 @@ ln -sf "$SOURCE_SCRIPT" "$TARGET_SCRIPT"
 chmod +x "$SOURCE_SCRIPT"
 
 if [ -L "$TARGET_SCRIPT" ] && [ -x "$TARGET_SCRIPT" ]; then
-    echo -e "${GREEN}✓ run-evals installed successfully!${NC}"
-    echo ""
-    echo -e "  Command:  ${GREEN}run-evals${NC}"
-    echo -e "  Location: ${GREEN}$TARGET_SCRIPT${NC}"
-    echo -e "  Source:   ${GREEN}$SOURCE_SCRIPT${NC}"
-    echo ""
+    echo -e "${GREEN}✓ run-evals installed → $TARGET_SCRIPT${NC}"
 else
     echo -e "${RED}✗ Error during installation${NC}"
     exit 1
 fi
+
+echo ""
 
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
     echo -e "${YELLOW}⚠ $INSTALL_DIR is not in your PATH${NC}"
@@ -62,9 +57,9 @@ if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
 fi
 
 echo -e "${BLUE}Usage:${NC}"
-echo -e "  ${GREEN}run-evals${NC}                  Run evals for skill in current dir (JSONL by default)"
-echo -e "  ${GREEN}run-evals path/to/skill${NC}    Run evals for a specific skill (JSONL by default)"
-echo -e "  ${GREEN}run-evals --all${NC}            Run evals for all skills (JSONL by default)"
-echo -e "  ${GREEN}run-evals --pretty${NC}         Use the human-readable colored report"
-echo -e "  ${GREEN}run-evals --provider codex${NC} Override provider auto-detection"
+echo -e "  ${GREEN}run-evals${NC}                     Run evals for skill in current dir"
+echo -e "  ${GREEN}run-evals path/to/skill${NC}       Run evals for a specific skill"
+echo -e "  ${GREEN}run-evals --all${NC}               Run evals for all skills"
+echo -e "  ${GREEN}run-evals --pretty${NC}            Human-readable colored report"
+echo -e "  ${GREEN}run-evals --provider codex${NC}    Override provider"
 echo ""
