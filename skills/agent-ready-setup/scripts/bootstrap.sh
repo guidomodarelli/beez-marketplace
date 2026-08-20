@@ -119,7 +119,9 @@ is_normalized_root_claude() {
 }
 
 is_plain_claude_proxy() {
-  [[ -f "$CLAUDE_FILE" ]] && [[ "$(cat "$CLAUDE_FILE")" == "$CLAUDE_PROXY" ]]
+  local claude_file="$1"
+
+  [[ -f "$claude_file" ]] && [[ "$(cat -- "$claude_file")" == "$CLAUDE_PROXY" ]]
 }
 
 create_root_agents_from_template() {
@@ -168,7 +170,7 @@ normalize_root_instructions() {
     if [[ -f "$CLAUDE_FILE" && -f "$AGENTS_FILE" ]] && cmp -s "$CLAUDE_FILE" "$AGENTS_FILE"; then
       cp -- "$ROOT_CLAUDE_TEMPLATE" "$CLAUDE_FILE"
       MIGRATED+=("$CLAUDE_FILE -> $AGENTS_FILE")
-    elif is_plain_claude_proxy; then
+    elif is_plain_claude_proxy "$CLAUDE_FILE"; then
       cp -- "$ROOT_CLAUDE_TEMPLATE" "$CLAUDE_FILE"
       MIGRATED+=("$CLAUDE_FILE -> root instruction proxy")
     else
@@ -207,6 +209,70 @@ ensure_root_centralization_rule() {
 }
 
 ensure_root_centralization_rule
+
+normalize_nested_instruction_pair() {
+  local directory="$1"
+  local claude_file="$directory/$CLAUDE_FILE"
+  local agents_file="$directory/$AGENTS_FILE"
+
+  if [[ -L "$claude_file" || -L "$agents_file" ]]; then
+    CONFLICTS+=("$claude_file and $agents_file include symlinked instructions; neither was followed or overwritten")
+    return
+  fi
+
+  if [[ -e "$claude_file" && ! -f "$claude_file" ]]; then
+    CONFLICTS+=("$claude_file is not a regular file; neither instruction file was changed")
+    return
+  fi
+
+  if [[ -e "$agents_file" && ! -f "$agents_file" ]]; then
+    CONFLICTS+=("$agents_file is not a regular file; neither instruction file was changed")
+    return
+  fi
+
+  if [[ -e "$claude_file" ]]; then
+    if is_plain_claude_proxy "$claude_file"; then
+      if [[ -e "$agents_file" ]]; then
+        record_skipped "$claude_file"
+        record_skipped "$agents_file"
+      else
+        CONFLICTS+=("$claude_file is an orphaned proxy; $agents_file is missing and neither instruction file was changed")
+      fi
+      return
+    fi
+
+    if [[ ! -e "$agents_file" ]]; then
+      cp -- "$claude_file" "$agents_file"
+      printf '%s\n' "$CLAUDE_PROXY" > "$claude_file"
+      MIGRATED+=("$claude_file -> $agents_file")
+    elif cmp -s "$claude_file" "$agents_file"; then
+      printf '%s\n' "$CLAUDE_PROXY" > "$claude_file"
+      MIGRATED+=("$claude_file -> $agents_file")
+    else
+      CONFLICTS+=("$claude_file and $agents_file differ; neither was overwritten")
+    fi
+    return
+  fi
+
+  if [[ -e "$agents_file" ]]; then
+    printf '%s\n' "$CLAUDE_PROXY" > "$claude_file"
+    MIGRATED+=("$agents_file -> $claude_file proxy")
+  fi
+}
+
+normalize_nested_instructions() {
+  local directory
+
+  while IFS= read -r -d '' directory; do
+    [[ "$directory" == "." ]] && continue
+    if [[ -e "$directory/$CLAUDE_FILE" || -L "$directory/$CLAUDE_FILE" || \
+          -e "$directory/$AGENTS_FILE" || -L "$directory/$AGENTS_FILE" ]]; then
+      normalize_nested_instruction_pair "$directory"
+    fi
+  done < <(find . -name .git -prune -o -type d -print0)
+}
+
+normalize_nested_instructions
 
 create_skill_adapter() {
   local src="$1"

@@ -146,6 +146,30 @@ EOF
   grep -Fxq '## Regla de centralización de instrucciones' CLAUDE.md
 }
 
+@test "nested instruction pairs normalize recursively" {
+  mkdir -p service packages/api
+  cat > service/CLAUDE.md <<'EOF'
+# Service instructions
+
+Run service checks before merging.
+EOF
+  cat > packages/api/AGENTS.md <<'EOF'
+# API instructions
+
+Keep API changes backwards compatible.
+EOF
+
+  run_bootstrap node
+
+  [ "$status" -eq 0 ]
+  grep -Fq '# Service instructions' service/AGENTS.md
+  grep -Fq 'Run service checks before merging.' service/AGENTS.md
+  [ "$(cat service/CLAUDE.md)" = '@AGENTS.md' ]
+  [ "$(cat packages/api/CLAUDE.md)" = '@AGENTS.md' ]
+  grep -Fq '# API instructions' packages/api/AGENTS.md
+  grep -Fq 'Keep API changes backwards compatible.' packages/api/AGENTS.md
+}
+
 @test "identical instruction files collapse to canonical AGENTS" {
   cat > AGENTS.md <<'EOF'
 # Shared instructions
