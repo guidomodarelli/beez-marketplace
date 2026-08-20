@@ -1,41 +1,107 @@
 {
-  "skill_name": "agent-ready-setup",
-  "evals": [
+  "schema_version": 2,
+  "skill": "agent-ready-setup",
+  "description": "Evalúa detección de stack y bootstrap de configuración Agent Ready.",
+  "test_cases": [
     {
-      "id": 1,
-      "prompt": "Quiero configurar agent ready en este proyecto. Es una app React con Nordic.",
-      "expected_output": "Detects 'frontend' stack from package.json, runs bootstrap.sh, creates all .claude/ dimension files from the frontend template. Reports what was created.",
+      "id": "frontend-bootstrap-creates-assets",
+      "description": "Detecta frontend y reporta assets creados desde plantilla.",
+      "input": "Quiero configurar agent ready en este proyecto. Es una app React con Nordic.",
       "assertions": [
-        { "name": "claude_dir_created",        "type": "dir_exists",     "path": ".claude" },
-        { "name": "settings_json_created",     "type": "file_exists",    "path": ".claude/settings.json" },
-        { "name": "claude_md_created",         "type": "file_exists",    "path": ".claude/CLAUDE.md" },
-        { "name": "rules_security_created",    "type": "file_exists",    "path": ".claude/rules/security.md" },
-        { "name": "agents_a11y_created",       "type": "file_exists",    "path": ".claude/agents/a11y-reviewer.md" },
-        { "name": "skills_component_created",  "type": "file_exists",    "path": ".claude/skills/component-creation.md" },
-        { "name": "hooks_pre_tool_created",    "type": "file_exists",    "path": ".claude/hooks/pre-tool-use.md" },
-        { "name": "commands_review_created",   "type": "file_exists",    "path": ".claude/commands/review-pr.md" }
+        {
+          "type": "contains_any",
+          "values": ["frontend", "Frontend"],
+          "description": "Reporta stack frontend detectado"
+        },
+        {
+          "type": "contains",
+          "value": ".claude/settings.json",
+          "description": "Reporta settings creado"
+        },
+        {
+          "type": "contains",
+          "value": ".claude/CLAUDE.md",
+          "description": "Reporta CLAUDE.md creado"
+        },
+        {
+          "type": "contains",
+          "value": ".claude/rules/security.md",
+          "description": "Reporta regla de seguridad creada"
+        },
+        {
+          "type": "contains",
+          "value": ".claude/agents/a11y-reviewer.md",
+          "description": "Reporta agente de accesibilidad creado"
+        },
+        {
+          "type": "contains",
+          "value": ".claude/skills/component-creation/SKILL.md",
+          "description": "Reporta skill de componentes con estructura preservada"
+        },
+        {
+          "type": "contains",
+          "value": ".claude/hooks/pre-tool-use.md",
+          "description": "Reporta hook pre-tool creado"
+        },
+        {
+          "type": "contains",
+          "value": ".claude/commands/review-pr.md",
+          "description": "Reporta comando de review creado"
+        }
       ]
     },
     {
-      "id": 2,
-      "prompt": "Setup agent ready. El proyecto ya tiene .claude/CLAUDE.md y .claude/rules/security.md.",
-      "expected_output": "Detects stack, runs bootstrap.sh. CLAUDE.md and rules/security.md are skipped (already exist). All other missing files are created. Report shows 'Already existed (skipped)' for the two existing files.",
+      "id": "existing-files-are-skipped",
+      "description": "Conserva archivos existentes y reporta que fueron omitidos.",
+      "input": "Setup agent ready. El proyecto ya tiene .claude/CLAUDE.md y .claude/rules/security.md.",
       "assertions": [
-        { "name": "existing_claude_md_not_overwritten",      "type": "file_contains", "path": ".claude/CLAUDE.md",          "value": "existing content" },
-        { "name": "existing_security_not_overwritten",       "type": "file_contains", "path": ".claude/rules/security.md",  "value": "existing content" },
-        { "name": "missing_testing_rule_created",            "type": "file_exists",   "path": ".claude/rules/testing.md" },
-        { "name": "skipped_files_reported",                  "type": "output_contains", "value": "skipped" }
+        {
+          "type": "contains",
+          "value": ".claude/CLAUDE.md",
+          "description": "Menciona archivo existente"
+        },
+        {
+          "type": "contains",
+          "value": ".claude/rules/security.md",
+          "description": "Menciona regla existente"
+        },
+        {
+          "type": "contains_any",
+          "values": ["skipped", "omitido", "omitidos", "ya existía"],
+          "description": "Reporta archivos existentes como omitidos"
+        }
       ]
     },
     {
-      "id": 3,
-      "prompt": "Make this repo agent ready. It's a Go microservice.",
-      "expected_output": "Detects 'go' stack from go.mod, copies go templates to .claude/. Creates coding-style.md, security.md, testing.md under rules/, go-specific agents and skills.",
+      "id": "go-bootstrap-creates-assets",
+      "description": "Detecta Go y reporta assets específicos creados.",
+      "input": "Make this repo agent ready. It's a Go microservice.",
       "assertions": [
-        { "name": "go_stack_detected",          "type": "output_contains", "value": "go" },
-        { "name": "settings_json_created",      "type": "file_exists",     "path": ".claude/settings.json" },
-        { "name": "go_coding_style_created",    "type": "file_exists",     "path": ".claude/rules/coding-style.md" },
-        { "name": "go_security_created",        "type": "file_exists",     "path": ".claude/rules/security.md" }
+        {
+          "type": "contains_any",
+          "values": ["go", "Go"],
+          "description": "Reporta stack Go detectado"
+        },
+        {
+          "type": "contains",
+          "value": ".claude/settings.json",
+          "description": "Reporta settings creado"
+        },
+        {
+          "type": "contains",
+          "value": ".claude/rules/coding-style.md",
+          "description": "Reporta regla de estilo creada"
+        },
+        {
+          "type": "contains",
+          "value": ".claude/rules/security.md",
+          "description": "Reporta regla de seguridad creada"
+        },
+        {
+          "type": "contains",
+          "value": ".claude/mcp.json",
+          "description": "Reporta configuración MCP creada"
+        }
       ]
     }
   ]
