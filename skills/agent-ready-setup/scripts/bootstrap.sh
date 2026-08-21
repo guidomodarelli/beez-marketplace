@@ -137,6 +137,84 @@ copy_if_missing() {
   fi
 }
 
+relative_shared_target() {
+  local relative="$1"
+  local destination_directory
+  local slash_count
+  local parent_levels=1
+  local prefix=""
+  local level
+
+  if [[ "$relative" == */* ]]; then
+    destination_directory="${relative%/*}"
+    slash_count="${destination_directory//[^\/]/}"
+    parent_levels=$(( ${#slash_count} + 2 ))
+  fi
+
+  for ((level = 0; level < parent_levels; level++)); do
+    prefix+="../"
+  done
+
+  printf '%s%s/%s\n' "$prefix" "$SHARED_DIR" "$relative"
+}
+
+link_claude_asset() {
+  local relative="$1"
+  local source="$SHARED_DIR/$relative"
+  local destination="$CLAUDE_DIR/$relative"
+  local target
+
+  case "$relative" in
+    ""|/*|../*|*/../*|*/..)
+      echo "ERROR: Invalid shared asset path: $relative" >&2
+      return 1
+      ;;
+  esac
+
+  if [[ ! -e "$source" && ! -L "$source" ]]; then
+    echo "ERROR: Canonical shared asset is missing: $source" >&2
+    return 1
+  fi
+
+  mkdir -p -- "$(dirname -- "$destination")"
+  target=$(relative_shared_target "$relative")
+
+  if [[ -L "$destination" ]]; then
+    record_skipped "$destination"
+    return 0
+  fi
+
+  if [[ -e "$destination" ]]; then
+    if [[ ! -f "$destination" || ! -f "$source" ]] || ! cmp -s "$destination" "$source"; then
+      CONFLICTS+=("$destination differs from canonical shared asset $source; neither was overwritten")
+      return 0
+    fi
+
+    local temporary_link="${destination}.agent-ready-link.$$"
+    local backup_file="${destination}.agent-ready-backup.$$"
+    if [[ -e "$temporary_link" || -L "$temporary_link" || -e "$backup_file" || -L "$backup_file" ]]; then
+      CONFLICTS+=("temporary normalization path already exists for $destination; neither was changed")
+      return 0
+    fi
+
+    ln -s -- "$target" "$temporary_link"
+    mv -- "$destination" "$backup_file"
+    if mv -- "$temporary_link" "$destination"; then
+      rm -- "$backup_file"
+      MIGRATED+=("$destination -> $source")
+    else
+      mv -- "$backup_file" "$destination"
+      rm -f -- "$temporary_link"
+      echo "ERROR: Could not normalize shared asset: $destination" >&2
+      return 1
+    fi
+    return 0
+  fi
+
+  ln -s -- "$target" "$destination"
+  record_created "$destination -> $source"
+}
+
 is_normalized_root_claude() {
   [[ -f "$CLAUDE_FILE" ]] && cmp -s "$CLAUDE_FILE" "$ROOT_CLAUDE_TEMPLATE"
 }
@@ -322,8 +400,9 @@ create_skill_adapter() {
   record_created "$dst"
 }
 
-# Project every template file into Claude and shared-agent trees. CLAUDE.md is
-# represented by the root instruction pair; settings.json remains Claude-only.
+# Project shared assets into the canonical .agents tree. Claude-specific
+# settings remain copied to .claude; all other Claude assets are symlinked views
+# of the canonical shared files so providers cannot drift independently.
 while IFS= read -r -d '' file; do
   relative="${file#"$SRC/"}"
 
@@ -332,8 +411,6 @@ while IFS= read -r -d '' file; do
   elif [[ "$relative" == "settings.json" ]]; then
     copy_if_missing "$file" "$CLAUDE_DIR/$relative"
   else
-    copy_if_missing "$file" "$CLAUDE_DIR/$relative"
-
     case "$relative" in
       skills/*/SKILL.md)
         skill_name="${relative#skills/}"
@@ -353,6 +430,8 @@ while IFS= read -r -d '' file; do
         copy_if_missing "$file" "$SHARED_DIR/$relative"
         ;;
     esac
+
+    link_claude_asset "$relative"
   fi
 done < <(find "$SRC" -type f -print0)
 

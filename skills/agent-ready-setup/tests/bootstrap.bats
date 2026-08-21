@@ -29,23 +29,63 @@ run_bootstrap() {
   grep -Fxq '@AGENTS.md' CLAUDE.md
   grep -Fxq '## Regla de centralización de instrucciones' CLAUDE.md
   [ -f .claude/settings.json ]
-  [ -f .claude/rules/security.md ]
+  [ -L .claude/rules/security.md ]
+  [ "$(readlink .claude/rules/security.md)" = "../../.agents/rules/security.md" ]
   [ -f .agents/rules/security.md ]
+  [ -L .claude/skills/component-creation/SKILL.md ]
+  [ "$(readlink .claude/skills/component-creation/SKILL.md)" = "../../../.agents/skills/component-creation/SKILL.md" ]
   [ -f .agents/skills/component-creation/SKILL.md ]
+  [ -L .claude/agents/security-scanner.md ]
+  [ -L .claude/commands/review-pr.md ]
   [ -f .agents/agents/security-scanner.md ]
   [ -f .agents/commands/review-pr.md ]
   [ -f .agents/skills/security-scanner/SKILL.md ]
   [ -f .agents/skills/review-pr/SKILL.md ]
+  [ -L .claude/mcp.json ]
   [ -f .codex/.mcp.json ]
+  [ -L .claude/hooks/check-harness-consistency.sh ]
   [ -f .codex/hooks/hooks.json ]
   [ ! -f .claude/CLAUDE.md ]
   [ ! -d .codex/agents ]
   grep -Fq '@.agents/rules/security.md' AGENTS.md
   grep -Fxq '## Centralización recursiva de instrucciones' AGENTS.md
+  printf '\n# Canonical shared asset\n' >> .agents/rules/security.md
+  grep -Fq '# Canonical shared asset' .claude/rules/security.md
   jq -n --slurpfile claude .claude/mcp.json --slurpfile codex .codex/.mcp.json \
     '$claude[0].mcpServers == $codex[0].mcpServers' >/dev/null
   jq -e '.hooks.SessionStart[0].matcher == "startup|clear|resume"' .codex/hooks/hooks.json >/dev/null
   [[ "$output" == *"Providers: Claude Code + Codex-compatible shared tree"* ]]
+}
+
+@test "identical legacy Claude copies become canonical symlinks" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+
+  rm .claude/rules/security.md
+  cp .agents/rules/security.md .claude/rules/security.md
+
+  run_bootstrap frontend
+
+  [ "$status" -eq 0 ]
+  [ -L .claude/rules/security.md ]
+  [[ "$output" == *"Normalized instructions:"* ]]
+  [[ "$output" == *".claude/rules/security.md -> .agents/rules/security.md"* ]]
+}
+
+@test "divergent Claude copies remain untouched and report conflict" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+
+  rm .claude/rules/security.md
+  printf '%s\n' '# Claude-only security override' > .claude/rules/security.md
+
+  run_bootstrap frontend
+
+  [ "$status" -eq 0 ]
+  [ ! -L .claude/rules/security.md ]
+  grep -Fxq '# Claude-only security override' .claude/rules/security.md
+  [[ "$output" == *"Instruction conflicts (manual resolution required):"* ]]
+  [[ "$output" == *".claude/rules/security.md differs from canonical shared asset"* ]]
 }
 
 @test "nested skills receive valid Codex adapters with their directory names" {

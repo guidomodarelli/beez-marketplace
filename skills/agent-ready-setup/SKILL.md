@@ -22,10 +22,12 @@ metadata:
 Detecta stack y prepara configuración para múltiples providers en una sola
 operación. El bootstrap mantiene tres planos con responsabilidades distintas:
 
-- `.claude/`: configuración Claude Code y dimensiones del Agent Ready Score.
-- `.agents/`: reglas, skills y assets compartidos, incluyendo skills descubribles
-  por Codex en `.agents/skills/`. Commands y agents se adaptan a `SKILL.md`
-  porque Codex no los consume como componentes independientes.
+- `.agents/`: árbol canónico de reglas, skills y assets compartidos, incluyendo
+  skills descubribles por Codex en `.agents/skills/`. Commands y agents se
+  adaptan a `SKILL.md` porque Codex no los consume como componentes independientes.
+- `.claude/`: configuración Claude Code, dimensiones del Agent Ready Score y
+  symlinks relativos hacia assets canónicos de `.agents/`; `settings.json` queda
+  provider-specific.
 - `.codex/`: bridge provider-specific para MCP (`.mcp.json`) y hooks Codex.
 
 `AGENTS.md` es la fuente canónica. `CLAUDE.md` raíz contiene `@AGENTS.md` más
@@ -104,8 +106,10 @@ bash "$SKILL_DIR/scripts/bootstrap.sh" \
   --skill-dir "$SKILL_DIR"
 ```
 
-Script proyecta assets faltantes a `.claude/`, `.agents/` y `.codex/`.
-También normaliza instrucciones raíz:
+Script copia assets compartidos faltantes a `.agents/`, crea symlinks relativos
+correspondientes bajo `.claude/` y prepara bridge `.codex/`. Copias legacy
+idénticas bajo `.claude/` se normalizan a symlinks; copias divergentes se
+conservan y se reportan como conflicto. También normaliza instrucciones raíz:
 
 1. Si `CLAUDE.md` raíz contiene proxy más regla de centralización, lo considera
    normalizado y no lo modifica.
