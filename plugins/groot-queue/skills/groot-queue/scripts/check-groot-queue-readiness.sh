@@ -258,17 +258,24 @@ validate_configuration() {
     ($config.fury_services.provider_manifest_paths.codex == ".codex-plugin/plugin.json") and
     ($config.fury_services.mcp_manifest_path == ".mcp.json") and
     ($config.fury_services.expected_mcp_server | type == "object") and
-    (($config.fury_services.expected_mcp_server | keys | sort) == ["args", "command", "name"]) and
+    (($config.fury_services.expected_mcp_server | keys | sort) == ["command", "name", "required_args", "tolerated_numeric_flags"]) and
     ($config.fury_services.expected_mcp_server.name == "fury") and
     ($config.fury_services.expected_mcp_server.command == "mcp-remote-proxy") and
-    ($config.fury_services.expected_mcp_server.args == [
+    ($config.fury_services.expected_mcp_server.required_args == [
       "https://services-gateway-mcp.melioffice.com/v1/servers/fury",
       "--headers",
       "x-origin",
-      "fury-services-plugin",
-      "--timeout",
-      "5"
+      "fury-services-plugin"
     ]) and
+    ($config.fury_services.expected_mcp_server.tolerated_numeric_flags | type == "array") and
+    (($config.fury_services.expected_mcp_server.tolerated_numeric_flags | length) > 0) and
+    all($config.fury_services.expected_mcp_server.tolerated_numeric_flags[];
+      (type == "string") and test("^--[a-z][a-z0-9-]*$")) and
+    (($config.fury_services.expected_mcp_server.tolerated_numeric_flags | unique | length) ==
+      ($config.fury_services.expected_mcp_server.tolerated_numeric_flags | length)) and
+    (($config.fury_services.expected_mcp_server.required_args
+      - $config.fury_services.expected_mcp_server.tolerated_numeric_flags
+      | length) == ($config.fury_services.expected_mcp_server.required_args | length)) and
 
     ($config.fury_runtime | type == "object") and
     (($config.fury_runtime | keys | sort) == ["component", "required_tools"]) and
@@ -718,6 +725,68 @@ inspect_fury_manifest() {
   FURY_MANIFEST_OK=true
 }
 
+# Contrato de args del MCP `fury`.
+#
+# `required_args` se compara de forma exacta y ordenada (gateway URL + headers): un cambio
+# ahí es un cambio real de contrato y debe fallar. Después de ese prefijo se aceptan los
+# flags de `tolerated_numeric_flags` (p. ej. `--timeout`) como pares `<flag> <entero>`,
+# cada uno a lo sumo una vez: se valida que el valor sea entero, nunca cuál es. La razón es
+# que fury-services movió `--timeout` 300 -> 5 -> 300 entre 0.43.0 y 0.45.1, y pinear el
+# número exacto rompía `fury_mcp_declaration` en toda invocación distinta de `setup` tras
+# cada release. Todo lo demás (flag duplicado, flag fuera del sufijo, arg desconocido,
+# valor no entero) sigue fallando cerrado.
+readonly FURY_ARGS_JQ_CONTRACT='
+  # Los args tolerados solo se aceptan como pares `<flag> <entero>` al final, cada flag
+  # a lo sumo una vez. Un flag repetido o fuera del final es una declaración malformada:
+  # la posición cambia la invocación real del proxy, así que no se tolera.
+  def tolerated_suffix_ok($flags):
+    . as $suffix
+    | ((($suffix | length) % 2) == 0)
+    and ([range(0; ($suffix | length); 2) | $suffix[.]] | (unique | length) == length)
+    and all(range(0; ($suffix | length); 2);
+          . as $i
+          | (($flags | index($suffix[$i])) != null)
+          and ($suffix[$i + 1] | test("^[0-9]+$")));
+
+  def args_match($required; $flags):
+    (type == "array")
+    and all(.[]; type == "string")
+    and (.[0:($required | length)] == $required)
+    and (.[($required | length):] | tolerated_suffix_ok($flags));
+'
+
+# Devuelve 0 si el array de args observado satisface el contrato.
+fury_args_match() {
+  local observed_args_json="$1"
+
+  printf '%s' "$observed_args_json" | jq -e \
+    --argjson required "$FURY_MCP_REQUIRED_ARGS_JSON" \
+    --argjson tolerated "$FURY_MCP_TOLERATED_FLAGS_JSON" \
+    "$FURY_ARGS_JQ_CONTRACT"' args_match($required; $tolerated)' >/dev/null 2>&1
+}
+
+# Valida el fragmento "<command> <args...>" que renderiza `claude mcp list`.
+claude_mcp_configuration_matches() {
+  local configuration_part="$1"
+  local command_token="${configuration_part%% *}"
+  local args_string="${configuration_part#* }"
+  local observed_args_json
+
+  if [ "$command_token" != "$FURY_MCP_COMMAND" ]; then
+    return 1
+  fi
+
+  if [ "$args_string" = "$configuration_part" ]; then
+    return 1
+  fi
+
+  if ! observed_args_json="$(printf '%s' "$args_string" | jq -Rc 'split(" ")' 2>/dev/null)"; then
+    return 1
+  fi
+
+  fury_args_match "$observed_args_json"
+}
+
 inspect_fury_mcp_declaration() {
   local mcp_manifest_file="${FURY_PLUGIN_INSTALL_PATH%/}/$FURY_MCP_MANIFEST_PATH"
 
@@ -726,19 +795,31 @@ inspect_fury_mcp_declaration() {
     return 0
   fi
 
+  local declared_args_json
+
   if ! jq -e \
     --arg server_name "$FURY_MCP_SERVER_NAME" \
-    --arg expected_command "$FURY_MCP_COMMAND" \
-    --argjson expected_args "$FURY_MCP_ARGS_JSON" '
+    --arg expected_command "$FURY_MCP_COMMAND" '
       type == "object" and
       ((keys | sort) == ["mcpServers"]) and
       (.mcpServers | type == "object") and
       ((.mcpServers | keys) == [$server_name]) and
       (.mcpServers[$server_name] | type == "object") and
       ((.mcpServers[$server_name] | keys | sort) == ["args", "command"]) and
-      (.mcpServers[$server_name].command == $expected_command) and
-      (.mcpServers[$server_name].args == $expected_args)
+      (.mcpServers[$server_name].command == $expected_command)
     ' "$mcp_manifest_file" >/dev/null 2>&1; then
+    FURY_MCP_DECLARATION_FAILURE_CODE="FURY_MCP_DECLARATION_INVALID"
+    return 0
+  fi
+
+  if ! declared_args_json="$(jq -ce \
+    --arg server_name "$FURY_MCP_SERVER_NAME" \
+    '.mcpServers[$server_name].args' "$mcp_manifest_file" 2>/dev/null)"; then
+    FURY_MCP_DECLARATION_FAILURE_CODE="FURY_MCP_DECLARATION_INVALID"
+    return 0
+  fi
+
+  if ! fury_args_match "$declared_args_json"; then
     FURY_MCP_DECLARATION_FAILURE_CODE="FURY_MCP_DECLARATION_INVALID"
     return 0
   fi
@@ -749,13 +830,13 @@ inspect_fury_mcp_declaration() {
 inspect_claude_mcp_cli() {
   local mcp_output_file="$TEMP_DIRECTORY/claude-mcp-list.txt"
   local server_prefix="plugin:fury-services:$FURY_MCP_SERVER_NAME:"
-  local expected_configuration="$server_prefix $FURY_MCP_COMMAND $FURY_MCP_ARG_GATEWAY $FURY_MCP_ARG_HEADERS_FLAG $FURY_MCP_ARG_HEADER_NAME $FURY_MCP_ARG_HEADER_VALUE $FURY_MCP_ARG_TIMEOUT_FLAG $FURY_MCP_ARG_TIMEOUT_VALUE"
-  local expected_connected_line="$expected_configuration - ✔ Connected"
-  local legacy_connected_line="$expected_configuration - ✓ Connected"
   local matching_server_count=0
   local configuration_matches=false
   local connected_matches=false
   local output_line
+  local line_remainder
+  local configuration_part
+  local status_suffix
 
   if ! claude mcp list > "$mcp_output_file" 2>/dev/null; then
     FURY_MCP_CLI_FAILURE_CODE="FURY_MCP_CLI_CHECK_FAILED"
@@ -766,11 +847,21 @@ inspect_claude_mcp_cli() {
     case "$output_line" in
       "$server_prefix"*)
         matching_server_count=$((matching_server_count + 1))
-        if [ "$output_line" = "$expected_connected_line" ] || [ "$output_line" = "$legacy_connected_line" ]; then
-          connected_matches=true
-        fi
-        case "$output_line" in
-          "$expected_configuration - "*) configuration_matches=true ;;
+        line_remainder="${output_line#"$server_prefix" }"
+
+        case "$line_remainder" in
+          *" - "*)
+            configuration_part="${line_remainder% - *}"
+            status_suffix="${line_remainder##* - }"
+
+            if claude_mcp_configuration_matches "$configuration_part"; then
+              configuration_matches=true
+
+              if [ "$status_suffix" = "✔ Connected" ] || [ "$status_suffix" = "✓ Connected" ]; then
+                connected_matches=true
+              fi
+            fi
+            ;;
           *) ;;
         esac
         ;;
@@ -826,14 +917,16 @@ inspect_codex_mcp_cli() {
   if ! jq -e \
     --arg server_name "$FURY_MCP_SERVER_NAME" \
     --arg expected_command "$FURY_MCP_COMMAND" \
-    --argjson expected_args "$FURY_MCP_ARGS_JSON" '
+    --argjson required "$FURY_MCP_REQUIRED_ARGS_JSON" \
+    --argjson tolerated "$FURY_MCP_TOLERATED_FLAGS_JSON" \
+    "$FURY_ARGS_JQ_CONTRACT"'
       [.[] | select(.name == $server_name)][0] |
       (.enabled == true) and
       (.disabled_reason == null) and
       (.transport | type == "object") and
       (.transport.type == "stdio") and
       (.transport.command == $expected_command) and
-      (.transport.args == $expected_args)
+      (.transport.args | args_match($required; $tolerated))
     ' "$mcp_output_file" >/dev/null 2>&1; then
     FURY_MCP_CLI_FAILURE_CODE="FURY_MCP_CLI_RESPONSE_INVALID"
     return 0
@@ -1301,15 +1394,10 @@ CONFIG_VALUES="$(printf '%s' "$CONFIG_JSON" | jq -er '[
   .fury_services.mcp_manifest_path,
   .fury_services.expected_mcp_server.name,
   .fury_services.expected_mcp_server.command,
-  .fury_services.expected_mcp_server.args[0],
-  .fury_services.expected_mcp_server.args[1],
-  .fury_services.expected_mcp_server.args[2],
-  .fury_services.expected_mcp_server.args[3],
-  .fury_services.expected_mcp_server.args[4],
-  .fury_services.expected_mcp_server.args[5],
   .reuse_result.max_age_seconds
 ] | @tsv')"
-FURY_MCP_ARGS_JSON="$(printf '%s' "$CONFIG_JSON" | jq -ce '.fury_services.expected_mcp_server.args')"
+FURY_MCP_REQUIRED_ARGS_JSON="$(printf '%s' "$CONFIG_JSON" | jq -ce '.fury_services.expected_mcp_server.required_args')"
+FURY_MCP_TOLERATED_FLAGS_JSON="$(printf '%s' "$CONFIG_JSON" | jq -ce '.fury_services.expected_mcp_server.tolerated_numeric_flags')"
 IFS=$'\t' read -r \
   SCHEMA_VERSION \
   GRID_PLUGIN_ID \
@@ -1330,12 +1418,6 @@ IFS=$'\t' read -r \
   FURY_MCP_MANIFEST_PATH \
   FURY_MCP_SERVER_NAME \
   FURY_MCP_COMMAND \
-  FURY_MCP_ARG_GATEWAY \
-  FURY_MCP_ARG_HEADERS_FLAG \
-  FURY_MCP_ARG_HEADER_NAME \
-  FURY_MCP_ARG_HEADER_VALUE \
-  FURY_MCP_ARG_TIMEOUT_FLAG \
-  FURY_MCP_ARG_TIMEOUT_VALUE \
   REUSE_RESULT_MAX_AGE_SECONDS <<EOF
 $CONFIG_VALUES
 EOF

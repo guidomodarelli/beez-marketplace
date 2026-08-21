@@ -38,13 +38,14 @@
     "expected_mcp_server": {
       "name": "fury",
       "command": "mcp-remote-proxy",
-      "args": [
+      "required_args": [
         "https://services-gateway-mcp.melioffice.com/v1/servers/fury",
         "--headers",
         "x-origin",
-        "fury-services-plugin",
-        "--timeout",
-        "5"
+        "fury-services-plugin"
+      ],
+      "tolerated_numeric_flags": [
+        "--timeout"
       ]
     }
   },

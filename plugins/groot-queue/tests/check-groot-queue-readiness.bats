@@ -147,9 +147,112 @@ STUB
   assert_failure 10 FURY_MCP_DECLARATION_UNAVAILABLE
 }
 
-@test "invalid Fury MCP declaration fails closed" {
-  jq '.mcpServers.fury.args[-1] = "301"' "$FURY_PLUGIN_DIRECTORY/.mcp.json" > "$TEST_ROOT/invalid-mcp-declaration.json"
-  mv "$TEST_ROOT/invalid-mcp-declaration.json" "$FURY_PLUGIN_DIRECTORY/.mcp.json"
+# El valor de `--timeout` es tolerado a propósito: fury-services lo movió entre 300 y 5 y de
+# vuelta a 300 entre 0.43.0 y 0.45.1. Pinear el número exacto rompía `fury_mcp_declaration`
+# en toda invocación distinta de `setup` después de cada release upstream.
+@test "Fury MCP declaration tolerates any integer timeout end to end" {
+  local timeout_value
+
+  for timeout_value in 5 300 301 86400; do
+    FURY_FIXTURE_TIMEOUT="$timeout_value"
+    write_fury_fixture "$FURY_PLUGIN_DIRECTORY" true
+
+    FURY_FIXTURE_TIMEOUT="$timeout_value" \
+      run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+
+    assert_equal 0 "$LAST_STATUS" "timeout $timeout_value must be tolerated"
+    assert_json '.ok == true and .exit_code == 0 and (.checks[] | select(.name == "fury_mcp_declaration") | .ok) == true and (.checks[] | select(.name == "fury_mcp_cli") | .ok) == true' \
+      "timeout $timeout_value must keep both Fury MCP checks green"
+  done
+}
+
+@test "Fury MCP declaration tolerates an absent timeout flag" {
+  jq 'del(.mcpServers.fury.args[-2:])' "$FURY_PLUGIN_DIRECTORY/.mcp.json" > "$TEST_ROOT/no-timeout.json"
+  mv "$TEST_ROOT/no-timeout.json" "$FURY_PLUGIN_DIRECTORY/.mcp.json"
+
+  run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+
+  assert_equal 0 "$LAST_STATUS" "an absent --timeout must be tolerated"
+  assert_json '(.checks[] | select(.name == "fury_mcp_declaration") | .ok) == true' \
+    "an absent --timeout must keep the declaration green"
+}
+
+@test "changed Fury MCP gateway URL fails closed" {
+  jq '.mcpServers.fury.args[0] = "https://mcp-services-gateway.furycloud.io/v1/servers/fury"' \
+    "$FURY_PLUGIN_DIRECTORY/.mcp.json" > "$TEST_ROOT/invalid-gateway.json"
+  mv "$TEST_ROOT/invalid-gateway.json" "$FURY_PLUGIN_DIRECTORY/.mcp.json"
+
+  run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+  assert_failure 10 FURY_MCP_DECLARATION_INVALID
+}
+
+@test "changed Fury MCP header value fails closed" {
+  jq '.mcpServers.fury.args[3] = "unexpected-origin"' \
+    "$FURY_PLUGIN_DIRECTORY/.mcp.json" > "$TEST_ROOT/invalid-header.json"
+  mv "$TEST_ROOT/invalid-header.json" "$FURY_PLUGIN_DIRECTORY/.mcp.json"
+
+  run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+  assert_failure 10 FURY_MCP_DECLARATION_INVALID
+}
+
+@test "non numeric Fury MCP timeout value fails closed" {
+  jq '.mcpServers.fury.args[-1] = "not-a-number"' \
+    "$FURY_PLUGIN_DIRECTORY/.mcp.json" > "$TEST_ROOT/invalid-timeout.json"
+  mv "$TEST_ROOT/invalid-timeout.json" "$FURY_PLUGIN_DIRECTORY/.mcp.json"
+
+  run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+  assert_failure 10 FURY_MCP_DECLARATION_INVALID
+}
+
+@test "unexpected extra Fury MCP argument fails closed" {
+  jq '.mcpServers.fury.args += ["--unexpected-flag"]' \
+    "$FURY_PLUGIN_DIRECTORY/.mcp.json" > "$TEST_ROOT/extra-arg.json"
+  mv "$TEST_ROOT/extra-arg.json" "$FURY_PLUGIN_DIRECTORY/.mcp.json"
+
+  run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+  assert_failure 10 FURY_MCP_DECLARATION_INVALID
+}
+
+@test "duplicate tolerated Fury MCP flag fails closed" {
+  jq '.mcpServers.fury.args += ["--timeout","5"]' \
+    "$FURY_PLUGIN_DIRECTORY/.mcp.json" > "$TEST_ROOT/duplicate-timeout.json"
+  mv "$TEST_ROOT/duplicate-timeout.json" "$FURY_PLUGIN_DIRECTORY/.mcp.json"
+
+  run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+  assert_failure 10 FURY_MCP_DECLARATION_INVALID
+}
+
+@test "tolerated Fury MCP flag before the required args fails closed" {
+  jq '{mcpServers: {fury: {command: .mcpServers.fury.command, args: (["--timeout","300"] + .mcpServers.fury.args[0:4])}}}' \
+    "$FURY_PLUGIN_DIRECTORY/.mcp.json" > "$TEST_ROOT/leading-timeout.json"
+  mv "$TEST_ROOT/leading-timeout.json" "$FURY_PLUGIN_DIRECTORY/.mcp.json"
+
+  run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+  assert_failure 10 FURY_MCP_DECLARATION_INVALID
+}
+
+@test "tolerated Fury MCP flag inside the required args fails closed" {
+  jq '{mcpServers: {fury: {command: .mcpServers.fury.command, args: (.mcpServers.fury.args[0:1] + ["--timeout","300"] + .mcpServers.fury.args[1:4])}}}' \
+    "$FURY_PLUGIN_DIRECTORY/.mcp.json" > "$TEST_ROOT/interleaved-timeout.json"
+  mv "$TEST_ROOT/interleaved-timeout.json" "$FURY_PLUGIN_DIRECTORY/.mcp.json"
+
+  run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+  assert_failure 10 FURY_MCP_DECLARATION_INVALID
+}
+
+@test "dangling tolerated Fury MCP flag without a value fails closed" {
+  jq 'del(.mcpServers.fury.args[-1])' \
+    "$FURY_PLUGIN_DIRECTORY/.mcp.json" > "$TEST_ROOT/dangling-timeout.json"
+  mv "$TEST_ROOT/dangling-timeout.json" "$FURY_PLUGIN_DIRECTORY/.mcp.json"
+
+  run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+  assert_failure 10 FURY_MCP_DECLARATION_INVALID
+}
+
+@test "non string Fury MCP argument fails closed" {
+  jq '.mcpServers.fury.args[-1] = 300' \
+    "$FURY_PLUGIN_DIRECTORY/.mcp.json" > "$TEST_ROOT/numeric-arg.json"
+  mv "$TEST_ROOT/numeric-arg.json" "$FURY_PLUGIN_DIRECTORY/.mcp.json"
 
   run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
   assert_failure 10 FURY_MCP_DECLARATION_INVALID

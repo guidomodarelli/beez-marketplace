@@ -7,7 +7,8 @@ Los subcomandos deben leer este archivo para obtener los IDs; no hardcodear valo
 
 ## `customfield_13781` — Squad destino (`DERIVATION_DESTINATION_SQUAD_FIELD`)
 
-Campo usado en la transición `121` "Derivar a otro equipo".
+Campo usado en la transición `121` "Derivar a otro equipo". Es además el campo que
+identifica la **cola dueña** del ticket, así que es también el filtro de cola en JQL.
 
 | Equipo | option id |
 |--------|-----------|
@@ -16,6 +17,30 @@ Campo usado en la transición `121` "Derivar a otro equipo".
 | Helpdesk IA | `125821` |
 | LMS | `19721` |
 | SHE | `85286` |
+
+### Formas del campo según destino
+
+El mismo campo se escribe distinto según dónde se use. Estas son las dos únicas formas válidas:
+
+| Alias | Expansión | Dónde se usa |
+|-------|-----------|--------------|
+| `DERIVATION_DESTINATION_SQUAD_FIELD` | `customfield_13781` | Payload de `fields` para Jira/MCP (transición `121`). |
+| `<SQUAD_FIELD_JQL>` | `cf[13781]` | Cualquier `--jql` que filtre por cola. |
+
+Expandir el alias al valor real antes de ejecutar; no dejar el alias literal en el comando
+ni en el payload.
+
+> ⚠️ **En JQL el campo se referencia por field id, nunca por su nombre visible.** El nombre
+> que muestra la UI de Jira es `Squad`, pero `Squad = Groot` no resuelve el option y la query
+> falla al parsear:
+>
+> ```
+> failed to parse JQL query: la opción 'groot' para el campo 'squad' no existe.
+> ```
+>
+> El filtro de la cola Groot es `<SQUAD_FIELD_JQL> = "Groot"`, expandido a
+> `cf[13781] = "Groot"`, respetando el escaping de comillas del contexto de shell
+> (`\"Groot\"` dentro de `--jql "..."`, `"Groot"` dentro de `--jql '...'`).
 
 ---
 

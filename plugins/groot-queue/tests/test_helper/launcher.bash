@@ -58,7 +58,7 @@ JSON
     "fury": {
       "command": "mcp-remote-proxy",
       "args": [
-        "https://mcp-services-gateway.furycloud.io/v1/servers/fury",
+        "https://services-gateway-mcp.melioffice.com/v1/servers/fury",
         "--headers",
         "x-origin",
         "fury-services-plugin",
@@ -97,7 +97,7 @@ fi
 
 if [ "${1:-}" = "mcp" ] && [ "${2:-}" = "list" ] && [ "$#" -eq 2 ]; then
   printf '%s\n' 'claude mcp' >> "$MCP_LOG"
-  printf '%s\n' 'plugin:fury-services:fury: mcp-remote-proxy https://mcp-services-gateway.furycloud.io/v1/servers/fury --headers x-origin fury-services-plugin --timeout 300 - ✔ Connected'
+  printf '%s\n' 'plugin:fury-services:fury: mcp-remote-proxy https://services-gateway-mcp.melioffice.com/v1/servers/fury --headers x-origin fury-services-plugin --timeout 300 - ✔ Connected'
   exit 0
 fi
 
@@ -169,7 +169,7 @@ fi
 
 if [ "${1:-}" = "mcp" ] && [ "${2:-}" = "list" ] && [ "${3:-}" = "--json" ] && [ "$#" -eq 3 ]; then
   printf '%s\n' 'codex mcp' >> "$MCP_LOG"
-  jq -nc '[{name:"fury",enabled:true,disabled_reason:null,transport:{type:"stdio",command:"mcp-remote-proxy",args:["https://mcp-services-gateway.furycloud.io/v1/servers/fury","--headers","x-origin","fury-services-plugin","--timeout","300"]}}]'
+  jq -nc '[{name:"fury",enabled:true,disabled_reason:null,transport:{type:"stdio",command:"mcp-remote-proxy",args:["https://services-gateway-mcp.melioffice.com/v1/servers/fury","--headers","x-origin","fury-services-plugin","--timeout","300"]}}]'
   exit 0
 fi
 

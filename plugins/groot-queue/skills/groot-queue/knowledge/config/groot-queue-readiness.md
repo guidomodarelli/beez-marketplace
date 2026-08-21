@@ -63,6 +63,27 @@ El checker conserva el resultado de cada capa en `checks` y los fallos en `failu
 | `general_read` | `GENERAL_READ_FAILED`, `GENERAL_READ_FORBIDDEN`, `GENERAL_READ_ENDPOINT_NOT_FOUND`, `GENERAL_READ_RESPONSE_INVALID` |
 | `required_document` | `REQUIRED_DOCUMENT_READ_FAILED`, `REQUIRED_DOCUMENT_FORBIDDEN`, `REQUIRED_DOCUMENT_NOT_FOUND`, `REQUIRED_DOCUMENT_RESPONSE_INVALID` |
 
+#### Contrato de args del MCP `fury`
+
+`fury_mcp_declaration` y `fury_mcp_cli` comparan los args declarados por `fury-services`
+(en su `.mcp.json` y en la salida de `claude mcp list` / `codex mcp list --json`) contra
+`fury_services.expected_mcp_server` de `groot-queue-readiness.json`, con dos niveles:
+
+| Campo | Regla de comparación |
+|---|---|
+| `required_args` | Igualdad exacta y ordenada. Gateway URL, `--headers`, nombre y valor del header. Un cambio acá es un cambio real de contrato y **debe** fallar. |
+| `tolerated_numeric_flags` | Cada flag listado se acepta como par `<flag> <entero>` **solo en el sufijo, después de `required_args`, y a lo sumo una vez**. Se valida que el valor sea entero, nunca cuál es. El sufijo completo puede estar ausente. |
+
+`--timeout` está en `tolerated_numeric_flags` a propósito: fury-services lo movió `300` → `5`
+→ `300` entre 0.43.0 y 0.45.1, y pinear el valor exacto hacía fallar `fury_mcp_declaration`
+con `FURY_MCP_DECLARATION_INVALID` en toda invocación distinta de `setup` después de cada
+release upstream. Tolerar el valor evita ese acoplamiento sin aflojar el resto del contrato.
+
+Sigue fallando cerrado: gateway URL distinta, header distinto, valor de flag tolerado
+no entero o ausente, flag tolerado duplicado, flag tolerado fuera del sufijo (antes de
+`required_args` o intercalado entre ellos), arg extra inesperado, o cualquier arg que no
+sea string. La posición importa porque cambia la invocación real del proxy.
+
 Los checks no ejecutados conservan el failure code concreto de la capa que los bloqueó. Los fallos del contrato de ejecución son `INVALID_ARGUMENTS`, `INVALID_PROVIDER`, `INVALID_REUSE_RESULT_PATH`, `REUSE_RESULT_FILE_UNSAFE`, `TEMP_DIRECTORY_UNAVAILABLE` e `INTERNAL_CONTRACT_FAILED`.
 
 Los responses exitosos de Grid también deben cumplir su contrato mínimo:
