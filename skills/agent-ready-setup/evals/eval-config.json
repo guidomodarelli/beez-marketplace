@@ -51,6 +51,23 @@
       ]
     },
     {
+      "id": "scoped-andes-dependency-detects-frontend",
+      "description": "Detecta frontend cuando package.json solo contiene una dependencia scoped de Andes.",
+      "input": "Explicá cómo agent-ready-setup clasifica un proyecto cuyo package.json tiene solo la dependencia `@andes/button`, sin React ni Nordic. No ejecutes Bash ni escribas archivos; respondé desde la plantilla bundled.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["frontend", "Frontend"],
+          "description": "Clasifica dependencia @andes/button como frontend"
+        },
+        {
+          "type": "contains_any",
+          "values": ["@andes/", "@andes/button"],
+          "description": "Reconoce prefijo de paquete scoped Andes"
+        }
+      ]
+    },
+    {
       "id": "frontend-review-uses-remote-default-branch",
       "description": "Explica fallback portable cuando no hay PR seleccionable.",
       "input": "Explicá qué hace el comando review-pr si gh pr diff no puede seleccionar un PR y el repositorio usa master o trunk en vez de main. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",

@@ -72,7 +72,7 @@ Inspeccionar raíz proyecto. Usar prioridad:
 ```bash
 detect_stack() {
   if [[ -f "package.json" ]]; then
-    if grep -qE '"react"|"nordic"|"@andes"' package.json 2>/dev/null; then
+    if grep -qE '"react"|"nordic"|"@andes/[^" ]+"' package.json 2>/dev/null; then
       echo "frontend"
     else
       echo "node"
