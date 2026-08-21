@@ -728,28 +728,31 @@ inspect_fury_manifest() {
 # Contrato de args del MCP `fury`.
 #
 # `required_args` se compara de forma exacta y ordenada (gateway URL + headers): un cambio
-# ahí es un cambio real de contrato y debe fallar. Los flags de `tolerated_numeric_flags`
-# (p. ej. `--timeout`) se comparan solo por presencia de un valor entero, nunca por su valor:
-# fury-services lo cambió entre 0.43.0 y 0.45.1 varias veces y pinear el número exacto
-# rompía `fury_mcp_declaration` en toda invocación distinta de `setup` tras cada release.
+# ahí es un cambio real de contrato y debe fallar. Después de ese prefijo se aceptan los
+# flags de `tolerated_numeric_flags` (p. ej. `--timeout`) como pares `<flag> <entero>`,
+# cada uno a lo sumo una vez: se valida que el valor sea entero, nunca cuál es. La razón es
+# que fury-services movió `--timeout` 300 -> 5 -> 300 entre 0.43.0 y 0.45.1, y pinear el
+# número exacto rompía `fury_mcp_declaration` en toda invocación distinta de `setup` tras
+# cada release. Todo lo demás (flag duplicado, flag fuera del sufijo, arg desconocido,
+# valor no entero) sigue fallando cerrado.
 readonly FURY_ARGS_JQ_CONTRACT='
-  def prune_tolerated($flags):
-    . as $args
-    | reduce range(0; ($args | length)) as $i ({out: [], skip: false};
-        if .skip then .skip = false
-        elif (($flags | index($args[$i])) != null)
-             and (($i + 1) < ($args | length))
-             and ($args[$i + 1] | type == "string")
-             and ($args[$i + 1] | test("^[0-9]+$"))
-        then .skip = true
-        else .out += [$args[$i]]
-        end)
-    | .out;
+  # Los args tolerados solo se aceptan como pares `<flag> <entero>` al final, cada flag
+  # a lo sumo una vez. Un flag repetido o fuera del final es una declaración malformada:
+  # la posición cambia la invocación real del proxy, así que no se tolera.
+  def tolerated_suffix_ok($flags):
+    . as $suffix
+    | ((($suffix | length) % 2) == 0)
+    and ([range(0; ($suffix | length); 2) | $suffix[.]] | (unique | length) == length)
+    and all(range(0; ($suffix | length); 2);
+          . as $i
+          | (($flags | index($suffix[$i])) != null)
+          and ($suffix[$i + 1] | test("^[0-9]+$")));
 
   def args_match($required; $flags):
     (type == "array")
     and all(.[]; type == "string")
-    and (prune_tolerated($flags) == $required);
+    and (.[0:($required | length)] == $required)
+    and (.[($required | length):] | tolerated_suffix_ok($flags));
 '
 
 # Devuelve 0 si el array de args observado satisface el contrato.

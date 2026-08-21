@@ -213,6 +213,42 @@ STUB
   assert_failure 10 FURY_MCP_DECLARATION_INVALID
 }
 
+@test "duplicate tolerated Fury MCP flag fails closed" {
+  jq '.mcpServers.fury.args += ["--timeout","5"]' \
+    "$FURY_PLUGIN_DIRECTORY/.mcp.json" > "$TEST_ROOT/duplicate-timeout.json"
+  mv "$TEST_ROOT/duplicate-timeout.json" "$FURY_PLUGIN_DIRECTORY/.mcp.json"
+
+  run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+  assert_failure 10 FURY_MCP_DECLARATION_INVALID
+}
+
+@test "tolerated Fury MCP flag before the required args fails closed" {
+  jq '{mcpServers: {fury: {command: .mcpServers.fury.command, args: (["--timeout","300"] + .mcpServers.fury.args[0:4])}}}' \
+    "$FURY_PLUGIN_DIRECTORY/.mcp.json" > "$TEST_ROOT/leading-timeout.json"
+  mv "$TEST_ROOT/leading-timeout.json" "$FURY_PLUGIN_DIRECTORY/.mcp.json"
+
+  run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+  assert_failure 10 FURY_MCP_DECLARATION_INVALID
+}
+
+@test "tolerated Fury MCP flag inside the required args fails closed" {
+  jq '{mcpServers: {fury: {command: .mcpServers.fury.command, args: (.mcpServers.fury.args[0:1] + ["--timeout","300"] + .mcpServers.fury.args[1:4])}}}' \
+    "$FURY_PLUGIN_DIRECTORY/.mcp.json" > "$TEST_ROOT/interleaved-timeout.json"
+  mv "$TEST_ROOT/interleaved-timeout.json" "$FURY_PLUGIN_DIRECTORY/.mcp.json"
+
+  run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+  assert_failure 10 FURY_MCP_DECLARATION_INVALID
+}
+
+@test "dangling tolerated Fury MCP flag without a value fails closed" {
+  jq 'del(.mcpServers.fury.args[-1])' \
+    "$FURY_PLUGIN_DIRECTORY/.mcp.json" > "$TEST_ROOT/dangling-timeout.json"
+  mv "$TEST_ROOT/dangling-timeout.json" "$FURY_PLUGIN_DIRECTORY/.mcp.json"
+
+  run_checker claude success success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+  assert_failure 10 FURY_MCP_DECLARATION_INVALID
+}
+
 @test "non string Fury MCP argument fails closed" {
   jq '.mcpServers.fury.args[-1] = 300' \
     "$FURY_PLUGIN_DIRECTORY/.mcp.json" > "$TEST_ROOT/numeric-arg.json"
