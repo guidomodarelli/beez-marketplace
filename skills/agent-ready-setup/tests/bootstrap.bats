@@ -282,6 +282,22 @@ EOF
   done
 }
 
+@test "rejects symlinked provider subdirectories before writing assets" {
+  outside_root="$test_root/outside-rules"
+  mkdir -p "$outside_root" .claude
+  printf '%s\n' 'sentinel' > "$outside_root/sentinel.txt"
+  ln -s "$outside_root" .claude/rules
+
+  run_bootstrap frontend
+
+  [ "$status" -eq 0 ]
+  [ -L .claude/rules ]
+  [ "$(cat "$outside_root/sentinel.txt")" = "sentinel" ]
+  [ "$(find "$outside_root" -mindepth 1 -maxdepth 1 -type f | wc -l | tr -d ' ')" -eq 1 ]
+  [[ "$output" == *"parent directory contains symlink"* ]]
+  [[ "$output" == *".claude/rules"* ]]
+}
+
 @test "harness hooks inspect Claude and shared-agent paths" {
   fake_bin="$test_root/bin"
   invocation_log="$test_root/claude-invocation.log"

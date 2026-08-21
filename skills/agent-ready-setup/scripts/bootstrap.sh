@@ -121,12 +121,47 @@ record_skipped() {
   SKIPPED+=("$1")
 }
 
+# Validate every existing directory component before creating a destination
+# parent. This prevents writes from following a pre-existing symlink outside
+# the project.
+validate_destination_parent() {
+  local destination="$1"
+  local parent_directory
+  local current_path="."
+  local path_component
+  local relative_parent
+  local -a path_components
+
+  parent_directory="$(dirname -- "$destination")"
+  [[ "$parent_directory" == "." ]] && return 0
+
+  relative_parent="${parent_directory#./}"
+  IFS='/' read -r -a path_components <<< "$relative_parent"
+  for path_component in "${path_components[@]}"; do
+    [[ -z "$path_component" || "$path_component" == "." ]] && continue
+    current_path="$current_path/$path_component"
+
+    if [[ -L "$current_path" ]]; then
+      CONFLICTS+=("$destination parent directory contains symlink $current_path; neither was changed")
+      return 1
+    fi
+
+    if [[ -e "$current_path" && ! -d "$current_path" ]]; then
+      CONFLICTS+=("$destination parent directory is not a directory: $current_path; neither was changed")
+      return 1
+    fi
+  done
+}
+
 # Copy a file only when destination is absent. Treat symlinks as existing so a
 # broken symlink cannot be replaced or redirected by the bootstrap.
 copy_if_missing() {
   local src="$1"
   local dst="$2"
 
+  if ! validate_destination_parent "$dst"; then
+    return 0
+  fi
   mkdir -p -- "$(dirname -- "$dst")"
 
   if [[ -e "$dst" || -L "$dst" ]]; then
@@ -176,6 +211,9 @@ link_claude_asset() {
     return 1
   fi
 
+  if ! validate_destination_parent "$destination"; then
+    return 0
+  fi
   mkdir -p -- "$(dirname -- "$destination")"
   target=$(relative_shared_target "$relative")
 
@@ -380,6 +418,9 @@ create_skill_adapter() {
   local skill_name="$2"
   local dst="$SHARED_DIR/skills/$skill_name/SKILL.md"
 
+  if ! validate_destination_parent "$dst"; then
+    return 0
+  fi
   mkdir -p -- "$(dirname -- "$dst")"
   if [[ -e "$dst" || -L "$dst" ]]; then
     record_skipped "$dst"
