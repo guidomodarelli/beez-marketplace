@@ -113,7 +113,7 @@ legible y haya un único lugar donde consultar qué representa cada campo.
 
 | Alias | Field id real | Representa | Uso |
 |-------|---------------|------------|-----|
-| `DERIVATION_DESTINATION_SQUAD_FIELD` | `customfield_13781` | Squad/equipo destino seleccionado en la transición "Derivar a otro equipo" de SSHP. | `/groot-queue derive`, al completar `fields` para la transición `121`. |
+| `DERIVATION_DESTINATION_SQUAD_FIELD` | `customfield_13781` | Squad/equipo destino seleccionado en la transición "Derivar a otro equipo" de SSHP. Es el mismo campo que identifica la cola dueña del ticket. | `/groot-queue derive`, al completar `fields` para la transición `121`. En JQL, filtro de cola Groot como `cf[13781] = "Groot"` (ver `config/classification.md`). |
 
 Al construir el payload final para Jira/MCP, expandir el alias al field id real.
 No enviar el alias literal como nombre de campo.

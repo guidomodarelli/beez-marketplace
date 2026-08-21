@@ -9,15 +9,17 @@ Este archivo concentra el JQL base y la lógica de clasificación que usan los c
 Para listar todos los tickets abiertos (Incidents y Service Requests):
 
 ```bash
-acli jira workitem search --paginate --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved ORDER BY created DESC"
+acli jira workitem search --paginate --jql "project = SSHP AND cf[13781] = \"Groot\" AND resolution = Unresolved ORDER BY created DESC"
 ```
+
+> ⚠️ **Filtrar la cola por field id, no por nombre**: el filtro de cola es `cf[13781] = "Groot"`, nunca `Squad = Groot`. `Squad` es solo la etiqueta que muestra la UI del custom field `customfield_13781` (el mismo `DERIVATION_DESTINATION_SQUAD_FIELD` que usa `derive`); referenciado por nombre, Jira no resuelve el option y la query falla con `failed to parse JQL query: la opción 'groot' para el campo 'squad' no existe`. Toda query nueva sobre la cola debe usar la forma `cf[13781]`.
 
 > ⚠️ **Paginación obligatoria para conjuntos completos**: `acli jira workitem search` sin `--paginate` devuelve solo la primera página (~30 resultados). Toda búsqueda que alimente listados completos, clasificación, estadísticas, conteos exhaustivos o mutaciones por lote debe incluir `--paginate`; el orden `created DESC` deja los tickets más viejos fuera del resultado truncado. Consultas por key única o límites intencionales pueden omitirlo solo si documentan que no requieren exhaustividad.
 
 Para listar solo los tickets asignados a un LDAP específico (usado por `assignee=<ldap>`, `assignee=me` y `@me`):
 
 ```bash
-acli jira workitem search --paginate --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved AND assignee = <ldap> ORDER BY created DESC"
+acli jira workitem search --paginate --jql "project = SSHP AND cf[13781] = \"Groot\" AND resolution = Unresolved AND assignee = <ldap> ORDER BY created DESC"
 ```
 
 Para ver un ticket específico:

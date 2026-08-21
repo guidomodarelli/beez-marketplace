@@ -73,7 +73,7 @@ Ejecutar **tres** búsquedas, todas con `--paginate`. El nombre del SLA se refer
 **Fetch B — VENCIDOS autoritativos por SLA "Time to resolution" (`breached()`):**
 ```bash
 acli jira workitem search \
-  --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved AND assignee IS NOT EMPTY AND 'Time to resolution' = breached() ORDER BY created ASC" \
+  --jql "project = SSHP AND cf[13781] = \"Groot\" AND resolution = Unresolved AND assignee IS NOT EMPTY AND 'Time to resolution' = breached() ORDER BY created ASC" \
   --paginate --fields "key,assignee,status,priority,summary" --csv
 ```
 **Cada key devuelta por Fetch B está VENCIDA** según la columna "Time to resolution" — lo calcula Jira, en tiempo calendario, y **no depende del MCP**. Guardar como `vencidas`.
@@ -81,7 +81,7 @@ acli jira workitem search \
 **Fetch C — candidatos a POR VENCER (SLA corriendo, aún no vencido):**
 ```bash
 acli jira workitem search \
-  --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved AND assignee IS NOT EMPTY AND 'Time to resolution' = running() AND 'Time to resolution' != breached() ORDER BY created ASC" \
+  --jql "project = SSHP AND cf[13781] = \"Groot\" AND resolution = Unresolved AND assignee IS NOT EMPTY AND 'Time to resolution' = running() AND 'Time to resolution' != breached() ORDER BY created ASC" \
   --paginate --fields "key,assignee,status,priority,summary" --csv
 ```
 Guardar como `por_vencer_candidatas`. Solo sobre este subconjunto se calcula el umbral "≤48h calendario" en el paso 3 (nunca sobre las ya vencidas).
@@ -89,7 +89,7 @@ Guardar como `por_vencer_candidatas`. Solo sobre este subconjunto se calcula el 
 **Fetch A — universo completo de alertables (solo se usa en el fallback 3.3):**
 ```bash
 acli jira workitem search \
-  --jql "project = SSHP AND Squad = Groot AND resolution = Unresolved AND assignee IS NOT EMPTY ORDER BY created ASC" \
+  --jql "project = SSHP AND cf[13781] = \"Groot\" AND resolution = Unresolved AND assignee IS NOT EMPTY ORDER BY created ASC" \
   --paginate --fields "key,assignee,status,priority,summary" --csv
 ```
 

@@ -42,7 +42,7 @@ Aplicar **modo DEGRADAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/config/atla
 
 1. Obtener todos los tickets abiertos **soportados por este flujo** (solo `Incident` y `Service Request`; cualquier otro issue type de SSHP/Groot queda fuera de alcance y no debe tocarse). Aplicar el contrato de paginación completa de `$SKILL_DIR/knowledge/config/classification.md`:
    ```bash
-   acli jira workitem search --paginate --jql "project = SSHP AND Squad = Groot AND type IN (Incident, \"Service Request\") AND resolution = Unresolved ORDER BY created DESC"
+   acli jira workitem search --paginate --jql "project = SSHP AND cf[13781] = \"Groot\" AND type IN (Incident, \"Service Request\") AND resolution = Unresolved ORDER BY created DESC"
    ```
 2. Sobre la salida paginada completa, filtrar solo los que **no tienen assignee** (campo `assignee` vacío o null) y congelar sus keys como snapshot de la corrida.
 
