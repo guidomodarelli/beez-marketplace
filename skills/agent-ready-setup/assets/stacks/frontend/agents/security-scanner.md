@@ -45,4 +45,4 @@ Present findings exactly as returned by the MCP, grouped by severity. Add the su
 ```
 
 If the MCP is unavailable, report:
-> "meli_appsec_codeguard MCP is not connected. Security scan cannot run. Configure the MCP in .claude/mcp.json and restart the session."
+> "meli_appsec_codeguard MCP is not connected. Security scan cannot run. Configure the MCP in .claude/mcp.json for Claude Code or .codex/.mcp.json for Codex, then restart the session."
