@@ -57,14 +57,16 @@ Ejecutar tres búsquedas ACLI en paralelo usando `--count`; no usar `--limit` ni
 
 ```bash
 # Abiertos
-acli jira workitem search --count --jql 'project = SSHP AND Squad = Groot AND type IN (Incident, "Service Request") AND resolution = Unresolved'
+acli jira workitem search --count --jql 'project = SSHP AND <SQUAD_FIELD_JQL> = "Groot" AND type IN (Incident, "Service Request") AND resolution = Unresolved'
 
 # Sin asignar
-acli jira workitem search --count --jql 'project = SSHP AND Squad = Groot AND type IN (Incident, "Service Request") AND resolution = Unresolved AND assignee IS EMPTY'
+acli jira workitem search --count --jql 'project = SSHP AND <SQUAD_FIELD_JQL> = "Groot" AND type IN (Incident, "Service Request") AND resolution = Unresolved AND assignee IS EMPTY'
 
 # Alta prioridad con más de 24h
-acli jira workitem search --count --jql 'project = SSHP AND Squad = Groot AND type IN (Incident, "Service Request") AND resolution = Unresolved AND priority IN (Highest, High) AND created <= -24h'
+acli jira workitem search --count --jql 'project = SSHP AND <SQUAD_FIELD_JQL> = "Groot" AND type IN (Incident, "Service Request") AND resolution = Unresolved AND priority IN (Highest, High) AND created <= -24h'
 ```
+
+> Expandir `<SQUAD_FIELD_JQL>` al field id real antes de ejecutar; la expansión está centralizada en `$SKILL_DIR/knowledge/config/jira-field-options.md` § `customfield_13781`.
 
 Cada consulta es read-only, independiente, con timeout corto y sin retry. Aceptar resultado solo cuando sea:
 

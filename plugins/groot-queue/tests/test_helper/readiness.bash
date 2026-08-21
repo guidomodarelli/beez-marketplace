@@ -54,18 +54,20 @@ JSON
 }
 JSON
 
-  cat > "$fixture_directory/.mcp.json" <<'JSON'
+  # El valor de `--timeout` es deliberadamente variable: el contrato de readiness debe
+  # tolerar cualquier entero ahí (fury-services lo cambia entre releases).
+  cat > "$fixture_directory/.mcp.json" <<JSON
 {
   "mcpServers": {
     "fury": {
       "command": "mcp-remote-proxy",
       "args": [
-        "https://mcp-services-gateway.furycloud.io/v1/servers/fury",
+        "https://services-gateway-mcp.melioffice.com/v1/servers/fury",
         "--headers",
         "x-origin",
         "fury-services-plugin",
         "--timeout",
-        "300"
+        "${FURY_FIXTURE_TIMEOUT:-300}"
       ]
     }
   }
@@ -162,7 +164,7 @@ fi
 
 if [ "${1:-}" = "mcp" ] && [ "${2:-}" = "list" ] && [ "$#" -eq 2 ]; then
   printf '%s\n' 'claude mcp list' >> "$PROVIDER_LOG"
-  expected='plugin:fury-services:fury: mcp-remote-proxy https://mcp-services-gateway.furycloud.io/v1/servers/fury --headers x-origin fury-services-plugin --timeout 300'
+  expected="plugin:fury-services:fury: mcp-remote-proxy https://services-gateway-mcp.melioffice.com/v1/servers/fury --headers x-origin fury-services-plugin --timeout ${FURY_FIXTURE_TIMEOUT:-300}"
   case "${CLAUDE_MCP_SCENARIO:-success}" in
     command-failure) exit 8 ;;
     not-configured) printf '%s\n' 'No MCP servers configured.' ;;
@@ -258,11 +260,11 @@ if [ "${1:-}" = "mcp" ] && [ "${2:-}" = "list" ] && [ "${3:-}" = "--json" ] && [
     command-failure) exit 8 ;;
     not-configured) printf '%s\n' '[]' ;;
     disconnected)
-      jq -nc '[{name:"fury",enabled:false,disabled_reason:"connection unavailable",transport:{type:"stdio",command:"mcp-remote-proxy",args:["https://mcp-services-gateway.furycloud.io/v1/servers/fury","--headers","x-origin","fury-services-plugin","--timeout","300"]}}]'
+      jq -nc --arg timeout "${FURY_FIXTURE_TIMEOUT:-300}" '[{name:"fury",enabled:false,disabled_reason:"connection unavailable",transport:{type:"stdio",command:"mcp-remote-proxy",args:["https://services-gateway-mcp.melioffice.com/v1/servers/fury","--headers","x-origin","fury-services-plugin","--timeout",$timeout]}}]'
       ;;
     invalid-response) printf '%s\n' '{"unexpected":true}' ;;
     *)
-      jq -nc '[{name:"fury",enabled:true,disabled_reason:null,transport:{type:"stdio",command:"mcp-remote-proxy",args:["https://mcp-services-gateway.furycloud.io/v1/servers/fury","--headers","x-origin","fury-services-plugin","--timeout","300"]}}]'
+      jq -nc --arg timeout "${FURY_FIXTURE_TIMEOUT:-300}" '[{name:"fury",enabled:true,disabled_reason:null,transport:{type:"stdio",command:"mcp-remote-proxy",args:["https://services-gateway-mcp.melioffice.com/v1/servers/fury","--headers","x-origin","fury-services-plugin","--timeout",$timeout]}}]'
       ;;
   esac
   exit 0
@@ -451,6 +453,7 @@ run_checker() {
     CLAUDE_MCP_SCENARIO="${CLAUDE_MCP_SCENARIO_OVERRIDE:-$mcp_scenario}" \
     CODEX_MCP_SCENARIO="${CODEX_MCP_SCENARIO_OVERRIDE:-$mcp_scenario}" \
     HTTP_SCENARIO="$http_scenario" \
+    FURY_FIXTURE_TIMEOUT="${FURY_FIXTURE_TIMEOUT:-300}" \
     bash "$CHECKER" --provider "$provider" "$@" > "$STDOUT_FILE" 2> "$STDERR_FILE"
   LAST_STATUS=$?
   set -e

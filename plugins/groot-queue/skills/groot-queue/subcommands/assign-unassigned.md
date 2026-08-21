@@ -42,8 +42,9 @@ Aplicar **modo DEGRADAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/config/atla
 
 1. Obtener todos los tickets abiertos **soportados por este flujo** (solo `Incident` y `Service Request`; cualquier otro issue type de SSHP/Groot queda fuera de alcance y no debe tocarse). Aplicar el contrato de paginación completa de `$SKILL_DIR/knowledge/config/classification.md`:
    ```bash
-   acli jira workitem search --paginate --jql "project = SSHP AND Squad = Groot AND type IN (Incident, \"Service Request\") AND resolution = Unresolved ORDER BY created DESC"
+   acli jira workitem search --paginate --jql "project = SSHP AND <SQUAD_FIELD_JQL> = \"Groot\" AND type IN (Incident, \"Service Request\") AND resolution = Unresolved ORDER BY created DESC"
    ```
+   > Expandir `<SQUAD_FIELD_JQL>` al field id real antes de ejecutar; la expansión está centralizada en `$SKILL_DIR/knowledge/config/jira-field-options.md` § `customfield_13781`.
 2. Sobre la salida paginada completa, filtrar solo los que **no tienen assignee** (campo `assignee` vacío o null) y congelar sus keys como snapshot de la corrida.
 
 Si no hay tickets sin assignee, mostrar: "✅ No hay tickets sin assignee en la cola." y terminar.
