@@ -69,6 +69,24 @@ Cada registro luego referencia la ruta del subdirectorio de su proveedor (ej. `.
 
 ---
 
+## 🤖 Agent Ready multi-provider
+
+`skills/agent-ready-setup` prepara siempre los tres planos sin acoplar assets compartidos a un provider:
+
+```text
+AGENTS.md                  # instrucciones canónicas
+CLAUDE.md                  # raíz: proxy + regla; subdirectorios: @AGENTS.md
+.claude/                   # Agent Ready Score y configuración Claude
+.agents/skills/            # skills compartidas y descubribles por Codex
+.agents/rules/             # reglas compartidas
+.codex/hooks/hooks.json    # hooks específicos Codex
+.codex/.mcp.json           # MCP específico Codex
+```
+
+Si `CLAUDE.md` ya contiene instrucciones, el setup las promueve a `AGENTS.md` y deja `CLAUDE.md` como `@AGENTS.md`. Si ambos archivos existen y difieren, no sobrescribe ninguno y reporta conflicto para resolución manual.
+
+---
+
 ## 📦 Instalar este marketplace
 
 Los nombres disponibles viven en `.claude-plugin/marketplace.json` y `.agents/plugins/marketplace.json`. Instalá el marketplace y reemplazá `<plugin-name>` por el plugin elegido:

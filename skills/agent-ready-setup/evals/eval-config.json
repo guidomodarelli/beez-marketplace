@@ -1,0 +1,228 @@
+{
+  "schema_version": 2,
+  "skill": "agent-ready-setup",
+  "description": "Evalúa detección de stack y bootstrap de configuración Agent Ready.",
+  "test_cases": [
+    {
+      "id": "frontend-bootstrap-creates-assets",
+      "description": "Detecta frontend y reporta assets creados desde plantilla.",
+      "input": "Explicá cómo agent-ready-setup detecta frontend para una app React con Nordic y qué estructura de archivos crea bajo .claude/. No ejecutes Bash ni escribas archivos; respondé desde la plantilla bundled.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["frontend", "Frontend"],
+          "description": "Reporta stack frontend detectado"
+        },
+        {
+          "type": "contains",
+          "value": "settings.json",
+          "description": "Reporta settings creado"
+        },
+        {
+          "type": "contains",
+          "value": "CLAUDE.md",
+          "description": "Reporta CLAUDE.md creado"
+        },
+        {
+          "type": "contains",
+          "value": "security.md",
+          "description": "Reporta regla de seguridad creada"
+        },
+        {
+          "type": "contains",
+          "value": "a11y-reviewer.md",
+          "description": "Reporta agente de accesibilidad creado"
+        },
+        {
+          "type": "contains",
+          "value": "component-creation/",
+          "description": "Reporta skill de componentes con estructura preservada"
+        },
+        {
+          "type": "contains",
+          "value": "pre-tool-use.md",
+          "description": "Reporta hook pre-tool creado"
+        },
+        {
+          "type": "contains",
+          "value": "review-pr.md",
+          "description": "Reporta comando de review creado"
+        }
+      ]
+    },
+    {
+      "id": "scoped-andes-dependency-detects-frontend",
+      "description": "Detecta frontend cuando package.json solo contiene una dependencia scoped de Andes.",
+      "input": "Explicá cómo agent-ready-setup clasifica un proyecto cuyo package.json tiene solo la dependencia `@andes/button`, sin React ni Nordic. No ejecutes Bash ni escribas archivos; respondé desde la plantilla bundled.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["frontend", "Frontend"],
+          "description": "Clasifica dependencia @andes/button como frontend"
+        },
+        {
+          "type": "contains_any",
+          "values": ["@andes/", "@andes/button"],
+          "description": "Reconoce prefijo de paquete scoped Andes"
+        }
+      ]
+    },
+    {
+      "id": "frontend-review-uses-remote-default-branch",
+      "description": "Explica fallback portable cuando no hay PR seleccionable.",
+      "input": "Explicá qué hace el comando review-pr si gh pr diff no puede seleccionar un PR y el repositorio usa master o trunk en vez de main. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["origin/HEAD", "remote default branch", "branch por defecto remoto"],
+          "description": "Explica cómo resolver branch base remoto"
+        },
+        {
+          "type": "contains",
+          "value": "git diff",
+          "description": "Indica comando de comparación fallback"
+        },
+        {
+          "type": "contains_any",
+          "values": ["master", "trunk"],
+          "description": "Cubre nombres de branch distintos de main"
+        }
+      ]
+    },
+    {
+      "id": "frontend-review-covers-production-without-tests",
+      "description": "Activa test-reviewer ante cambios de producción aunque diff no incluya tests.",
+      "input": "Explicá cuándo debe ejecutarse el agente test-reviewer en un PR frontend que modifica archivos de producción pero no agrega archivos de tests. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "test-reviewer.md",
+          "description": "Identifica el agente de revisión de tests"
+        },
+        {
+          "type": "contains_any",
+          "values": ["production", "producción"],
+          "description": "Cubre cambios de código de producción"
+        },
+        {
+          "type": "contains_any",
+          "values": ["without tests", "sin tests", "missing coverage", "cobertura"],
+          "description": "Explica que no debe omitirse cobertura faltante"
+        }
+      ]
+    },
+    {
+      "id": "existing-files-are-skipped",
+      "description": "Conserva archivos existentes y reporta que fueron omitidos.",
+      "input": "Setup agent ready. Asumí que proyecto tiene package.json con React y Nordic, además de .claude/CLAUDE.md y .claude/rules/security.md ya existentes. Explicá qué archivos conserva, cuáles crea y cómo reporta los existentes. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "CLAUDE.md",
+          "description": "Menciona archivo existente"
+        },
+        {
+          "type": "contains",
+          "value": "security.md",
+          "description": "Menciona regla existente"
+        },
+        {
+          "type": "contains_any",
+          "values": ["SKIP", "skipped", "omitido", "omitidos", "ya existía"],
+          "description": "Reporta archivos existentes como omitidos"
+        }
+      ]
+    },
+    {
+      "id": "report-preserves-root-centralization-proxy",
+      "description": "Distingue proxy raíz con regla de centralización de proxies en subdirectorios.",
+      "input": "Explicá qué debe verificar el reporte final de agent-ready-setup sobre CLAUDE.md en raíz y en subdirectorios después del bootstrap. No ejecutes Bash ni escribas archivos; respondé desde la plantilla bundled.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "CLAUDE.md",
+          "description": "Menciona proxies CLAUDE.md"
+        },
+        {
+          "type": "contains",
+          "value": "regla de centralización",
+          "description": "Conserva regla de centralización en proxy raíz"
+        },
+        {
+          "type": "contains",
+          "value": "subdirectorios",
+          "description": "Distingue proxies de subdirectorios"
+        },
+        {
+          "type": "contains",
+          "value": "@AGENTS.md",
+          "description": "Indica referencia canónica esperada"
+        }
+      ]
+    },
+    {
+      "id": "go-bootstrap-creates-assets",
+      "description": "Detecta Go y reporta assets específicos creados.",
+      "input": "Explicá cómo agent-ready-setup detecta Go para un microservicio y qué archivos principales crea bajo .claude/, incluyendo mcp.json y reglas. No ejecutes Bash ni escribas archivos; respondé desde la plantilla bundled.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["go", "Go"],
+          "description": "Reporta stack Go detectado"
+        },
+        {
+          "type": "contains",
+          "value": "settings.json",
+          "description": "Reporta settings creado"
+        },
+        {
+          "type": "contains",
+          "value": "coding-style.md",
+          "description": "Reporta regla de estilo creada"
+        },
+        {
+          "type": "contains",
+          "value": "security.md",
+          "description": "Reporta regla de seguridad creada"
+        },
+        {
+          "type": "contains",
+          "value": "mcp.json",
+          "description": "Reporta configuración MCP creada"
+        }
+      ]
+    },
+    {
+      "id": "multi-provider-codex-assets",
+      "description": "Explica salida neutral compartida y bridge Codex sin duplicar instrucciones.",
+      "input": "Explicá qué genera agent-ready-setup para que el mismo proyecto funcione con Claude Code, Codex y futuros providers. Incluí el rol de AGENTS.md, CLAUDE.md, .agents/skills, .codex/hooks y .codex/.mcp.json. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "AGENTS.md",
+          "description": "Identifica instrucciones canónicas"
+        },
+        {
+          "type": "contains",
+          "value": "@AGENTS.md",
+          "description": "Identifica proxy de Claude"
+        },
+        {
+          "type": "contains",
+          "value": ".agents/skills",
+          "description": "Identifica skills descubribles por Codex"
+        },
+        {
+          "type": "contains",
+          "value": ".codex/hooks",
+          "description": "Identifica hooks específicos de Codex"
+        },
+        {
+          "type": "contains",
+          "value": ".codex/.mcp.json",
+          "description": "Identifica MCP específico de Codex"
+        }
+      ]
+    }
+  ]
+}

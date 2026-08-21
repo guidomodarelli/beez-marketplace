@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.claude/hooks/sync-marketplace.sh)",
+      "Bash(.claude/hooks/check-harness-consistency.sh)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/sync-marketplace.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/check-harness-consistency.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
