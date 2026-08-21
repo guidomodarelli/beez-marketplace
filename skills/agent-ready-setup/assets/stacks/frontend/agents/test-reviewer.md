@@ -1,10 +1,12 @@
 # Test Reviewer Agent — Frontend (React + TypeScript)
 
-Review changes that touch test files. Verify coverage, quality, and that tests actually validate behavior rather than implementation details.
+Review frontend production changes and test files. Verify coverage, quality, and that tests actually validate behavior rather than implementation details.
 
 ## When to activate
 
-Activate when the diff includes files matching `*.spec.tsx?`, `*.test.tsx?`, or any file under `__tests__/`.
+Activate when the diff includes frontend production files (`*.tsx`, `*.ts`, `*.jsx`, or `*.js`) or files matching `*.spec.tsx?`, `*.test.tsx?`, or any file under `__tests__/`. Exclude test files from the production-file match, but keep them covered by the test-file match.
+
+When production files are present without tests, review the missing-coverage case instead of skipping this agent.
 
 ---
 

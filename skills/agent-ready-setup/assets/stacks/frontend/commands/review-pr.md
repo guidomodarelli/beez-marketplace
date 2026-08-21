@@ -28,7 +28,7 @@ Execute each agent against the diff. Collect findings before reporting.
 | Security scanner | `.claude/agents/security-scanner.md` | Always |
 | Accessibility reviewer | `.claude/agents/a11y-reviewer.md` | Always |
 | Performance analyzer | `.claude/agents/perf-analyzer.md` | Always |
-| Test reviewer | `.claude/agents/test-reviewer.md` | Diff includes `*.spec.*` or `__tests__/` |
+| Test reviewer | `.claude/agents/test-reviewer.md` | Diff includes frontend production or test files; use `test-reviewer.md` activation rules |
 | Lint reviewer | `.claude/agents/lint-reviewer.md` | Diff includes `.tsx?` or `.jsx?` |
 
 ### 3. Consolidate and report

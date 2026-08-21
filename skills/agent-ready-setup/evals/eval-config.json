@@ -90,6 +90,28 @@
       ]
     },
     {
+      "id": "frontend-review-covers-production-without-tests",
+      "description": "Activa test-reviewer ante cambios de producción aunque diff no incluya tests.",
+      "input": "Explicá cuándo debe ejecutarse el agente test-reviewer en un PR frontend que modifica archivos de producción pero no agrega archivos de tests. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "test-reviewer.md",
+          "description": "Identifica el agente de revisión de tests"
+        },
+        {
+          "type": "contains_any",
+          "values": ["production", "producción"],
+          "description": "Cubre cambios de código de producción"
+        },
+        {
+          "type": "contains_any",
+          "values": ["without tests", "sin tests", "missing coverage", "cobertura"],
+          "description": "Explica que no debe omitirse cobertura faltante"
+        }
+      ]
+    },
+    {
       "id": "existing-files-are-skipped",
       "description": "Conserva archivos existentes y reporta que fueron omitidos.",
       "input": "Setup agent ready. Asumí que proyecto tiene package.json con React y Nordic, además de .claude/CLAUDE.md y .claude/rules/security.md ya existentes. Explicá qué archivos conserva, cuáles crea y cómo reporta los existentes. No ejecutes Bash ni escribas archivos.",
