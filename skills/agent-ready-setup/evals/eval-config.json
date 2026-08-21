@@ -134,6 +134,33 @@
       ]
     },
     {
+      "id": "report-preserves-root-centralization-proxy",
+      "description": "Distingue proxy raíz con regla de centralización de proxies en subdirectorios.",
+      "input": "Explicá qué debe verificar el reporte final de agent-ready-setup sobre CLAUDE.md en raíz y en subdirectorios después del bootstrap. No ejecutes Bash ni escribas archivos; respondé desde la plantilla bundled.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "CLAUDE.md",
+          "description": "Menciona proxies CLAUDE.md"
+        },
+        {
+          "type": "contains",
+          "value": "regla de centralización",
+          "description": "Conserva regla de centralización en proxy raíz"
+        },
+        {
+          "type": "contains",
+          "value": "subdirectorios",
+          "description": "Distingue proxies de subdirectorios"
+        },
+        {
+          "type": "contains",
+          "value": "@AGENTS.md",
+          "description": "Indica referencia canónica esperada"
+        }
+      ]
+    },
+    {
       "id": "go-bootstrap-creates-assets",
       "description": "Detecta Go y reporta assets específicos creados.",
       "input": "Explicá cómo agent-ready-setup detecta Go para un microservicio y qué archivos principales crea bajo .claude/, incluyendo mcp.json y reglas. No ejecutes Bash ni escribas archivos; respondé desde la plantilla bundled.",

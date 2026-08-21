@@ -139,7 +139,7 @@ Mostrar output del script sin alterarlo. En respuestas documentales, enumerar pa
 ```
 Next steps:
   1. Completar AGENTS.md con descripción, comandos y arquitectura del proyecto.
-  2. Revisar que CLAUDE.md contenga solo @AGENTS.md.
+  2. Verificar que CLAUDE.md raíz conserve @AGENTS.md más la regla de centralización; en subdirectorios, debe contener únicamente @AGENTS.md.
   3. Completar placeholders bajo .agents/rules/, .agents/skills/ y .agents/agents/.
   4. Configurar o revisar MCP y hooks Codex bajo .codex/ antes de habilitarlos.
   5. Verificar dimensiones Agent Ready Score bajo .claude/.
