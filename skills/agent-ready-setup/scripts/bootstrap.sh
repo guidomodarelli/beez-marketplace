@@ -90,6 +90,11 @@ SKIPPED=()
 MIGRATED=()
 CONFLICTS=()
 PROVIDER_ROOT_CONFLICTS=()
+GIT_IGNORE_SUPPORTED=false
+
+if command -v git >/dev/null 2>&1 && [[ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" == true ]]; then
+  GIT_IGNORE_SUPPORTED=true
+fi
 
 validate_provider_roots() {
   local provider_root
@@ -119,6 +124,40 @@ record_created() {
 
 record_skipped() {
   SKIPPED+=("$1")
+}
+
+is_ignored_path() {
+  local path="$1"
+
+  if [[ "$GIT_IGNORE_SUPPORTED" == true ]]; then
+    local check_status
+
+    if git check-ignore -q -- "$path" 2>/dev/null; then
+      check_status=0
+    else
+      check_status=$?
+    fi
+
+    case "$check_status" in
+      0)
+        return 0
+        ;;
+      1)
+        return 1
+        ;;
+      *)
+        return 2
+        ;;
+    esac
+  fi
+
+  case "$path" in
+    ./node_modules|./node_modules/*|node_modules|node_modules/*|*/node_modules|*/node_modules/*)
+      return 0
+      ;;
+  esac
+
+  return 1
 }
 
 # Validate every existing directory component before creating a destination
@@ -370,6 +409,24 @@ normalize_nested_instruction_pair() {
   fi
 
   if [[ -e "$claude_file" ]]; then
+    if is_ignored_path "$claude_file"; then
+      return
+    elif [[ "$?" -eq 2 ]]; then
+      CONFLICTS+=("could not determine whether $claude_file is ignored; neither instruction file was changed")
+      return
+    fi
+  fi
+
+  if [[ -e "$agents_file" ]]; then
+    if is_ignored_path "$agents_file"; then
+      return
+    elif [[ "$?" -eq 2 ]]; then
+      CONFLICTS+=("could not determine whether $agents_file is ignored; neither instruction file was changed")
+      return
+    fi
+  fi
+
+  if [[ -e "$claude_file" ]]; then
     if is_plain_claude_proxy "$claude_file"; then
       if [[ -e "$agents_file" ]]; then
         record_skipped "$claude_file"
@@ -408,7 +465,7 @@ normalize_nested_instructions() {
           -e "$directory/$AGENTS_FILE" || -L "$directory/$AGENTS_FILE" ]]; then
       normalize_nested_instruction_pair "$directory"
     fi
-  done < <(find . -name .git -prune -o -type d -print0)
+  done < <(find . \( -name .git -o -name node_modules \) -prune -o -type d -print0)
 }
 
 normalize_nested_instructions

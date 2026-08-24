@@ -109,7 +109,10 @@ bash "$SKILL_DIR/scripts/bootstrap.sh" \
 Script copia assets compartidos faltantes a `.agents/`, crea symlinks relativos
 correspondientes bajo `.claude/` y prepara bridge `.codex/`. Copias legacy
 idénticas bajo `.claude/` se normalizan a symlinks; copias divergentes se
-conservan y se reportan como conflicto. También normaliza instrucciones raíz:
+conservan y se reportan como conflicto. Durante la búsqueda recursiva de
+instrucciones respeta `.gitignore` y nunca recorre `node_modules/`; esta regla no
+impide crear los destinos explícitos `.claude/`, `.agents/` y `.codex/`. También
+normaliza instrucciones raíz:
 
 1. Si `CLAUDE.md` raíz contiene proxy más regla de centralización, lo considera
    normalizado y no lo modifica.
