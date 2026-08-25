@@ -71,7 +71,7 @@ Cada registro luego referencia la ruta del subdirectorio de su proveedor (ej. `.
 
 ## 🤖 Agent Ready multi-provider
 
-`skills/agent-ready-setup` prepara siempre los tres planos sin acoplar assets compartidos a un provider:
+`plugins/groot-kit/skills/agent-ready-setup` prepara siempre los tres planos sin acoplar assets compartidos a un provider:
 
 ```text
 AGENTS.md                  # instrucciones canónicas

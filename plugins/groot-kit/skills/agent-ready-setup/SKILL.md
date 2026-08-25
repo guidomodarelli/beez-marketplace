@@ -48,12 +48,18 @@ como fuente de verdad para omitir instrucciones anidadas cubiertas por
 ```bash
 if [[ -n "$AGENT_READY_SETUP_SKILL_DIR" ]]; then
   SKILL_DIR="$AGENT_READY_SETUP_SKILL_DIR"
-elif [[ -f "$HOME/.claude/skills/agent-ready-setup/SKILL.md" ]]; then
+elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" && -f "$CLAUDE_PLUGIN_ROOT/skills/agent-ready-setup/SKILL.md" ]]; then
+  SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/agent-ready-setup"
+elif [[ "${AGENT_READY_SETUP_ACTIVE_PROVIDER:-}" == "codex" && -f "$HOME/.codex/skills/agent-ready-setup/SKILL.md" ]]; then
+  SKILL_DIR="$HOME/.codex/skills/agent-ready-setup"
+elif [[ "${AGENT_READY_SETUP_ACTIVE_PROVIDER:-}" == "claude" && -f "$HOME/.claude/skills/agent-ready-setup/SKILL.md" ]]; then
   SKILL_DIR="$HOME/.claude/skills/agent-ready-setup"
 elif [[ -f "$HOME/.codex/skills/agent-ready-setup/SKILL.md" ]]; then
   SKILL_DIR="$HOME/.codex/skills/agent-ready-setup"
+elif [[ -f "$HOME/.claude/skills/agent-ready-setup/SKILL.md" ]]; then
+  SKILL_DIR="$HOME/.claude/skills/agent-ready-setup"
 else
-  SKILL_DIR="$(pwd)/skills/agent-ready-setup"
+  SKILL_DIR="$(pwd)/plugins/groot-kit/skills/agent-ready-setup"
 fi
 ```
 
