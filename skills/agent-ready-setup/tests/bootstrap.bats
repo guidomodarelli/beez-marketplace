@@ -270,18 +270,17 @@ EOF
 }
 
 @test "tracked instructions under ignored directories remain normalizable" {
-  mkdir -p generated/api
-  printf '%s\n' 'generated/' > .gitignore
-  git -c init.defaultBranch=main init -q .
-  printf '%s\n' '# Tracked instructions' > generated/api/CLAUDE.md
-  git add -f generated/api/CLAUDE.md
+  mkdir -p node_modules/tracked-package
+  printf '%s\n' 'node_modules/' > .gitignore
+  printf '%s\n' '# Tracked instructions' > node_modules/tracked-package/CLAUDE.md
+  git add -f node_modules/tracked-package/CLAUDE.md
 
   run_bootstrap node
 
   [ "$status" -eq 0 ]
-  [ -f generated/api/AGENTS.md ]
-  [ "$(cat generated/api/CLAUDE.md)" = '@AGENTS.md' ]
-  [ "$(cat generated/api/AGENTS.md)" = '# Tracked instructions' ]
+  [ -f node_modules/tracked-package/AGENTS.md ]
+  [ "$(cat node_modules/tracked-package/CLAUDE.md)" = '@AGENTS.md' ]
+  [ "$(cat node_modules/tracked-package/AGENTS.md)" = '# Tracked instructions' ]
 }
 
 @test "provider destinations are created when ignored by Git" {

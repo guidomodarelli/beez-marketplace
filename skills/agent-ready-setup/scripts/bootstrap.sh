@@ -454,7 +454,7 @@ normalize_nested_instructions() {
           -e "$directory/$AGENTS_FILE" || -L "$directory/$AGENTS_FILE" ]]; then
       normalize_nested_instruction_pair "$directory"
     fi
-  done < <(find . \( -name .git -o -name node_modules \) -prune -o -type d -print0)
+  done < <(find . -name .git -prune -o -type d -print0)
 }
 
 normalize_nested_instructions
