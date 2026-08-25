@@ -6,6 +6,7 @@ setup() {
   test_root="$(mktemp -d)"
   project_dir="$test_root/project"
   mkdir -p "$project_dir"
+  git -C "$project_dir" -c init.defaultBranch=main init -q
   cd "$project_dir"
 }
 
@@ -108,6 +109,7 @@ run_bootstrap() {
   for stack in go java node; do
     stack_project="$test_root/$stack-project"
     mkdir -p "$stack_project"
+    git -C "$stack_project" -c init.defaultBranch=main init -q
     cd "$stack_project"
 
     run_bootstrap "$stack"
@@ -231,7 +233,19 @@ EOF
   grep -Fq 'Keep API changes backwards compatible.' packages/api/AGENTS.md
 }
 
-@test "ignored node_modules instructions remain untouched outside Git" {
+@test "rejects bootstrap outside a Git worktree" {
+  non_git_project="$test_root/non-git-project"
+  mkdir -p "$non_git_project"
+  cd "$non_git_project"
+
+  run bash "$skill_dir/scripts/bootstrap.sh" --stack node --skill-dir "$skill_dir"
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"bootstrap must run inside a Git worktree"* ]]
+}
+
+@test "ignored node_modules instructions remain untouched" {
+  printf '%s\n' 'node_modules/' > .gitignore
   mkdir -p node_modules/example-package
   printf '%s\n' '# Dependency instructions' > node_modules/example-package/CLAUDE.md
 

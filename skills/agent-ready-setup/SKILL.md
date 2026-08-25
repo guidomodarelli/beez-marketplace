@@ -37,6 +37,10 @@ regla breve de centralización; `CLAUDE.md` en subdirectorios contiene únicamen
 Templates viven en `assets/stacks/<stack>/` y reflejan estructura de assets.
 Agregar o editar una dimensión para stack consiste en editar template fuente.
 
+Bootstrap requiere ejecución dentro de un worktree Git. Usa `git check-ignore`
+como fuente de verdad para omitir instrucciones anidadas cubiertas por
+`.gitignore`; fuera de un worktree, termina con error antes de escribir assets.
+
 ---
 
 ## Step 1 — Resolve SKILL_DIR

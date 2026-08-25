@@ -90,10 +90,10 @@ SKIPPED=()
 MIGRATED=()
 CONFLICTS=()
 PROVIDER_ROOT_CONFLICTS=()
-GIT_IGNORE_SUPPORTED=false
 
-if command -v git >/dev/null 2>&1 && [[ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" == true ]]; then
-  GIT_IGNORE_SUPPORTED=true
+if ! command -v git >/dev/null 2>&1 || [[ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != true ]]; then
+  echo "ERROR: bootstrap must run inside a Git worktree" >&2
+  exit 1
 fi
 
 validate_provider_roots() {
@@ -128,36 +128,25 @@ record_skipped() {
 
 is_ignored_path() {
   local path="$1"
+  local check_status
 
-  if [[ "$GIT_IGNORE_SUPPORTED" == true ]]; then
-    local check_status
-
-    if git check-ignore -q -- "$path" 2>/dev/null; then
-      check_status=0
-    else
-      check_status=$?
-    fi
-
-    case "$check_status" in
-      0)
-        return 0
-        ;;
-      1)
-        return 1
-        ;;
-      *)
-        return 2
-        ;;
-    esac
+  if git check-ignore -q -- "$path" 2>/dev/null; then
+    check_status=0
+  else
+    check_status=$?
   fi
 
-  case "$path" in
-    ./node_modules|./node_modules/*|node_modules|node_modules/*|*/node_modules|*/node_modules/*)
+  case "$check_status" in
+    0)
       return 0
       ;;
+    1)
+      return 1
+      ;;
+    *)
+      return 2
+      ;;
   esac
-
-  return 1
 }
 
 # Validate every existing directory component before creating a destination
