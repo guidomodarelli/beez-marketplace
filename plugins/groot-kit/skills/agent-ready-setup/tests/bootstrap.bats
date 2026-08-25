@@ -1,8 +1,8 @@
 #!/usr/bin/env bats
 
 setup() {
-  repository_root="$(cd "$BATS_TEST_DIRNAME/../../.." && pwd)"
-  skill_dir="$repository_root/skills/agent-ready-setup"
+  repository_root="$(cd "$BATS_TEST_DIRNAME/../../../../.." && pwd)"
+  skill_dir="$repository_root/plugins/groot-kit/skills/agent-ready-setup"
   test_root="$(mktemp -d)"
   project_dir="$test_root/project"
   mkdir -p "$project_dir"
