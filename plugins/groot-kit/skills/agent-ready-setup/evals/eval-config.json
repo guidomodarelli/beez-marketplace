@@ -133,8 +133,8 @@
         },
         {
           "type": "contains_any",
-          "values": ["conflicto", "conflictos"],
-          "description": "Explica tratamiento seguro de conflictos"
+          "values": ["diferencia", "diferencias", "contradicción", "contradicciones", "conflicto", "conflictos"],
+          "description": "Explica tratamiento seguro de diferencias y contradicciones"
         }
       ]
     },
