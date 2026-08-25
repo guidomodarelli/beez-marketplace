@@ -368,9 +368,10 @@ EOF
   mkdir -p "$fake_bin"
   cat > "$fake_bin/claude" <<'EOF'
 #!/bin/bash
-printf '%s\n' "$*" > "$CLAUDE_INVOCATION_LOG"
+printf 'PWD=%s\nARGS=%s\n' "$PWD" "$*" > "$CLAUDE_INVOCATION_LOG"
 EOF
   chmod +x "$fake_bin/claude"
+  mkdir -p .claude .agents
 
   for stack in frontend node java go; do
     hook="$skill_dir/assets/stacks/$stack/hooks/check-harness-consistency.sh"
@@ -378,8 +379,34 @@ EOF
       : > "$invocation_log"
       CLAUDE_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
         bash "$hook" <<< "{\"tool_input\":{\"file_path\":\"$provider_root/rules/security.md\"}}"
-      grep -Fq "Read all .md files in $provider_root/rules/" "$invocation_log"
-      grep -Fq "all SKILL.md files in $provider_root/skills/*/" "$invocation_log"
+      grep -Fq "PWD=$project_dir/$provider_root" "$invocation_log"
+      grep -Fq "ARGS=--print Read all .md files in rules/" "$invocation_log"
+      grep -Fq "all SKILL.md files in skills/*/" "$invocation_log"
+    done
+  done
+}
+
+@test "harness hooks keep prompt independent from payload paths" {
+  fake_bin="$test_root/bin"
+  invocation_log="$test_root/claude-invocation.log"
+  mkdir -p "$fake_bin"
+  cat > "$fake_bin/claude" <<'EOF'
+#!/bin/bash
+printf 'PWD=%s\nARGS=%s\n' "$PWD" "$*" > "$CLAUDE_INVOCATION_LOG"
+EOF
+  chmod +x "$fake_bin/claude"
+  mkdir -p .claude .agents
+
+  for stack in frontend node java go; do
+    hook="$skill_dir/assets/stacks/$stack/hooks/check-harness-consistency.sh"
+    for provider_root in .claude .agents; do
+      : > "$invocation_log"
+      malicious_file_path="$provider_root/rules/security.md; echo INJECTED"
+      CLAUDE_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
+        bash "$hook" <<< "{\"tool_input\":{\"file_path\":\"$malicious_file_path\"}}"
+      grep -Fq "PWD=$project_dir/$provider_root" "$invocation_log"
+      grep -Fq 'ARGS=--print Read all .md files in rules/ and all SKILL.md files in skills/*/.' "$invocation_log"
+      ! grep -Fq 'INJECTED' "$invocation_log"
     done
   done
 }
