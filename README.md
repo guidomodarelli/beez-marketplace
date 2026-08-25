@@ -105,36 +105,116 @@ Para `groot-queue`, consultá la [guía completa de instalación, configuración
 
 ---
 
-## 🔧 Desarrollo local (symlink)
+## 🔧 Probar plugins y skills localmente
 
-Mientras desarrollás un plugin, podés enlazar su directorio de skills directamente en la carpeta local del cliente para que los cambios en el repo se reflejen en vivo (sin reinstalar ni hacer `git pull` a través del caché del marketplace).
-
-```bash
-SKILL_SRC="$PWD/plugins/<plugin-name>/skills/<skill-name>"
-ln -sfn "$SKILL_SRC" ~/.claude/skills/<skill-name>   # Claude Code
-ln -sfn "$SKILL_SRC" ~/.codex/skills/<skill-name>    # Codex
-```
-
-Reiniciá el cliente después de crear el symlink. Cualquier edición posterior a `SKILL.md`, `subcommands/*.md` o `knowledge/*` se aplica en la siguiente invocación.
-
-### ✅ Qué funciona y qué no con un symlink
-
-| Invocación | Funciona | Notas |
-|------------|:--------:|-------|
-| `/<plugin-name> <subcommand>` (Claude Code) | ✅ | El skill se activa por descripción; el dispatcher en `SKILL.md` enruta a `subcommands/<arg>.md` |
-| `/<plugin-name> <subcommand>` (Codex) | ✅ | Mismo flujo que el anterior |
-| Lenguaje natural ("check the X queue") | ✅ | La coincidencia de descripción activa el skill |
-| `/<plugin-name>:<subcommand>` (sintaxis con dos puntos de Claude Code) | ❌ | Requiere instalación real del marketplace — Claude Code solo lee `commands/` de plugins registrados en su sistema de plugins, no de un skill enlazado |
-
-> 💡 La sintaxis con `:` es puramente cosmética: `/<plugin-name> <subcommand>` entra por el dispatcher del skill y produce el mismo resultado. Usá la instalación del marketplace solo cuando necesités el atajo `:` o querés testear el flujo completo de instalación.
-
-### 🗑️ Desinstalar
+Usá esta guía para probar cualquier skill standalone, plugin o marketplace sin
+publicarlo. Definí variables según el árbol que quieras probar:
 
 ```bash
-rm ~/.claude/skills/<skill-name> ~/.codex/skills/<skill-name>
+MARKETPLACE_NAME="groot-marketplace"
+PLUGIN_NAME="<plugin-name>"
+SKILL_NAME="<skill-name>"
+PLUGIN_SRC="$PWD/plugins/$PLUGIN_NAME"
+SKILL_SRC="$PLUGIN_SRC/skills/$SKILL_NAME"
 ```
 
-Solo elimina los symlinks — el repo no se modifica.
+Para una skill standalone, reemplazá `SKILL_SRC` por:
+
+```bash
+SKILL_SRC="$PWD/skills/$SKILL_NAME"
+```
+
+### 1. Cargar una skill directamente con symlink
+
+Este método valida `SKILL.md`, recursos bundled y ejecución de la skill. No valida
+manifests ni discovery del marketplace.
+
+```bash
+ln -sfn "$SKILL_SRC" "$HOME/.claude/skills/$SKILL_NAME"   # Claude Code
+ln -sfn "$SKILL_SRC" "$HOME/.codex/skills/$SKILL_NAME"    # Codex
+```
+
+Reiniciá cada cliente después de crear el symlink. Las ediciones posteriores a
+`SKILL.md`, `subcommands/*`, `knowledge/*`, `assets/*` o `scripts/*` quedan
+reflejadas desde el repositorio.
+
+### 2. Cargar un plugin en una sesión de Claude Code
+
+Este método valida el plugin Claude sin instalarlo persistentemente:
+
+```bash
+claude --plugin-dir "$PLUGIN_SRC"
+```
+
+`--plugin-dir` no valida la instalación del marketplace Codex ni el registro de
+`marketplace.json`.
+
+### 3. Probar marketplace local completo
+
+Ejecutá estos comandos desde raíz del marketplace, no desde `PLUGIN_SRC`:
+
+```bash
+# Claude Code
+claude plugin marketplace add --scope local "$PWD"
+claude plugin install --scope local "$PLUGIN_NAME@$MARKETPLACE_NAME"
+
+# Codex
+codex plugin marketplace add "$PWD"
+codex plugin add "$PLUGIN_NAME@$MARKETPLACE_NAME"
+```
+
+Verificá instalación y discovery:
+
+```bash
+claude plugin list
+codex plugin marketplace list
+codex plugin list --json
+```
+
+Para probar cambios posteriores sin publicar el marketplace, actualizá la fuente
+local cuando corresponda:
+
+```bash
+claude plugin marketplace update "$MARKETPLACE_NAME"
+codex plugin marketplace upgrade "$MARKETPLACE_NAME"
+```
+
+### 4. Ejecutar evals de una skill
+
+```bash
+run-evals "$SKILL_SRC"
+run-evals "$SKILL_SRC" --provider codex
+```
+
+Usá `--pretty` para un reporte legible. Las evals validan comportamiento de la
+skill; no reemplazan la prueba de instalación del plugin o marketplace.
+
+### ✅ Qué valida cada método
+
+| Método | Valida | No valida |
+|---|---|---|
+| Symlink en `~/.claude/skills` o `~/.codex/skills` | Carga directa y cambios live de una skill | Manifests y registro del marketplace |
+| `claude --plugin-dir` | Plugin Claude en una sesión | Instalación Codex y marketplace persistente |
+| Marketplace local + `plugin install` / `plugin add` | Registry, manifests, plugin y skills del provider | Publicación remota |
+| `run-evals` | Contrato y comportamiento declarado de una skill | Discovery del plugin instalado |
+
+### 🗑️ Cleanup local
+
+```bash
+# Symlinks directos
+rm -f "$HOME/.claude/skills/$SKILL_NAME" "$HOME/.codex/skills/$SKILL_NAME"
+
+# Plugins instalados
+claude plugin uninstall --scope local "$PLUGIN_NAME@$MARKETPLACE_NAME"
+codex plugin remove "$PLUGIN_NAME@$MARKETPLACE_NAME"
+
+# Marketplaces configurados
+claude plugin marketplace remove "$MARKETPLACE_NAME"
+codex plugin marketplace remove "$MARKETPLACE_NAME"
+```
+
+Solo los comandos de cleanup modifican la configuración local de los clientes;
+el repositorio no cambia.
 
 ---
 
