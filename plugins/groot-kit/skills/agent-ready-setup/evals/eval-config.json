@@ -150,7 +150,7 @@
         },
         {
           "type": "contains_any",
-          "values": ["fusion", "fusionar", "integra", "merge"],
+          "values": ["fusión", "fusion", "fusionar", "integra", "merge"],
           "description": "Fusiona instrucciones compatibles"
         },
         {
