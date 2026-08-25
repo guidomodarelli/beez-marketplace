@@ -341,7 +341,7 @@ normalize_root_instructions() {
       cp -- "$ROOT_CLAUDE_TEMPLATE" "$CLAUDE_FILE"
       MIGRATED+=("$CLAUDE_FILE -> root instruction proxy")
     else
-      CONFLICTS+=("$CLAUDE_FILE and $AGENTS_FILE differ; neither was overwritten")
+      CONFLICTS+=("$CLAUDE_FILE and $AGENTS_FILE differ; agent must merge compatible instructions before normalizing")
     fi
     return
   fi
@@ -552,7 +552,7 @@ fi
 
 if [[ ${#CONFLICTS[@]} -gt 0 ]]; then
   echo ""
-  echo "Instruction conflicts (manual resolution required):" >&2
+  echo "Instruction conflicts or differences (agent resolution may be required):" >&2
   for conflict in "${CONFLICTS[@]}"; do printf '  ! %s\n' "$conflict" >&2; done
 fi
 

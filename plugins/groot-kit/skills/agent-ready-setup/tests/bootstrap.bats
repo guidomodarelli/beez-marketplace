@@ -27,8 +27,7 @@ run_bootstrap() {
   [ "$status" -eq 0 ]
   [ -f AGENTS.md ]
   [ -f CLAUDE.md ]
-  grep -Fxq '@AGENTS.md' CLAUDE.md
-  grep -Fxq '## Regla de centralización de instrucciones' CLAUDE.md
+  cmp -s CLAUDE.md "$skill_dir/assets/root-claude.md"
   [ -f .claude/settings.json ]
   [ -L .claude/rules/security.md ]
   [ "$(readlink .claude/rules/security.md)" = "../../.agents/rules/security.md" ]
@@ -85,7 +84,7 @@ run_bootstrap() {
   [ "$status" -eq 0 ]
   [ ! -L .claude/rules/security.md ]
   grep -Fxq '# Claude-only security override' .claude/rules/security.md
-  [[ "$output" == *"Instruction conflicts (manual resolution required):"* ]]
+  [[ "$output" == *"Instruction conflicts or differences (agent resolution may be required):"* ]]
   [[ "$output" == *".claude/rules/security.md differs from canonical shared asset"* ]]
 }
 
@@ -115,6 +114,7 @@ run_bootstrap() {
     run_bootstrap "$stack"
 
     [ "$status" -eq 0 ]
+    cmp -s CLAUDE.md "$skill_dir/assets/root-claude.md"
     for provider_root in .claude .agents; do
       skill_path="$provider_root/skills/fury-deploy/SKILL.md"
       [ -f "$skill_path" ]
@@ -158,8 +158,7 @@ EOF
   grep -Fq '# Existing project instructions' AGENTS.md
   grep -Fq 'Run the project test command before merging.' AGENTS.md
   grep -Fxq '## Centralización recursiva de instrucciones' AGENTS.md
-  grep -Fxq '@AGENTS.md' CLAUDE.md
-  grep -Fxq '## Regla de centralización de instrucciones' CLAUDE.md
+  cmp -s CLAUDE.md "$skill_dir/assets/root-claude.md"
   [[ "$output" == *"Normalized instructions:"* ]]
 }
 
@@ -326,7 +325,8 @@ EOF
   [ "$status" -eq 0 ]
   [ "$(cat AGENTS.md)" = "# Canonical instructions" ]
   [ "$(cat CLAUDE.md)" = "# Claude-only instructions" ]
-  [[ "$output" == *"Instruction conflicts (manual resolution required):"* ]]
+  [[ "$output" == *"Instruction conflicts or differences (agent resolution may be required):"* ]]
+  [[ "$output" == *"agent must merge compatible instructions before normalizing"* ]]
 }
 
 @test "rejects symlinked provider roots before writing assets" {
