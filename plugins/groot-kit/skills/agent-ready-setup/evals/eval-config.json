@@ -112,6 +112,60 @@
       ]
     },
     {
+      "id": "root-claude-uses-exact-asset",
+      "description": "Genera CLAUDE.md raíz desde el asset canónico y explicita la excepción de conflictos.",
+      "input": "Explicá qué contenido debe tener exactamente el CLAUDE.md raíz que crea agent-ready-setup en el proyecto destino y qué ocurre si CLAUDE.md y AGENTS.md existentes contienen instrucciones diferentes. No ejecutes Bash ni escribas archivos; respondé según el skill.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "assets/root-claude.md",
+          "description": "Identifica el asset canónico usado para CLAUDE.md raíz"
+        },
+        {
+          "type": "contains_any",
+          "values": ["exactamente", "byte-a-byte", "copia exacta"],
+          "description": "Exige igualdad exacta con el asset"
+        },
+        {
+          "type": "contains",
+          "value": "@AGENTS.md",
+          "description": "Incluye referencia a AGENTS.md"
+        },
+        {
+          "type": "contains_any",
+          "values": ["diferencia", "diferencias", "contradicción", "contradicciones", "conflicto", "conflictos"],
+          "description": "Explica tratamiento seguro de diferencias y contradicciones"
+        }
+      ]
+    },
+    {
+      "id": "agent-merges-compatible-root-instructions",
+      "description": "Fusiona instrucciones compatibles y escala solo contradicciones irresolubles.",
+      "input": "El bootstrap detectó que CLAUDE.md y AGENTS.md raíz difieren: CLAUDE.md agrega comandos de test y AGENTS.md documenta arquitectura, sin contradicciones. Explicá qué debe hacer el agente antes de terminar agent-ready-setup. También indicá qué cambia si ambos archivos contienen políticas mutuamente excluyentes y no hay evidencia para elegir una.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "AGENTS.md",
+          "description": "Usa AGENTS.md como destino canónico de la fusión"
+        },
+        {
+          "type": "contains_any",
+          "values": ["fusión", "fusion", "fusionar", "integra", "merge"],
+          "description": "Fusiona instrucciones compatibles"
+        },
+        {
+          "type": "contains",
+          "value": "CLAUDE.md",
+          "description": "Normaliza CLAUDE.md después de fusionar"
+        },
+        {
+          "type": "contains_any",
+          "values": ["contradicción", "contradicciones", "irresoluble", "precedencia"],
+          "description": "Escala solo contradicciones sin resolución respaldada"
+        }
+      ]
+    },
+    {
       "id": "existing-files-are-skipped",
       "description": "Conserva archivos existentes y reporta que fueron omitidos.",
       "input": "Setup agent ready. Asumí que proyecto tiene package.json con React y Nordic, además de .claude/CLAUDE.md y .claude/rules/security.md ya existentes. Explicá qué archivos conserva, cuáles crea y cómo reporta los existentes. No ejecutes Bash ni escribas archivos.",

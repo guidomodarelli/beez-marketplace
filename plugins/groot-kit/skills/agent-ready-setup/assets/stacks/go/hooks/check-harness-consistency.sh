@@ -24,9 +24,17 @@ else
   exit 0
 fi
 
-echo "[harness-check] $FILE_PATH modified — running consistency check..."
+run_consistency_check() {
+  local harness_root="$1"
 
-claude --print \
-  "Read all .md files in $HARNESS_ROOT/rules/ and all SKILL.md files in $HARNESS_ROOT/skills/*/. \
+  (
+    cd -- "$harness_root" || exit 1
+    claude --print \
+      'Read all .md files in rules/ and all SKILL.md files in skills/*/. \
 Check for contradictions or inconsistencies (conflicting mocking strategies, directory conventions, naming rules, etc). \
-Output ONLY the conflicts found as a bullet list, or a single line 'No contradictions found.' if all is consistent. Be concise."
+Output ONLY the conflicts found as a bullet list, or a single line '\''No contradictions found.'\'' if all is consistent. Be concise.'
+  )
+}
+
+echo "[harness-check] $FILE_PATH modified — running consistency check..."
+run_consistency_check "$HARNESS_ROOT"

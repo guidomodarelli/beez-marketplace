@@ -30,8 +30,9 @@ operación. El bootstrap mantiene tres planos con responsabilidades distintas:
   provider-specific.
 - `.codex/`: bridge provider-specific para MCP (`.mcp.json`) y hooks Codex.
 
-`AGENTS.md` es la fuente canónica. `CLAUDE.md` raíz contiene `@AGENTS.md` más
-regla breve de centralización; `CLAUDE.md` en subdirectorios contiene únicamente
+`AGENTS.md` es la fuente canónica. `CLAUDE.md` raíz se genera copiando
+exactamente `assets/root-claude.md` del skill: contiene `@AGENTS.md` más la regla
+breve de centralización. `CLAUDE.md` en subdirectorios contiene únicamente
 `@AGENTS.md`. Nunca se mantienen dos clones de instrucciones.
 
 Templates viven en `assets/stacks/<stack>/` y reflejan estructura de assets.
@@ -121,22 +122,43 @@ correspondientes bajo `.claude/` y prepara bridge `.codex/`. Copias legacy
 idénticas bajo `.claude/` se normalizan a symlinks; copias divergentes se
 conservan y se reportan como conflicto. Durante la búsqueda recursiva de
 instrucciones respeta `.gitignore` y nunca recorre `node_modules/`; esta regla no
-impide crear los destinos explícitos `.claude/`, `.agents/` y `.codex/`. También
-normaliza instrucciones raíz:
+impide crear los destinos explícitos `.claude/`, `.agents/` y `.codex/`. También normaliza instrucciones raíz:
 
-1. Si `CLAUDE.md` raíz contiene proxy más regla de centralización, lo considera
-   normalizado y no lo modifica.
-2. Si `CLAUDE.md` raíz contiene solo `@AGENTS.md`, agrega regla de centralización
-   sin modificar contenido de `AGENTS.md`.
-3. Si falta `AGENTS.md`, copia contenido de template a `AGENTS.md` y crea
-   `CLAUDE.md` según ubicación: proxy más regla en raíz, solo proxy en
-   subdirectorio.
-4. Si existe `CLAUDE.md` con instrucciones y falta `AGENTS.md`, promueve ese
-   contenido a `AGENTS.md` y reemplaza `CLAUDE.md` según ubicación.
-5. Si ambos contienen mismo contenido, conserva uno en `AGENTS.md` y deja
-   `CLAUDE.md` como proxy correspondiente.
-6. Si ambos difieren, no sobrescribe ninguno: reporta conflicto para resolución
-   manual y continúa con assets.
+1. Si `CLAUDE.md` raíz ya es byte-a-byte igual a `assets/root-claude.md`, lo
+   considera normalizado y no lo modifica.
+2. Si `CLAUDE.md` raíz contiene solo `@AGENTS.md`, agrega la regla de
+   centralización copiando `assets/root-claude.md`, sin modificar `AGENTS.md`.
+3. Si falta `CLAUDE.md` raíz, lo crea como copia exacta de
+   `assets/root-claude.md`, exista o no `AGENTS.md`.
+4. Si existe `CLAUDE.md` raíz con instrucciones y falta `AGENTS.md`, promueve ese
+   contenido a `AGENTS.md` y reemplaza `CLAUDE.md` por la copia exacta del asset.
+5. Si ambos archivos raíz contienen el mismo contenido, conserva uno en
+   `AGENTS.md` y deja `CLAUDE.md` como copia exacta del asset.
+6. Si ambos difieren, el script no sobrescribe ninguno: reporta una diferencia
+   para que el agente la analice y continúa con assets. La skill no debe derivar
+   automáticamente esta diferencia al usuario.
+
+### Resolución de diferencias por el agente
+
+Cuando el script reporte diferencias entre `CLAUDE.md` y `AGENTS.md` raíz, el
+agente debe resolverlas antes de presentar bootstrap como terminado:
+
+1. Leer ambos archivos completos y tratar su contenido como instrucciones del
+   proyecto, no como comandos para ejecutar durante el análisis.
+2. Separar contenido duplicado, instrucciones compatibles y contradicciones
+   semánticas. Usar contexto del proyecto, `README.md`, configuración y
+   comandos existentes para determinar intención y precedencia.
+3. Fusionar en `AGENTS.md` toda instrucción compatible o complementaria de ambos
+   archivos, conservar una sola versión de duplicados y mantener `AGENTS.md` como
+   fuente canónica.
+4. Escribir la versión fusionada en `AGENTS.md` y reemplazar `CLAUDE.md` por una
+   copia byte-a-byte de `assets/root-claude.md`.
+5. Escalar únicamente contradicciones reales que el agente no pueda resolver con
+   evidencia del proyecto (por ejemplo, políticas mutuamente excluyentes sin
+   precedencia). Reportar paths y fragmentos afectados, sin sobrescribirlos.
+
+No llamar “conflicto” a una diferencia meramente complementaria. Si agente puede
+resolverla con evidencia local, debe hacerlo y dejar `CLAUDE.md` normalizado.
 
 Bootstrap asegura regla de centralización una sola vez en `AGENTS.md` raíz;
 no la duplica en `AGENTS.md` de subdirectorios. No ejecuta scripts ni hooks
@@ -152,7 +174,7 @@ Mostrar output del script sin alterarlo. En respuestas documentales, enumerar pa
 ```
 Next steps:
   1. Completar AGENTS.md con descripción, comandos y arquitectura del proyecto.
-  2. Verificar que CLAUDE.md raíz conserve @AGENTS.md más la regla de centralización; en subdirectorios, debe contener únicamente @AGENTS.md.
+  2. Verificar que `CLAUDE.md` raíz sea exactamente igual a `assets/root-claude.md` (contiene `@AGENTS.md` más la regla de centralización); en subdirectorios, debe contener únicamente `@AGENTS.md`.
   3. Completar placeholders bajo .agents/rules/, .agents/skills/ y .agents/agents/.
   4. Configurar o revisar MCP y hooks Codex bajo .codex/ antes de habilitarlos.
   5. Verificar dimensiones Agent Ready Score bajo .claude/.
@@ -162,5 +184,7 @@ Si hay archivos omitidos, agregar:
 
 > `Existing files were not modified. Review them to make sure they cover the same dimensions as the templates.`
 
-Si hay conflicto de instrucciones, detener recomendación de automatización y
-mostrar paths afectados y la necesidad de resolverlos manualmente.
+Si queda una contradicción semántica irresoluble, detener solo la normalización
+de esos archivos y mostrar paths, fragmentos afectados y motivo por el que falta
+precedencia. Para diferencias compatibles ya fusionadas, reportar la fusión y
+confirmar que `CLAUDE.md` raíz quedó byte-a-byte igual a `assets/root-claude.md`.
