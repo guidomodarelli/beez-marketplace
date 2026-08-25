@@ -91,6 +91,11 @@ MIGRATED=()
 CONFLICTS=()
 PROVIDER_ROOT_CONFLICTS=()
 
+if ! command -v git >/dev/null 2>&1 || [[ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != true ]]; then
+  echo "ERROR: bootstrap must run inside a Git worktree" >&2
+  exit 1
+fi
+
 validate_provider_roots() {
   local provider_root
 
@@ -119,6 +124,29 @@ record_created() {
 
 record_skipped() {
   SKIPPED+=("$1")
+}
+
+is_ignored_path() {
+  local path="$1"
+  local check_status
+
+  if git check-ignore -q -- "$path" 2>/dev/null; then
+    check_status=0
+  else
+    check_status=$?
+  fi
+
+  case "$check_status" in
+    0)
+      return 0
+      ;;
+    1)
+      return 1
+      ;;
+    *)
+      return 2
+      ;;
+  esac
 }
 
 # Validate every existing directory component before creating a destination
@@ -367,6 +395,24 @@ normalize_nested_instruction_pair() {
   if [[ -e "$agents_file" && ! -f "$agents_file" ]]; then
     CONFLICTS+=("$agents_file is not a regular file; neither instruction file was changed")
     return
+  fi
+
+  if [[ -e "$claude_file" ]]; then
+    if is_ignored_path "$claude_file"; then
+      return
+    elif [[ "$?" -eq 2 ]]; then
+      CONFLICTS+=("could not determine whether $claude_file is ignored; neither instruction file was changed")
+      return
+    fi
+  fi
+
+  if [[ -e "$agents_file" ]]; then
+    if is_ignored_path "$agents_file"; then
+      return
+    elif [[ "$?" -eq 2 ]]; then
+      CONFLICTS+=("could not determine whether $agents_file is ignored; neither instruction file was changed")
+      return
+    fi
   fi
 
   if [[ -e "$claude_file" ]]; then

@@ -37,6 +37,10 @@ regla breve de centralización; `CLAUDE.md` en subdirectorios contiene únicamen
 Templates viven en `assets/stacks/<stack>/` y reflejan estructura de assets.
 Agregar o editar una dimensión para stack consiste en editar template fuente.
 
+Bootstrap requiere ejecución dentro de un worktree Git. Usa `git check-ignore`
+como fuente de verdad para omitir instrucciones anidadas cubiertas por
+`.gitignore`; fuera de un worktree, termina con error antes de escribir assets.
+
 ---
 
 ## Step 1 — Resolve SKILL_DIR
@@ -109,7 +113,10 @@ bash "$SKILL_DIR/scripts/bootstrap.sh" \
 Script copia assets compartidos faltantes a `.agents/`, crea symlinks relativos
 correspondientes bajo `.claude/` y prepara bridge `.codex/`. Copias legacy
 idénticas bajo `.claude/` se normalizan a symlinks; copias divergentes se
-conservan y se reportan como conflicto. También normaliza instrucciones raíz:
+conservan y se reportan como conflicto. Durante la búsqueda recursiva de
+instrucciones respeta `.gitignore` y nunca recorre `node_modules/`; esta regla no
+impide crear los destinos explícitos `.claude/`, `.agents/` y `.codex/`. También
+normaliza instrucciones raíz:
 
 1. Si `CLAUDE.md` raíz contiene proxy más regla de centralización, lo considera
    normalizado y no lo modifica.

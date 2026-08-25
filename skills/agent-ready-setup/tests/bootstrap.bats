@@ -6,6 +6,7 @@ setup() {
   test_root="$(mktemp -d)"
   project_dir="$test_root/project"
   mkdir -p "$project_dir"
+  git -C "$project_dir" -c init.defaultBranch=main init -q
   cd "$project_dir"
 }
 
@@ -108,6 +109,7 @@ run_bootstrap() {
   for stack in go java node; do
     stack_project="$test_root/$stack-project"
     mkdir -p "$stack_project"
+    git -C "$stack_project" -c init.defaultBranch=main init -q
     cd "$stack_project"
 
     run_bootstrap "$stack"
@@ -229,6 +231,68 @@ EOF
   [ "$(cat packages/api/CLAUDE.md)" = '@AGENTS.md' ]
   grep -Fq '# API instructions' packages/api/AGENTS.md
   grep -Fq 'Keep API changes backwards compatible.' packages/api/AGENTS.md
+}
+
+@test "rejects bootstrap outside a Git worktree" {
+  non_git_project="$test_root/non-git-project"
+  mkdir -p "$non_git_project"
+  cd "$non_git_project"
+
+  run bash "$skill_dir/scripts/bootstrap.sh" --stack node --skill-dir "$skill_dir"
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"bootstrap must run inside a Git worktree"* ]]
+}
+
+@test "ignored node_modules instructions remain untouched" {
+  printf '%s\n' 'node_modules/' > .gitignore
+  mkdir -p node_modules/example-package
+  printf '%s\n' '# Dependency instructions' > node_modules/example-package/CLAUDE.md
+
+  run_bootstrap node
+
+  [ "$status" -eq 0 ]
+  [ ! -e node_modules/example-package/AGENTS.md ]
+  [ "$(cat node_modules/example-package/CLAUDE.md)" = '# Dependency instructions' ]
+}
+
+@test "gitignored nested instruction pairs remain untouched" {
+  mkdir -p generated/api
+  printf '%s\n' 'generated/' > .gitignore
+  git -c init.defaultBranch=main init -q .
+  printf '%s\n' '# Generated instructions' > generated/api/CLAUDE.md
+
+  run_bootstrap node
+
+  [ "$status" -eq 0 ]
+  [ ! -e generated/api/AGENTS.md ]
+  [ "$(cat generated/api/CLAUDE.md)" = '# Generated instructions' ]
+}
+
+@test "tracked instructions under ignored directories remain normalizable" {
+  mkdir -p node_modules/tracked-package
+  printf '%s\n' 'node_modules/' > .gitignore
+  printf '%s\n' '# Tracked instructions' > node_modules/tracked-package/CLAUDE.md
+  git add -f node_modules/tracked-package/CLAUDE.md
+
+  run_bootstrap node
+
+  [ "$status" -eq 0 ]
+  [ -f node_modules/tracked-package/AGENTS.md ]
+  [ "$(cat node_modules/tracked-package/CLAUDE.md)" = '@AGENTS.md' ]
+  [ "$(cat node_modules/tracked-package/AGENTS.md)" = '# Tracked instructions' ]
+}
+
+@test "provider destinations are created when ignored by Git" {
+  printf '%s\n' '.claude/' '.agents/' '.codex/' > .gitignore
+  git -c init.defaultBranch=main init -q .
+
+  run_bootstrap node
+
+  [ "$status" -eq 0 ]
+  [ -f .claude/settings.json ]
+  [ -f .agents/rules/security.md ]
+  [ -f .codex/hooks/hooks.json ]
 }
 
 @test "identical instruction files collapse to canonical AGENTS" {
