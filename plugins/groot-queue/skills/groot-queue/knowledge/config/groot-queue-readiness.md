@@ -63,6 +63,12 @@ El checker conserva el resultado de cada capa en `checks` y los fallos en `failu
 | `general_read` | `GENERAL_READ_FAILED`, `GENERAL_READ_FORBIDDEN`, `GENERAL_READ_ENDPOINT_NOT_FOUND`, `GENERAL_READ_RESPONSE_INVALID` |
 | `required_document` | `REQUIRED_DOCUMENT_READ_FAILED`, `REQUIRED_DOCUMENT_FORBIDDEN`, `REQUIRED_DOCUMENT_NOT_FOUND`, `REQUIRED_DOCUMENT_RESPONSE_INVALID` |
 
+#### Origen Git de plugins Codex
+
+`codex plugin list --json` puede informar un plugin con `source.source: git-subdir`. En ese caso, `source.path` es una ruta relativa al repositorio Git (por ejemplo, `plugins/fury-services`), no una raíz local y no debe resolverse contra el directorio actual ni requerir `/` inicial. El checker valida que `source.url`, `source.ref` y `source.path` sean metadata Git seguras, sin traversal ni caracteres de control.
+
+Para ese origen, `grid_required_skill`, `fury_required_skill`, `fury_manifest` y `fury_mcp_declaration` no leen el path relativo como filesystem local: Codex ya resolvió el contenido del plugin habilitado. La configuración efectiva de Fury se valida mediante `codex mcp list --json`; las fuentes locales conservan sus validaciones de archivos, manifiestos y symlinks.
+
 #### Contrato de args del MCP `fury`
 
 `fury_mcp_declaration` y `fury_mcp_cli` comparan los args declarados por `fury-services`

@@ -494,12 +494,14 @@ reset_provider_state() {
   GRID_PLUGIN_FAILURE_CODE=""
   GRID_REQUIRED_SKILL_OK=false
   GRID_PLUGIN_VERSION=""
+  GRID_PLUGIN_SOURCE_KIND=""
   GRID_PLUGIN_INSTALL_PATH=""
 
   FURY_PLUGIN_OK=false
   FURY_PLUGIN_FAILURE_CODE=""
   FURY_REQUIRED_SKILL_OK=false
   FURY_PLUGIN_VERSION=""
+  FURY_PLUGIN_SOURCE_KIND=""
   FURY_PLUGIN_INSTALL_PATH=""
 
   FURY_MANIFEST_OK=false
@@ -570,6 +572,7 @@ inspect_inventory_plugin() {
   local plugin_installed
   local plugin_enabled
   local plugin_version
+  local plugin_source_kind
   local plugin_install_path
   local plugin_values
 
@@ -595,18 +598,45 @@ inspect_inventory_plugin() {
     claude)
       jq -ec --arg plugin_id "$plugin_id" '
         [.[] | select(.id == $plugin_id)][0]
-        | {installed: true, enabled, version, path: .installPath}
+        | {installed: true, enabled, version, source_kind: "local", path: .installPath}
       ' "$PROVIDER_INVENTORY_FILE" > "$normalized_inventory_file"
       ;;
     codex)
       jq -ec --arg plugin_id "$plugin_id" '
         [.installed[] | select(.pluginId == $plugin_id)][0]
-        | {installed, enabled, version, path: .source.path}
+        | {
+            installed,
+            enabled,
+            version,
+            source_kind: (.source.source // "local"),
+            source_url: .source.url,
+            source_ref: .source.ref,
+            path: .source.path
+          }
       ' "$PROVIDER_INVENTORY_FILE" > "$normalized_inventory_file"
       ;;
   esac
 
-  if ! plugin_values="$(jq -er '
+  if ! plugin_values="$(jq -er --arg provider "$provider" '
+    def safe_git_path:
+      (type == "string") and
+      (length > 0) and
+      ((startswith("/") or startswith("~") or test("^[A-Za-z]:")) | not) and
+      ((contains("\\")) | not) and
+      ((test("[[:cntrl:]]")) | not) and
+      (split("/") | all(.[]; . != "" and . != "." and . != ".."));
+
+    def valid_git_source:
+      (.source_kind == "git-subdir") and
+      (.path | safe_git_path) and
+      (.source_url | type == "string") and
+      (.source_url | length > 0) and
+      (.source_url | startswith("https://")) and
+      ((.source_url | test("[[:cntrl:]]")) | not) and
+      (.source_ref | type == "string") and
+      (.source_ref | length > 0) and
+      ((.source_ref | test("[[:cntrl:]]")) | not);
+
     select(
       type == "object" and
       (.installed | type == "boolean") and
@@ -614,18 +644,26 @@ inspect_inventory_plugin() {
       (.version | type == "string") and
       (.version | length > 0) and
       ((.version | test("[[:cntrl:]]")) | not) and
+      (.source_kind | type == "string") and
       (.path | type == "string") and
-      (.path | startswith("/")) and
-      ((.path | test("[[:cntrl:]]")) | not)
+      ((.path | test("[[:cntrl:]]")) | not) and
+      (
+        ($provider == "claude" and
+          .source_kind == "local" and
+          (.path | startswith("/"))) or
+        ($provider == "codex" and
+          (valid_git_source or
+            (.source_kind != "git-subdir" and (.path | startswith("/")))))
+      )
     )
-    | [.installed, .enabled, .version, .path]
+    | [.installed, .enabled, .version, .path, .source_kind]
     | @tsv
   ' "$normalized_inventory_file")"; then
     set_plugin_failure "$plugin_kind" "$invalid_code"
     return 0
   fi
 
-  IFS=$'\t' read -r plugin_installed plugin_enabled plugin_version plugin_install_path <<EOF
+  IFS=$'\t' read -r plugin_installed plugin_enabled plugin_version plugin_install_path plugin_source_kind <<EOF
 $plugin_values
 EOF
 
@@ -642,7 +680,10 @@ EOF
     grid)
       GRID_PLUGIN_OK=true
       GRID_PLUGIN_VERSION="$plugin_version"
-      GRID_PLUGIN_INSTALL_PATH="$plugin_install_path"
+      GRID_PLUGIN_SOURCE_KIND="$plugin_source_kind"
+      if [ "$plugin_source_kind" != "git-subdir" ]; then
+        GRID_PLUGIN_INSTALL_PATH="$plugin_install_path"
+      fi
       ;;
     fury)
       if ! is_strict_semver "$plugin_version"; then
@@ -651,7 +692,10 @@ EOF
       fi
       FURY_PLUGIN_OK=true
       FURY_PLUGIN_VERSION="$plugin_version"
-      FURY_PLUGIN_INSTALL_PATH="$plugin_install_path"
+      FURY_PLUGIN_SOURCE_KIND="$plugin_source_kind"
+      if [ "$plugin_source_kind" != "git-subdir" ]; then
+        FURY_PLUGIN_INSTALL_PATH="$plugin_install_path"
+      fi
       ;;
   esac
 }
@@ -661,16 +705,26 @@ inspect_required_skills() {
   local fury_required_skill_file
 
   if [ "$GRID_PLUGIN_OK" = "true" ]; then
-    grid_required_skill_file="${GRID_PLUGIN_INSTALL_PATH%/}/$GRID_REQUIRED_SKILL_PATH"
-    if [ ! -L "$grid_required_skill_file" ] && [ -f "$grid_required_skill_file" ] && [ -r "$grid_required_skill_file" ]; then
+    if [ "$GRID_PLUGIN_SOURCE_KIND" = "git-subdir" ]; then
+      # Codex reports Git paths relative to the source repository, not local files.
       GRID_REQUIRED_SKILL_OK=true
+    else
+      grid_required_skill_file="${GRID_PLUGIN_INSTALL_PATH%/}/$GRID_REQUIRED_SKILL_PATH"
+      if [ ! -L "$grid_required_skill_file" ] && [ -f "$grid_required_skill_file" ] && [ -r "$grid_required_skill_file" ]; then
+        GRID_REQUIRED_SKILL_OK=true
+      fi
     fi
   fi
 
   if [ "$FURY_PLUGIN_OK" = "true" ]; then
-    fury_required_skill_file="${FURY_PLUGIN_INSTALL_PATH%/}/$FURY_REQUIRED_SKILL_PATH"
-    if [ ! -L "$fury_required_skill_file" ] && [ -f "$fury_required_skill_file" ] && [ -r "$fury_required_skill_file" ]; then
+    if [ "$FURY_PLUGIN_SOURCE_KIND" = "git-subdir" ]; then
+      # Codex reports Git paths relative to the source repository, not local files.
       FURY_REQUIRED_SKILL_OK=true
+    else
+      fury_required_skill_file="${FURY_PLUGIN_INSTALL_PATH%/}/$FURY_REQUIRED_SKILL_PATH"
+      if [ ! -L "$fury_required_skill_file" ] && [ -f "$fury_required_skill_file" ] && [ -r "$fury_required_skill_file" ]; then
+        FURY_REQUIRED_SKILL_OK=true
+      fi
     fi
   fi
 }
@@ -685,6 +739,12 @@ inspect_fury_manifest() {
     codex) provider_manifest_path="$FURY_CODEX_MANIFEST_PATH" ;;
     *) return 0 ;;
   esac
+
+  if [ "$provider" = "codex" ] && [ "$FURY_PLUGIN_SOURCE_KIND" = "git-subdir" ]; then
+    # Codex Git metadata has no local root; plugin loader owns manifest resolution.
+    FURY_MANIFEST_OK=true
+    return 0
+  fi
 
   provider_manifest_file="${FURY_PLUGIN_INSTALL_PATH%/}/$provider_manifest_path"
   if [ -L "$provider_manifest_file" ] || [ ! -f "$provider_manifest_file" ] || [ ! -r "$provider_manifest_file" ]; then
@@ -788,8 +848,15 @@ claude_mcp_configuration_matches() {
 }
 
 inspect_fury_mcp_declaration() {
-  local mcp_manifest_file="${FURY_PLUGIN_INSTALL_PATH%/}/$FURY_MCP_MANIFEST_PATH"
+  local mcp_manifest_file
 
+  if [ "$FURY_PLUGIN_SOURCE_KIND" = "git-subdir" ]; then
+    # Codex Git metadata has no local root; effective MCP configuration is checked via CLI.
+    FURY_MCP_DECLARATION_OK=true
+    return 0
+  fi
+
+  mcp_manifest_file="${FURY_PLUGIN_INSTALL_PATH%/}/$FURY_MCP_MANIFEST_PATH"
   if [ -L "$mcp_manifest_file" ] || [ ! -f "$mcp_manifest_file" ] || [ ! -r "$mcp_manifest_file" ]; then
     FURY_MCP_DECLARATION_FAILURE_CODE="FURY_MCP_DECLARATION_UNAVAILABLE"
     return 0
