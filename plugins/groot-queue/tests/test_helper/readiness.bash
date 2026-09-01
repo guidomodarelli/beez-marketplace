@@ -191,6 +191,18 @@ if [ "${1:-}" = "plugin" ] && [ "${2:-}" = "list" ] \
   case "${CODEX_INVENTORY_SCENARIO:-success}" in
     command-failure) exit 9 ;;
     invalid-response) printf '%s\n' '[]' ;;
+    git-subdir)
+      jq -nc '{installed:[
+        {pluginId:"grid-sharing@tech-plugins-marketplace",installed:true,enabled:true,version:"1.2.3",source:{source:"git-subdir",url:"https://github.com/melisource/grid-sharing-skills-plugin.git",path:"plugins/grid-sharing",ref:"master"}},
+        {pluginId:"fury-services@tech-plugins-marketplace",installed:true,enabled:true,version:"1.4.0",source:{source:"git-subdir",url:"https://github.com/melisource/fury_services-skills-plugin.git",path:"plugins/fury-services",ref:"master"}}
+      ]}'
+      ;;
+    git-subdir-invalid-path)
+      jq -nc '{installed:[
+        {pluginId:"grid-sharing@tech-plugins-marketplace",installed:true,enabled:true,version:"1.2.3",source:{source:"git-subdir",url:"https://github.com/melisource/grid-sharing-skills-plugin.git",path:"plugins/grid-sharing",ref:"master"}},
+        {pluginId:"fury-services@tech-plugins-marketplace",installed:true,enabled:true,version:"1.4.0",source:{source:"git-subdir",url:"https://github.com/melisource/fury_services-skills-plugin.git",path:"../fury-services",ref:"master"}}
+      ]}'
+      ;;
     grid-missing)
       jq -nc --arg fury_path "$FAKE_FURY_PLUGIN_INSTALL_PATH" \
         '{installed:[{pluginId:"fury-services@tech-plugins-marketplace",installed:true,enabled:true,version:"1.4.0",source:{path:$fury_path}}]}'

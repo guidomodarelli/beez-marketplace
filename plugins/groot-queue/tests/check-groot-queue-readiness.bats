@@ -50,6 +50,28 @@ STUB
   assert_provider_calls codex 1 1
 }
 
+@test "Codex Git source accepts repository-relative paths across readiness checks" {
+  run_checker codex git-subdir success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+
+  assert_equal 0 "$LAST_STATUS" "Codex Git source should exit zero"
+  assert_json ".schema_version == 2 and .provider == \"codex\" and .ok == true and .exit_code == 0 and all(.checks[]; .ok == true and .status == \"passed\")" \
+    "Codex Git source must pass all readiness checks"
+  assert_provider_calls codex 1 1
+  if grep -Eq 'plugins/(grid-sharing|fury-services)' "$STDOUT_FILE" "$STDERR_FILE"; then
+    readiness_fail "Codex Git source path must not leak into checker output"
+  fi
+}
+
+@test "Codex Git source rejects repository traversal paths" {
+  run_checker codex git-subdir-invalid-path success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
+
+  assert_failure 10 FURY_PLUGIN_INVENTORY_INVALID
+  assert_json 'all(.checks[] | select(.name == "fury_required_skill" or .name == "fury_manifest" or .name == "fury_mcp_declaration" or .name == "fury_mcp_cli"); .status == "not_run" and .failure_code == "FURY_PLUGIN_INVENTORY_INVALID")' \
+    "invalid Codex Git source must block dependent Fury checks"
+  assert_provider_calls codex 1 0
+  assert_empty_file "$CURL_LOG" "invalid Codex Git source must short-circuit before Grid HTTP probes"
+}
+
 @test "missing Grid plugin fails closed" {
   run_checker claude grid-missing success success "$GRID_PLUGIN_DIRECTORY" "$FURY_PLUGIN_DIRECTORY"
   assert_failure 10 PLUGIN_NOT_INSTALLED

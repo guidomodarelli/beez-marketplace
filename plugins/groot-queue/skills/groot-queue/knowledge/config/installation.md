@@ -460,7 +460,7 @@ printf 'Backup created at %s\n' "$BACKUP_ROOT"
 
 No continúes con update/uninstall si el bloque falla o si el backup no contiene `knowledge/` y `SKILL.md`. El backup puede contener datos internos de tickets: mantenelo fuera de repositorios y almacenamiento público. Después de actualizar, compará y fusioná el contenido revisado; no sobrescribas automáticamente reglas o soluciones nuevas del plugin.
 
-En Codex, obtené el `source.path` del plugin instalado con `codex plugin list --json` y preservá los mismos recursos antes de `marketplace upgrade` o `plugin remove`.
+En Codex, obtené el origen del plugin instalado con `codex plugin list --json` y preservá los mismos recursos antes de `marketplace upgrade` o `plugin remove`. Si `source.source` es `git-subdir`, `source.path` es relativo al repositorio Git y no una raíz local; no lo concatentes con el directorio actual. Aplicá el contrato de [readiness para orígenes Git](groot-queue-readiness.md#origen-git-de-plugins-codex).
 
 ## ⬆️ Actualizar de forma segura
 
