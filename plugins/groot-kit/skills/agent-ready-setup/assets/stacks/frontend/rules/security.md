@@ -13,7 +13,10 @@ Baseline security rules for Nordic applications. These rules are always active a
 
 ## Input Validation
 
-- Validate all external inputs (body, query params, path params, headers) at the controller/handler level using `@meli/input-validation`.
+- Middleend endpoints must validate all untrusted client-controlled request inputs (body, query params, path params, headers) at the controller/handler boundary using `@meli/input-validation`.
+- Never revalidate payloads received from backend/upstream services; they are response data, not client input. Consume them according to the backend contract instead of adding a second validation step.
+- Whenever code needs to validate a variable, function argument, method argument, or intermediate value that is not a backend/upstream response payload, prefer `@meli/input-validation` over native validation.
+- If `@meli/input-validation` cannot express the complete requirement, keep it as the primary validation and add only the narrowly scoped native checks that are still necessary, such as `Number.isSafeInteger`.
 - Use allowlist strategy — define what is permitted, reject everything else.
 - Never trust user-provided identifiers directly — retrieve user identity from session or JWT claims.
 

@@ -5,6 +5,8 @@ description: Create a Nordic API endpoint — either a server hook (getServerSid
 # API Endpoint Creation — Nordic
 
 > **Prerequisite**: run `/logger` first to generate `api/logger.ts` — the logging helpers used in the examples below depend on it.
+>
+> For the distinction between middleend request validation and backend/upstream response payloads, follow `../../rules/security.md`, section `Input Validation`.
 
 Nordic exposes two ways to handle server-side logic:
 
