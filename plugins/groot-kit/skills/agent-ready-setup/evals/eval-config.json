@@ -277,6 +277,43 @@
           "description": "Identifica MCP específico de Codex"
         }
       ]
+    },
+    {
+      "id": "frontend-scope-comes-from-config",
+      "description": "Explica cómo configurar scope de API sin agregarlo como query parameter.",
+      "input": "Voy a crear un service Nordic que llama una API cuyo scope cambia entre sandbox y producción. Explicá qué debe hacer agent-ready-setup: indicá si puede construir `?scope=sandbox`, si debe crear un archivo nuevo de configuración, en qué archivos existentes de `config/` declarar el valor por entorno y cómo debe consumirlo el cliente. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["No:", "No agregar", "No crear", "No usar", "no agregar", "no crear", "no usar", "no debe", "no debe construir", "no se agrega", "never add", "never create", "never use"],
+          "description": "Prohíbe scope como query parameter"
+        },
+        {
+          "type": "contains",
+          "value": "config/",
+          "description": "Ubica scope en configuración por entorno"
+        },
+        {
+          "type": "contains_any",
+          "values": ["local.js", "default.js", "default-production.js", "sandbox.js"],
+          "description": "Reutiliza archivos de configuración existentes"
+        },
+        {
+          "type": "contains_any",
+          "values": ["no crear", "No debe crear", "no se debe crear", "No hace falta crear", "no hace falta crear", "Tampoco debe crear", "tampoco debe crear", "do not create"],
+          "description": "Evita crear archivo nuevo solo para scope"
+        },
+        {
+          "type": "contains_any",
+          "values": ["nordic/config", "scopeConfig"],
+          "description": "Indica consumo mediante configuración del cliente"
+        },
+        {
+          "type": "contains_any",
+          "values": ["sandbox", "prod", "producción"],
+          "description": "Cubre valores dependientes del entorno"
+        }
+      ]
     }
   ]
 }

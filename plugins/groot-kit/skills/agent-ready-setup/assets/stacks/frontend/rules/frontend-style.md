@@ -58,6 +58,12 @@ Coding conventions for this stack. Always consult `frontender-web-mcp` for Nordi
 - Never install packages that Nordic already bundles (`react`, `react-dom`, `frontend-restclient`, etc.).
 - Check `node_modules/nordic/package.json` before installing any new dependency.
 
+## API Configuration
+
+- Never add or forward `scope` as a query parameter (`?scope=...`, `params: { scope: ... }`, or equivalent URL construction). API scope belongs to client configuration, not request URLs.
+- When an upstream client requires a scope, add a service-specific key to the existing environment files under `config/` (typically `config/local.js`, `config/default.js`, `config/default-production.js`, and `config/sandbox.js`) and consume it through `nordic/config` or the client option designed for configured scopes (for example, `scopeConfig`). Do not create a new config file solely for scope. Never hardcode environment values such as `sandbox` or `prod` in service code.
+- Keep scope values in those existing `config/` files; do not duplicate them in services or handlers.
+
 ## Comments
 
 - Comment the WHY, not the WHAT. Well-named identifiers explain themselves.

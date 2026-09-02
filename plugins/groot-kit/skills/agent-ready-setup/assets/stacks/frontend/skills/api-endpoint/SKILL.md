@@ -80,6 +80,7 @@ export async function getServerSideProps(req) {
 Rules:
 - Never inline business logic — delegate to a service.
 - Never expose stack traces or internal error details.
+- Never create or forward `scope` as a query parameter; API scope must come from the existing environment files under `config/` through the service/client configuration. Do not create a new config file solely for scope. See the `API Configuration` section in `../../rules/frontend-style.md`.
 - Use `new Logger('name')` — never `console.log`.
 - Use `nordic/restclient` for outbound HTTP calls inside the hook.
 - Use GET only for read operations.
