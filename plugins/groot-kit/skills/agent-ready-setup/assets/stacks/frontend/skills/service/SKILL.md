@@ -36,6 +36,7 @@ const client = new RestClient({
 
 Rules:
 - Never pass user-controlled input directly as the base URL or path — validate against a static allowlist.
+- Never add or forward `scope` as a query parameter. If the client requires a scope, add it to the existing environment files under `config/` (typically `local.js`, `default.js`, `default-production.js`, and `sandbox.js`) and consume it through `nordic/config` or the client's configured-scope option. Do not create a new config file solely for scope or hardcode `sandbox`/`prod` in service code. See the `API Configuration` section in `../../rules/frontend-style.md`.
 - Never log request/response bodies that may contain PII or tokens.
 - Use environment variables injected via `node-melitk-secrets` for any credentials or base URLs.
 
