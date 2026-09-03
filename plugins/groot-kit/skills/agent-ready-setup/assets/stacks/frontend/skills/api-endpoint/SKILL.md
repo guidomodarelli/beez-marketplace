@@ -7,6 +7,8 @@ description: Create a Nordic API endpoint — either a server hook (getServerSid
 > **Prerequisite**: run `/logger` first to generate `api/logger.ts` — the logging helpers used in the examples below depend on it.
 >
 > For the distinction between middleend request validation and backend/upstream response payloads, follow `../../rules/security.md`, section `Input Validation`.
+>
+> For translating known client/domain failures to public HTTP statuses, follow `../../rules/security.md`, section `Error Handling`; do not use a blanket 5xx response.
 
 Nordic exposes two ways to handle server-side logic:
 
@@ -132,9 +134,10 @@ router.get('/product/:id', iv.createValidationMiddleware({ schema: getSchema }),
   try {
     const product = await getProduct(req.params.id);
     res.json(product);
-  } catch (err) {
-    logError(`[PRODUCT-GET] - error: ${err.message}`, { productId: req.params.id });
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error) {
+    logError(`[PRODUCT-GET] - error: ${error instanceof Error ? error.message : String(error)}`, { productId: req.params.id });
+    const publicError = mapKnownErrorToHttpResponse(error);
+    return res.status(publicError.statusCode).json({ error: publicError.message });
   }
 });
 
@@ -142,9 +145,10 @@ router.post('/product', iv.createValidationMiddleware({ schema: postSchema }), a
   try {
     const product = await createProduct(req.body);
     res.status(201).json(product);
-  } catch (err) {
-    logError(`[PRODUCT-CREATE] - error: ${err.message}`);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error) {
+    logError(`[PRODUCT-CREATE] - error: ${error instanceof Error ? error.message : String(error)}`);
+    const publicError = mapKnownErrorToHttpResponse(error);
+    return res.status(publicError.statusCode).json({ error: publicError.message });
   }
 });
 
@@ -170,6 +174,7 @@ Rules:
 - Use allowlist strategy — declare only what is permitted in the schema.
 - Never retrieve user identity from user-provided input — use `req.session`.
 - Never log request/response bodies containing PII or tokens.
+- Map known client/domain failures to their corresponding 4xx response at the middleend boundary; do not turn known causes into 5xx responses. `mapKnownErrorToHttpResponse` in the example represents the project's typed error mapper and must preserve this rule.
 - Never expose internal error details or stack traces in responses.
 - Never inline business logic — delegate to a service.
 - Never disable CSRF without WebSec validation.
