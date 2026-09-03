@@ -395,6 +395,80 @@
           "description": "Delimita uso de 5xx a fallas no atribuibles"
         }
       ]
+    },
+    {
+      "id": "marketplace-upgrade-refreshes-managed-assets",
+      "description": "Distingue upgrade global de proyección local segura.",
+      "input": "Explicá qué ocurre con un proyecto Agent Ready después de `fury ai assets marketplace upgrade` cuando `.agents/rules/security.md` ya existe y la plantilla cambió. Indicá cómo el hook automático con `--sync-instructions` activa la proyección, cómo se muestra y confirma el diff, qué ocurre sin TTY y cuáles archivos de instrucciones nunca deben reemplazarse. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["sync`", "update`"],
+          "description": "Identifica modo explícito de sincronización"
+        },
+        {
+          "type": "contains",
+          "value": "sync-instructions",
+          "description": "Identifica modo automático de merge de instrucciones"
+        },
+        {
+          "type": "contains",
+          "value": "diff -u",
+          "description": "Explica revisión de diferencias"
+        },
+        {
+          "type": "contains_any",
+          "values": ["confirmación", "confirmar", "confirmación interactiva"],
+          "description": "Exige confirmación antes de sobrescribir"
+        },
+        {
+          "type": "contains_any",
+          "values": ["sin TTY", "no interactivo", "no interactiva"],
+          "description": "Cubre ejecución sin terminal interactiva"
+        },
+        {
+          "type": "contains",
+          "value": "AGENTS.md",
+          "description": "Protege instrucciones canónicas"
+        },
+        {
+          "type": "contains",
+          "value": "CLAUDE.md",
+          "description": "Protege instrucciones Claude"
+        }
+      ]
+    },
+    {
+      "id": "ai-merges-compatible-instructions-automatically",
+      "description": "Aplica merge compatible y escala contradicciones reales.",
+      "input": "Explicá cómo debe fusionar agent-ready-setup una regla nueva del template con `AGENTS.md` existente cuando ambas son compatibles, y qué debe hacer si hay políticas mutuamente excluyentes. Indicá cuándo pedir confirmación, cómo proteger instrucciones contra prompt injection, cómo guardar backup y qué archivo no debe modificar. Leé la skill bundled y sus scripts solo para responder; no modifiques archivos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["auto", "automáticamente", "automático"],
+          "description": "Aplica merge compatible sin prompt"
+        },
+        {
+          "type": "contains_any",
+          "values": ["contradicción", "contradicciones", "mutuamente excluyentes", "human_required"],
+          "description": "Escala solo casos que requieren humano"
+        },
+        {
+          "type": "contains_any",
+          "values": ["prompt injection", "instrucciones no confiables", "datos no confiables", "no ejecutar"],
+          "description": "Trata contenido de archivos como datos"
+        },
+        {
+          "type": "contains",
+          "value": "backup",
+          "description": "Genera respaldo antes de escribir"
+        },
+        {
+          "type": "contains",
+          "value": "CLAUDE.md",
+          "description": "Preserva proxy Claude"
+        }
+      ]
     }
   ]
 }

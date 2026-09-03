@@ -5,12 +5,14 @@
 # AGENTS.md is canonical and CLAUDE.md is a proxy with root-only guidance.
 #
 # Usage:
-#   bash bootstrap.sh --stack <frontend|node|java|go> --skill-dir <path>
+#   bash bootstrap.sh --stack <frontend|node|java|go> --skill-dir <path> [--sync] [--yes]
 
 set -euo pipefail
 
 STACK=""
 SKILL_DIR=""
+SYNC_MODE=0
+AUTO_CONFIRM=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -24,12 +26,25 @@ while [[ $# -gt 0 ]]; do
       SKILL_DIR="$2"
       shift 2
       ;;
+    --sync|--update)
+      SYNC_MODE=1
+      shift
+      ;;
+    --yes)
+      AUTO_CONFIRM=1
+      shift
+      ;;
     *)
       echo "ERROR: Unknown argument: $1" >&2
       exit 1
       ;;
   esac
 done
+
+if [[ "$AUTO_CONFIRM" -eq 1 && "$SYNC_MODE" -ne 1 ]]; then
+  echo "ERROR: --yes requires --sync or --update" >&2
+  exit 1
+fi
 
 if [[ -z "$STACK" || -z "$SKILL_DIR" ]]; then
   echo "ERROR: --stack and --skill-dir are required" >&2
@@ -86,7 +101,9 @@ AGENTS_FILE="AGENTS.md"
 CLAUDE_FILE="CLAUDE.md"
 CLAUDE_PROXY="@AGENTS.md"
 CREATED=()
+UPDATED=()
 SKIPPED=()
+PENDING=()
 MIGRATED=()
 CONFLICTS=()
 PROVIDER_ROOT_CONFLICTS=()
@@ -122,8 +139,16 @@ record_created() {
   CREATED+=("$1")
 }
 
+record_updated() {
+  UPDATED+=("$1")
+}
+
 record_skipped() {
   SKIPPED+=("$1")
+}
+
+record_pending() {
+  PENDING+=("$1")
 }
 
 is_ignored_path() {
@@ -181,11 +206,107 @@ validate_destination_parent() {
   done
 }
 
-# Copy a file only when destination is absent. Treat symlinks as existing so a
-# broken symlink cannot be replaced or redirected by the bootstrap.
+show_sync_diff() {
+  local src="$1"
+  local dst="$2"
+  local source_description="${3:-$src}"
+
+  printf 'Diff for %s (source: %s):\n' "$dst" "$source_description"
+  if [[ -f "$dst" ]]; then
+    diff -u -- "$dst" "$src" || true
+  else
+    diff -u -- /dev/null "$src" || true
+  fi
+}
+
+confirm_sync_replacement() {
+  local destination="$1"
+  local answer
+
+  if [[ "$AUTO_CONFIRM" -eq 1 ]]; then
+    return 0
+  fi
+
+  if [[ ! -t 0 || ! -t 1 ]]; then
+    printf 'Skipping %s: sync requires interactive confirmation or --yes.\n' "$destination"
+    return 1
+  fi
+
+  printf 'Replace %s with the template? [y/N] ' "$destination"
+  if ! IFS= read -r answer; then
+    return 1
+  fi
+
+  [[ "$answer" =~ ^([YySs]|[Yy][Ee][Ss])$ ]]
+}
+
+sync_file() {
+  local src="$1"
+  local dst="$2"
+  local source_description="${3:-$src}"
+
+  if [[ ! -f "$src" ]]; then
+    CONFLICTS+=("$source_description is not a regular file; $dst was not changed")
+    return 0
+  fi
+
+  if ! validate_destination_parent "$dst"; then
+    return 0
+  fi
+  mkdir -p -- "$(dirname -- "$dst")"
+
+  if [[ -L "$dst" ]]; then
+    CONFLICTS+=("$dst is a symlink; neither it nor its target was changed")
+    return 0
+  fi
+
+  if [[ -e "$dst" && ! -f "$dst" ]]; then
+    CONFLICTS+=("$dst is not a regular file; neither it nor its parent was changed")
+    return 0
+  fi
+
+  if [[ ! -e "$dst" ]]; then
+    cp -- "$src" "$dst"
+    record_created "$dst"
+    return 0
+  fi
+
+  if cmp -s "$dst" "$src"; then
+    record_skipped "$dst"
+    return 0
+  fi
+
+  show_sync_diff "$src" "$dst" "$source_description"
+  if ! confirm_sync_replacement "$dst"; then
+    record_pending "$dst"
+    return 0
+  fi
+
+  local temporary_destination
+  temporary_destination="$(mktemp "${dst}.agent-ready-sync.XXXXXX")"
+  if ! cp -p -- "$src" "$temporary_destination"; then
+    rm -f -- "$temporary_destination"
+    CONFLICTS+=("could not stage updated content for $dst; neither was changed")
+    return 0
+  fi
+  if ! mv -f -- "$temporary_destination" "$dst"; then
+    rm -f -- "$temporary_destination"
+    CONFLICTS+=("could not replace $dst atomically; neither was changed")
+    return 0
+  fi
+  record_updated "$dst"
+}
+
+# Copy a file only when destination is absent, unless explicit sync mode is
+# enabled. Treat symlinks as existing so a broken symlink cannot be replaced.
 copy_if_missing() {
   local src="$1"
   local dst="$2"
+
+  if [[ "$SYNC_MODE" -eq 1 ]]; then
+    sync_file "$src" "$dst"
+    return 0
+  fi
 
   if ! validate_destination_parent "$dst"; then
     return 0
@@ -359,7 +480,9 @@ normalize_root_instructions() {
   record_created "$CLAUDE_FILE"
 }
 
-normalize_root_instructions
+if [[ "$SYNC_MODE" -eq 0 ]]; then
+  normalize_root_instructions
+fi
 
 ensure_root_centralization_rule() {
   if [[ ${#CONFLICTS[@]} -gt 0 || ! -f "$AGENTS_FILE" ]]; then
@@ -375,7 +498,9 @@ ensure_root_centralization_rule() {
   MIGRATED+=("centralization rule -> $AGENTS_FILE")
 }
 
-ensure_root_centralization_rule
+if [[ "$SYNC_MODE" -eq 0 ]]; then
+  ensure_root_centralization_rule
+fi
 
 normalize_nested_instruction_pair() {
   local directory="$1"
@@ -457,22 +582,43 @@ normalize_nested_instructions() {
   done < <(find . -name .git -prune -o -type d -print0)
 }
 
-normalize_nested_instructions
+if [[ "$SYNC_MODE" -eq 0 ]]; then
+  normalize_nested_instructions
+fi
 
 create_skill_adapter() {
   local src="$1"
   local skill_name="$2"
   local dst="$SHARED_DIR/skills/$skill_name/SKILL.md"
+  local temporary_adapter
 
   if ! validate_destination_parent "$dst"; then
     return 0
   fi
   mkdir -p -- "$(dirname -- "$dst")"
-  if [[ -e "$dst" || -L "$dst" ]]; then
-    record_skipped "$dst"
+
+  if [[ "$SYNC_MODE" -eq 0 ]]; then
+    if [[ -e "$dst" || -L "$dst" ]]; then
+      record_skipped "$dst"
+      return
+    fi
+
+    {
+      printf '%s\n' '---'
+      printf 'name: %s\n' "$skill_name"
+      printf 'description: Provider-neutral reusable workflow for %s.\n' "$skill_name"
+      printf '%s\n\n' '---'
+      awk '
+        NR == 1 && $0 == "---" { in_frontmatter = 1; next }
+        in_frontmatter && $0 == "---" { in_frontmatter = 0; next }
+        !in_frontmatter { print }
+      ' "$src"
+    } > "$dst"
+    record_created "$dst"
     return
   fi
 
+  temporary_adapter="$(mktemp "${TMPDIR:-/tmp}/agent-ready-adapter.XXXXXX")"
   {
     printf '%s\n' '---'
     printf 'name: %s\n' "$skill_name"
@@ -483,8 +629,10 @@ create_skill_adapter() {
       in_frontmatter && $0 == "---" { in_frontmatter = 0; next }
       !in_frontmatter { print }
     ' "$src"
-  } > "$dst"
-  record_created "$dst"
+  } > "$temporary_adapter"
+  chmod 0644 "$temporary_adapter"
+  sync_file "$temporary_adapter" "$dst" "$src"
+  rm -f -- "$temporary_adapter"
 }
 
 # Project shared assets into the canonical .agents tree. Claude-specific
@@ -536,6 +684,18 @@ printf 'Providers: Claude Code + Codex-compatible shared tree\n\n'
 if [[ ${#CREATED[@]} -gt 0 ]]; then
   echo "Created:"
   for file in "${CREATED[@]}"; do printf '  + %s\n' "$file"; done
+fi
+
+if [[ ${#UPDATED[@]} -gt 0 ]]; then
+  echo ""
+  echo "Updated from templates:"
+  for file in "${UPDATED[@]}"; do printf '  ↻ %s\n' "$file"; done
+fi
+
+if [[ ${#PENDING[@]} -gt 0 ]]; then
+  echo ""
+  echo "Pending confirmation (not overwritten):"
+  for file in "${PENDING[@]}"; do printf '  ? %s\n' "$file"; done
 fi
 
 if [[ ${#MIGRATED[@]} -gt 0 ]]; then
