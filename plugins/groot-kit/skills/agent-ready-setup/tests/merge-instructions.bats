@@ -142,6 +142,24 @@ EOF
   [ "$(cat AGENTS.md)" = '# Codex merged instructions' ]
 }
 
+@test "existing merge lock prevents a second provider invocation" {
+  printf '%s\n' '# Keep this file' > AGENTS.md
+  mkdir -p .agents/.agent-ready-instructions.lock
+  cat > "$fake_bin/claude" <<'EOF'
+#!/bin/bash
+printf '%s\n' called > "$CLAUDE_CALL_LOG"
+EOF
+  chmod +x "$fake_bin/claude"
+
+  CLAUDE_CALL_LOG="$test_root/claude-called.log" PATH="$fake_bin:$PATH" \
+    run bash "$skill_dir/scripts/merge-instructions.sh" \
+      --provider claude --stack node --skill-dir "$skill_dir"
+
+  [ "$status" -eq 2 ]
+  [ ! -e "$test_root/claude-called.log" ]
+  [[ "$output" == *"another instruction merge is running"* ]]
+}
+
 @test "missing AGENTS is created from template without invoking provider" {
   cat > "$fake_bin/claude" <<'EOF'
 #!/bin/bash

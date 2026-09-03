@@ -14,11 +14,16 @@ STACK=""
 SKILL_DIR=""
 NON_INTERACTIVE="${AGENT_READY_SETUP_NON_INTERACTIVE:-0}"
 TEMPORARY_DIRECTORY=""
+MERGE_LOCK_DIRECTORY=".agents/.agent-ready-instructions.lock"
+LOCK_ACQUIRED=0
 
 # shellcheck disable=SC2329
 cleanup() {
   if [[ -n "$TEMPORARY_DIRECTORY" && -d "$TEMPORARY_DIRECTORY" ]]; then
     rm -rf -- "$TEMPORARY_DIRECTORY"
+  fi
+  if [[ "$LOCK_ACQUIRED" -eq 1 ]]; then
+    rmdir -- "$MERGE_LOCK_DIRECTORY" 2>/dev/null || true
   fi
 }
 trap cleanup EXIT
@@ -118,6 +123,20 @@ sha256_file() {
   fi
 }
 
+acquire_merge_lock() {
+  if [[ -L ".agents" || ( -e ".agents" && ! -d ".agents" ) ]]; then
+    echo "ERROR: .agents is not a safe directory for merge lock" >&2
+    return 1
+  fi
+  mkdir -p -- .agents
+
+  if ! mkdir -- "$MERGE_LOCK_DIRECTORY" 2>/dev/null; then
+    echo "Human confirmation required: another instruction merge is running or left a stale lock at $MERGE_LOCK_DIRECTORY" >&2
+    return "$HUMAN_REQUIRED_EXIT_CODE"
+  fi
+  LOCK_ACQUIRED=1
+}
+
 template_hash=""
 write_template_hash() {
   local temporary_hash_file
@@ -137,6 +156,12 @@ write_template_hash() {
 # generated canonical file, not the provider-relative reference in CLAUDE.md.
 sed -e 's|@\./rules/|@.agents/rules/|g' "$TEMPLATE_FILE" > "$CANDIDATE_FILE"
 template_hash="$(sha256_file "$CANDIDATE_FILE")"
+
+acquire_status=0
+acquire_merge_lock || acquire_status=$?
+if [[ "$acquire_status" -ne 0 ]]; then
+  exit "$acquire_status"
+fi
 
 if [[ ! -e "$AGENTS_FILE" ]]; then
   cp -- "$CANDIDATE_FILE" "$MERGED_FILE"
