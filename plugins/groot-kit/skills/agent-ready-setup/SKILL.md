@@ -210,8 +210,10 @@ El modelo debe:
 
 Resultado `auto` se aplica automáticamente, con backup y reemplazo atómico.
 El helper registra hash de template en `.agents/.agent-ready-instructions-template.sha256`
-para no invocar IA nuevamente mientras template no cambie. Hooks generados
-pasan `--yes` para evitar prompts interactivos durante SessionStart. Resultado
+para no invocar IA nuevamente mientras template no cambie. Si `AGENTS.md`
+cambia durante merge, helper detecta hash distinto y cancela antes de reemplazo.
+Hooks generados pasan `--yes` para evitar prompts interactivos durante SessionStart.
+Resultado
 `human_required` muestra diff y preserva bytes originales sin TTY; `--yes` no
 fuerza merge contradictorio. `CLAUDE.md` nunca se modifica durante merge.
 

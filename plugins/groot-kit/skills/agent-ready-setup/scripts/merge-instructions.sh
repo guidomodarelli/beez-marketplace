@@ -189,6 +189,7 @@ EOF
 
 current_content="$(<"$AGENTS_FILE")"
 template_content="$(<"$CANDIDATE_FILE")"
+original_agents_hash="$(sha256_file "$AGENTS_FILE")"
 merge_prompt=$(cat <<EOF
 You are a conservative instruction-file merge engine.
 
@@ -335,13 +336,31 @@ show_proposed_diff() {
 apply_merge() {
   local backup_file=""
   local temporary_destination
-
-  backup_file="$(mktemp "${AGENTS_FILE}.agent-ready-backup.XXXXXX")"
-  cp -p -- "$AGENTS_FILE" "$backup_file"
+  local current_agents_hash
 
   temporary_destination="$(mktemp "${AGENTS_FILE}.agent-ready-merge.XXXXXX")"
   cp -p -- "$AGENTS_FILE" "$temporary_destination"
   cat -- "$MERGED_FILE" > "$temporary_destination"
+
+  current_agents_hash="$(sha256_file "$AGENTS_FILE")"
+  if [[ "$current_agents_hash" != "$original_agents_hash" ]]; then
+    rm -f -- "$temporary_destination"
+    echo "ERROR: $AGENTS_FILE changed while merge was running; merge cancelled" >&2
+    return "$HUMAN_REQUIRED_EXIT_CODE"
+  fi
+
+  backup_file="$(mktemp "${AGENTS_FILE}.agent-ready-backup.XXXXXX")"
+  cp -p -- "$AGENTS_FILE" "$backup_file"
+
+  # Recheck immediately before rename so a concurrent edit cannot be silently
+  # replaced by this stale model result.
+  current_agents_hash="$(sha256_file "$AGENTS_FILE")"
+  if [[ "$current_agents_hash" != "$original_agents_hash" ]]; then
+    rm -f -- "$temporary_destination"
+    echo "ERROR: $AGENTS_FILE changed before atomic rename; merge cancelled" >&2
+    return "$HUMAN_REQUIRED_EXIT_CODE"
+  fi
+
   if ! mv -f -- "$temporary_destination" "$AGENTS_FILE"; then
     rm -f -- "$temporary_destination"
     echo "ERROR: could not replace $AGENTS_FILE atomically; original preserved" >&2

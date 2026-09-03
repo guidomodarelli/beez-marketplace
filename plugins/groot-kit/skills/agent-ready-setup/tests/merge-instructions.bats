@@ -101,6 +101,23 @@ EOF
   [[ "$output" == *"fenced content"* ]]
 }
 
+@test "concurrent AGENTS changes are not overwritten by a stale merge" {
+  printf '%s\n' '# Original instructions' > AGENTS.md
+  cat > "$fake_bin/claude" <<'EOF'
+#!/bin/bash
+printf '%s\n' '# Newer user instructions' > AGENTS.md
+printf '%s\n' '{"status":"auto","merged_content":"# Model merge\n","reason":"Additive rule.","conflicts":[]}'
+EOF
+  chmod +x "$fake_bin/claude"
+
+  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack node --skill-dir "$skill_dir"
+
+  [ "$status" -ne 0 ]
+  [ "$(cat AGENTS.md)" = '# Newer user instructions' ]
+  [[ "$output" == *"changed while merge was running"* ]]
+}
+
 @test "auto merge works with Codex structured output" {
   printf '%s\n' '# Existing project instructions' > AGENTS.md
   cat > "$fake_bin/codex" <<'EOF'
