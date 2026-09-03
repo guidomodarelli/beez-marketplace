@@ -346,6 +346,55 @@
           "description": "Permite complemento nativo acotado"
         }
       ]
+    },
+    {
+      "id": "frontend-middleend-known-errors-use-4xx",
+      "description": "Traduce causas conocidas de middleend a 4xx sin fallback 5xx genérico.",
+      "input": "Estoy implementando un endpoint REST middleend para crear y consultar productos. El servicio puede devolver errores de validación de dominio, recurso inexistente o conflicto de estado, y el request ya pasó la validación de forma. Explicá cómo debe manejar esos errores agent-ready-setup, qué statuses públicos elegir, qué registrar y qué respuesta evitar. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["4xx", "400", "404", "409", "422"],
+          "description": "Mapea causas conocidas a statuses 4xx"
+        },
+        {
+          "type": "contains_any",
+          "values": ["causa conocida", "causas conocidas", "error conocido", "client/domain", "cliente o dominio"],
+          "description": "Identifica causa conocida de request o dominio"
+        },
+        {
+          "type": "contains_any",
+          "values": ["log", "registrar", "server-side", "servidor"],
+          "description": "Mantiene diagnóstico en logs del servidor"
+        },
+        {
+          "type": "contains_any",
+          "values": ["No devolver", "no devolver", "No usar", "no usar", "Nunca devolver", "respuesta a evitar"],
+          "description": "Indica que no debe usar un fallback 5xx para causa conocida"
+        }
+      ]
+    },
+    {
+      "id": "frontend-middleend-rejects-hydration-502-pattern",
+      "description": "Rechaza clasificar una causa conocida de hidratación como gateway failure 502.",
+      "input": "Revisá este caso para un middleend: una causa conocida de hidratación parcial de atributos se representa con `status: 502`. Explicá qué regla debe seguir agent-ready-setup, cómo traducir la causa al contrato HTTP público y cuándo sí sería válido un 5xx. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "502",
+          "description": "Explica por qué 502 es incorrecto en ese caso"
+        },
+        {
+          "type": "contains_any",
+          "values": ["4xx", "422", "400", "404", "409"],
+          "description": "Propone status 4xx correspondiente"
+        },
+        {
+          "type": "contains_any",
+          "values": ["inesperado", "inesperadas", "genuinamente inesperadas", "desconocida", "unknown", "no puede atribuirse", "no pueda atribuirse", "no atribuible"],
+          "description": "Delimita uso de 5xx a fallas no atribuibles"
+        }
+      ]
     }
   ]
 }

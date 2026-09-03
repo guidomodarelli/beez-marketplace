@@ -78,10 +78,13 @@ import { logError, logWarning } from '../logger';
 try {
   const product = await getProduct(req.params.id);
   res.json(product);
-} catch (err) {
-  logError(`[PRODUCT-GET] - error: ${err.message}`, { productId: req.params.id });
-  res.status(500).json({ error: 'Internal server error' });
+} catch (error) {
+  logError(`[PRODUCT-GET] - error: ${error instanceof Error ? error.message : String(error)}`, { productId: req.params.id });
+  const publicError = mapKnownErrorToHttpResponse(error);
+  res.status(publicError.statusCode).json({ error: publicError.message });
 }
 ```
+
+`mapKnownErrorToHttpResponse` is a project-level typed error mapper: known client/domain causes must become the corresponding 4xx response, while unexpected failures follow the error policy in `../../rules/security.md` and must not be disguised as a known client error.
 
 Convention for the `message` string: `[FEATURE-DASH-SEPARATED] - error: description`.
