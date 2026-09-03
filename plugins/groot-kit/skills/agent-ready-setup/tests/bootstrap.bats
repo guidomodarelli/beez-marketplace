@@ -16,9 +16,13 @@ teardown() {
 }
 
 run_bootstrap() {
+  local stack="$1"
+  shift
+
   run bash "$skill_dir/scripts/bootstrap.sh" \
-    --stack "$1" \
-    --skill-dir "$skill_dir"
+    --stack "$stack" \
+    --skill-dir "$skill_dir" \
+    "$@"
 }
 
 @test "bootstrap projects Claude, shared, and Codex trees" {
@@ -54,9 +58,9 @@ run_bootstrap() {
   jq -n --slurpfile claude .claude/mcp.json --slurpfile codex .codex/.mcp.json \
     '$claude[0].mcpServers == $codex[0].mcpServers' >/dev/null
   jq -e '.hooks.SessionStart[0].matcher == "startup|clear|resume"' .codex/hooks/hooks.json >/dev/null
-  jq -e '.permissions.allow | index("Bash(.claude/hooks/sync-marketplace.sh --provider claude)")' .claude/settings.json >/dev/null
-  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .claude/hooks/sync-marketplace.sh --provider claude"' .claude/settings.json >/dev/null
-  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex"' .codex/hooks/hooks.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.claude/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)")' .claude/settings.json >/dev/null
+  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .claude/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes"' .claude/settings.json >/dev/null
+  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex --sync-instructions --yes"' .codex/hooks/hooks.json >/dev/null
   [[ "$output" == *"Providers: Claude Code + Codex-compatible shared tree"* ]]
 }
 
@@ -127,6 +131,8 @@ run_bootstrap() {
     grep -Fq '@.agents/rules/coding-style.md' AGENTS.md
     grep -Fq '@.agents/rules/security.md' AGENTS.md
     grep -Fq '@.agents/rules/testing.md' AGENTS.md
+    jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .claude/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes"' .claude/settings.json >/dev/null
+    jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex --sync-instructions --yes"' .codex/hooks/hooks.json >/dev/null
   done
 }
 
@@ -480,5 +486,168 @@ EOF
     run bash "$hook" --provider unsupported
     [ "$status" -ne 0 ]
     [[ "$output" == *"unsupported marketplace provider"* ]]
+  done
+}
+
+@test "sync mode shows diffs and preserves existing assets without confirmation" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+
+  printf '%s\n' '# Local change' >> .agents/rules/security.md
+  before_hash="$(shasum .agents/rules/security.md | cut -d ' ' -f 1)"
+
+  run_bootstrap frontend --sync
+
+  [ "$status" -eq 0 ]
+  [ "$(shasum .agents/rules/security.md | cut -d ' ' -f 1)" = "$before_hash" ]
+  [[ "$output" == *"Diff for .agents/rules/security.md"* ]]
+  [[ "$output" == *"Pending confirmation (not overwritten):"* ]]
+}
+
+@test "sync mode updates managed assets with explicit yes and preserves root instructions" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+
+  printf '%s\n' '# Local change' >> .agents/rules/security.md
+  printf '%s\n' '# Project instructions' > AGENTS.md
+  cp "$skill_dir/assets/root-claude.md" CLAUDE.md
+  root_hash_before="$(shasum AGENTS.md CLAUDE.md | shasum | cut -d ' ' -f 1)"
+
+  run_bootstrap frontend --sync --yes
+
+  [ "$status" -eq 0 ]
+  cmp -s .agents/rules/security.md "$skill_dir/assets/stacks/frontend/rules/security.md"
+  [ "$(shasum AGENTS.md CLAUDE.md | shasum | cut -d ' ' -f 1)" = "$root_hash_before" ]
+  [[ "$output" == *"Updated from templates:"* ]]
+}
+
+@test "sync mode detects managed destination changes before atomic rename" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+
+  printf '%s\n' '# Local change' >> .agents/rules/security.md
+  fake_bin="$test_root/bin"
+  mkdir -p "$fake_bin"
+  cat > "$fake_bin/cp" <<'EOF'
+#!/bin/bash
+/bin/cp "$@"
+for argument in "$@"; do
+  if [[ "$argument" == *agent-ready-sync.* ]]; then
+    printf '%s\n' '# Newer destination change' > .agents/rules/security.md
+    break
+  fi
+done
+EOF
+  chmod +x "$fake_bin/cp"
+
+  run env PATH="$fake_bin:$PATH" bash "$skill_dir/scripts/bootstrap.sh" \
+    --stack frontend --skill-dir "$skill_dir" --sync --yes
+
+  [ "$status" -eq 0 ]
+  [ "$(cat .agents/rules/security.md)" = '# Newer destination change' ]
+  [[ "$output" == *".agents/rules/security.md changed after confirmation; neither was changed"* ]]
+}
+
+@test "update is an alias for sync and yes cannot be used without sync" {
+  run_bootstrap node
+  [ "$status" -eq 0 ]
+
+  printf '%s\n' '# Local change' >> .agents/rules/security.md
+  run_bootstrap node --update --yes
+
+  [ "$status" -eq 0 ]
+  cmp -s .agents/rules/security.md "$skill_dir/assets/stacks/node/rules/security.md"
+
+  run bash "$skill_dir/scripts/bootstrap.sh" --stack node --skill-dir "$skill_dir" --yes
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"--yes requires --sync or --update"* ]]
+}
+
+@test "sync mode preserves symlinked managed assets" {
+  outside_file="$test_root/outside-security.md"
+  printf '%s\n' '# Outside asset' > "$outside_file"
+  run_bootstrap node
+  [ "$status" -eq 0 ]
+
+  rm .agents/rules/security.md
+  ln -s "$outside_file" .agents/rules/security.md
+
+  run_bootstrap node --sync --yes
+
+  [ "$status" -eq 0 ]
+  [ -L .agents/rules/security.md ]
+  [ "$(cat "$outside_file")" = '# Outside asset' ]
+  [[ "$output" == *"is a symlink; neither it nor its target was changed"* ]]
+}
+
+@test "sync hooks project updated content after marketplace upgrade" {
+  fake_bin="$test_root/bin"
+  source_dir="$test_root/agent-ready-setup"
+  event_log="$test_root/events.log"
+  bootstrap_log="$test_root/bootstrap.log"
+  mkdir -p "$fake_bin" "$source_dir/assets/stacks" "$source_dir/scripts"
+  touch "$source_dir/SKILL.md"
+  cat > "$source_dir/scripts/bootstrap.sh" <<'EOF'
+#!/bin/bash
+printf 'bootstrap\n' >> "$EVENT_LOG"
+printf '%s\n' "$*" > "$BOOTSTRAP_INVOCATION_LOG"
+EOF
+  chmod +x "$source_dir/scripts/bootstrap.sh"
+  cat > "$fake_bin/fury" <<'EOF'
+#!/bin/bash
+printf 'fury\n' >> "$EVENT_LOG"
+printf '%s\n' "$*" > "$FURY_INVOCATION_LOG"
+EOF
+  chmod +x "$fake_bin/fury"
+  printf '%s\n' '{"dependencies":{"react":"1.0.0"}}' > package.json
+
+  EVENT_LOG="$event_log" \
+    FURY_INVOCATION_LOG="$test_root/fury.log" \
+    BOOTSTRAP_INVOCATION_LOG="$bootstrap_log" \
+    AGENT_READY_SETUP_SKILL_DIR="$source_dir" \
+    PATH="$fake_bin:$PATH" \
+    run bash "$skill_dir/assets/stacks/frontend/hooks/sync-marketplace.sh" \
+      --provider claude --sync
+
+  [ "$status" -eq 0 ]
+  [ "$(sed -n '1p' "$event_log")" = "fury" ]
+  [ "$(sed -n '2p' "$event_log")" = "bootstrap" ]
+  grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider claude' "$test_root/fury.log"
+  grep -Fq -- "--stack frontend --skill-dir $source_dir --sync" "$bootstrap_log"
+}
+
+@test "sync hooks do not project content when marketplace upgrade fails" {
+  fake_bin="$test_root/bin"
+  source_dir="$test_root/agent-ready-setup"
+  bootstrap_log="$test_root/bootstrap.log"
+  mkdir -p "$fake_bin" "$source_dir/assets/stacks" "$source_dir/scripts"
+  touch "$source_dir/SKILL.md"
+  cat > "$source_dir/scripts/bootstrap.sh" <<'EOF'
+#!/bin/bash
+printf '%s\n' called > "$BOOTSTRAP_INVOCATION_LOG"
+EOF
+  chmod +x "$source_dir/scripts/bootstrap.sh"
+  cat > "$fake_bin/fury" <<'EOF'
+#!/bin/bash
+exit 42
+EOF
+  chmod +x "$fake_bin/fury"
+
+  FURY_INVOCATION_LOG="$test_root/fury.log" \
+    BOOTSTRAP_INVOCATION_LOG="$bootstrap_log" \
+    AGENT_READY_SETUP_SKILL_DIR="$source_dir" \
+    PATH="$fake_bin:$PATH" \
+    run bash "$skill_dir/assets/stacks/frontend/hooks/sync-marketplace.sh" \
+      --provider claude --sync
+
+  [ "$status" -ne 0 ]
+  [ ! -e "$bootstrap_log" ]
+}
+
+@test "all stack sync hooks remain byte-identical" {
+  for stack in frontend node java go; do
+    cmp -s \
+      "$skill_dir/assets/stacks/frontend/hooks/sync-marketplace.sh" \
+      "$skill_dir/assets/stacks/$stack/hooks/sync-marketplace.sh"
   done
 }

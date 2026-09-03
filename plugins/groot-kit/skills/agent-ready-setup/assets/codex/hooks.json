@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .agents/hooks/sync-marketplace.sh --provider codex"
+            "command": "bash .agents/hooks/sync-marketplace.sh --provider codex --sync-instructions --yes"
           }
         ]
       }
