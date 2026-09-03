@@ -122,7 +122,11 @@ correspondientes bajo `.claude/` y prepara bridge `.codex/`. Copias legacy
 idénticas bajo `.claude/` se normalizan a symlinks; copias divergentes se
 conservan y se reportan como conflicto. Durante la búsqueda recursiva de
 instrucciones respeta `.gitignore` y nunca recorre `node_modules/`; esta regla no
-impide crear los destinos explícitos `.claude/`, `.agents/` y `.codex/`. También normaliza instrucciones raíz:
+impide crear los destinos explícitos `.claude/`, `.agents/` y `.codex/`. Los hooks
+de sincronización reciben provider explícito (`--provider claude` desde
+`.claude/` y `--provider codex` desde `.codex/`); `-p` es alias del wrapper. Hooks
+legacy sin argumento infieren provider por su ruta. También normaliza instrucciones
+raíz:
 
 1. Si `CLAUDE.md` raíz ya es byte-a-byte igual a `assets/root-claude.md`, lo
    considera normalizado y no lo modifica.

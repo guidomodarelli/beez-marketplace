@@ -54,6 +54,9 @@ run_bootstrap() {
   jq -n --slurpfile claude .claude/mcp.json --slurpfile codex .codex/.mcp.json \
     '$claude[0].mcpServers == $codex[0].mcpServers' >/dev/null
   jq -e '.hooks.SessionStart[0].matcher == "startup|clear|resume"' .codex/hooks/hooks.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.claude/hooks/sync-marketplace.sh --provider claude)")' .claude/settings.json >/dev/null
+  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .claude/hooks/sync-marketplace.sh --provider claude"' .claude/settings.json >/dev/null
+  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex"' .codex/hooks/hooks.json >/dev/null
   [[ "$output" == *"Providers: Claude Code + Codex-compatible shared tree"* ]]
 }
 
@@ -435,4 +438,47 @@ EOF
   run bash "$skill_dir/scripts/bootstrap.sh" --stack frontend
   [ "$status" -ne 0 ]
   [[ "$output" == *"--stack and --skill-dir are required"* ]]
+}
+
+@test "sync hooks pass marketplace provider and support legacy path detection" {
+  fake_bin="$test_root/bin"
+  invocation_log="$test_root/fury-invocation.log"
+  mkdir -p "$fake_bin"
+  cat > "$fake_bin/fury" <<'EOF'
+#!/bin/bash
+printf '%s\n' "$*" > "$FURY_INVOCATION_LOG"
+EOF
+  chmod +x "$fake_bin/fury"
+
+  for stack in frontend node java go; do
+    hook="$skill_dir/assets/stacks/$stack/hooks/sync-marketplace.sh"
+
+    FURY_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
+      run bash "$hook" --provider claude
+    [ "$status" -eq 0 ]
+    grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider claude' "$invocation_log"
+
+    FURY_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
+      run bash "$hook" -p codex
+    [ "$status" -eq 0 ]
+    grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider codex' "$invocation_log"
+
+    mkdir -p .claude/hooks .agents/hooks
+    cp "$hook" .claude/hooks/sync-marketplace.sh
+    cp "$hook" .agents/hooks/sync-marketplace.sh
+
+    FURY_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
+      run bash .claude/hooks/sync-marketplace.sh
+    [ "$status" -eq 0 ]
+    grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider claude' "$invocation_log"
+
+    FURY_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
+      run bash .agents/hooks/sync-marketplace.sh
+    [ "$status" -eq 0 ]
+    grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider codex' "$invocation_log"
+
+    run bash "$hook" --provider unsupported
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"unsupported marketplace provider"* ]]
+  done
 }
