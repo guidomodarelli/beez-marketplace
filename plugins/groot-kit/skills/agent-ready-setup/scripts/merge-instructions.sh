@@ -12,6 +12,7 @@ readonly HUMAN_REQUIRED_EXIT_CODE=2
 PROVIDER=""
 STACK=""
 SKILL_DIR=""
+NON_INTERACTIVE="${AGENT_READY_SETUP_NON_INTERACTIVE:-0}"
 TEMPORARY_DIRECTORY=""
 
 # shellcheck disable=SC2329
@@ -67,6 +68,14 @@ case "$STACK" in
   frontend|node|java|go) ;;
   *)
     echo "ERROR: --stack must be frontend, node, java, or go" >&2
+    exit 1
+    ;;
+esac
+
+case "$NON_INTERACTIVE" in
+  0|1) ;;
+  *)
+    echo "ERROR: AGENT_READY_SETUP_NON_INTERACTIVE must be 0 or 1" >&2
     exit 1
     ;;
 esac
@@ -352,7 +361,7 @@ if [[ "$status" == "auto" ]]; then
 fi
 
 show_proposed_diff
-if [[ ! -t 0 || ! -t 1 ]]; then
+if [[ "$NON_INTERACTIVE" -eq 1 || ! -t 0 || ! -t 1 ]]; then
   printf 'Human confirmation required; non-interactive execution preserved %s.\n' "$AGENTS_FILE"
   exit "$HUMAN_REQUIRED_EXIT_CODE"
 fi

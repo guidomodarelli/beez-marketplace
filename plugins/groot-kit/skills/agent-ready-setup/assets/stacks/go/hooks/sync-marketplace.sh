@@ -236,8 +236,13 @@ fi
 echo "[marketplace-sync] Local projection completed."
 
 if [[ "$instructions_requested" -eq 1 ]]; then
+  merge_environment=()
+  if [[ "$auto_confirm" -eq 1 ]]; then
+    merge_environment+=(AGENT_READY_SETUP_NON_INTERACTIVE=1)
+  fi
+
   merge_status=0
-  bash "$skill_dir/scripts/merge-instructions.sh" \
+  env "${merge_environment[@]}" bash "$skill_dir/scripts/merge-instructions.sh" \
     --provider "$provider" \
     --stack "$stack" \
     --skill-dir "$skill_dir" || merge_status=$?

@@ -58,9 +58,9 @@ run_bootstrap() {
   jq -n --slurpfile claude .claude/mcp.json --slurpfile codex .codex/.mcp.json \
     '$claude[0].mcpServers == $codex[0].mcpServers' >/dev/null
   jq -e '.hooks.SessionStart[0].matcher == "startup|clear|resume"' .codex/hooks/hooks.json >/dev/null
-  jq -e '.permissions.allow | index("Bash(.claude/hooks/sync-marketplace.sh --provider claude --sync-instructions)")' .claude/settings.json >/dev/null
-  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .claude/hooks/sync-marketplace.sh --provider claude --sync-instructions"' .claude/settings.json >/dev/null
-  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex --sync-instructions"' .codex/hooks/hooks.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.claude/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)")' .claude/settings.json >/dev/null
+  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .claude/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes"' .claude/settings.json >/dev/null
+  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex --sync-instructions --yes"' .codex/hooks/hooks.json >/dev/null
   [[ "$output" == *"Providers: Claude Code + Codex-compatible shared tree"* ]]
 }
 
@@ -131,8 +131,8 @@ run_bootstrap() {
     grep -Fq '@.agents/rules/coding-style.md' AGENTS.md
     grep -Fq '@.agents/rules/security.md' AGENTS.md
     grep -Fq '@.agents/rules/testing.md' AGENTS.md
-    jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .claude/hooks/sync-marketplace.sh --provider claude --sync-instructions"' .claude/settings.json >/dev/null
-    jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex --sync-instructions"' .codex/hooks/hooks.json >/dev/null
+    jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .claude/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes"' .claude/settings.json >/dev/null
+    jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex --sync-instructions --yes"' .codex/hooks/hooks.json >/dev/null
   done
 }
 

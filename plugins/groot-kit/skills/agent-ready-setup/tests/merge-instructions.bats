@@ -188,7 +188,11 @@ EOF
   mkdir -p "$source_dir/assets/stacks" "$source_dir/scripts"
   touch "$source_dir/SKILL.md"
   printf '%s\n' '#!/bin/bash' 'exit 0' > "$source_dir/scripts/bootstrap.sh"
-  printf '%s\n' '#!/bin/bash' 'exit 2' > "$source_dir/scripts/merge-instructions.sh"
+  cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
+#!/bin/bash
+[[ "${AGENT_READY_SETUP_NON_INTERACTIVE:-0}" == "1" ]] || exit 99
+exit 2
+EOF
   chmod +x "$source_dir/scripts/bootstrap.sh" "$source_dir/scripts/merge-instructions.sh"
   cat > "$fake_bin/fury" <<'EOF'
 #!/bin/bash
@@ -199,7 +203,7 @@ EOF
 
   AGENT_READY_SETUP_SKILL_DIR="$source_dir" PATH="$fake_bin:$PATH" \
     run bash "$skill_dir/assets/stacks/frontend/hooks/sync-marketplace.sh" \
-      --provider claude --sync-instructions
+      --provider claude --sync-instructions --yes
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"requires human review"* ]]

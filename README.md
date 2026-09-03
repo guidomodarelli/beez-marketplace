@@ -85,9 +85,9 @@ CLAUDE.md                  # raíz: proxy + regla; subdirectorios: @AGENTS.md
 
 Si `CLAUDE.md` ya contiene instrucciones, el setup las promueve a `AGENTS.md` y deja `CLAUDE.md` como `@AGENTS.md`. Si ambos archivos existen y difieren, no sobrescribe ninguno y reporta conflicto para resolución manual. La normalización recursiva respeta `.gitignore` y excluye `node_modules/`; los destinos explícitos `.claude/`, `.agents/` y `.codex/` se siguen preparando aunque estén ignorados. El bootstrap requiere ejecutarse dentro de un worktree Git.
 
-Después de `marketplace upgrade`, la actualización global no reproyecta assets sobre proyectos ya preparados. Los hooks nuevos ejecutan `--sync-instructions`: primero proyectan assets con `bootstrap.sh --sync` y luego hacen merge semántico de `AGENTS.md`. Cambios compatibles se aplican automáticamente; contradicciones reales requieren confirmación. `AGENTS.md`, `CLAUDE.md` y pares de instrucciones anidados nunca se reemplazan ciegamente.
+Después de `marketplace upgrade`, la actualización global no reproyecta assets sobre proyectos ya preparados. Los hooks nuevos ejecutan `--sync-instructions --yes`: primero proyectan assets con `bootstrap.sh --sync` sin prompts y luego hacen merge semántico de `AGENTS.md`. Cambios compatibles se aplican automáticamente; contradicciones reales quedan preservadas y reportadas, sin bloquear `SessionStart`. `AGENTS.md`, `CLAUDE.md` y pares de instrucciones anidados nunca se reemplazan ciegamente.
 
-Para merge semántico de `AGENTS.md`, ejecutá el hook con `--sync-instructions` (o `--merge-instructions`). La IA aplica cambios compatibles automáticamente; solo solicita confirmación ante contradicciones reales, ambigüedad irresoluble, pérdida potencial de instrucciones o salida inválida. El merge genera backup y conserva `CLAUDE.md` como proxy.
+Para merge semántico de `AGENTS.md`, ejecutá el hook con `--sync-instructions` (o `--merge-instructions`). La IA aplica cambios compatibles automáticamente; una ejecución manual interactiva solo solicita confirmación ante contradicciones reales, ambigüedad irresoluble, pérdida potencial de instrucciones o salida inválida. El merge genera backup y conserva `CLAUDE.md` como proxy.
 
 ---
 
