@@ -115,7 +115,29 @@ EOF
 
   [ "$status" -ne 0 ]
   [ "$(cat AGENTS.md)" = '# Newer user instructions' ]
-  [[ "$output" == *"changed while merge was running"* ]]
+  [[ "$output" == *"changed before descriptor write"* ]]
+}
+
+@test "descriptor write rejects changes immediately before update" {
+  printf '%s\n' '# Original instructions' > AGENTS.md
+  cat > "$fake_bin/claude" <<'EOF'
+#!/bin/bash
+printf '%s\n' '{"status":"auto","merged_content":"# Model merge\n","reason":"Additive rule.","conflicts":[]}'
+EOF
+  chmod +x "$fake_bin/claude"
+  cat > "$fake_bin/python3" <<'EOF'
+#!/bin/bash
+printf '%s\n' '# Newer descriptor instructions' > AGENTS.md
+exec /usr/bin/python3 "$@"
+EOF
+  chmod +x "$fake_bin/python3"
+
+  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack node --skill-dir "$skill_dir"
+
+  [ "$status" -ne 0 ]
+  [ "$(cat AGENTS.md)" = '# Newer descriptor instructions' ]
+  [[ "$output" == *"changed before descriptor write"* ]]
 }
 
 @test "auto merge works with Codex structured output" {

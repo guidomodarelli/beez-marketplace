@@ -358,38 +358,75 @@ show_proposed_diff() {
   diff -u -- "$AGENTS_FILE" "$MERGED_FILE" || true
 }
 
+write_if_unchanged() {
+  python3 - "$AGENTS_FILE" "$MERGED_FILE" "$original_agents_hash" <<'PY'
+import hashlib
+import os
+import sys
+
+import fcntl
+
+
+target_path, replacement_path, expected_hash = sys.argv[1:]
+open_flags = os.O_RDWR
+if hasattr(os, "O_EXLOCK"):
+    open_flags |= os.O_EXLOCK
+
+target_file = None
+original_content = b""
+try:
+    target_file = os.fdopen(os.open(target_path, open_flags), "r+b")
+    fcntl.flock(target_file.fileno(), fcntl.LOCK_EX)
+    target_file.seek(0)
+    original_content = target_file.read()
+    current_hash = hashlib.sha256(original_content).hexdigest()
+    if current_hash != expected_hash:
+        print(
+            f"ERROR: {target_path} changed before descriptor write; merge cancelled",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    with open(replacement_path, "rb") as replacement_file:
+        replacement_content = replacement_file.read()
+    target_file.seek(0)
+    target_file.truncate()
+    target_file.write(replacement_content)
+    target_file.flush()
+    os.fsync(target_file.fileno())
+except SystemExit:
+    raise
+except Exception as error:
+    if target_file is not None:
+        try:
+            target_file.seek(0)
+            target_file.truncate()
+            target_file.write(original_content)
+            target_file.flush()
+            os.fsync(target_file.fileno())
+        except Exception:
+            pass
+    print(f"ERROR: could not update {target_path}: {error}", file=sys.stderr)
+    sys.exit(1)
+finally:
+    if target_file is not None:
+        target_file.close()
+PY
+}
+
 apply_merge() {
   local backup_file=""
-  local temporary_destination
-  local current_agents_hash
-
-  temporary_destination="$(mktemp "${AGENTS_FILE}.agent-ready-merge.XXXXXX")"
-  cp -p -- "$AGENTS_FILE" "$temporary_destination"
-  cat -- "$MERGED_FILE" > "$temporary_destination"
-
-  current_agents_hash="$(sha256_file "$AGENTS_FILE")"
-  if [[ "$current_agents_hash" != "$original_agents_hash" ]]; then
-    rm -f -- "$temporary_destination"
-    echo "ERROR: $AGENTS_FILE changed while merge was running; merge cancelled" >&2
-    return "$HUMAN_REQUIRED_EXIT_CODE"
-  fi
+  local write_status=0
 
   backup_file="$(mktemp "${AGENTS_FILE}.agent-ready-backup.XXXXXX")"
   cp -p -- "$AGENTS_FILE" "$backup_file"
 
-  # Recheck immediately before rename so a concurrent edit cannot be silently
-  # replaced by this stale model result.
-  current_agents_hash="$(sha256_file "$AGENTS_FILE")"
-  if [[ "$current_agents_hash" != "$original_agents_hash" ]]; then
-    rm -f -- "$temporary_destination"
-    echo "ERROR: $AGENTS_FILE changed before atomic rename; merge cancelled" >&2
-    return "$HUMAN_REQUIRED_EXIT_CODE"
-  fi
-
-  if ! mv -f -- "$temporary_destination" "$AGENTS_FILE"; then
-    rm -f -- "$temporary_destination"
-    echo "ERROR: could not replace $AGENTS_FILE atomically; original preserved" >&2
-    return 1
+  # The descriptor lock, hash check, and write happen in one process. This
+  # avoids replacing a path after a separate check observed older content.
+  write_if_unchanged || write_status=$?
+  if [[ "$write_status" -ne 0 ]]; then
+    echo "ERROR: $AGENTS_FILE changed or could not be written; merge cancelled" >&2
+    return "$write_status"
   fi
 
   printf 'Updated %s automatically; backup: %s\n' "$AGENTS_FILE" "$backup_file"
