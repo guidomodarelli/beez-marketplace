@@ -13,6 +13,8 @@ STACK=""
 SKILL_DIR=""
 SYNC_MODE=0
 AUTO_CONFIRM=0
+SYNC_LOCK_DIRECTORY=".agents/.agent-ready-assets.lock"
+SYNC_LOCK_ACQUIRED=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -135,6 +137,31 @@ validate_provider_roots() {
 
 validate_provider_roots
 
+# Serializes sync writers so concurrent hooks cannot replace each other's files.
+# A failed acquisition leaves every asset untouched for the next invocation.
+# shellcheck disable=SC2329
+release_sync_lock() {
+  if [[ "$SYNC_LOCK_ACQUIRED" -eq 1 ]]; then
+    rmdir -- "$SYNC_LOCK_DIRECTORY" 2>/dev/null || true
+  fi
+}
+
+acquire_sync_lock() {
+  [[ "$SYNC_MODE" -eq 1 ]] || return 0
+
+  mkdir -p -- "$SHARED_DIR"
+  if ! mkdir -- "$SYNC_LOCK_DIRECTORY" 2>/dev/null; then
+    echo "WARNING: another asset synchronization is running or left a stale lock; no asset was changed" >&2
+    return 1
+  fi
+  SYNC_LOCK_ACQUIRED=1
+  trap release_sync_lock EXIT
+}
+
+if [[ "$SYNC_MODE" -eq 1 ]] && ! acquire_sync_lock; then
+  exit 0
+fi
+
 record_created() {
   CREATED+=("$1")
 }
@@ -244,6 +271,8 @@ sync_file() {
   local src="$1"
   local dst="$2"
   local source_description="${3:-$src}"
+  local expected_destination=""
+  local temporary_destination
 
   if [[ ! -f "$src" ]]; then
     CONFLICTS+=("$source_description is not a regular file; $dst was not changed")
@@ -276,24 +305,41 @@ sync_file() {
     return 0
   fi
 
+  expected_destination="$(mktemp "${dst}.agent-ready-expected.XXXXXX")"
+  if ! cp -p -- "$dst" "$expected_destination"; then
+    rm -f -- "$expected_destination"
+    CONFLICTS+=("could not snapshot $dst before confirmation; neither was changed")
+    return 0
+  fi
+
   show_sync_diff "$src" "$dst" "$source_description"
   if ! confirm_sync_replacement "$dst"; then
+    rm -f -- "$expected_destination"
     record_pending "$dst"
     return 0
   fi
 
-  local temporary_destination
   temporary_destination="$(mktemp "${dst}.agent-ready-sync.XXXXXX")"
   if ! cp -p -- "$src" "$temporary_destination"; then
-    rm -f -- "$temporary_destination"
+    rm -f -- "$temporary_destination" "$expected_destination"
     CONFLICTS+=("could not stage updated content for $dst; neither was changed")
     return 0
   fi
+
+  if [[ -L "$dst" || ! -f "$dst" ]] || ! cmp -s "$dst" "$expected_destination"; then
+    rm -f -- "$temporary_destination" "$expected_destination"
+    CONFLICTS+=("$dst changed after confirmation; neither was changed")
+    return 0
+  fi
+
+  # The sync lock serializes cooperating writers through this final check and
+  # atomic rename; changed external content fails the snapshot comparison.
   if ! mv -f -- "$temporary_destination" "$dst"; then
-    rm -f -- "$temporary_destination"
+    rm -f -- "$temporary_destination" "$expected_destination"
     CONFLICTS+=("could not replace $dst atomically; neither was changed")
     return 0
   fi
+  rm -f -- "$expected_destination"
   record_updated "$dst"
 }
 

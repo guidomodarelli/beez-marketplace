@@ -521,6 +521,33 @@ EOF
   [[ "$output" == *"Updated from templates:"* ]]
 }
 
+@test "sync mode detects managed destination changes before atomic rename" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+
+  printf '%s\n' '# Local change' >> .agents/rules/security.md
+  fake_bin="$test_root/bin"
+  mkdir -p "$fake_bin"
+  cat > "$fake_bin/cp" <<'EOF'
+#!/bin/bash
+/bin/cp "$@"
+for argument in "$@"; do
+  if [[ "$argument" == *agent-ready-sync.* ]]; then
+    printf '%s\n' '# Newer destination change' > .agents/rules/security.md
+    break
+  fi
+done
+EOF
+  chmod +x "$fake_bin/cp"
+
+  run env PATH="$fake_bin:$PATH" bash "$skill_dir/scripts/bootstrap.sh" \
+    --stack frontend --skill-dir "$skill_dir" --sync --yes
+
+  [ "$status" -eq 0 ]
+  [ "$(cat .agents/rules/security.md)" = '# Newer destination change' ]
+  [[ "$output" == *".agents/rules/security.md changed after confirmation; neither was changed"* ]]
+}
+
 @test "update is an alias for sync and yes cannot be used without sync" {
   run_bootstrap node
   [ "$status" -eq 0 ]
