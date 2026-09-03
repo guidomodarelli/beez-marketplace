@@ -314,6 +314,38 @@
           "description": "Cubre valores dependientes del entorno"
         }
       ]
+    },
+    {
+      "id": "frontend-validation-distinguishes-middleend-and-upstream",
+      "description": "Distingue validación de requests middleend y respuestas backend/upstream.",
+      "input": "Voy a implementar un endpoint middleend que recibe datos del cliente y consume un payload de un backend/upstream; además necesita validar una variable numérica. Explicá qué debe indicar la regla frontend de agent-ready-setup sobre qué validar, qué no revalidar, qué librería preferir y cuándo puede agregarse `Number.isSafeInteger`. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["@meli/input-validation", "input-validation"],
+          "description": "Prioriza la librería de validación"
+        },
+        {
+          "type": "contains_any",
+          "values": ["middleend", "Middleend", "middle-end", "borde del sistema", "borde de entrada", "borde del endpoint", "borde del controlador/handler", "controller/handler"],
+          "description": "Exige validar requests en el borde del middleend"
+        },
+        {
+          "type": "contains_any",
+          "values": ["backend/upstream", "backend", "upstream", "Backend"],
+          "description": "Distingue respuestas backend/upstream"
+        },
+        {
+          "type": "contains_any",
+          "values": ["no revalidar", "No revalidar", "No debes revalidar", "no validar", "No validar", "no volver a validar", "No volver a validar", "never revalidate"],
+          "description": "Evita revalidar payloads backend/upstream"
+        },
+        {
+          "type": "contains",
+          "value": "Number.isSafeInteger",
+          "description": "Permite complemento nativo acotado"
+        }
+      ]
     }
   ]
 }
