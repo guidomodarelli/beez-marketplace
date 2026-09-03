@@ -11,7 +11,7 @@ description: >-
   ready", o pida pasar Agent Ready Score.
 license: MIT
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   author: "guponce"
   category: "developer-experience"
   tags: "agent-ready, multi-provider, claude-code, codex, bootstrap, setup, scaffold"
