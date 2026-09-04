@@ -78,6 +78,47 @@ EOF
   [ ! -e "${temporary_files[0]}" ]
 }
 
+@test "template hash metadata is isolated per linked worktree" {
+  git config user.email "agent-ready-tests@example.com"
+  git config user.name "Agent Ready Tests"
+  printf '%s\n' '# Initial repository content' > README.md
+  git add README.md
+  git commit -qm "Initialize linked worktree test"
+
+  linked_project_dir="$test_root/linked-project"
+  git worktree add -q -b linked-worktree "$linked_project_dir"
+  printf '%s\n' '# Existing project instructions' > AGENTS.md
+  printf '%s\n' '# Existing project instructions' > "$linked_project_dir/AGENTS.md"
+
+  write_auto_claude_response $'# Existing project instructions\n\n'"$valid_node_rule_block"
+  provider_call_log="$test_root/provider-calls.log"
+  cat > "$fake_bin/claude" <<EOF
+#!/bin/bash
+printf '%s\\n' called >> "$provider_call_log"
+cat "$test_root/provider-response.json"
+EOF
+  chmod +x "$fake_bin/claude"
+
+  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack node --skill-dir "$skill_dir"
+  [ "$status" -eq 0 ]
+
+  cd "$linked_project_dir"
+  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack node --skill-dir "$skill_dir"
+  [ "$status" -eq 0 ]
+
+  main_git_directory="$(git -C "$project_dir" rev-parse --absolute-git-dir)"
+  linked_git_directory="$(git -C "$linked_project_dir" rev-parse --absolute-git-dir)"
+  main_hash_file="$main_git_directory/info/agent-ready-instructions-template.sha256"
+  linked_hash_file="$linked_git_directory/info/agent-ready-instructions-template.sha256"
+
+  [ -f "$main_hash_file" ]
+  [ -f "$linked_hash_file" ]
+  [ "$main_hash_file" != "$linked_hash_file" ]
+  [ "$(wc -l < "$provider_call_log" | tr -d ' ')" -eq 2 ]
+}
+
 @test "provider receives dynamic Codex-readable rule catalog" {
   printf '%s\n' '# Existing project instructions' > AGENTS.md
   write_auto_claude_response $'# Existing project instructions\n\n'"$valid_node_rule_block"

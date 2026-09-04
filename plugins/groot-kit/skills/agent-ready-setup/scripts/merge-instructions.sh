@@ -14,6 +14,7 @@ STACK=""
 SKILL_DIR=""
 NON_INTERACTIVE="${AGENT_READY_SETUP_NON_INTERACTIVE:-0}"
 TEMPORARY_DIRECTORY=""
+GIT_DIRECTORY=""
 GIT_INFO_DIRECTORY=""
 TEMPLATE_HASH_FILE=""
 LEGACY_TEMPLATE_HASH_FILE=".agents/.agent-ready-instructions-template.sha256"
@@ -127,12 +128,17 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "ERROR: merge must run inside a Git worktree" >&2
   exit 1
 fi
-if ! GIT_INFO_DIRECTORY="$(git rev-parse --git-path info 2>/dev/null)"; then
-  echo "ERROR: could not resolve Git info directory for merge metadata" >&2
+if ! GIT_DIRECTORY="$(git rev-parse --absolute-git-dir 2>/dev/null)"; then
+  echo "ERROR: could not resolve worktree Git directory for merge metadata" >&2
   exit 1
 fi
+if [[ -L "$GIT_DIRECTORY" || ( -e "$GIT_DIRECTORY" && ! -d "$GIT_DIRECTORY" ) ]]; then
+  echo "ERROR: worktree Git path is not a safe directory for merge metadata" >&2
+  exit 1
+fi
+GIT_INFO_DIRECTORY="$GIT_DIRECTORY/info"
 if [[ -L "$GIT_INFO_DIRECTORY" || ( -e "$GIT_INFO_DIRECTORY" && ! -d "$GIT_INFO_DIRECTORY" ) ]]; then
-  echo "ERROR: Git info path is not a safe directory for merge metadata" >&2
+  echo "ERROR: worktree Git info path is not a safe directory for merge metadata" >&2
   exit 1
 fi
 
