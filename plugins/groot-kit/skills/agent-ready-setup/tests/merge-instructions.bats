@@ -359,6 +359,82 @@ EOF
   [[ "$output" == *"changed before descriptor write"* ]]
 }
 
+@test "directory lock protects against pathname replacement during atomic update" {
+  printf '%s\n' '# Original instructions' > AGENTS.md
+  write_auto_claude_response $'# Model merge\n\n'"$valid_node_rule_block"
+  python3 - "$test_root/provider-response.json" <<'PY'
+import json
+import sys
+
+
+response_path = sys.argv[1]
+with open(response_path, encoding='utf-8') as response_file:
+    response = json.load(response_file)
+response['merged_content'] = (
+    '# Model merge\\n\\n'
+    + ('# Merge operation in progress\\n' * 250000)
+    + response['merged_content'].split('# Model merge\\n\\n', 1)[-1]
+)
+with open(response_path, 'w', encoding='utf-8') as response_file:
+    json.dump(response, response_file)
+PY
+  race_marker="$test_root/race-detected"
+  writer_script="$test_root/replace-after-merge.py"
+  cat > "$writer_script" <<'PY'
+import fcntl
+import glob
+import os
+import sys
+import time
+
+
+race_marker = sys.argv[1]
+deadline = time.monotonic() + 10
+while not glob.glob('.AGENTS.md.agent-ready-merge.*'):
+    if time.monotonic() >= deadline:
+        sys.exit('merge temporary file was not created')
+    time.sleep(0.001)
+
+directory_descriptor = os.open('.', os.O_RDONLY)
+try:
+    fcntl.flock(directory_descriptor, fcntl.LOCK_EX)
+    if glob.glob('.AGENTS.md.agent-ready-merge.*'):
+        open(race_marker, 'w').close()
+    replacement_path = '.concurrent-agents.md'
+    with open(replacement_path, 'w', encoding='utf-8') as replacement_file:
+        replacement_file.write('# Newer user instructions\n')
+        replacement_file.flush()
+        os.fsync(replacement_file.fileno())
+    os.replace(replacement_path, 'AGENTS.md')
+finally:
+    os.close(directory_descriptor)
+PY
+
+  PATH="$fake_bin:$PATH" bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack node --skill-dir "$skill_dir" \
+    > "$test_root/merge-output.log" 2>&1 &
+  merge_pid=$!
+  python3 "$writer_script" "$race_marker" > "$test_root/writer-output.log" 2>&1 &
+  writer_pid=$!
+
+  if wait "$merge_pid"; then
+    merge_status=0
+  else
+    merge_status=$?
+  fi
+  if wait "$writer_pid"; then
+    writer_status=0
+  else
+    writer_status=$?
+  fi
+
+  [ "$merge_status" -eq 0 ]
+  [ "$writer_status" -eq 0 ]
+  [ ! -e "$race_marker" ]
+  [ "$(cat AGENTS.md)" = '# Newer user instructions' ]
+  [ ! -e .concurrent-agents.md ]
+}
+
 @test "auto merge works with Codex structured output" {
   printf '%s\n' '# Existing project instructions' > AGENTS.md
   write_auto_claude_response $'# Codex merged instructions\n\n'"$valid_node_rule_block"

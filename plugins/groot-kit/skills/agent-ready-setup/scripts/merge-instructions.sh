@@ -496,6 +496,14 @@ target_file = None
 directory_file = None
 temporary_path = None
 try:
+    target_directory = os.path.dirname(os.path.abspath(target_path)) or "."
+    directory_flags = os.O_RDONLY
+    if hasattr(os, "O_DIRECTORY"):
+        directory_flags |= os.O_DIRECTORY
+    directory_file = os.open(target_directory, directory_flags)
+    # Keep pathname checks and replacement under one directory lock.
+    fcntl.flock(directory_file, fcntl.LOCK_EX)
+
     target_file = os.fdopen(os.open(target_path, open_flags), "r+b")
     fcntl.flock(target_file.fileno(), fcntl.LOCK_EX)
     target_file.seek(0)
@@ -511,7 +519,6 @@ try:
     with open(replacement_path, "rb") as replacement_file:
         replacement_content = replacement_file.read()
 
-    target_directory = os.path.dirname(os.path.abspath(target_path)) or "."
     target_mode = stat.S_IMODE(os.fstat(target_file.fileno()).st_mode)
     temporary_descriptor, temporary_path = tempfile.mkstemp(
         prefix=f".{os.path.basename(target_path)}.agent-ready-merge.",
@@ -541,10 +548,6 @@ try:
     os.replace(temporary_path, target_path)
     temporary_path = None
 
-    directory_flags = os.O_RDONLY
-    if hasattr(os, "O_DIRECTORY"):
-        directory_flags |= os.O_DIRECTORY
-    directory_file = os.open(target_directory, directory_flags)
     os.fsync(directory_file)
 except SystemExit:
     raise
