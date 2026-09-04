@@ -231,24 +231,6 @@ migrate_legacy_template_hash() {
   fi
 }
 
-cleanup_legacy_backups() {
-  local legacy_backup_file
-
-  for legacy_backup_file in "${AGENTS_FILE}.agent-ready-backup."*; do
-    if [[ ! -e "$legacy_backup_file" && ! -L "$legacy_backup_file" ]]; then
-      continue
-    fi
-    if [[ -L "$legacy_backup_file" || ! -f "$legacy_backup_file" ]]; then
-      printf 'WARNING: preserving non-regular legacy backup: %s\n' "$legacy_backup_file" >&2
-      continue
-    fi
-    if ! rm -f -- "$legacy_backup_file"; then
-      printf 'ERROR: could not remove legacy merge backup: %s\n' "$legacy_backup_file" >&2
-      return 1
-    fi
-  done
-}
-
 # The provider receives a dynamic, neutral template. The renderer only prepares
 # the rule catalog; the provider decides how to integrate it with project text.
 if ! bash "$TEMPLATE_RENDERER" \
@@ -268,10 +250,6 @@ fi
 if ! migrate_legacy_template_hash; then
   exit 1
 fi
-if ! cleanup_legacy_backups; then
-  exit 1
-fi
-
 if [[ ! -e "$AGENTS_FILE" ]]; then
   cp -- "$CANDIDATE_FILE" "$MERGED_FILE"
   if [[ -f "$CENTRALIZATION_TEMPLATE" ]]; then

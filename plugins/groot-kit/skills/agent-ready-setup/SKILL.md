@@ -348,8 +348,9 @@ El modelo debe:
    baja confianza o salida incompleta.
 
 Resultado `auto` se valida contra catálogo completo antes de aplicarse
-automáticamente, con reemplazo atómico y sin conservar backup persistente; limpia
-backups legacy regulares de merges anteriores. El helper registra último hash de template en `.git/info/agent-ready-instructions-template.sha256`
+automáticamente, con reemplazo atómico y sin conservar backup persistente. Los
+archivos que coinciden con `AGENTS.md.agent-ready-backup.*` se preservan porque
+backups legacy no contienen metadata que permita demostrar ownership. El helper registra último hash de template en `.git/info/agent-ready-instructions-template.sha256`
 para no invocar IA nuevamente mientras template y referencias requeridas no
 cambien; ese archivo se reemplaza, no se acumula, y no aparece como cambio del
 proyecto. Hash legacy bajo `.agents/` se migra y elimina durante primera

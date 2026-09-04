@@ -31,10 +31,10 @@ teardown() {
   rm -rf "$test_root"
 }
 
-@test "auto merge updates AGENTS without retaining backup or visible metadata" {
+@test "auto merge preserves unverified legacy-looking files and visible metadata" {
   printf '%s\n' '# Existing project instructions' > AGENTS.md
   printf '%s\n' '@AGENTS.md' > CLAUDE.md
-  printf '%s\n' '# Stale backup' > AGENTS.md.agent-ready-backup.stale
+  printf '%s\n' '# Project-owned file' > AGENTS.md.agent-ready-backup.stale
   write_auto_claude_response $'# Existing project instructions\n\n'"$valid_node_rule_block"
 
   PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
@@ -43,8 +43,8 @@ teardown() {
   [ "$status" -eq 0 ]
   [ "$(cat AGENTS.md)" = $'# Existing project instructions\n\n'"$valid_node_rule_block" ]
   [ "$(cat CLAUDE.md)" = '@AGENTS.md' ]
-  backup_files=(AGENTS.md.agent-ready-backup.*)
-  [ ! -e "${backup_files[0]}" ]
+  [ "$(cat AGENTS.md.agent-ready-backup.stale)" = '# Project-owned file' ]
+  [ -f AGENTS.md.agent-ready-backup.stale ]
   [ -f .git/info/agent-ready-instructions-template.sha256 ]
   [ ! -e .agents/.agent-ready-instructions-template.sha256 ]
   hash_files=(.git/info/agent-ready-instructions-template.sha256*)
