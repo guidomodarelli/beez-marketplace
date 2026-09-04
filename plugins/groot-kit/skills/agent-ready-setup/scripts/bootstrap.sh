@@ -70,6 +70,7 @@ SRC="$SKILL_DIR/assets/stacks/$STACK"
 CODEX_ASSETS="$SKILL_DIR/assets/codex"
 ROOT_CLAUDE_TEMPLATE="$SKILL_DIR/assets/root-claude.md"
 CENTRALIZATION_TEMPLATE="$SKILL_DIR/assets/instruction-centralization.md"
+TEMPLATE_RENDERER="$SKILL_DIR/scripts/render-instruction-template.sh"
 
 if [[ ! -d "$SRC" ]]; then
   echo "ERROR: No template found for stack '$STACK' at $SRC" >&2
@@ -78,6 +79,16 @@ fi
 
 if [[ ! -f "$SRC/CLAUDE.md" ]]; then
   echo "ERROR: Stack template is missing CLAUDE.md: $SRC/CLAUDE.md" >&2
+  exit 1
+fi
+
+if [[ ! -d "$SRC/rules" ]]; then
+  echo "ERROR: Stack template is missing rules directory: $SRC/rules" >&2
+  exit 1
+fi
+
+if [[ ! -f "$TEMPLATE_RENDERER" ]]; then
+  echo "ERROR: Instruction template renderer is missing: $TEMPLATE_RENDERER" >&2
   exit 1
 fi
 
@@ -459,8 +470,19 @@ is_plain_claude_proxy() {
 }
 
 create_root_agents_from_template() {
+  local temporary_agents_file
+
   mkdir -p -- "$(dirname -- "$AGENTS_FILE")"
-  sed -e 's|@\./rules/|@.agents/rules/|g' "$SRC/CLAUDE.md" > "$AGENTS_FILE"
+  temporary_agents_file="$(mktemp "${AGENTS_FILE}.agent-ready-template.XXXXXX")"
+  if ! bash "$TEMPLATE_RENDERER" \
+    --template "$SRC/CLAUDE.md" \
+    --rules-dir "$SRC/rules" > "$temporary_agents_file"; then
+    rm -f -- "$temporary_agents_file"
+    echo "ERROR: could not render stack instruction template for $AGENTS_FILE" >&2
+    return 1
+  fi
+  chmod 0644 "$temporary_agents_file"
+  mv -f -- "$temporary_agents_file" "$AGENTS_FILE"
   record_created "$AGENTS_FILE"
 }
 
@@ -519,8 +541,8 @@ normalize_root_instructions() {
     return
   fi
 
-  # The template is the single source. Only path references need adaptation
-  # for the neutral shared tree consumed through AGENTS.md.
+  # The template is the single source. The renderer materializes its dynamic
+  # rule catalog for the neutral shared tree consumed through AGENTS.md.
   create_root_agents_from_template
   cp -- "$ROOT_CLAUDE_TEMPLATE" "$CLAUDE_FILE"
   record_created "$CLAUDE_FILE"

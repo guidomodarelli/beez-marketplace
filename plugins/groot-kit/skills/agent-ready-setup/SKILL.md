@@ -31,13 +31,18 @@ operación. El bootstrap mantiene tres planos con responsabilidades distintas:
   provider-specific.
 - `.codex/`: bridge provider-specific para MCP (`.mcp.json`) y hooks Codex.
 
-`AGENTS.md` es la fuente canónica. `CLAUDE.md` raíz se genera copiando
-exactamente `assets/root-claude.md` del skill: contiene `@AGENTS.md` más la regla
-breve de centralización. `CLAUDE.md` en subdirectorios contiene únicamente
-`@AGENTS.md`. Nunca se mantienen dos clones de instrucciones.
+`AGENTS.md` es la fuente canónica. Debe incluir una sección de referencias de
+rules que indique a todos los providers leer y seguir cada archivo bajo
+`.agents/rules/`. La sección se prepara desde template y la IA la integra con
+instrucciones existentes; Codex no interpreta referencias `@path/to/folder`.
+`CLAUDE.md` raíz se genera copiando exactamente `assets/root-claude.md` del
+skill: contiene `@AGENTS.md` más la regla breve de centralización.
+`CLAUDE.md` en subdirectorios contiene únicamente `@AGENTS.md`. Nunca se
+mantienen dos clones de instrucciones.
 
 Templates viven en `assets/stacks/<stack>/` y reflejan estructura de assets.
-Agregar o editar una dimensión para stack consiste en editar template fuente.
+El marker `{{AGENT_READY_RULE_REFERENCES}}` se renderiza dinámicamente con cada
+archivo de `rules/`; no mantener listado duplicado en templates.
 
 Bootstrap requiere ejecución dentro de un worktree Git. Usa `git check-ignore`
 como fuente de verdad para omitir instrucciones anidadas cubiertas por
@@ -116,10 +121,19 @@ Si detección tiene éxito, confirmar:
 bash "$SKILL_DIR/scripts/bootstrap.sh" \
   --stack "$STACK" \
   --skill-dir "$SKILL_DIR"
+
+PROVIDER="${AGENT_READY_SETUP_ACTIVE_PROVIDER:-claude}"
+bash "$SKILL_DIR/scripts/merge-instructions.sh" \
+  --provider "$PROVIDER" \
+  --stack "$STACK" \
+  --skill-dir "$SKILL_DIR"
 ```
 
 En modo inicial, el script copia assets compartidos faltantes a `.agents/`, crea
 symlinks relativos correspondientes bajo `.claude/` y prepara bridge `.codex/`.
+El renderer crea `AGENTS.md` nuevo con catálogo portable; el merge IA analiza
+`AGENTS.md` existente completo y agrega/corrige referencias sin perder comandos,
+arquitectura u ownership. El provider debe ser `claude` o `codex`.
 Copias legacy idénticas bajo `.claude/` se normalizan a symlinks; copias
 divergentes se conservan y se reportan como conflicto. Durante la búsqueda
 recursiva de instrucciones respeta `.gitignore` y nunca recorre `node_modules/`;
@@ -148,17 +162,20 @@ provider por su ruta. También normaliza instrucciones raíz:
 
 `fury ai assets marketplace upgrade` actualiza la copia global del marketplace;
 no vuelve a proyectar por sí mismo los templates sobre un proyecto ya preparado.
-Los hooks generados invocan el upgrade y luego `bootstrap.sh --sync` más el
-merge inteligente de instrucciones mediante `--sync-instructions`, mientras que
-un hook legacy sin `--sync` mantiene comportamiento upgrade-only.
+Los hooks generados invocan el upgrade y luego `bootstrap.sh --sync`. El modo
+`--sync-instructions` ejecuta además merge IA sobre `AGENTS.md`, usando catálogo
+de rules renderizado y provider explícito; hook legacy sin `--sync` mantiene
+comportamiento upgrade-only.
 
 `--sync` compara cada asset gestionado con el template actualizado y muestra
 `diff -u` antes de reemplazar un archivo existente. El reemplazo requiere una
 confirmación interactiva; `--yes` habilita la aplicación no interactiva solo
 cuando se proporciona explícitamente. Sin TTY, el script muestra las diferencias,
-conserva los bytes locales y reporta la sincronización pendiente.
+conserva los bytes locales y reporta la sincronización pendiente. `--sync` solo
+no modifica instrucciones raíz ni ejecuta IA; usar `--sync-instructions` para
+analizar y reparar referencias en `AGENTS.md`.
 
-La sincronización:
+La proyección de assets (`--sync`):
 
 - Actualiza assets gestionados bajo `.agents/`, settings específicos de
   `.claude/`, y bridge/configuración bajo `.codex/`.
@@ -168,6 +185,10 @@ La sincronización:
   instrucciones anidados; esos archivos pertenecen al proyecto.
 - No elimina assets que ya no aparecen en el template: los deja para revisión
   manual.
+
+Con `--sync-instructions`, merge IA posterior puede actualizar únicamente
+`AGENTS.md` para preservar instrucciones compatibles y reparar referencias de
+rules; nunca modifica `CLAUDE.md` ni pares anidados.
 
 Para sincronizar manualmente desde un hook existente:
 
@@ -182,6 +203,12 @@ conserva el upgrade global y muestra cómo indicar `AGENT_READY_SETUP_SKILL_DIR`
 o `--stack frontend|node|java|go`.
 
 ### Merge inteligente de `AGENTS.md`
+
+El script `scripts/render-instruction-template.sh` prepara template dinámico:
+enumera cada archivo real bajo `assets/stacks/<stack>/rules/` y materializa
+markers con referencias `.agents/rules/<relative-path>`. Ese script no decide
+cómo fusionar `AGENTS.md`; esa decisión corresponde a IA, porque el archivo
+puede contener instrucciones de proyecto muy variadas.
 
 Para fusionar instrucciones raíz con asistencia del provider activo, ejecutar:
 
@@ -201,21 +228,32 @@ El modelo debe:
 1. Preservar comandos, arquitectura, ownership y restricciones propias del
    proyecto que sean compatibles.
 2. Incorporar reglas nuevas del template que no contradigan intención existente.
-3. Eliminar duplicados evidentes sin pedir confirmación.
-4. Devolver `auto` únicamente cuando merge sea completo y no exista elección
+3. Asegurar una referencia portable para cada archivo listado en el bloque
+   `BEGIN/END AGENT-READY RULE REFERENCES`, aunque `AGENTS.md` no tenga sección
+   de rules o use referencias parciales.
+4. Corregir referencias Claude-only como `@./rules/...`, `@.agents/rules/...` o
+   `@path/to/folder`; usar paths `.agents/rules/...` y una instrucción explícita
+   de lectura/seguimiento que Codex pueda entender.
+5. Eliminar duplicados evidentes sin pedir confirmación, sin borrar contenido
+   válido de proyecto.
+6. Devolver `auto` únicamente cuando merge sea completo y no exista elección
    razonable de precedencia.
-5. Devolver `human_required` con conflictos concretos ante políticas
+7. Devolver `human_required` con conflictos concretos ante políticas
    mutuamente excluyentes, pérdida potencial de contenido, ambigüedad real,
    baja confianza o salida incompleta.
 
-Resultado `auto` se aplica automáticamente, con backup y reemplazo atómico.
-El helper registra hash de template en `.agents/.agent-ready-instructions-template.sha256`
-para no invocar IA nuevamente mientras template no cambie. Si `AGENTS.md`
-cambia durante merge, helper detecta hash distinto y cancela antes de reemplazo.
-Hooks generados pasan `--yes` para evitar prompts interactivos durante SessionStart.
-Resultado
-`human_required` muestra diff y preserva bytes originales sin TTY; `--yes` no
-fuerza merge contradictorio. `CLAUDE.md` nunca se modifica durante merge.
+Resultado `auto` se valida contra catálogo completo antes de aplicarse
+automáticamente, con backup y reemplazo atómico. El helper registra hash de
+template en `.agents/.agent-ready-instructions-template.sha256` para no invocar
+IA nuevamente mientras template y referencias requeridas no cambien. Si
+`AGENTS.md` cambia durante merge, helper detecta hash distinto y cancela antes
+de reemplazo. Si faltan referencias portables o quedan referencias `@...`, no
+usa hash como atajo y vuelve a solicitar análisis IA.
+
+Hooks generados pasan `--yes` para evitar prompts interactivos durante
+SessionStart. Resultado `human_required` muestra diff y preserva bytes
+originales sin TTY; `--yes` no fuerza merge contradictorio. `CLAUDE.md` nunca
+se modifica durante merge.
 
 ### Resolución de diferencias por el agente
 
@@ -253,9 +291,10 @@ Mostrar output del script sin alterarlo. En respuestas documentales, enumerar pa
 Next steps:
   1. Completar AGENTS.md con descripción, comandos y arquitectura del proyecto.
   2. Verificar que `CLAUDE.md` raíz sea exactamente igual a `assets/root-claude.md` (contiene `@AGENTS.md` más la regla de centralización); en subdirectorios, debe contener únicamente `@AGENTS.md`.
-  3. Completar placeholders bajo .agents/rules/, .agents/skills/ y .agents/agents/.
-  4. Configurar o revisar MCP y hooks Codex bajo .codex/ antes de habilitarlos.
-  5. Verificar dimensiones Agent Ready Score bajo .claude/.
+  3. Confirmar en `AGENTS.md` una referencia portable y completa a cada `.agents/rules/<relative-path>`; no aceptar `@./rules/...`, `@.agents/rules/...` ni `@path/to/folder`.
+  4. Completar placeholders bajo .agents/rules/, .agents/skills/ y .agents/agents/.
+  5. Configurar o revisar MCP y hooks Codex bajo .codex/ antes de habilitarlos.
+  6. Verificar dimensiones Agent Ready Score bajo .claude/.
 ```
 
 Si hay archivos omitidos, agregar:

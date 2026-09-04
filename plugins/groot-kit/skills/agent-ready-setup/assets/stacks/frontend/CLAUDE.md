@@ -1,9 +1,6 @@
 ## Rules
 
-@./rules/frontend-style.md
-@./rules/security.md
-@./rules/testing.md
-@./rules/no-unnecessary-mocks.md
+{{AGENT_READY_RULE_REFERENCES}}
 
 ## Skills
 

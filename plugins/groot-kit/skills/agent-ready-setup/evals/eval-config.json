@@ -469,6 +469,82 @@
           "description": "Preserva proxy Claude"
         }
       ]
+    },
+    {
+      "id": "codex-readable-rule-references",
+      "description": "Explica referencias de rules portables para Codex.",
+      "input": "Explicá cómo debe quedar `AGENTS.md` después del bootstrap para que Codex y Claude Code lean todas las rules del stack. Indicá qué formato de path e instrucción debe usar y qué sintaxis Claude-only debe evitar. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": ".agents/rules/",
+          "description": "Usa paths compartidos de rules"
+        },
+        {
+          "type": "contains_any",
+          "values": ["Read and follow", "leer y seguir", "leerlas y seguirlas"],
+          "description": "Indica acción explícita para cada rule"
+        },
+        {
+          "type": "contains_any",
+          "values": ["@path/to/folder", "@./rules", "@.agents/rules", "Claude-only", "Claude Code-only"],
+          "description": "Identifica sintaxis que debe evitarse"
+        }
+      ]
+    },
+    {
+      "id": "ai-repairs-existing-agents-rules",
+      "description": "Integra referencias faltantes sin perder instrucciones de proyecto.",
+      "input": "Un proyecto ya tiene un `AGENTS.md` extenso con comandos, arquitectura y ownership, pero no tiene sección de rules. Explicá qué debe hacer agent-ready-setup durante bootstrap: cómo usa el template dinámico, cómo agrega referencias faltantes, qué contenido preserva y cuándo escala a revisión humana.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "AGENTS.md",
+          "description": "Analiza archivo canónico existente"
+        },
+        {
+          "type": "contains_any",
+          "values": ["template dinámico", "template", "rules/", "catálogo"],
+          "description": "Usa catálogo de rules del template"
+        },
+        {
+          "type": "contains_any",
+          "values": ["preserva", "conserva", "no perder", "sin perder"],
+          "description": "Protege contenido del proyecto"
+        },
+        {
+          "type": "contains_any",
+          "values": ["human_required", "revisión humana", "contradicción", "ambigüedad"],
+          "description": "Escala conflictos reales"
+        }
+      ]
+    },
+    {
+      "id": "sync-refreshes-rule-catalog",
+      "description": "Actualiza catálogo de referencias durante sync con IA.",
+      "input": "Explicá qué debe hacer `sync-marketplace.sh --sync-instructions` cuando marketplace agrega una rule nueva o deja de publicar otra. Incluí orden upgrade/proyección/merge, análisis IA de `AGENTS.md`, corrección de referencias incompletas y protección contra referencias `@...`.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "sync-instructions",
+          "description": "Usa modo de sincronización de instrucciones"
+        },
+        {
+          "type": "contains_any",
+          "values": ["upgrade", "proyección", "projection"],
+          "description": "Mantiene actualización de assets antes del merge"
+        },
+        {
+          "type": "contains_any",
+          "values": ["nueva", "nuevas", "agregada", "obsoleta", "eliminada"],
+          "description": "Cubre cambios dinámicos del catálogo"
+        },
+        {
+          "type": "contains",
+          "value": "AGENTS.md",
+          "description": "Repara referencias en archivo canónico"
+        }
+      ]
     }
   ]
 }

@@ -9,6 +9,21 @@ setup() {
   mkdir -p "$project_dir" "$fake_bin"
   git -C "$project_dir" -c init.defaultBranch=main init -q
   cd "$project_dir"
+  valid_node_rule_block=$'## Rules\n\n<!-- BEGIN AGENT-READY RULE REFERENCES -->\n- Read and follow `.agents/rules/coding-style.md`.\n- Read and follow `.agents/rules/security.md`.\n- Read and follow `.agents/rules/testing.md`.\n<!-- END AGENT-READY RULE REFERENCES -->'
+}
+
+write_auto_claude_response() {
+  local merged_content="$1"
+
+  jq -n \
+    --arg content "$merged_content" \
+    '{status:"auto", merged_content:$content, reason:"Rules are compatible and references are complete.", conflicts:[]}' \
+    > "$test_root/provider-response.json"
+  cat > "$fake_bin/claude" <<EOF
+#!/bin/bash
+cat "$test_root/provider-response.json"
+EOF
+  chmod +x "$fake_bin/claude"
 }
 
 teardown() {
@@ -19,17 +34,13 @@ teardown() {
 @test "auto merge updates AGENTS and creates a backup without confirmation" {
   printf '%s\n' '# Existing project instructions' > AGENTS.md
   printf '%s\n' '@AGENTS.md' > CLAUDE.md
-  cat > "$fake_bin/claude" <<'EOF'
-#!/bin/bash
-printf '%s\n' '{"status":"auto","merged_content":"# Existing project instructions\n\n# New template rule\n","reason":"Template rule is additive.","conflicts":[]}'
-EOF
-  chmod +x "$fake_bin/claude"
+  write_auto_claude_response $'# Existing project instructions\n\n'"$valid_node_rule_block"
 
   PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
     --provider claude --stack node --skill-dir "$skill_dir"
 
   [ "$status" -eq 0 ]
-  [ "$(cat AGENTS.md)" = $'# Existing project instructions\n\n# New template rule' ]
+  [ "$(cat AGENTS.md)" = $'# Existing project instructions\n\n'"$valid_node_rule_block" ]
   [ "$(cat CLAUDE.md)" = '@AGENTS.md' ]
   backup_files=(AGENTS.md.agent-ready-backup.*)
   [ -f "${backup_files[0]}" ]
@@ -44,7 +55,75 @@ EOF
   PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
     --provider claude --stack node --skill-dir "$skill_dir"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Template unchanged; AI instruction merge not required."* ]]
+  [[ "$output" == *"Template and AGENTS.md rule references unchanged; AI instruction merge not required."* ]]
+}
+
+@test "provider receives dynamic Codex-readable rule catalog" {
+  printf '%s\n' '# Existing project instructions' > AGENTS.md
+  write_auto_claude_response $'# Existing project instructions\n\n'"$valid_node_rule_block"
+  cat > "$fake_bin/claude" <<'EOF'
+#!/bin/bash
+printf '%s\n' "$*" > "$CLAUDE_PROMPT_LOG"
+cat "$CLAUDE_RESPONSE_FILE"
+EOF
+  chmod +x "$fake_bin/claude"
+
+  CLAUDE_PROMPT_LOG="$test_root/claude-prompt.log" \
+    CLAUDE_RESPONSE_FILE="$test_root/provider-response.json" \
+    PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
+      --provider claude --stack node --skill-dir "$skill_dir"
+
+  [ "$status" -eq 0 ]
+  grep -Fq '.agents/rules/coding-style.md' "$test_root/claude-prompt.log"
+  grep -Fq '.agents/rules/security.md' "$test_root/claude-prompt.log"
+  grep -Fq '.agents/rules/testing.md' "$test_root/claude-prompt.log"
+  ! grep -Fq '{{AGENT_READY_RULE_REFERENCES}}' "$test_root/claude-prompt.log"
+}
+
+@test "AI repairs existing Claude-only rule references" {
+  cat > AGENTS.md <<'EOF'
+# Existing project instructions
+
+## Rules
+
+@./rules/coding-style.md
+@./rules/security.md
+@./rules/testing.md
+EOF
+  write_auto_claude_response $'# Existing project instructions\n\n'"$valid_node_rule_block"
+
+  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack node --skill-dir "$skill_dir"
+
+  [ "$status" -eq 0 ]
+  ! grep -Eq '@[^[:space:]]*rules/|@path/to/folder' AGENTS.md
+  grep -Fq -- '- Read and follow `.agents/rules/coding-style.md`.' AGENTS.md
+  grep -Fq -- '- Read and follow `.agents/rules/security.md`.' AGENTS.md
+  grep -Fq -- '- Read and follow `.agents/rules/testing.md`.' AGENTS.md
+}
+
+@test "new rule files are included in sync merge template" {
+  dynamic_skill_dir="$test_root/dynamic-skill"
+  cp -R "$skill_dir" "$dynamic_skill_dir"
+  printf '%s\n' '# Runtime-specific rules' > "$dynamic_skill_dir/assets/stacks/node/rules/runtime.md"
+  printf '%s\n' '# Existing project instructions' > AGENTS.md
+  dynamic_merged_content=$'# Existing project instructions\n\n## Rules\n\n<!-- BEGIN AGENT-READY RULE REFERENCES -->\n- Read and follow `.agents/rules/coding-style.md`.\n- Read and follow `.agents/rules/runtime.md`.\n- Read and follow `.agents/rules/security.md`.\n- Read and follow `.agents/rules/testing.md`.\n<!-- END AGENT-READY RULE REFERENCES -->'
+  write_auto_claude_response "$dynamic_merged_content"
+  cat > "$fake_bin/claude" <<'EOF'
+#!/bin/bash
+printf '%s\n' "$*" > "$CLAUDE_PROMPT_LOG"
+cat "$CLAUDE_RESPONSE_FILE"
+EOF
+  chmod +x "$fake_bin/claude"
+
+  CLAUDE_PROMPT_LOG="$test_root/dynamic-prompt.log" \
+    CLAUDE_RESPONSE_FILE="$test_root/provider-response.json" \
+    PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
+      --provider claude --stack node --skill-dir "$dynamic_skill_dir"
+
+  [ "$status" -eq 0 ]
+  grep -Fq '.agents/rules/runtime.md' "$test_root/dynamic-prompt.log"
+  grep -Fq '.agents/rules/runtime.md' AGENTS.md
 }
 
 @test "human-required merge preserves AGENTS without a TTY" {
@@ -84,6 +163,72 @@ EOF
   [[ "$output" == *"invalid structured output"* ]]
 }
 
+@test "matching template hash does not skip incomplete rule references" {
+  cat > AGENTS.md <<'EOF'
+# Existing project instructions
+
+## Rules
+
+<!-- BEGIN AGENT-READY RULE REFERENCES -->
+- Read and follow `.agents/rules/coding-style.md`.
+- Read and follow `.agents/rules/security.md`.
+<!-- END AGENT-READY RULE REFERENCES -->
+EOF
+  mkdir -p .agents
+  candidate_file="$test_root/rendered-template.md"
+  bash "$skill_dir/scripts/render-instruction-template.sh" \
+    --template "$skill_dir/assets/stacks/node/CLAUDE.md" \
+    --rules-dir "$skill_dir/assets/stacks/node/rules" > "$candidate_file"
+  shasum "$candidate_file" | cut -d ' ' -f 1 > .agents/.agent-ready-instructions-template.sha256
+  write_auto_claude_response $'# Existing project instructions\n\n'"$valid_node_rule_block"
+
+  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack node --skill-dir "$skill_dir"
+
+  [ "$status" -eq 0 ]
+  grep -Fq -- '- Read and follow `.agents/rules/testing.md`.' AGENTS.md
+  [[ "$output" != *"merge not required"* ]]
+}
+
+@test "automatic merge fails closed when a rule reference is omitted" {
+  printf '%s\n' '# Keep this file' > AGENTS.md
+  before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
+  write_auto_claude_response $'# Incomplete merge\n\n## Rules\n\n<!-- BEGIN AGENT-READY RULE REFERENCES -->\n- Read and follow `.agents/rules/security.md`.\n<!-- END AGENT-READY RULE REFERENCES -->'
+
+  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack node --skill-dir "$skill_dir"
+
+  [ "$status" -ne 0 ]
+  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" = "$before_hash" ]
+  [[ "$output" == *"omitted or corrupted portable rule references"* ]]
+}
+
+@test "automatic merge rejects Claude-only rule references" {
+  printf '%s\n' '# Keep this file' > AGENTS.md
+  before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
+  write_auto_claude_response $'# Invalid merge\n\n## Rules\n\n<!-- BEGIN AGENT-READY RULE REFERENCES -->\n- Read and follow `.agents/rules/coding-style.md`.\n- Read and follow `@./rules/security.md`.\n- Read and follow `.agents/rules/security.md`.\n- Read and follow `.agents/rules/testing.md`.\n<!-- END AGENT-READY RULE REFERENCES -->'
+
+  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack node --skill-dir "$skill_dir"
+
+  [ "$status" -ne 0 ]
+  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" = "$before_hash" ]
+  [[ "$output" == *"omitted or corrupted portable rule references"* ]]
+}
+
+@test "automatic merge rejects stale rule references" {
+  printf '%s\n' '# Keep this file' > AGENTS.md
+  before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
+  write_auto_claude_response $'# Invalid merge\n\n## Rules\n\n<!-- BEGIN AGENT-READY RULE REFERENCES -->\n- Read and follow `.agents/rules/coding-style.md`.\n- Read and follow `.agents/rules/security.md`.\n- Read and follow `.agents/rules/testing.md`.\n- Read and follow `.agents/rules/retired.md`.\n<!-- END AGENT-READY RULE REFERENCES -->'
+
+  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack node --skill-dir "$skill_dir"
+
+  [ "$status" -ne 0 ]
+  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" = "$before_hash" ]
+  [[ "$output" == *"omitted or corrupted portable rule references"* ]]
+}
+
 @test "fenced provider output fails closed without changing AGENTS" {
   printf '%s\n' '# Keep this file' > AGENTS.md
   before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
@@ -103,10 +248,11 @@ EOF
 
 @test "concurrent AGENTS changes are not overwritten by a stale merge" {
   printf '%s\n' '# Original instructions' > AGENTS.md
-  cat > "$fake_bin/claude" <<'EOF'
+  write_auto_claude_response $'# Model merge\n\n'"$valid_node_rule_block"
+  cat > "$fake_bin/claude" <<EOF
 #!/bin/bash
 printf '%s\n' '# Newer user instructions' > AGENTS.md
-printf '%s\n' '{"status":"auto","merged_content":"# Model merge\n","reason":"Additive rule.","conflicts":[]}'
+cat "$test_root/provider-response.json"
 EOF
   chmod +x "$fake_bin/claude"
 
@@ -120,11 +266,7 @@ EOF
 
 @test "descriptor write rejects changes immediately before update" {
   printf '%s\n' '# Original instructions' > AGENTS.md
-  cat > "$fake_bin/claude" <<'EOF'
-#!/bin/bash
-printf '%s\n' '{"status":"auto","merged_content":"# Model merge\n","reason":"Additive rule.","conflicts":[]}'
-EOF
-  chmod +x "$fake_bin/claude"
+  write_auto_claude_response $'# Model merge\n\n'"$valid_node_rule_block"
   cat > "$fake_bin/python3" <<'EOF'
 #!/bin/bash
 printf '%s\n' '# Newer descriptor instructions' > AGENTS.md
@@ -142,18 +284,19 @@ EOF
 
 @test "auto merge works with Codex structured output" {
   printf '%s\n' '# Existing project instructions' > AGENTS.md
-  cat > "$fake_bin/codex" <<'EOF'
+  write_auto_claude_response $'# Codex merged instructions\n\n'"$valid_node_rule_block"
+  cat > "$fake_bin/codex" <<EOF
 #!/bin/bash
 result_file=""
-while [[ $# -gt 0 ]]; do
-  if [[ "$1" == "--output-last-message" ]]; then
-    result_file="$2"
+while [[ \$# -gt 0 ]]; do
+  if [[ "\$1" == "--output-last-message" ]]; then
+    result_file="\$2"
     shift 2
   else
     shift
   fi
 done
-printf '%s\n' '{"status":"auto","merged_content":"# Codex merged instructions\n","reason":"No conflicts found.","conflicts":[]}' > "$result_file"
+cat "$test_root/provider-response.json" > "\$result_file"
 EOF
   chmod +x "$fake_bin/codex"
 
@@ -161,7 +304,7 @@ EOF
     --provider codex --stack node --skill-dir "$skill_dir"
 
   [ "$status" -eq 0 ]
-  [ "$(cat AGENTS.md)" = '# Codex merged instructions' ]
+  [ "$(cat AGENTS.md)" = $'# Codex merged instructions\n\n'"$valid_node_rule_block" ]
 }
 
 @test "existing merge lock prevents a second provider invocation" {

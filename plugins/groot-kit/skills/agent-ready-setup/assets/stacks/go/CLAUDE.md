@@ -13,6 +13,4 @@
 
 ## Rules
 
-@./rules/coding-style.md
-@./rules/security.md
-@./rules/testing.md
+{{AGENT_READY_RULE_REFERENCES}}
