@@ -158,6 +158,14 @@ if grep -Eq '@[^[:space:]]*rules/|@path/to/folder' "$VALIDATE_FILE"; then
   exit 1
 fi
 
+managed_block_file="$(mktemp "${TMPDIR:-/tmp}/agent-ready-managed-rules.XXXXXX")"
+trap 'rm -f -- "$managed_block_file"' EXIT
+awk -v start="$RULE_REFERENCE_START" -v end="$RULE_REFERENCE_END" '
+  $0 == start { in_block = 1; next }
+  $0 == end { in_block = 0; next }
+  in_block { print }
+' "$VALIDATE_FILE" > "$managed_block_file"
+
 rule_path_is_current() {
   local candidate_path="$1"
   local relative_path
@@ -168,11 +176,27 @@ rule_path_is_current() {
   return 1
 }
 
+rule_reference_has_read_instruction() {
+  local reference_path="$1"
+  local line
+
+  while IFS= read -r line; do
+    if [[ "$line" == *"$reference_path"* ]] && \
+       [[ "$line" =~ (Read|read|Follow|follow|Leer|leer|Seguir|seguir) ]]; then
+      return 0
+    fi
+  done < "$managed_block_file"
+  return 1
+}
+
 missing_references=0
 while IFS= read -r relative_path; do
   reference_path=".agents/rules/$relative_path"
-  if ! grep -Fq "$reference_path" "$VALIDATE_FILE"; then
-    echo "ERROR: AGENTS.md is missing rule reference: $reference_path" >&2
+  if ! grep -Fq -- "$reference_path" "$managed_block_file"; then
+    echo "ERROR: AGENTS.md managed rule block is missing reference: $reference_path" >&2
+    missing_references=1
+  elif ! rule_reference_has_read_instruction "$reference_path"; then
+    echo "ERROR: AGENTS.md managed rule reference lacks read/follow instruction: $reference_path" >&2
     missing_references=1
   fi
 done < <(list_rule_paths)
@@ -181,10 +205,10 @@ stale_references=0
 while IFS= read -r reference_path; do
   [[ "$reference_path" == *. ]] && reference_path="${reference_path%.}"
   if ! rule_path_is_current "$reference_path"; then
-    echo "ERROR: AGENTS.md contains stale rule reference: $reference_path" >&2
+    echo "ERROR: AGENTS.md managed rule block contains stale reference: $reference_path" >&2
     stale_references=1
   fi
-done < <(grep -Eo '\.agents/rules/[[:alnum:]_.\/-]+' "$VALIDATE_FILE" | LC_ALL=C sort -u || true)
+done < <(grep -Eo '\.agents/rules/[[:alnum:]_.\/-]+' "$managed_block_file" | LC_ALL=C sort -u || true)
 
 if [[ "$missing_references" -ne 0 || "$stale_references" -ne 0 ]]; then
   exit 1

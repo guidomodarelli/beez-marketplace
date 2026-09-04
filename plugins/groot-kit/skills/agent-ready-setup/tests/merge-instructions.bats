@@ -190,6 +190,19 @@ EOF
   [[ "$output" != *"merge not required"* ]]
 }
 
+@test "automatic merge rejects rule paths outside managed block" {
+  printf '%s\n' '# Keep this file' > AGENTS.md
+  before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
+  write_auto_claude_response $'# Invalid merge\n\nPaths mentioned in notes: .agents/rules/coding-style.md, .agents/rules/security.md, .agents/rules/testing.md.\n\n## Rules\n\n<!-- BEGIN AGENT-READY RULE REFERENCES -->\n<!-- END AGENT-READY RULE REFERENCES -->'
+
+  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack node --skill-dir "$skill_dir"
+
+  [ "$status" -ne 0 ]
+  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" = "$before_hash" ]
+  [[ "$output" == *"omitted or corrupted portable rule references"* ]]
+}
+
 @test "automatic merge fails closed when a rule reference is omitted" {
   printf '%s\n' '# Keep this file' > AGENTS.md
   before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
