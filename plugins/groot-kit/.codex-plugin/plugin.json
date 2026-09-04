@@ -1,6 +1,6 @@
 {
   "name": "groot-kit",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "Colección de skills del equipo Groot para agentes AI: configuración de Jira, rules de plataforma, y otros artefactos reutilizables de meli, nordic y andes.",
   "author": {
     "name": "gmodarelli",
