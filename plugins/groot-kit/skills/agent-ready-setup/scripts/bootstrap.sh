@@ -143,7 +143,9 @@ UPDATED=()
 SKIPPED=()
 PENDING=()
 MIGRATED=()
+REMOVED=()
 CONFLICTS=()
+CLEANUP_CONFLICTS=()
 PROVIDER_ROOT_CONFLICTS=()
 
 if ! command -v git >/dev/null 2>&1 || [[ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != true ]]; then
@@ -509,6 +511,144 @@ link_claude_asset() {
   record_created "$destination -> $source"
 }
 
+record_removed() {
+  REMOVED+=("$1")
+}
+
+record_cleanup_conflict() {
+  CLEANUP_CONFLICTS+=("$1")
+}
+
+cleanup_legacy_claude_hooks() {
+  local hooks_directory="$CLAUDE_DIR/hooks"
+  local hook_path
+  local hook_relative
+  local target
+  local expected_target
+
+  if [[ -L "$hooks_directory" ]]; then
+    record_cleanup_conflict "$hooks_directory is a symlink; preserved"
+    return
+  fi
+  if [[ -e "$hooks_directory" && ! -d "$hooks_directory" ]]; then
+    record_cleanup_conflict "$hooks_directory is not a directory; preserved"
+    return
+  fi
+  [[ -d "$hooks_directory" ]] || return 0
+
+  while IFS= read -r -d '' hook_path; do
+    hook_relative="${hook_path#"$hooks_directory/"}"
+
+    if [[ ! -L "$hook_path" ]]; then
+      record_cleanup_conflict "$hook_path is custom content; preserved"
+      continue
+    fi
+
+    target="$(readlink -- "$hook_path")"
+    expected_target="$(relative_shared_target "hooks/$hook_relative")"
+    if [[ "$target" != "$expected_target" ]]; then
+      record_cleanup_conflict "$hook_path is a custom symlink; preserved"
+      continue
+    fi
+
+    if rm -f -- "$hook_path"; then
+      record_removed "$hook_path"
+    else
+      record_cleanup_conflict "could not remove managed symlink $hook_path; preserved"
+    fi
+  done < <(find "$hooks_directory" -mindepth 1 -maxdepth 1 -print0)
+
+  if [[ -d "$hooks_directory" ]] && rmdir -- "$hooks_directory" 2>/dev/null; then
+    record_removed "$hooks_directory"
+  fi
+}
+
+cleanup_stale_claude_links() {
+  local link_path
+  local relative
+  local target
+  local expected_target
+  local source_path
+
+  [[ -d "$CLAUDE_DIR" ]] || return 0
+
+  while IFS= read -r -d '' link_path; do
+    relative="${link_path#"$CLAUDE_DIR/"}"
+    [[ "$relative" == "settings.json" || "$relative" == "hooks" || "$relative" == hooks/* ]] && continue
+
+    if ! target="$(readlink -- "$link_path")"; then
+      record_cleanup_conflict "$link_path target could not be read; preserved"
+      continue
+    fi
+    expected_target="$(relative_shared_target "$relative")"
+    if [[ "$target" == "$expected_target" ]]; then
+      source_path="$SHARED_DIR/$relative"
+      if [[ ! -e "$source_path" && ! -L "$source_path" ]]; then
+        if rm -f -- "$link_path"; then
+          record_removed "$link_path"
+        else
+          record_cleanup_conflict "could not remove stale managed symlink $link_path; preserved"
+        fi
+      fi
+    elif [[ "$target" == *".agents/"* ]]; then
+      record_cleanup_conflict "$link_path points to a non-managed .agents target; preserved"
+    fi
+  done < <(find "$CLAUDE_DIR" -type l -print0)
+}
+
+migrate_claude_settings() {
+  local destination="$CLAUDE_DIR/settings.json"
+  local temporary_settings
+
+  if [[ -L "$destination" ]]; then
+    record_cleanup_conflict "$destination is a symlink; preserved"
+    return 0
+  fi
+  if [[ -e "$destination" && ! -f "$destination" ]]; then
+    record_cleanup_conflict "$destination is not a regular file; preserved"
+    return 0
+  fi
+  [[ -f "$destination" ]] || return 0
+  if ! grep -Fq '.claude/hooks/' "$destination"; then
+    record_skipped "$destination"
+    return 0
+  fi
+
+  temporary_settings="$(mktemp "${TMPDIR:-/tmp}/agent-ready-settings.XXXXXX")"
+  if ! python3 - "$destination" > "$temporary_settings" <<'PY'
+import json
+import sys
+
+settings_path = sys.argv[1]
+with open(settings_path, encoding="utf-8") as settings_file:
+    settings = json.load(settings_file)
+
+
+def migrate(value):
+    if isinstance(value, dict):
+        return {key: migrate(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [migrate(item) for item in value]
+    if isinstance(value, str) and (
+        value.startswith("Bash(.claude/hooks/")
+        or value.startswith("bash .claude/hooks/")
+    ):
+        return value.replace(".claude/hooks/", ".agents/hooks/", 1)
+    return value
+
+json.dump(migrate(settings), sys.stdout, indent=2)
+sys.stdout.write("\n")
+PY
+  then
+    rm -f -- "$temporary_settings"
+    record_cleanup_conflict "$destination contains invalid JSON; preserved"
+    return 0
+  fi
+
+  sync_file "$temporary_settings" "$destination" "legacy hook paths in $destination"
+  rm -f -- "$temporary_settings"
+}
+
 is_normalized_root_claude() {
   [[ -f "$CLAUDE_FILE" ]] && cmp -s "$CLAUDE_FILE" "$ROOT_CLAUDE_TEMPLATE"
 }
@@ -763,7 +903,11 @@ while IFS= read -r -d '' file; do
   if [[ "$relative" == "CLAUDE.md" ]]; then
     continue
   elif [[ "$relative" == "settings.json" ]]; then
-    copy_if_missing "$file" "$CLAUDE_DIR/$relative"
+    if [[ "$SYNC_MODE" -eq 1 && ( -e "$CLAUDE_DIR/$relative" || -L "$CLAUDE_DIR/$relative" ) ]]; then
+      migrate_claude_settings
+    else
+      copy_if_missing "$file" "$CLAUDE_DIR/$relative"
+    fi
   else
     case "$relative" in
       skills/*/SKILL.md)
@@ -790,6 +934,11 @@ while IFS= read -r -d '' file; do
     fi
   fi
 done < <(find "$SRC" -type f -print0)
+
+if [[ "$SYNC_MODE" -eq 1 ]]; then
+  cleanup_legacy_claude_hooks
+  cleanup_stale_claude_links
+fi
 
 # Codex-specific plugin assets use Codex's supported names while retaining the
 # same MCP definitions and shared hook scripts.
@@ -829,6 +978,18 @@ if [[ ${#SKIPPED[@]} -gt 0 ]]; then
   echo ""
   echo "Already existed (skipped):"
   for file in "${SKIPPED[@]}"; do printf '  ~ %s\n' "$file"; done
+fi
+
+if [[ ${#REMOVED[@]} -gt 0 ]]; then
+  echo ""
+  echo "Removed stale managed assets:"
+  for file in "${REMOVED[@]}"; do printf '  - %s\n' "$file"; done
+fi
+
+if [[ ${#CLEANUP_CONFLICTS[@]} -gt 0 ]]; then
+  echo ""
+  echo "Managed asset cleanup conflicts (preserved):" >&2
+  for conflict in "${CLEANUP_CONFLICTS[@]}"; do printf '  ! %s\n' "$conflict" >&2; done
 fi
 
 if [[ ${#CONFLICTS[@]} -gt 0 ]]; then

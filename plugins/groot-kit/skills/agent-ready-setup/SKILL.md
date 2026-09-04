@@ -199,10 +199,14 @@ La proyección de assets (`--sync`):
   `.claude/`, y bridge/configuración bajo `.codex/`.
 - Regenera adapters `SKILL.md` bajo `.agents/skills/` antes de comparar.
 - Conserva symlinks y nunca sigue un symlink para reemplazar su destino.
+- Durante `--sync`, elimina symlinks administrados stale bajo `.claude/` y limpia
+  `.claude/hooks/` legacy solo cuando queda vacío.
+- Migra referencias `.claude/hooks/` dentro de `.claude/settings.json` como JSON,
+  preservando campos custom y reportando settings inválidos.
 - No normaliza, migra ni reemplaza `AGENTS.md` o `CLAUDE.md` raíz, ni pares de
   instrucciones anidados; esos archivos pertenecen al proyecto.
-- No elimina assets que ya no aparecen en el template: los deja para revisión
-  manual.
+- No elimina archivos regulares, symlinks custom ni assets desconocidos; los
+  conserva y reporta para revisión manual.
 
 Con `--sync-instructions`, merge IA posterior puede actualizar únicamente
 `AGENTS.md` para preservar instrucciones compatibles y reparar referencias de

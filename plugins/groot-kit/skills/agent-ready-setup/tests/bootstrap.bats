@@ -78,6 +78,52 @@ run_bootstrap() {
   [[ "$output" == *"Providers: Claude Code + Codex-compatible shared tree"* ]]
 }
 
+@test "sync removes managed legacy hooks and stale Claude symlink views" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+
+  mkdir -p .claude/hooks .claude/rules
+  ln -s ../../.agents/hooks/sync-marketplace.sh .claude/hooks/sync-marketplace.sh
+  ln -s ../../.agents/hooks/check-harness-consistency.sh .claude/hooks/check-harness-consistency.sh
+  ln -s ../../.agents/hooks/pre-tool-use.md .claude/hooks/pre-tool-use.md
+  ln -s ../../.agents/rules/removed-rule.md .claude/rules/removed-rule.md
+
+  run_bootstrap frontend --sync --yes
+
+  [ "$status" -eq 0 ]
+  [ ! -e .claude/hooks ]
+  [ ! -L .claude/hooks ]
+  [ ! -e .claude/rules/removed-rule.md ]
+  [[ "$output" == *"Removed stale managed assets:"* ]]
+}
+
+@test "sync preserves custom Claude hooks and migrates custom settings" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+
+  outside_file="$test_root/custom-hook.sh"
+  printf '%s\n' '#!/bin/bash' > "$outside_file"
+  mkdir -p .claude/hooks
+  printf '%s\n' '# Custom hook' > .claude/hooks/custom.sh
+  printf '%s\n' '# Hidden custom hook' > .claude/hooks/.custom-hook
+  ln -s "$outside_file" .claude/hooks/custom-link.sh
+  jq '.customSetting = "preserve-me" | .permissions.allow |= map(gsub("\\.agents/hooks/"; ".claude/hooks/")) | .hooks.SessionStart[0].hooks[0].command |= gsub("\\.agents/hooks/"; ".claude/hooks/") | .hooks.PostToolUse[0].hooks[0].command |= gsub("\\.agents/hooks/"; ".claude/hooks/")' .claude/settings.json > "$test_root/settings.json"
+  mv "$test_root/settings.json" .claude/settings.json
+
+  run_bootstrap frontend --sync --yes
+
+  [ "$status" -eq 0 ]
+  [ -f .claude/hooks/custom.sh ]
+  [ -f .claude/hooks/.custom-hook ]
+  [ -L .claude/hooks/custom-link.sh ]
+  jq -e '.customSetting == "preserve-me"' .claude/settings.json >/dev/null
+  ! grep -Fq '.claude/hooks/' .claude/settings.json
+  [[ "$output" == *"Managed asset cleanup conflicts (preserved):"* ]]
+  [[ "$output" == *".claude/hooks/custom.sh is custom content; preserved"* ]]
+  [[ "$output" == *".claude/hooks/.custom-hook is custom content; preserved"* ]]
+  [[ "$output" == *".claude/hooks/custom-link.sh is a custom symlink; preserved"* ]]
+}
+
 @test "identical legacy Claude copies become canonical symlinks" {
   run_bootstrap frontend
   [ "$status" -eq 0 ]
