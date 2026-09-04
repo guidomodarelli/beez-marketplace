@@ -494,7 +494,9 @@ write_if_unchanged() {
   python3 - "$AGENTS_FILE" "$MERGED_FILE" "$original_agents_hash" <<'PY'
 import hashlib
 import os
+import stat
 import sys
+import tempfile
 
 import fcntl
 
@@ -503,9 +505,12 @@ target_path, replacement_path, expected_hash = sys.argv[1:]
 open_flags = os.O_RDWR
 if hasattr(os, "O_EXLOCK"):
     open_flags |= os.O_EXLOCK
+if hasattr(os, "O_NOFOLLOW"):
+    open_flags |= os.O_NOFOLLOW
 
 target_file = None
-original_content = b""
+directory_file = None
+temporary_path = None
 try:
     target_file = os.fdopen(os.open(target_path, open_flags), "r+b")
     fcntl.flock(target_file.fileno(), fcntl.LOCK_EX)
@@ -521,26 +526,40 @@ try:
 
     with open(replacement_path, "rb") as replacement_file:
         replacement_content = replacement_file.read()
-    target_file.seek(0)
-    target_file.truncate()
-    target_file.write(replacement_content)
-    target_file.flush()
-    os.fsync(target_file.fileno())
+
+    target_directory = os.path.dirname(os.path.abspath(target_path)) or "."
+    target_mode = stat.S_IMODE(os.fstat(target_file.fileno()).st_mode)
+    temporary_descriptor, temporary_path = tempfile.mkstemp(
+        prefix=f".{os.path.basename(target_path)}.agent-ready-merge.",
+        dir=target_directory,
+    )
+    with os.fdopen(temporary_descriptor, "wb") as temporary_file:
+        os.fchmod(temporary_file.fileno(), target_mode)
+        temporary_file.write(replacement_content)
+        temporary_file.flush()
+        os.fsync(temporary_file.fileno())
+
+    os.replace(temporary_path, target_path)
+    temporary_path = None
+
+    directory_flags = os.O_RDONLY
+    if hasattr(os, "O_DIRECTORY"):
+        directory_flags |= os.O_DIRECTORY
+    directory_file = os.open(target_directory, directory_flags)
+    os.fsync(directory_file)
 except SystemExit:
     raise
 except Exception as error:
-    if target_file is not None:
-        try:
-            target_file.seek(0)
-            target_file.truncate()
-            target_file.write(original_content)
-            target_file.flush()
-            os.fsync(target_file.fileno())
-        except Exception:
-            pass
     print(f"ERROR: could not update {target_path}: {error}", file=sys.stderr)
     sys.exit(1)
 finally:
+    if directory_file is not None:
+        os.close(directory_file)
+    if temporary_path is not None:
+        try:
+            os.unlink(temporary_path)
+        except FileNotFoundError:
+            pass
     if target_file is not None:
         target_file.close()
 PY

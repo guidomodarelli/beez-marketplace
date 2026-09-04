@@ -62,6 +62,22 @@ EOF
   [[ "$output" == *"Template and AGENTS.md rule references unchanged; AI instruction merge not required."* ]]
 }
 
+@test "successful merge replaces AGENTS atomically without temporary residue" {
+  printf '%s\n' '# Existing project instructions' > AGENTS.md
+  write_auto_claude_response $'# Updated project instructions\n\n'"$valid_node_rule_block"
+  original_inode="$(ls -di AGENTS.md | awk '{print $1}')"
+
+  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack node --skill-dir "$skill_dir"
+
+  [ "$status" -eq 0 ]
+  updated_inode="$(ls -di AGENTS.md | awk '{print $1}')"
+  [ "$updated_inode" != "$original_inode" ]
+  [ "$(cat AGENTS.md)" = $'# Updated project instructions\n\n'"$valid_node_rule_block" ]
+  temporary_files=(.AGENTS.md.agent-ready-merge.*)
+  [ ! -e "${temporary_files[0]}" ]
+}
+
 @test "provider receives dynamic Codex-readable rule catalog" {
   printf '%s\n' '# Existing project instructions' > AGENTS.md
   write_auto_claude_response $'# Existing project instructions\n\n'"$valid_node_rule_block"
