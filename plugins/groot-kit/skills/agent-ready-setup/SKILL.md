@@ -118,11 +118,12 @@ Si detección tiene éxito, confirmar:
 ## Step 3 — Run bootstrap script
 
 ```bash
+PROVIDER="${AGENT_READY_SETUP_ACTIVE_PROVIDER:-claude}"
 bash "$SKILL_DIR/scripts/bootstrap.sh" \
   --stack "$STACK" \
-  --skill-dir "$SKILL_DIR"
+  --skill-dir "$SKILL_DIR" \
+  --provider "$PROVIDER"
 
-PROVIDER="${AGENT_READY_SETUP_ACTIVE_PROVIDER:-claude}"
 bash "$SKILL_DIR/scripts/merge-instructions.sh" \
   --provider "$PROVIDER" \
   --stack "$STACK" \
@@ -130,7 +131,8 @@ bash "$SKILL_DIR/scripts/merge-instructions.sh" \
 ```
 
 En modo inicial, el script copia assets compartidos faltantes a `.agents/`, crea
-symlinks relativos correspondientes bajo `.claude/` y prepara bridge `.codex/`.
+symlinks relativos para assets no-hook bajo `.claude/` y prepara bridge `.codex/`.
+Los scripts de hooks permanecen únicamente bajo `.agents/hooks/`.
 El renderer crea `AGENTS.md` nuevo con catálogo portable; el merge IA analiza
 `AGENTS.md` existente completo y agrega/corrige referencias sin perder comandos,
 arquitectura u ownership. El provider debe ser `claude` o `codex`.
@@ -139,10 +141,12 @@ divergentes se conservan y se reportan como conflicto. Durante la búsqueda
 recursiva de instrucciones respeta `.gitignore` y nunca recorre `node_modules/`;
 esta regla no impide crear los destinos explícitos `.claude/`, `.agents/` y
 `.codex/`. Los hooks de sincronización reciben provider explícito (`--provider
-claude` desde `.claude/` y `--provider codex` desde `.agents/`); las
+claude` desde `.claude/settings.json` y `--provider codex` desde `.codex/`),
+pero ambos ejecutan el script canónico bajo `.agents/hooks/`. Las
 configuraciones generadas agregan `--sync-instructions`, que activa también
-`--sync` y reproyecta contenido actualizado. `-p` es alias del wrapper y hooks legacy sin argumento infieren
-provider por su ruta. También normaliza instrucciones raíz:
+`--sync` y reproyecta contenido actualizado. `-p` es alias de `--provider`; al
+invocarse directamente desde `.agents/hooks/`, el script infiere `codex` si no
+se especifica provider. También normaliza instrucciones raíz:
 
 1. Si `CLAUDE.md` raíz ya es byte-a-byte igual a `assets/root-claude.md`, lo
    considera normalizado y no lo modifica.
@@ -162,10 +166,12 @@ provider por su ruta. También normaliza instrucciones raíz:
 
 `fury ai assets marketplace upgrade` actualiza la copia global del marketplace;
 no vuelve a proyectar por sí mismo los templates sobre un proyecto ya preparado.
-Los hooks generados invocan el upgrade y luego `bootstrap.sh --sync`. El modo
+`bootstrap.sh` ejecuta ese upgrade automáticamente para el provider activo antes
+de proyectar assets o adquirir lock local. Los hooks generados actualizan primero,
+resuelven la fuente instalada y luego invocan `bootstrap.sh --sync --yes` sin
+repetir upgrade. El modo
 `--sync-instructions` ejecuta además merge IA sobre `AGENTS.md`, usando catálogo
-de rules renderizado y provider explícito; hook legacy sin `--sync` mantiene
-comportamiento upgrade-only.
+de rules renderizado y provider explícito.
 
 `--sync` compara cada asset gestionado con el template actualizado y muestra
 `diff -u` antes de reemplazar un archivo existente. El reemplazo requiere una
@@ -174,6 +180,18 @@ cuando se proporciona explícitamente. Sin TTY, el script muestra las diferencia
 conserva los bytes locales y reporta la sincronización pendiente. `--sync` solo
 no modifica instrucciones raíz ni ejecuta IA; usar `--sync-instructions` para
 analizar y reparar referencias en `AGENTS.md`.
+
+### Riesgos del upgrade automático
+
+- Cada ejecución necesita CLI `fury`, autenticación y red; si upgrade falla,
+  bootstrap termina antes de modificar assets locales.
+- Upgrade global no tiene rollback en este script; la versión descargada puede
+  cambiar aunque proyección local quede bloqueada.
+- `--sync --yes` aplica templates nuevos sobre assets gestionados; reglas,
+  conflictos, symlinks y reemplazos atómicos existentes siguen protegiendo
+  contenido local no administrado.
+- Lock protege proyección local concurrente, pero no serializa upgrades globales
+  de Fury entre procesos distintos.
 
 La proyección de assets (`--sync`):
 
@@ -193,7 +211,7 @@ rules; nunca modifica `CLAUDE.md` ni pares anidados.
 Para sincronizar manualmente desde un hook existente:
 
 ```bash
-bash .claude/hooks/sync-marketplace.sh --provider claude --sync
+bash .agents/hooks/sync-marketplace.sh --provider claude --sync
 # o
 bash .agents/hooks/sync-marketplace.sh --provider codex --sync
 ```
@@ -213,7 +231,7 @@ puede contener instrucciones de proyecto muy variadas.
 Para fusionar instrucciones raíz con asistencia del provider activo, ejecutar:
 
 ```bash
-bash .claude/hooks/sync-marketplace.sh \
+bash .agents/hooks/sync-marketplace.sh \
   --provider claude \
   --sync-instructions
 ```

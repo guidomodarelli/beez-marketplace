@@ -359,6 +359,7 @@ EOF
   source_dir="$test_root/agent-ready-setup"
   event_log="$test_root/hook-events.log"
   bootstrap_log="$test_root/hook-bootstrap.log"
+  bootstrap_marker_log="$test_root/hook-bootstrap-marker.log"
   merge_log="$test_root/hook-merge.log"
   mkdir -p "$source_dir/assets/stacks" "$source_dir/scripts"
   touch "$source_dir/SKILL.md"
@@ -366,6 +367,7 @@ EOF
 #!/bin/bash
 printf 'bootstrap\n' >> "$EVENT_LOG"
 printf '%s\n' "$*" > "$BOOTSTRAP_LOG"
+printf '%s\n' "${AGENT_READY_SETUP_MARKETPLACE_UPGRADED:-}" > "$BOOTSTRAP_MARKER_LOG"
 EOF
   cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
 #!/bin/bash
@@ -382,6 +384,7 @@ EOF
 
   EVENT_LOG="$event_log" \
     BOOTSTRAP_LOG="$bootstrap_log" \
+    BOOTSTRAP_MARKER_LOG="$bootstrap_marker_log" \
     MERGE_LOG="$merge_log" \
     AGENT_READY_SETUP_SKILL_DIR="$source_dir" \
     PATH="$fake_bin:$PATH" \
@@ -392,7 +395,8 @@ EOF
   [ "$(sed -n '1p' "$event_log")" = "fury" ]
   [ "$(sed -n '2p' "$event_log")" = "bootstrap" ]
   [ "$(sed -n '3p' "$event_log")" = "merge" ]
-  grep -Fq -- "--stack frontend --skill-dir $source_dir --sync" "$bootstrap_log"
+  grep -Fq -- "--stack frontend --skill-dir $source_dir --provider claude --sync" "$bootstrap_log"
+  [ "$(cat "$bootstrap_marker_log")" = "1" ]
   grep -Fq -- "--provider claude --stack frontend --skill-dir $source_dir" "$merge_log"
 }
 

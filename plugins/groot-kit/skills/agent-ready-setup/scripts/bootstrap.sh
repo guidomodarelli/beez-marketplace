@@ -5,12 +5,16 @@
 # AGENTS.md is canonical and CLAUDE.md is a proxy with root-only guidance.
 #
 # Usage:
-#   bash bootstrap.sh --stack <frontend|node|java|go> --skill-dir <path> [--sync] [--yes]
+#   bash bootstrap.sh --stack <frontend|node|java|go> --skill-dir <path> [--provider <claude|codex>] [--sync] [--yes]
 
 set -euo pipefail
 
+readonly MARKETPLACE_NAME="groot-marketplace"
+
 STACK=""
 SKILL_DIR=""
+PROVIDER="${AGENT_READY_SETUP_ACTIVE_PROVIDER:-claude}"
+MARKETPLACE_ALREADY_UPGRADED="${AGENT_READY_SETUP_MARKETPLACE_UPGRADED:-0}"
 SYNC_MODE=0
 AUTO_CONFIRM=0
 SYNC_LOCK_DIRECTORY=".agents/.agent-ready-assets.lock"
@@ -26,6 +30,11 @@ while [[ $# -gt 0 ]]; do
     --skill-dir)
       [[ $# -ge 2 ]] || { echo "ERROR: --skill-dir requires a value" >&2; exit 1; }
       SKILL_DIR="$2"
+      shift 2
+      ;;
+    --provider)
+      [[ $# -ge 2 && -n "${2:-}" ]] || { echo "ERROR: --provider requires claude or codex" >&2; exit 1; }
+      PROVIDER="$2"
       shift 2
       ;;
     --sync|--update)
@@ -47,6 +56,22 @@ if [[ "$AUTO_CONFIRM" -eq 1 && "$SYNC_MODE" -ne 1 ]]; then
   echo "ERROR: --yes requires --sync or --update" >&2
   exit 1
 fi
+
+case "$PROVIDER" in
+  claude|codex) ;;
+  *)
+    echo "ERROR: Unsupported provider '$PROVIDER'. Expected claude or codex." >&2
+    exit 1
+    ;;
+esac
+
+case "$MARKETPLACE_ALREADY_UPGRADED" in
+  0|1) ;;
+  *)
+    echo "ERROR: AGENT_READY_SETUP_MARKETPLACE_UPGRADED must be 0 or 1" >&2
+    exit 1
+    ;;
+esac
 
 if [[ -z "$STACK" || -z "$SKILL_DIR" ]]; then
   echo "ERROR: --stack and --skill-dir are required" >&2
@@ -148,8 +173,33 @@ validate_provider_roots() {
 
 validate_provider_roots
 
-# Serializes sync writers so concurrent hooks cannot replace each other's files.
-# A failed acquisition leaves every asset untouched for the next invocation.
+upgrade_marketplace() {
+  if ! command -v fury >/dev/null 2>&1; then
+    printf 'ERROR: fury CLI is required to upgrade %s before bootstrap.\n' "$MARKETPLACE_NAME" >&2
+    return 1
+  fi
+
+  echo "[marketplace-bootstrap] Upgrading $MARKETPLACE_NAME for $PROVIDER..."
+  if ! fury ai assets marketplace upgrade \
+    --name "$MARKETPLACE_NAME" \
+    --provider "$PROVIDER"; then
+    printf 'ERROR: marketplace upgrade failed for %s/%s; no project asset was changed.\n' \
+      "$MARKETPLACE_NAME" "$PROVIDER" >&2
+    return 1
+  fi
+  echo "[marketplace-bootstrap] Marketplace upgrade completed."
+}
+
+if [[ "$MARKETPLACE_ALREADY_UPGRADED" -eq 0 ]]; then
+  if ! upgrade_marketplace; then
+    exit 1
+  fi
+else
+  echo "[marketplace-bootstrap] Marketplace upgrade already completed by caller."
+fi
+
+# Serializes sync writers so concurrent invocations cannot replace each other's
+# files. Upgrade runs before this lock to keep failed upgrades write-free.
 # shellcheck disable=SC2329
 release_sync_lock() {
   if [[ "$SYNC_LOCK_ACQUIRED" -eq 1 ]]; then
@@ -704,8 +754,9 @@ create_skill_adapter() {
 }
 
 # Project shared assets into the canonical .agents tree. Claude-specific
-# settings remain copied to .claude; all other Claude assets are symlinked views
-# of the canonical shared files so providers cannot drift independently.
+# settings remain copied to .claude; non-hook Claude assets are symlinked views
+# of the canonical shared files so providers cannot drift independently. Hooks
+# remain only in .agents because both providers execute the canonical scripts.
 while IFS= read -r -d '' file; do
   relative="${file#"$SRC/"}"
 
@@ -734,7 +785,9 @@ while IFS= read -r -d '' file; do
         ;;
     esac
 
-    link_claude_asset "$relative"
+    if [[ "$relative" != hooks/* ]]; then
+      link_claude_asset "$relative"
+    fi
   fi
 done < <(find "$SRC" -type f -print0)
 
