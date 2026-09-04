@@ -91,9 +91,19 @@ if [[ ! -d "$SKILL_DIR" ]]; then
 fi
 
 TEMPLATE_FILE="$SKILL_DIR/assets/stacks/$STACK/CLAUDE.md"
+RULES_DIRECTORY="$SKILL_DIR/assets/stacks/$STACK/rules"
+TEMPLATE_RENDERER="$SKILL_DIR/scripts/render-instruction-template.sh"
 CENTRALIZATION_TEMPLATE="$SKILL_DIR/assets/instruction-centralization.md"
 if [[ ! -f "$TEMPLATE_FILE" ]]; then
   echo "ERROR: stack instruction template is missing: $TEMPLATE_FILE" >&2
+  exit 1
+fi
+if [[ ! -d "$RULES_DIRECTORY" ]]; then
+  echo "ERROR: stack rules directory is missing: $RULES_DIRECTORY" >&2
+  exit 1
+fi
+if [[ ! -f "$TEMPLATE_RENDERER" ]]; then
+  echo "ERROR: instruction template renderer is missing: $TEMPLATE_RENDERER" >&2
   exit 1
 fi
 
@@ -152,9 +162,14 @@ write_template_hash() {
   mv -f -- "$temporary_hash_file" "$TEMPLATE_HASH_FILE"
 }
 
-# The root AGENTS.md template needs the shared-tree reference used by the
-# generated canonical file, not the provider-relative reference in CLAUDE.md.
-sed -e 's|@\./rules/|@.agents/rules/|g' "$TEMPLATE_FILE" > "$CANDIDATE_FILE"
+# The provider receives a dynamic, neutral template. The renderer only prepares
+# the rule catalog; the provider decides how to integrate it with project text.
+if ! bash "$TEMPLATE_RENDERER" \
+  --template "$TEMPLATE_FILE" \
+  --rules-dir "$RULES_DIRECTORY" > "$CANDIDATE_FILE"; then
+  echo "ERROR: could not render stack instruction template; $AGENTS_FILE was not changed" >&2
+  exit 1
+fi
 template_hash="$(sha256_file "$CANDIDATE_FILE")"
 
 acquire_status=0
@@ -182,8 +197,17 @@ if [[ -L "$TEMPLATE_HASH_FILE" || ( -e "$TEMPLATE_HASH_FILE" && ! -f "$TEMPLATE_
   echo "ERROR: template merge metadata is not a regular file; merge stopped" >&2
   exit 1
 fi
-if [[ -f "$TEMPLATE_HASH_FILE" ]] && grep -Fqx "$template_hash" "$TEMPLATE_HASH_FILE"; then
-  echo "Template unchanged; AI instruction merge not required."
+rule_references_valid=0
+if bash "$TEMPLATE_RENDERER" \
+  --validate "$AGENTS_FILE" \
+  --rules-dir "$RULES_DIRECTORY" >/dev/null 2>&1; then
+  rule_references_valid=1
+fi
+
+if [[ "$rule_references_valid" -eq 1 ]] && \
+   [[ -f "$TEMPLATE_HASH_FILE" ]] && \
+   grep -Fqx "$template_hash" "$TEMPLATE_HASH_FILE"; then
+  echo "Template and AGENTS.md rule references unchanged; AI instruction merge not required."
   exit 0
 fi
 
@@ -235,10 +259,22 @@ Merge rules:
 - Preserve project-specific commands, architecture, ownership, constraints, and
   instructions that are compatible with the new template.
 - Add new template rules when they do not conflict with project intent.
-- Collapse exact or clearly equivalent duplicates.
+- Collapse exact or clearly equivalent duplicates without losing requirements.
 - Keep AGENTS.md as canonical source. Preserve its existing centralization rule
   when present.
 - Never modify CLAUDE.md; it remains a proxy managed outside this merge.
+- The rendered template contains the complete current rule catalog between
+  BEGIN/END AGENT-READY RULE REFERENCES markers. Ensure final AGENTS.md keeps
+  exactly one such block and references every listed rule.
+- Add the managed rule-reference block when AGENTS.md lacks it. Repair missing,
+  stale, or Claude-only references when their intended rule is clear.
+- Every rule reference must use a provider-neutral path such as
+  .agents/rules/<relative-path>.md and tell the agent to read/follow it. Codex
+  must be able to discover the rule from AGENTS.md without @ expansion.
+- Never emit Claude-only references such as @./rules/..., @.agents/rules/..., or
+  @path/to/folder in the final document.
+- Treat the marker section as generated contract, but choose its placement
+  alongside the project's existing rules without rewriting unrelated content.
 - Mark status "auto" only when every change is semantically compatible and no
   reasonable reader would need to choose between policies.
 - Mark status "human_required" when policies are mutually exclusive, intent or
@@ -341,6 +377,15 @@ last_merged_line="$(sed -n '$p' "$MERGED_FILE")"
 if [[ "$first_merged_line" == '```'* && "$last_merged_line" == '```' ]]; then
   echo "ERROR: merge provider returned fenced content instead of Markdown; $AGENTS_FILE was not changed" >&2
   exit 1
+fi
+
+if [[ "$status" == "auto" ]]; then
+  if ! bash "$TEMPLATE_RENDERER" \
+    --validate "$MERGED_FILE" \
+    --rules-dir "$RULES_DIRECTORY" >/dev/null 2>&1; then
+    echo "ERROR: automatic merge omitted or corrupted portable rule references; $AGENTS_FILE was not changed" >&2
+    exit 1
+  fi
 fi
 
 if cmp -s "$AGENTS_FILE" "$MERGED_FILE"; then

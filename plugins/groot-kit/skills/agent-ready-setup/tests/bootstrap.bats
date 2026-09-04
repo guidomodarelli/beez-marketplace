@@ -51,7 +51,9 @@ run_bootstrap() {
   [ -f .codex/hooks/hooks.json ]
   [ ! -f .claude/CLAUDE.md ]
   [ ! -d .codex/agents ]
-  grep -Fq '@.agents/rules/security.md' AGENTS.md
+  for rule_file in frontend-style.md no-unnecessary-mocks.md security.md testing.md; do
+    grep -Fq -- "- Read and follow \`.agents/rules/$rule_file\`." AGENTS.md
+  done
   grep -Fxq '## Centralización recursiva de instrucciones' AGENTS.md
   printf '\n# Canonical shared asset\n' >> .agents/rules/security.md
   grep -Fq '# Canonical shared asset' .claude/rules/security.md
@@ -128,9 +130,9 @@ run_bootstrap() {
       [ "$(sed -n '1p' "$skill_path")" = '---' ]
       grep -Eq '^description: .+' "$skill_path"
     done
-    grep -Fq '@.agents/rules/coding-style.md' AGENTS.md
-    grep -Fq '@.agents/rules/security.md' AGENTS.md
-    grep -Fq '@.agents/rules/testing.md' AGENTS.md
+    grep -Fq -- '- Read and follow `.agents/rules/coding-style.md`.' AGENTS.md
+    grep -Fq -- '- Read and follow `.agents/rules/security.md`.' AGENTS.md
+    grep -Fq -- '- Read and follow `.agents/rules/testing.md`.' AGENTS.md
     jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .claude/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes"' .claude/settings.json >/dev/null
     jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex --sync-instructions --yes"' .codex/hooks/hooks.json >/dev/null
   done
