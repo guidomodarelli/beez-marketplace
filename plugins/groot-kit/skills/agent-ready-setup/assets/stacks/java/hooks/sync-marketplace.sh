@@ -69,9 +69,6 @@ if [[ -z "$provider" ]]; then
     .agents/hooks/sync-marketplace.sh|*/.agents/hooks/sync-marketplace.sh)
       provider="codex"
       ;;
-    .claude/hooks/sync-marketplace.sh|*/.claude/hooks/sync-marketplace.sh)
-      provider="claude"
-      ;;
     *)
       provider="claude"
       ;;
@@ -222,6 +219,7 @@ fi
 bootstrap_args=(
   --stack "$stack"
   --skill-dir "$skill_dir"
+  --provider "$provider"
   --sync
 )
 if [[ "$auto_confirm" -eq 1 ]]; then
@@ -229,7 +227,8 @@ if [[ "$auto_confirm" -eq 1 ]]; then
 fi
 
 echo "[marketplace-sync] Projecting updated $SKILL_NAME assets for $stack..."
-if ! bash "$skill_dir/scripts/bootstrap.sh" "${bootstrap_args[@]}"; then
+if ! AGENT_READY_SETUP_MARKETPLACE_UPGRADED=1 \
+  bash "$skill_dir/scripts/bootstrap.sh" "${bootstrap_args[@]}"; then
   printf 'ERROR: local asset projection failed for %s.\n' "$skill_dir" >&2
   exit 1
 fi

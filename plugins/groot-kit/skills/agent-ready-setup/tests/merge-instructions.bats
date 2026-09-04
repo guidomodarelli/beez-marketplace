@@ -31,9 +31,10 @@ teardown() {
   rm -rf "$test_root"
 }
 
-@test "auto merge updates AGENTS and creates a backup without confirmation" {
+@test "auto merge preserves unverified legacy-looking files and visible metadata" {
   printf '%s\n' '# Existing project instructions' > AGENTS.md
   printf '%s\n' '@AGENTS.md' > CLAUDE.md
+  printf '%s\n' '# Project-owned file' > AGENTS.md.agent-ready-backup.stale
   write_auto_claude_response $'# Existing project instructions\n\n'"$valid_node_rule_block"
 
   PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
@@ -42,10 +43,13 @@ teardown() {
   [ "$status" -eq 0 ]
   [ "$(cat AGENTS.md)" = $'# Existing project instructions\n\n'"$valid_node_rule_block" ]
   [ "$(cat CLAUDE.md)" = '@AGENTS.md' ]
-  backup_files=(AGENTS.md.agent-ready-backup.*)
-  [ -f "${backup_files[0]}" ]
-  [ -f .agents/.agent-ready-instructions-template.sha256 ]
-  [[ "$output" == *"Updated AGENTS.md automatically"* ]]
+  [ "$(cat AGENTS.md.agent-ready-backup.stale)" = '# Project-owned file' ]
+  [ -f AGENTS.md.agent-ready-backup.stale ]
+  [ -f .git/info/agent-ready-instructions-template.sha256 ]
+  [ ! -e .agents/.agent-ready-instructions-template.sha256 ]
+  hash_files=(.git/info/agent-ready-instructions-template.sha256*)
+  [ "${#hash_files[@]}" -eq 1 ]
+  [[ "$output" == *"Updated AGENTS.md automatically; no backup retained."* ]]
 
   cat > "$fake_bin/claude" <<'EOF'
 #!/bin/bash
@@ -56,6 +60,63 @@ EOF
     --provider claude --stack node --skill-dir "$skill_dir"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Template and AGENTS.md rule references unchanged; AI instruction merge not required."* ]]
+}
+
+@test "successful merge replaces AGENTS atomically without temporary residue" {
+  printf '%s\n' '# Existing project instructions' > AGENTS.md
+  write_auto_claude_response $'# Updated project instructions\n\n'"$valid_node_rule_block"
+  original_inode="$(ls -di AGENTS.md | awk '{print $1}')"
+
+  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack node --skill-dir "$skill_dir"
+
+  [ "$status" -eq 0 ]
+  updated_inode="$(ls -di AGENTS.md | awk '{print $1}')"
+  [ "$updated_inode" != "$original_inode" ]
+  [ "$(cat AGENTS.md)" = $'# Updated project instructions\n\n'"$valid_node_rule_block" ]
+  temporary_files=(.AGENTS.md.agent-ready-merge.*)
+  [ ! -e "${temporary_files[0]}" ]
+}
+
+@test "template hash metadata is isolated per linked worktree" {
+  git config user.email "agent-ready-tests@example.com"
+  git config user.name "Agent Ready Tests"
+  printf '%s\n' '# Initial repository content' > README.md
+  git add README.md
+  git commit -qm "Initialize linked worktree test"
+
+  linked_project_dir="$test_root/linked-project"
+  git worktree add -q -b linked-worktree "$linked_project_dir"
+  printf '%s\n' '# Existing project instructions' > AGENTS.md
+  printf '%s\n' '# Existing project instructions' > "$linked_project_dir/AGENTS.md"
+
+  write_auto_claude_response $'# Existing project instructions\n\n'"$valid_node_rule_block"
+  provider_call_log="$test_root/provider-calls.log"
+  cat > "$fake_bin/claude" <<EOF
+#!/bin/bash
+printf '%s\\n' called >> "$provider_call_log"
+cat "$test_root/provider-response.json"
+EOF
+  chmod +x "$fake_bin/claude"
+
+  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack node --skill-dir "$skill_dir"
+  [ "$status" -eq 0 ]
+
+  cd "$linked_project_dir"
+  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack node --skill-dir "$skill_dir"
+  [ "$status" -eq 0 ]
+
+  main_git_directory="$(git -C "$project_dir" rev-parse --absolute-git-dir)"
+  linked_git_directory="$(git -C "$linked_project_dir" rev-parse --absolute-git-dir)"
+  main_hash_file="$main_git_directory/info/agent-ready-instructions-template.sha256"
+  linked_hash_file="$linked_git_directory/info/agent-ready-instructions-template.sha256"
+
+  [ -f "$main_hash_file" ]
+  [ -f "$linked_hash_file" ]
+  [ "$main_hash_file" != "$linked_hash_file" ]
+  [ "$(wc -l < "$provider_call_log" | tr -d ' ')" -eq 2 ]
 }
 
 @test "provider receives dynamic Codex-readable rule catalog" {
@@ -174,7 +235,7 @@ EOF
 - Read and follow `.agents/rules/security.md`.
 <!-- END AGENT-READY RULE REFERENCES -->
 EOF
-  mkdir -p .agents
+  mkdir -p .agents .git/info
   candidate_file="$test_root/rendered-template.md"
   bash "$skill_dir/scripts/render-instruction-template.sh" \
     --template "$skill_dir/assets/stacks/node/CLAUDE.md" \
@@ -187,6 +248,8 @@ EOF
 
   [ "$status" -eq 0 ]
   grep -Fq -- '- Read and follow `.agents/rules/testing.md`.' AGENTS.md
+  [ ! -e .agents/.agent-ready-instructions-template.sha256 ]
+  [ -f .git/info/agent-ready-instructions-template.sha256 ]
   [[ "$output" != *"merge not required"* ]]
 }
 
@@ -277,12 +340,13 @@ EOF
   [[ "$output" == *"changed before descriptor write"* ]]
 }
 
-@test "descriptor write rejects changes immediately before update" {
+@test "atomic replacement rejects stale descriptor write" {
   printf '%s\n' '# Original instructions' > AGENTS.md
   write_auto_claude_response $'# Model merge\n\n'"$valid_node_rule_block"
   cat > "$fake_bin/python3" <<'EOF'
 #!/bin/bash
-printf '%s\n' '# Newer descriptor instructions' > AGENTS.md
+printf '%s\n' '# Newer descriptor instructions' > .AGENTS.md.new
+mv .AGENTS.md.new AGENTS.md
 exec /usr/bin/python3 "$@"
 EOF
   chmod +x "$fake_bin/python3"
@@ -293,6 +357,82 @@ EOF
   [ "$status" -ne 0 ]
   [ "$(cat AGENTS.md)" = '# Newer descriptor instructions' ]
   [[ "$output" == *"changed before descriptor write"* ]]
+}
+
+@test "directory lock protects against pathname replacement during atomic update" {
+  printf '%s\n' '# Original instructions' > AGENTS.md
+  write_auto_claude_response $'# Model merge\n\n'"$valid_node_rule_block"
+  python3 - "$test_root/provider-response.json" <<'PY'
+import json
+import sys
+
+
+response_path = sys.argv[1]
+with open(response_path, encoding='utf-8') as response_file:
+    response = json.load(response_file)
+response['merged_content'] = (
+    '# Model merge\\n\\n'
+    + ('# Merge operation in progress\\n' * 250000)
+    + response['merged_content'].split('# Model merge\\n\\n', 1)[-1]
+)
+with open(response_path, 'w', encoding='utf-8') as response_file:
+    json.dump(response, response_file)
+PY
+  race_marker="$test_root/race-detected"
+  writer_script="$test_root/replace-after-merge.py"
+  cat > "$writer_script" <<'PY'
+import fcntl
+import glob
+import os
+import sys
+import time
+
+
+race_marker = sys.argv[1]
+deadline = time.monotonic() + 10
+while not glob.glob('.AGENTS.md.agent-ready-merge.*'):
+    if time.monotonic() >= deadline:
+        sys.exit('merge temporary file was not created')
+    time.sleep(0.001)
+
+directory_descriptor = os.open('.', os.O_RDONLY)
+try:
+    fcntl.flock(directory_descriptor, fcntl.LOCK_EX)
+    if glob.glob('.AGENTS.md.agent-ready-merge.*'):
+        open(race_marker, 'w').close()
+    replacement_path = '.concurrent-agents.md'
+    with open(replacement_path, 'w', encoding='utf-8') as replacement_file:
+        replacement_file.write('# Newer user instructions\n')
+        replacement_file.flush()
+        os.fsync(replacement_file.fileno())
+    os.replace(replacement_path, 'AGENTS.md')
+finally:
+    os.close(directory_descriptor)
+PY
+
+  PATH="$fake_bin:$PATH" bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack node --skill-dir "$skill_dir" \
+    > "$test_root/merge-output.log" 2>&1 &
+  merge_pid=$!
+  python3 "$writer_script" "$race_marker" > "$test_root/writer-output.log" 2>&1 &
+  writer_pid=$!
+
+  if wait "$merge_pid"; then
+    merge_status=0
+  else
+    merge_status=$?
+  fi
+  if wait "$writer_pid"; then
+    writer_status=0
+  else
+    writer_status=$?
+  fi
+
+  [ "$merge_status" -eq 0 ]
+  [ "$writer_status" -eq 0 ]
+  [ ! -e "$race_marker" ]
+  [ "$(cat AGENTS.md)" = '# Newer user instructions' ]
+  [ ! -e .concurrent-agents.md ]
 }
 
 @test "auto merge works with Codex structured output" {
@@ -359,6 +499,7 @@ EOF
   source_dir="$test_root/agent-ready-setup"
   event_log="$test_root/hook-events.log"
   bootstrap_log="$test_root/hook-bootstrap.log"
+  bootstrap_marker_log="$test_root/hook-bootstrap-marker.log"
   merge_log="$test_root/hook-merge.log"
   mkdir -p "$source_dir/assets/stacks" "$source_dir/scripts"
   touch "$source_dir/SKILL.md"
@@ -366,6 +507,7 @@ EOF
 #!/bin/bash
 printf 'bootstrap\n' >> "$EVENT_LOG"
 printf '%s\n' "$*" > "$BOOTSTRAP_LOG"
+printf '%s\n' "${AGENT_READY_SETUP_MARKETPLACE_UPGRADED:-}" > "$BOOTSTRAP_MARKER_LOG"
 EOF
   cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
 #!/bin/bash
@@ -382,6 +524,7 @@ EOF
 
   EVENT_LOG="$event_log" \
     BOOTSTRAP_LOG="$bootstrap_log" \
+    BOOTSTRAP_MARKER_LOG="$bootstrap_marker_log" \
     MERGE_LOG="$merge_log" \
     AGENT_READY_SETUP_SKILL_DIR="$source_dir" \
     PATH="$fake_bin:$PATH" \
@@ -392,7 +535,8 @@ EOF
   [ "$(sed -n '1p' "$event_log")" = "fury" ]
   [ "$(sed -n '2p' "$event_log")" = "bootstrap" ]
   [ "$(sed -n '3p' "$event_log")" = "merge" ]
-  grep -Fq -- "--stack frontend --skill-dir $source_dir --sync" "$bootstrap_log"
+  grep -Fq -- "--stack frontend --skill-dir $source_dir --provider claude --sync" "$bootstrap_log"
+  [ "$(cat "$bootstrap_marker_log")" = "1" ]
   grep -Fq -- "--provider claude --stack frontend --skill-dir $source_dir" "$merge_log"
 }
 

@@ -2,7 +2,7 @@
 # merge-instructions.sh
 # Uses the active agent provider to merge project instructions with a template.
 # The model proposes content only; this script owns validation, confirmation,
-# backup, and atomic writes.
+# and atomic writes.
 
 set -euo pipefail
 
@@ -14,6 +14,11 @@ STACK=""
 SKILL_DIR=""
 NON_INTERACTIVE="${AGENT_READY_SETUP_NON_INTERACTIVE:-0}"
 TEMPORARY_DIRECTORY=""
+GIT_DIRECTORY=""
+GIT_INFO_DIRECTORY=""
+TEMPLATE_HASH_FILE=""
+LEGACY_TEMPLATE_HASH_FILE=".agents/.agent-ready-instructions-template.sha256"
+TEMPORARY_HASH_FILE=""
 MERGE_LOCK_DIRECTORY=".agents/.agent-ready-instructions.lock"
 LOCK_ACQUIRED=0
 
@@ -21,6 +26,9 @@ LOCK_ACQUIRED=0
 cleanup() {
   if [[ -n "$TEMPORARY_DIRECTORY" && -d "$TEMPORARY_DIRECTORY" ]]; then
     rm -rf -- "$TEMPORARY_DIRECTORY"
+  fi
+  if [[ -n "$TEMPORARY_HASH_FILE" ]]; then
+    rm -f -- "$TEMPORARY_HASH_FILE"
   fi
   if [[ "$LOCK_ACQUIRED" -eq 1 ]]; then
     rmdir -- "$MERGE_LOCK_DIRECTORY" 2>/dev/null || true
@@ -116,12 +124,30 @@ if [[ -e "$AGENTS_FILE" && ! -f "$AGENTS_FILE" ]]; then
   exit 1
 fi
 
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "ERROR: merge must run inside a Git worktree" >&2
+  exit 1
+fi
+if ! GIT_DIRECTORY="$(git rev-parse --absolute-git-dir 2>/dev/null)"; then
+  echo "ERROR: could not resolve worktree Git directory for merge metadata" >&2
+  exit 1
+fi
+if [[ -L "$GIT_DIRECTORY" || ( -e "$GIT_DIRECTORY" && ! -d "$GIT_DIRECTORY" ) ]]; then
+  echo "ERROR: worktree Git path is not a safe directory for merge metadata" >&2
+  exit 1
+fi
+GIT_INFO_DIRECTORY="$GIT_DIRECTORY/info"
+if [[ -L "$GIT_INFO_DIRECTORY" || ( -e "$GIT_INFO_DIRECTORY" && ! -d "$GIT_INFO_DIRECTORY" ) ]]; then
+  echo "ERROR: worktree Git info path is not a safe directory for merge metadata" >&2
+  exit 1
+fi
+
 TEMPORARY_DIRECTORY="$(mktemp -d "${TMPDIR:-/tmp}/agent-ready-merge.XXXXXX")"
 CANDIDATE_FILE="$TEMPORARY_DIRECTORY/template.md"
 MERGED_FILE="$TEMPORARY_DIRECTORY/merged.md"
 SCHEMA_FILE="$TEMPORARY_DIRECTORY/result-schema.json"
 RESULT_FILE="$TEMPORARY_DIRECTORY/provider-result.json"
-TEMPLATE_HASH_FILE=".agents/.agent-ready-instructions-template.sha256"
+TEMPLATE_HASH_FILE="$GIT_INFO_DIRECTORY/agent-ready-instructions-template.sha256"
 
 sha256_file() {
   local file_path="$1"
@@ -148,18 +174,61 @@ acquire_merge_lock() {
 }
 
 template_hash=""
-write_template_hash() {
-  local temporary_hash_file
-
-  if [[ -L ".agents" || ( -e ".agents" && ! -d ".agents" ) ]]; then
-    echo "ERROR: .agents is not a safe directory for merge metadata" >&2
+validate_template_hash_path() {
+  if [[ -L "$TEMPLATE_HASH_FILE" || ( -e "$TEMPLATE_HASH_FILE" && ! -f "$TEMPLATE_HASH_FILE" ) ]]; then
+    echo "ERROR: template hash path is not a regular file" >&2
     return 1
   fi
-  mkdir -p -- .agents
+}
 
-  temporary_hash_file="$(mktemp "${TEMPLATE_HASH_FILE}.XXXXXX")"
-  printf '%s\n' "$template_hash" > "$temporary_hash_file"
-  mv -f -- "$temporary_hash_file" "$TEMPLATE_HASH_FILE"
+write_template_hash() {
+  if [[ -L "$GIT_INFO_DIRECTORY" || ( -e "$GIT_INFO_DIRECTORY" && ! -d "$GIT_INFO_DIRECTORY" ) ]]; then
+    echo "ERROR: Git info path is not a safe directory for merge metadata" >&2
+    return 1
+  fi
+  mkdir -p -- "$GIT_INFO_DIRECTORY"
+  if ! validate_template_hash_path; then
+    return 1
+  fi
+
+  TEMPORARY_HASH_FILE="$(mktemp "${TEMPLATE_HASH_FILE}.XXXXXX")"
+  if ! printf '%s\n' "$template_hash" > "$TEMPORARY_HASH_FILE"; then
+    return 1
+  fi
+  if ! mv -f -- "$TEMPORARY_HASH_FILE" "$TEMPLATE_HASH_FILE"; then
+    return 1
+  fi
+  TEMPORARY_HASH_FILE=""
+}
+
+migrate_legacy_template_hash() {
+  if [[ ! -e "$LEGACY_TEMPLATE_HASH_FILE" && ! -L "$LEGACY_TEMPLATE_HASH_FILE" ]]; then
+    return 0
+  fi
+  if [[ -L ".agents" || ( -e ".agents" && ! -d ".agents" ) ]]; then
+    echo "ERROR: .agents is not a safe directory for legacy merge metadata" >&2
+    return 1
+  fi
+  if [[ -L "$LEGACY_TEMPLATE_HASH_FILE" || ! -f "$LEGACY_TEMPLATE_HASH_FILE" ]]; then
+    echo "ERROR: legacy template hash is not a regular file; merge stopped" >&2
+    return 1
+  fi
+  if ! validate_template_hash_path; then
+    return 1
+  fi
+
+  if [[ ! -e "$TEMPLATE_HASH_FILE" ]]; then
+    mkdir -p -- "$GIT_INFO_DIRECTORY"
+    if ! cp -- "$LEGACY_TEMPLATE_HASH_FILE" "$TEMPLATE_HASH_FILE"; then
+      echo "ERROR: could not migrate legacy template hash; merge stopped" >&2
+      return 1
+    fi
+  fi
+
+  if ! rm -f -- "$LEGACY_TEMPLATE_HASH_FILE"; then
+    echo "ERROR: could not remove legacy template hash; merge stopped" >&2
+    return 1
+  fi
 }
 
 # The provider receives a dynamic, neutral template. The renderer only prepares
@@ -178,6 +247,9 @@ if [[ "$acquire_status" -ne 0 ]]; then
   exit "$acquire_status"
 fi
 
+if ! migrate_legacy_template_hash; then
+  exit 1
+fi
 if [[ ! -e "$AGENTS_FILE" ]]; then
   cp -- "$CANDIDATE_FILE" "$MERGED_FILE"
   if [[ -f "$CENTRALIZATION_TEMPLATE" ]]; then
@@ -193,8 +265,7 @@ if [[ ! -e "$AGENTS_FILE" ]]; then
   exit 0
 fi
 
-if [[ -L "$TEMPLATE_HASH_FILE" || ( -e "$TEMPLATE_HASH_FILE" && ! -f "$TEMPLATE_HASH_FILE" ) ]]; then
-  echo "ERROR: template merge metadata is not a regular file; merge stopped" >&2
+if ! validate_template_hash_path; then
   exit 1
 fi
 rule_references_valid=0
@@ -407,7 +478,9 @@ write_if_unchanged() {
   python3 - "$AGENTS_FILE" "$MERGED_FILE" "$original_agents_hash" <<'PY'
 import hashlib
 import os
+import stat
 import sys
+import tempfile
 
 import fcntl
 
@@ -416,10 +489,21 @@ target_path, replacement_path, expected_hash = sys.argv[1:]
 open_flags = os.O_RDWR
 if hasattr(os, "O_EXLOCK"):
     open_flags |= os.O_EXLOCK
+if hasattr(os, "O_NOFOLLOW"):
+    open_flags |= os.O_NOFOLLOW
 
 target_file = None
-original_content = b""
+directory_file = None
+temporary_path = None
 try:
+    target_directory = os.path.dirname(os.path.abspath(target_path)) or "."
+    directory_flags = os.O_RDONLY
+    if hasattr(os, "O_DIRECTORY"):
+        directory_flags |= os.O_DIRECTORY
+    directory_file = os.open(target_directory, directory_flags)
+    # Keep pathname checks and replacement under one directory lock.
+    fcntl.flock(directory_file, fcntl.LOCK_EX)
+
     target_file = os.fdopen(os.open(target_path, open_flags), "r+b")
     fcntl.flock(target_file.fileno(), fcntl.LOCK_EX)
     target_file.seek(0)
@@ -434,37 +518,57 @@ try:
 
     with open(replacement_path, "rb") as replacement_file:
         replacement_content = replacement_file.read()
-    target_file.seek(0)
-    target_file.truncate()
-    target_file.write(replacement_content)
-    target_file.flush()
-    os.fsync(target_file.fileno())
+
+    target_mode = stat.S_IMODE(os.fstat(target_file.fileno()).st_mode)
+    temporary_descriptor, temporary_path = tempfile.mkstemp(
+        prefix=f".{os.path.basename(target_path)}.agent-ready-merge.",
+        dir=target_directory,
+    )
+    with os.fdopen(temporary_descriptor, "wb") as temporary_file:
+        os.fchmod(temporary_file.fileno(), target_mode)
+        temporary_file.write(replacement_content)
+        temporary_file.flush()
+        os.fsync(temporary_file.fileno())
+
+    original_target_stat = os.fstat(target_file.fileno())
+    current_target_stat = os.stat(target_path, follow_symlinks=False)
+    if (
+        current_target_stat.st_dev,
+        current_target_stat.st_ino,
+    ) != (
+        original_target_stat.st_dev,
+        original_target_stat.st_ino,
+    ):
+        print(
+            f"ERROR: {target_path} changed during descriptor merge; merge cancelled",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    os.replace(temporary_path, target_path)
+    temporary_path = None
+
+    os.fsync(directory_file)
 except SystemExit:
     raise
 except Exception as error:
-    if target_file is not None:
-        try:
-            target_file.seek(0)
-            target_file.truncate()
-            target_file.write(original_content)
-            target_file.flush()
-            os.fsync(target_file.fileno())
-        except Exception:
-            pass
     print(f"ERROR: could not update {target_path}: {error}", file=sys.stderr)
     sys.exit(1)
 finally:
+    if directory_file is not None:
+        os.close(directory_file)
+    if temporary_path is not None:
+        try:
+            os.unlink(temporary_path)
+        except FileNotFoundError:
+            pass
     if target_file is not None:
         target_file.close()
 PY
 }
 
 apply_merge() {
-  local backup_file=""
   local write_status=0
-
-  backup_file="$(mktemp "${AGENTS_FILE}.agent-ready-backup.XXXXXX")"
-  cp -p -- "$AGENTS_FILE" "$backup_file"
 
   # The descriptor lock, hash check, and write happen in one process. This
   # avoids replacing a path after a separate check observed older content.
@@ -474,7 +578,7 @@ apply_merge() {
     return "$write_status"
   fi
 
-  printf 'Updated %s automatically; backup: %s\n' "$AGENTS_FILE" "$backup_file"
+  printf 'Updated %s automatically; no backup retained.\n' "$AGENTS_FILE"
 }
 
 if [[ "$status" == "auto" ]]; then

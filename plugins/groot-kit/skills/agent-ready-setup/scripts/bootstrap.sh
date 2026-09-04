@@ -5,12 +5,18 @@
 # AGENTS.md is canonical and CLAUDE.md is a proxy with root-only guidance.
 #
 # Usage:
-#   bash bootstrap.sh --stack <frontend|node|java|go> --skill-dir <path> [--sync] [--yes]
+#   bash bootstrap.sh --stack <frontend|node|java|go> --skill-dir <path> [--provider <claude|codex>] [--sync] [--yes]
 
 set -euo pipefail
 
+readonly MARKETPLACE_NAME="groot-marketplace"
+readonly SKILL_NAME="agent-ready-setup"
+
 STACK=""
+REQUESTED_SKILL_DIR=""
 SKILL_DIR=""
+PROVIDER="${AGENT_READY_SETUP_ACTIVE_PROVIDER:-}"
+MARKETPLACE_ALREADY_UPGRADED="${AGENT_READY_SETUP_MARKETPLACE_UPGRADED:-0}"
 SYNC_MODE=0
 AUTO_CONFIRM=0
 SYNC_LOCK_DIRECTORY=".agents/.agent-ready-assets.lock"
@@ -25,7 +31,12 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skill-dir)
       [[ $# -ge 2 ]] || { echo "ERROR: --skill-dir requires a value" >&2; exit 1; }
-      SKILL_DIR="$2"
+      REQUESTED_SKILL_DIR="$2"
+      shift 2
+      ;;
+    --provider)
+      [[ $# -ge 2 && -n "${2:-}" ]] || { echo "ERROR: --provider requires claude or codex" >&2; exit 1; }
+      PROVIDER="$2"
       shift 2
       ;;
     --sync|--update)
@@ -48,7 +59,15 @@ if [[ "$AUTO_CONFIRM" -eq 1 && "$SYNC_MODE" -ne 1 ]]; then
   exit 1
 fi
 
-if [[ -z "$STACK" || -z "$SKILL_DIR" ]]; then
+case "$MARKETPLACE_ALREADY_UPGRADED" in
+  0|1) ;;
+  *)
+    echo "ERROR: AGENT_READY_SETUP_MARKETPLACE_UPGRADED must be 0 or 1" >&2
+    exit 1
+    ;;
+esac
+
+if [[ -z "$STACK" || -z "$REQUESTED_SKILL_DIR" ]]; then
   echo "ERROR: --stack and --skill-dir are required" >&2
   exit 1
 fi
@@ -61,51 +80,162 @@ case "$STACK" in
     ;;
 esac
 
-if [[ ! -d "$SKILL_DIR" ]]; then
-  echo "ERROR: --skill-dir must point to an existing directory: $SKILL_DIR" >&2
+is_valid_skill_dir() {
+  local candidate="$1"
+
+  [[ -f "$candidate/SKILL.md" && \
+    -f "$candidate/scripts/bootstrap.sh" && \
+    -d "$candidate/assets/stacks" ]]
+}
+
+if [[ ! -d "$REQUESTED_SKILL_DIR" ]]; then
+  echo "ERROR: --skill-dir must point to an existing directory: $REQUESTED_SKILL_DIR" >&2
   exit 1
 fi
 
-SRC="$SKILL_DIR/assets/stacks/$STACK"
-CODEX_ASSETS="$SKILL_DIR/assets/codex"
-ROOT_CLAUDE_TEMPLATE="$SKILL_DIR/assets/root-claude.md"
-CENTRALIZATION_TEMPLATE="$SKILL_DIR/assets/instruction-centralization.md"
-TEMPLATE_RENDERER="$SKILL_DIR/scripts/render-instruction-template.sh"
-
-if [[ ! -d "$SRC" ]]; then
-  echo "ERROR: No template found for stack '$STACK' at $SRC" >&2
-  exit 1
+SKILL_DIR="$REQUESTED_SKILL_DIR"
+if [[ -z "$PROVIDER" ]]; then
+  provider_resolver="$SKILL_DIR/scripts/resolve-provider.sh"
+  if [[ ! -f "$provider_resolver" ]]; then
+    echo "ERROR: provider is not explicit and resolver is missing: $provider_resolver" >&2
+    exit 1
+  fi
+  PROVIDER="$(bash "$provider_resolver" --skill-dir "$SKILL_DIR")"
 fi
 
-if [[ ! -f "$SRC/CLAUDE.md" ]]; then
-  echo "ERROR: Stack template is missing CLAUDE.md: $SRC/CLAUDE.md" >&2
-  exit 1
-fi
+case "$PROVIDER" in
+  claude|codex) ;;
+  *)
+    echo "ERROR: Unsupported provider '$PROVIDER'. Expected claude or codex." >&2
+    exit 1
+    ;;
+esac
 
-if [[ ! -d "$SRC/rules" ]]; then
-  echo "ERROR: Stack template is missing rules directory: $SRC/rules" >&2
-  exit 1
-fi
+resolve_skill_dir() {
+  local candidate
+  local provider_root
+  local cache_root
+  local project_root
 
-if [[ ! -f "$TEMPLATE_RENDERER" ]]; then
-  echo "ERROR: Instruction template renderer is missing: $TEMPLATE_RENDERER" >&2
-  exit 1
-fi
+  if [[ -n "${AGENT_READY_SETUP_SKILL_DIR:-}" ]]; then
+    candidate="$AGENT_READY_SETUP_SKILL_DIR"
+    if is_valid_skill_dir "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+    printf 'ERROR: AGENT_READY_SETUP_SKILL_DIR is not a valid %s source: %s\n' \
+      "$SKILL_NAME" "$candidate" >&2
+    return 1
+  fi
 
-if [[ ! -f "$CODEX_ASSETS/hooks.json" ]]; then
-  echo "ERROR: Codex hook template is missing: $CODEX_ASSETS/hooks.json" >&2
-  exit 1
-fi
+  if [[ "$MARKETPLACE_ALREADY_UPGRADED" -eq 1 ]]; then
+    if is_valid_skill_dir "$REQUESTED_SKILL_DIR"; then
+      printf '%s\n' "$REQUESTED_SKILL_DIR"
+      return 0
+    fi
+    return 1
+  fi
 
-if [[ ! -f "$ROOT_CLAUDE_TEMPLATE" ]]; then
-  echo "ERROR: Root CLAUDE.md template is missing: $ROOT_CLAUDE_TEMPLATE" >&2
-  exit 1
-fi
+  if [[ "$REQUESTED_SKILL_DIR" == "$HOME/.codex/plugins/cache/$MARKETPLACE_NAME"/* ]]; then
+    provider_root="$HOME/.codex"
+  elif [[ "$REQUESTED_SKILL_DIR" == "$HOME/.claude/plugins/cache/$MARKETPLACE_NAME"/* ]]; then
+    provider_root="$HOME/.claude"
+  elif [[ "$PROVIDER" == "claude" ]]; then
+    provider_root="$HOME/.claude"
+  else
+    provider_root="$HOME/.codex"
+  fi
+  cache_root="$provider_root/plugins/cache/$MARKETPLACE_NAME"
 
-if [[ ! -f "$CENTRALIZATION_TEMPLATE" ]]; then
-  echo "ERROR: Instruction centralization template is missing: $CENTRALIZATION_TEMPLATE" >&2
-  exit 1
-fi
+  if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    for candidate in \
+      "$CLAUDE_PLUGIN_ROOT/skills/$SKILL_NAME" \
+      "$CLAUDE_PLUGIN_ROOT"; do
+      if [[ "$candidate" != "$REQUESTED_SKILL_DIR" ]] && is_valid_skill_dir "$candidate"; then
+        printf '%s\n' "$candidate"
+        return 0
+      fi
+    done
+  fi
+
+  if [[ "$REQUESTED_SKILL_DIR" != "$cache_root"/* ]] && \
+    is_valid_skill_dir "$REQUESTED_SKILL_DIR"; then
+    printf '%s\n' "$REQUESTED_SKILL_DIR"
+    return 0
+  fi
+
+  candidate="$provider_root/skills/$SKILL_NAME"
+  if [[ "$candidate" != "$REQUESTED_SKILL_DIR" ]] && is_valid_skill_dir "$candidate"; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  while IFS= read -r candidate; do
+    candidate="${candidate%/SKILL.md}"
+    if [[ "$candidate" != "$REQUESTED_SKILL_DIR" ]] && is_valid_skill_dir "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done < <(find "$cache_root" -type f -path "*/skills/$SKILL_NAME/SKILL.md" -print 2>/dev/null | sort -r)
+
+  if project_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    candidate="$project_root/plugins/groot-kit/skills/$SKILL_NAME"
+    if [[ "$candidate" != "$REQUESTED_SKILL_DIR" ]] && is_valid_skill_dir "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  fi
+
+  if is_valid_skill_dir "$REQUESTED_SKILL_DIR"; then
+    printf '%s\n' "$REQUESTED_SKILL_DIR"
+    return 0
+  fi
+
+  return 1
+}
+
+validate_skill_source() {
+  SRC="$SKILL_DIR/assets/stacks/$STACK"
+  CODEX_ASSETS="$SKILL_DIR/assets/codex"
+  ROOT_CLAUDE_TEMPLATE="$SKILL_DIR/assets/root-claude.md"
+  CENTRALIZATION_TEMPLATE="$SKILL_DIR/assets/instruction-centralization.md"
+  TEMPLATE_RENDERER="$SKILL_DIR/scripts/render-instruction-template.sh"
+
+  if [[ ! -d "$SRC" ]]; then
+    echo "ERROR: No template found for stack '$STACK' at $SRC" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$SRC/CLAUDE.md" ]]; then
+    echo "ERROR: Stack template is missing CLAUDE.md: $SRC/CLAUDE.md" >&2
+    exit 1
+  fi
+
+  if [[ ! -d "$SRC/rules" ]]; then
+    echo "ERROR: Stack template is missing rules directory: $SRC/rules" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$TEMPLATE_RENDERER" ]]; then
+    echo "ERROR: Instruction template renderer is missing: $TEMPLATE_RENDERER" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$CODEX_ASSETS/hooks.json" ]]; then
+    echo "ERROR: Codex hook template is missing: $CODEX_ASSETS/hooks.json" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$ROOT_CLAUDE_TEMPLATE" ]]; then
+    echo "ERROR: Root CLAUDE.md template is missing: $ROOT_CLAUDE_TEMPLATE" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$CENTRALIZATION_TEMPLATE" ]]; then
+    echo "ERROR: Instruction centralization template is missing: $CENTRALIZATION_TEMPLATE" >&2
+    exit 1
+  fi
+}
 
 CLAUDE_DIR=".claude"
 SHARED_DIR=".agents"
@@ -118,7 +248,9 @@ UPDATED=()
 SKIPPED=()
 PENDING=()
 MIGRATED=()
+REMOVED=()
 CONFLICTS=()
+CLEANUP_CONFLICTS=()
 PROVIDER_ROOT_CONFLICTS=()
 
 if ! command -v git >/dev/null 2>&1 || [[ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != true ]]; then
@@ -148,8 +280,39 @@ validate_provider_roots() {
 
 validate_provider_roots
 
-# Serializes sync writers so concurrent hooks cannot replace each other's files.
-# A failed acquisition leaves every asset untouched for the next invocation.
+upgrade_marketplace() {
+  if ! command -v fury >/dev/null 2>&1; then
+    printf 'ERROR: fury CLI is required to upgrade %s before bootstrap.\n' "$MARKETPLACE_NAME" >&2
+    return 1
+  fi
+
+  echo "[marketplace-bootstrap] Upgrading $MARKETPLACE_NAME for $PROVIDER..."
+  if ! fury ai assets marketplace upgrade \
+    --name "$MARKETPLACE_NAME" \
+    --provider "$PROVIDER"; then
+    printf 'ERROR: marketplace upgrade failed for %s/%s; no project asset was changed.\n' \
+      "$MARKETPLACE_NAME" "$PROVIDER" >&2
+    return 1
+  fi
+  echo "[marketplace-bootstrap] Marketplace upgrade completed."
+}
+
+if [[ "$MARKETPLACE_ALREADY_UPGRADED" -eq 0 ]]; then
+  if ! upgrade_marketplace; then
+    exit 1
+  fi
+else
+  echo "[marketplace-bootstrap] Marketplace upgrade already completed by caller."
+fi
+
+if ! SKILL_DIR="$(resolve_skill_dir)"; then
+  echo "ERROR: could not resolve updated $SKILL_NAME source after marketplace upgrade" >&2
+  exit 1
+fi
+validate_skill_source
+
+# Serializes sync writers so concurrent invocations cannot replace each other's
+# files. Upgrade runs before this lock to keep failed upgrades write-free.
 # shellcheck disable=SC2329
 release_sync_lock() {
   if [[ "$SYNC_LOCK_ACQUIRED" -eq 1 ]]; then
@@ -459,6 +622,144 @@ link_claude_asset() {
   record_created "$destination -> $source"
 }
 
+record_removed() {
+  REMOVED+=("$1")
+}
+
+record_cleanup_conflict() {
+  CLEANUP_CONFLICTS+=("$1")
+}
+
+cleanup_legacy_claude_hooks() {
+  local hooks_directory="$CLAUDE_DIR/hooks"
+  local hook_path
+  local hook_relative
+  local target
+  local expected_target
+
+  if [[ -L "$hooks_directory" ]]; then
+    record_cleanup_conflict "$hooks_directory is a symlink; preserved"
+    return
+  fi
+  if [[ -e "$hooks_directory" && ! -d "$hooks_directory" ]]; then
+    record_cleanup_conflict "$hooks_directory is not a directory; preserved"
+    return
+  fi
+  [[ -d "$hooks_directory" ]] || return 0
+
+  while IFS= read -r -d '' hook_path; do
+    hook_relative="${hook_path#"$hooks_directory/"}"
+
+    if [[ ! -L "$hook_path" ]]; then
+      record_cleanup_conflict "$hook_path is custom content; preserved"
+      continue
+    fi
+
+    target="$(readlink -- "$hook_path")"
+    expected_target="$(relative_shared_target "hooks/$hook_relative")"
+    if [[ "$target" != "$expected_target" ]]; then
+      record_cleanup_conflict "$hook_path is a custom symlink; preserved"
+      continue
+    fi
+
+    if rm -f -- "$hook_path"; then
+      record_removed "$hook_path"
+    else
+      record_cleanup_conflict "could not remove managed symlink $hook_path; preserved"
+    fi
+  done < <(find "$hooks_directory" -mindepth 1 -maxdepth 1 -print0)
+
+  if [[ -d "$hooks_directory" ]] && rmdir -- "$hooks_directory" 2>/dev/null; then
+    record_removed "$hooks_directory"
+  fi
+}
+
+cleanup_stale_claude_links() {
+  local link_path
+  local relative
+  local target
+  local expected_target
+  local source_path
+
+  [[ -d "$CLAUDE_DIR" ]] || return 0
+
+  while IFS= read -r -d '' link_path; do
+    relative="${link_path#"$CLAUDE_DIR/"}"
+    [[ "$relative" == "settings.json" || "$relative" == "hooks" || "$relative" == hooks/* ]] && continue
+
+    if ! target="$(readlink -- "$link_path")"; then
+      record_cleanup_conflict "$link_path target could not be read; preserved"
+      continue
+    fi
+    expected_target="$(relative_shared_target "$relative")"
+    if [[ "$target" == "$expected_target" ]]; then
+      source_path="$SHARED_DIR/$relative"
+      if [[ ! -e "$source_path" && ! -L "$source_path" ]]; then
+        if rm -f -- "$link_path"; then
+          record_removed "$link_path"
+        else
+          record_cleanup_conflict "could not remove stale managed symlink $link_path; preserved"
+        fi
+      fi
+    elif [[ "$target" == *".agents/"* ]]; then
+      record_cleanup_conflict "$link_path points to a non-managed .agents target; preserved"
+    fi
+  done < <(find "$CLAUDE_DIR" -type l -print0)
+}
+
+migrate_claude_settings() {
+  local destination="$CLAUDE_DIR/settings.json"
+  local temporary_settings
+
+  if [[ -L "$destination" ]]; then
+    record_cleanup_conflict "$destination is a symlink; preserved"
+    return 0
+  fi
+  if [[ -e "$destination" && ! -f "$destination" ]]; then
+    record_cleanup_conflict "$destination is not a regular file; preserved"
+    return 0
+  fi
+  [[ -f "$destination" ]] || return 0
+  if ! grep -Fq '.claude/hooks/' "$destination"; then
+    record_skipped "$destination"
+    return 0
+  fi
+
+  temporary_settings="$(mktemp "${TMPDIR:-/tmp}/agent-ready-settings.XXXXXX")"
+  if ! python3 - "$destination" > "$temporary_settings" <<'PY'
+import json
+import sys
+
+settings_path = sys.argv[1]
+with open(settings_path, encoding="utf-8") as settings_file:
+    settings = json.load(settings_file)
+
+
+def migrate(value):
+    if isinstance(value, dict):
+        return {key: migrate(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [migrate(item) for item in value]
+    if isinstance(value, str) and (
+        value.startswith("Bash(.claude/hooks/")
+        or value.startswith("bash .claude/hooks/")
+    ):
+        return value.replace(".claude/hooks/", ".agents/hooks/", 1)
+    return value
+
+json.dump(migrate(settings), sys.stdout, indent=2)
+sys.stdout.write("\n")
+PY
+  then
+    rm -f -- "$temporary_settings"
+    record_cleanup_conflict "$destination contains invalid JSON; preserved"
+    return 0
+  fi
+
+  sync_file "$temporary_settings" "$destination" "legacy hook paths in $destination"
+  rm -f -- "$temporary_settings"
+}
+
 is_normalized_root_claude() {
   [[ -f "$CLAUDE_FILE" ]] && cmp -s "$CLAUDE_FILE" "$ROOT_CLAUDE_TEMPLATE"
 }
@@ -704,15 +1005,20 @@ create_skill_adapter() {
 }
 
 # Project shared assets into the canonical .agents tree. Claude-specific
-# settings remain copied to .claude; all other Claude assets are symlinked views
-# of the canonical shared files so providers cannot drift independently.
+# settings remain copied to .claude; non-hook Claude assets are symlinked views
+# of the canonical shared files so providers cannot drift independently. Hooks
+# remain only in .agents because both providers execute the canonical scripts.
 while IFS= read -r -d '' file; do
   relative="${file#"$SRC/"}"
 
   if [[ "$relative" == "CLAUDE.md" ]]; then
     continue
   elif [[ "$relative" == "settings.json" ]]; then
-    copy_if_missing "$file" "$CLAUDE_DIR/$relative"
+    if [[ "$SYNC_MODE" -eq 1 && ( -e "$CLAUDE_DIR/$relative" || -L "$CLAUDE_DIR/$relative" ) ]]; then
+      migrate_claude_settings
+    else
+      copy_if_missing "$file" "$CLAUDE_DIR/$relative"
+    fi
   else
     case "$relative" in
       skills/*/SKILL.md)
@@ -734,9 +1040,16 @@ while IFS= read -r -d '' file; do
         ;;
     esac
 
-    link_claude_asset "$relative"
+    if [[ "$relative" != hooks/* ]]; then
+      link_claude_asset "$relative"
+    fi
   fi
 done < <(find "$SRC" -type f -print0)
+
+if [[ "$SYNC_MODE" -eq 1 ]]; then
+  cleanup_legacy_claude_hooks
+  cleanup_stale_claude_links
+fi
 
 # Codex-specific plugin assets use Codex's supported names while retaining the
 # same MCP definitions and shared hook scripts.
@@ -776,6 +1089,18 @@ if [[ ${#SKIPPED[@]} -gt 0 ]]; then
   echo ""
   echo "Already existed (skipped):"
   for file in "${SKIPPED[@]}"; do printf '  ~ %s\n' "$file"; done
+fi
+
+if [[ ${#REMOVED[@]} -gt 0 ]]; then
+  echo ""
+  echo "Removed stale managed assets:"
+  for file in "${REMOVED[@]}"; do printf '  - %s\n' "$file"; done
+fi
+
+if [[ ${#CLEANUP_CONFLICTS[@]} -gt 0 ]]; then
+  echo ""
+  echo "Managed asset cleanup conflicts (preserved):" >&2
+  for conflict in "${CLEANUP_CONFLICTS[@]}"; do printf '  ! %s\n' "$conflict" >&2; done
 fi
 
 if [[ ${#CONFLICTS[@]} -gt 0 ]]; then

@@ -53,24 +53,101 @@ como fuente de verdad para omitir instrucciones anidadas cubiertas por
 ## Step 1 — Resolve SKILL_DIR
 
 ```bash
-if [[ -n "$AGENT_READY_SETUP_SKILL_DIR" ]]; then
-  SKILL_DIR="$AGENT_READY_SETUP_SKILL_DIR"
-elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" && -f "$CLAUDE_PLUGIN_ROOT/skills/agent-ready-setup/SKILL.md" ]]; then
-  SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/agent-ready-setup"
-elif [[ "${AGENT_READY_SETUP_ACTIVE_PROVIDER:-}" == "codex" && -f "$HOME/.codex/skills/agent-ready-setup/SKILL.md" ]]; then
-  SKILL_DIR="$HOME/.codex/skills/agent-ready-setup"
-elif [[ "${AGENT_READY_SETUP_ACTIVE_PROVIDER:-}" == "claude" && -f "$HOME/.claude/skills/agent-ready-setup/SKILL.md" ]]; then
-  SKILL_DIR="$HOME/.claude/skills/agent-ready-setup"
-elif [[ -f "$HOME/.codex/skills/agent-ready-setup/SKILL.md" ]]; then
-  SKILL_DIR="$HOME/.codex/skills/agent-ready-setup"
-elif [[ -f "$HOME/.claude/skills/agent-ready-setup/SKILL.md" ]]; then
-  SKILL_DIR="$HOME/.claude/skills/agent-ready-setup"
-else
-  SKILL_DIR="$(pwd)/plugins/groot-kit/skills/agent-ready-setup"
-fi
+readonly MARKETPLACE_NAME="groot-marketplace"
+readonly SKILL_NAME="agent-ready-setup"
+PROVIDER="${AGENT_READY_SETUP_ACTIVE_PROVIDER:-claude}"
+
+is_valid_skill_dir() {
+  local candidate="$1"
+
+  [[ -f "$candidate/SKILL.md" && \
+    -f "$candidate/scripts/bootstrap.sh" && \
+    -d "$candidate/assets/stacks" ]]
+}
+
+resolve_skill_dir() {
+  local requested_skill_dir="${1:-}"
+  local candidate
+  local provider_root
+  local cache_root
+  local project_root
+
+  if [[ -n "${AGENT_READY_SETUP_SKILL_DIR:-}" ]]; then
+    candidate="$AGENT_READY_SETUP_SKILL_DIR"
+    if is_valid_skill_dir "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+    printf 'ERROR: AGENT_READY_SETUP_SKILL_DIR is not a valid %s source: %s\n' \
+      "$SKILL_NAME" "$candidate" >&2
+    return 1
+  fi
+
+  if [[ "$requested_skill_dir" == "$HOME/.codex/plugins/cache/$MARKETPLACE_NAME"/* ]]; then
+    provider_root="$HOME/.codex"
+  elif [[ "$requested_skill_dir" == "$HOME/.claude/plugins/cache/$MARKETPLACE_NAME"/* ]]; then
+    provider_root="$HOME/.claude"
+  elif [[ "$PROVIDER" == "claude" ]]; then
+    provider_root="$HOME/.claude"
+  else
+    provider_root="$HOME/.codex"
+  fi
+  cache_root="$provider_root/plugins/cache/$MARKETPLACE_NAME"
+
+  if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    for candidate in \
+      "$CLAUDE_PLUGIN_ROOT/skills/$SKILL_NAME" \
+      "$CLAUDE_PLUGIN_ROOT"; do
+      if [[ "$candidate" != "$requested_skill_dir" ]] && is_valid_skill_dir "$candidate"; then
+        printf '%s\n' "$candidate"
+        return 0
+      fi
+    done
+  fi
+
+  if [[ "$requested_skill_dir" != "$cache_root"/* ]] && \
+    is_valid_skill_dir "$requested_skill_dir"; then
+    printf '%s\n' "$requested_skill_dir"
+    return 0
+  fi
+
+  candidate="$provider_root/skills/$SKILL_NAME"
+  if [[ "$candidate" != "$requested_skill_dir" ]] && is_valid_skill_dir "$candidate"; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  while IFS= read -r candidate; do
+    candidate="${candidate%/SKILL.md}"
+    if [[ "$candidate" != "$requested_skill_dir" ]] && is_valid_skill_dir "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done < <(find "$cache_root" -type f -path "*/skills/$SKILL_NAME/SKILL.md" -print 2>/dev/null | sort -r)
+
+  if project_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    candidate="$project_root/plugins/groot-kit/skills/$SKILL_NAME"
+    if [[ "$candidate" != "$requested_skill_dir" ]] && is_valid_skill_dir "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  fi
+
+  if is_valid_skill_dir "$requested_skill_dir"; then
+    printf '%s\n' "$requested_skill_dir"
+    return 0
+  fi
+
+  printf 'ERROR: could not resolve %s source\n' "$SKILL_NAME" >&2
+  return 1
+}
+
+SKILL_DIR="$(resolve_skill_dir "${SKILL_DIR:-}")"
 ```
 
-Usar path resuelto para ejecutar scripts y leer assets. No asumir que provider
+Usar path resuelto para ejecutar scripts y leer assets. Después de ejecutar
+`bootstrap.sh`, resolver nuevamente: marketplace upgrade puede reemplazar una
+fuente versionada y dejar path anterior inexistente. No asumir que provider
 actual define ubicación de fuente compartida.
 
 ---
@@ -118,19 +195,27 @@ Si detección tiene éxito, confirmar:
 ## Step 3 — Run bootstrap script
 
 ```bash
+PROVIDER="$(bash "$SKILL_DIR/scripts/resolve-provider.sh" --skill-dir "$SKILL_DIR")"
 bash "$SKILL_DIR/scripts/bootstrap.sh" \
   --stack "$STACK" \
-  --skill-dir "$SKILL_DIR"
+  --skill-dir "$SKILL_DIR" \
+  --provider "$PROVIDER"
 
-PROVIDER="${AGENT_READY_SETUP_ACTIVE_PROVIDER:-claude}"
+SKILL_DIR="$(resolve_skill_dir "$SKILL_DIR")"
 bash "$SKILL_DIR/scripts/merge-instructions.sh" \
   --provider "$PROVIDER" \
   --stack "$STACK" \
   --skill-dir "$SKILL_DIR"
 ```
 
+`resolve-provider.sh` respeta `AGENT_READY_SETUP_ACTIVE_PROVIDER` cuando vale
+`claude` o `codex`; si no existe, infiere provider desde `SKILL_DIR` bajo
+`$HOME/.claude/`, `$HOME/.codex/` o `CLAUDE_PLUGIN_ROOT`. Para rutas fuera de
+instalación reconocible, termina con error y exige provider explícito.
+
 En modo inicial, el script copia assets compartidos faltantes a `.agents/`, crea
-symlinks relativos correspondientes bajo `.claude/` y prepara bridge `.codex/`.
+symlinks relativos para assets no-hook bajo `.claude/` y prepara bridge `.codex/`.
+Los scripts de hooks permanecen únicamente bajo `.agents/hooks/`.
 El renderer crea `AGENTS.md` nuevo con catálogo portable; el merge IA analiza
 `AGENTS.md` existente completo y agrega/corrige referencias sin perder comandos,
 arquitectura u ownership. El provider debe ser `claude` o `codex`.
@@ -139,10 +224,12 @@ divergentes se conservan y se reportan como conflicto. Durante la búsqueda
 recursiva de instrucciones respeta `.gitignore` y nunca recorre `node_modules/`;
 esta regla no impide crear los destinos explícitos `.claude/`, `.agents/` y
 `.codex/`. Los hooks de sincronización reciben provider explícito (`--provider
-claude` desde `.claude/` y `--provider codex` desde `.agents/`); las
+claude` desde `.claude/settings.json` y `--provider codex` desde `.codex/`),
+pero ambos ejecutan el script canónico bajo `.agents/hooks/`. Las
 configuraciones generadas agregan `--sync-instructions`, que activa también
-`--sync` y reproyecta contenido actualizado. `-p` es alias del wrapper y hooks legacy sin argumento infieren
-provider por su ruta. También normaliza instrucciones raíz:
+`--sync` y reproyecta contenido actualizado. `-p` es alias de `--provider`; al
+invocarse directamente desde `.agents/hooks/`, el script infiere `codex` si no
+se especifica provider. También normaliza instrucciones raíz:
 
 1. Si `CLAUDE.md` raíz ya es byte-a-byte igual a `assets/root-claude.md`, lo
    considera normalizado y no lo modifica.
@@ -162,10 +249,12 @@ provider por su ruta. También normaliza instrucciones raíz:
 
 `fury ai assets marketplace upgrade` actualiza la copia global del marketplace;
 no vuelve a proyectar por sí mismo los templates sobre un proyecto ya preparado.
-Los hooks generados invocan el upgrade y luego `bootstrap.sh --sync`. El modo
+`bootstrap.sh` ejecuta ese upgrade automáticamente para el provider activo antes
+de proyectar assets o adquirir lock local. Los hooks generados actualizan primero,
+resuelven la fuente instalada y luego invocan `bootstrap.sh --sync --yes` sin
+repetir upgrade. El modo
 `--sync-instructions` ejecuta además merge IA sobre `AGENTS.md`, usando catálogo
-de rules renderizado y provider explícito; hook legacy sin `--sync` mantiene
-comportamiento upgrade-only.
+de rules renderizado y provider explícito.
 
 `--sync` compara cada asset gestionado con el template actualizado y muestra
 `diff -u` antes de reemplazar un archivo existente. El reemplazo requiere una
@@ -175,16 +264,32 @@ conserva los bytes locales y reporta la sincronización pendiente. `--sync` solo
 no modifica instrucciones raíz ni ejecuta IA; usar `--sync-instructions` para
 analizar y reparar referencias en `AGENTS.md`.
 
+### Riesgos del upgrade automático
+
+- Cada ejecución necesita CLI `fury`, autenticación y red; si upgrade falla,
+  bootstrap termina antes de modificar assets locales.
+- Upgrade global no tiene rollback en este script; la versión descargada puede
+  cambiar aunque proyección local quede bloqueada.
+- `--sync --yes` aplica templates nuevos sobre assets gestionados; reglas,
+  conflictos, symlinks y reemplazos atómicos existentes siguen protegiendo
+  contenido local no administrado.
+- Lock protege proyección local concurrente, pero no serializa upgrades globales
+  de Fury entre procesos distintos.
+
 La proyección de assets (`--sync`):
 
 - Actualiza assets gestionados bajo `.agents/`, settings específicos de
   `.claude/`, y bridge/configuración bajo `.codex/`.
 - Regenera adapters `SKILL.md` bajo `.agents/skills/` antes de comparar.
 - Conserva symlinks y nunca sigue un symlink para reemplazar su destino.
+- Durante `--sync`, elimina symlinks administrados stale bajo `.claude/` y limpia
+  `.claude/hooks/` legacy solo cuando queda vacío.
+- Migra referencias `.claude/hooks/` dentro de `.claude/settings.json` como JSON,
+  preservando campos custom y reportando settings inválidos.
 - No normaliza, migra ni reemplaza `AGENTS.md` o `CLAUDE.md` raíz, ni pares de
   instrucciones anidados; esos archivos pertenecen al proyecto.
-- No elimina assets que ya no aparecen en el template: los deja para revisión
-  manual.
+- No elimina archivos regulares, symlinks custom ni assets desconocidos; los
+  conserva y reporta para revisión manual.
 
 Con `--sync-instructions`, merge IA posterior puede actualizar únicamente
 `AGENTS.md` para preservar instrucciones compatibles y reparar referencias de
@@ -193,7 +298,7 @@ rules; nunca modifica `CLAUDE.md` ni pares anidados.
 Para sincronizar manualmente desde un hook existente:
 
 ```bash
-bash .claude/hooks/sync-marketplace.sh --provider claude --sync
+bash .agents/hooks/sync-marketplace.sh --provider claude --sync
 # o
 bash .agents/hooks/sync-marketplace.sh --provider codex --sync
 ```
@@ -213,7 +318,7 @@ puede contener instrucciones de proyecto muy variadas.
 Para fusionar instrucciones raíz con asistencia del provider activo, ejecutar:
 
 ```bash
-bash .claude/hooks/sync-marketplace.sh \
+bash .agents/hooks/sync-marketplace.sh \
   --provider claude \
   --sync-instructions
 ```
@@ -243,12 +348,15 @@ El modelo debe:
    baja confianza o salida incompleta.
 
 Resultado `auto` se valida contra catálogo completo antes de aplicarse
-automáticamente, con backup y reemplazo atómico. El helper registra hash de
-template en `.agents/.agent-ready-instructions-template.sha256` para no invocar
-IA nuevamente mientras template y referencias requeridas no cambien. Si
-`AGENTS.md` cambia durante merge, helper detecta hash distinto y cancela antes
-de reemplazo. Si faltan referencias portables o quedan referencias `@...`, no
-usa hash como atajo y vuelve a solicitar análisis IA.
+automáticamente, con reemplazo atómico y sin conservar backup persistente. Los
+archivos que coinciden con `AGENTS.md.agent-ready-backup.*` se preservan porque
+backups legacy no contienen metadata que permita demostrar ownership. El helper registra último hash de template en `.git/info/agent-ready-instructions-template.sha256`
+para no invocar IA nuevamente mientras template y referencias requeridas no
+cambien; ese archivo se reemplaza, no se acumula, y no aparece como cambio del
+proyecto. Hash legacy bajo `.agents/` se migra y elimina durante primera
+ejecución. Si `AGENTS.md` cambia durante merge, helper detecta hash distinto y
+cancela antes de reemplazo. Si faltan referencias portables o quedan referencias
+`@...`, no usa hash como atajo y vuelve a solicitar análisis IA.
 
 Hooks generados pasan `--yes` para evitar prompts interactivos durante
 SessionStart. Resultado `human_required` muestra diff y preserva bytes

@@ -5,7 +5,13 @@ setup() {
   skill_dir="$repository_root/plugins/groot-kit/skills/agent-ready-setup"
   test_root="$(mktemp -d)"
   project_dir="$test_root/project"
-  mkdir -p "$project_dir"
+  fake_bin="$test_root/bin"
+  mkdir -p "$project_dir" "$fake_bin"
+  cat > "$fake_bin/fury" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+  chmod +x "$fake_bin/fury"
   git -C "$project_dir" -c init.defaultBranch=main init -q
   cd "$project_dir"
 }
@@ -19,9 +25,10 @@ run_bootstrap() {
   local stack="$1"
   shift
 
-  run bash "$skill_dir/scripts/bootstrap.sh" \
+  run env PATH="$test_root/bin:$PATH" bash "$skill_dir/scripts/bootstrap.sh" \
     --stack "$stack" \
     --skill-dir "$skill_dir" \
+    --provider claude \
     "$@"
 }
 
@@ -47,7 +54,11 @@ run_bootstrap() {
   [ -f .agents/skills/review-pr/SKILL.md ]
   [ -L .claude/mcp.json ]
   [ -f .codex/.mcp.json ]
-  [ -L .claude/hooks/check-harness-consistency.sh ]
+  [ ! -e .claude/hooks ]
+  [ ! -L .claude/hooks ]
+  [ -f .agents/hooks/sync-marketplace.sh ]
+  [ -f .agents/hooks/check-harness-consistency.sh ]
+  [ -f .agents/hooks/pre-tool-use.md ]
   [ -f .codex/hooks/hooks.json ]
   [ ! -f .claude/CLAUDE.md ]
   [ ! -d .codex/agents ]
@@ -60,10 +71,58 @@ run_bootstrap() {
   jq -n --slurpfile claude .claude/mcp.json --slurpfile codex .codex/.mcp.json \
     '$claude[0].mcpServers == $codex[0].mcpServers' >/dev/null
   jq -e '.hooks.SessionStart[0].matcher == "startup|clear|resume"' .codex/hooks/hooks.json >/dev/null
-  jq -e '.permissions.allow | index("Bash(.claude/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)")' .claude/settings.json >/dev/null
-  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .claude/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes"' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)")' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/check-harness-consistency.sh)")' .claude/settings.json >/dev/null
+  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes"' .claude/settings.json >/dev/null
+  jq -e '.hooks.PostToolUse[0].hooks[0].command == "bash .agents/hooks/check-harness-consistency.sh"' .claude/settings.json >/dev/null
   jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex --sync-instructions --yes"' .codex/hooks/hooks.json >/dev/null
   [[ "$output" == *"Providers: Claude Code + Codex-compatible shared tree"* ]]
+}
+
+@test "sync removes managed legacy hooks and stale Claude symlink views" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+
+  mkdir -p .claude/hooks .claude/rules
+  ln -s ../../.agents/hooks/sync-marketplace.sh .claude/hooks/sync-marketplace.sh
+  ln -s ../../.agents/hooks/check-harness-consistency.sh .claude/hooks/check-harness-consistency.sh
+  ln -s ../../.agents/hooks/pre-tool-use.md .claude/hooks/pre-tool-use.md
+  ln -s ../../.agents/rules/removed-rule.md .claude/rules/removed-rule.md
+
+  run_bootstrap frontend --sync --yes
+
+  [ "$status" -eq 0 ]
+  [ ! -e .claude/hooks ]
+  [ ! -L .claude/hooks ]
+  [ ! -e .claude/rules/removed-rule.md ]
+  [[ "$output" == *"Removed stale managed assets:"* ]]
+}
+
+@test "sync preserves custom Claude hooks and migrates custom settings" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+
+  outside_file="$test_root/custom-hook.sh"
+  printf '%s\n' '#!/bin/bash' > "$outside_file"
+  mkdir -p .claude/hooks
+  printf '%s\n' '# Custom hook' > .claude/hooks/custom.sh
+  printf '%s\n' '# Hidden custom hook' > .claude/hooks/.custom-hook
+  ln -s "$outside_file" .claude/hooks/custom-link.sh
+  jq '.customSetting = "preserve-me" | .permissions.allow |= map(gsub("\\.agents/hooks/"; ".claude/hooks/")) | .hooks.SessionStart[0].hooks[0].command |= gsub("\\.agents/hooks/"; ".claude/hooks/") | .hooks.PostToolUse[0].hooks[0].command |= gsub("\\.agents/hooks/"; ".claude/hooks/")' .claude/settings.json > "$test_root/settings.json"
+  mv "$test_root/settings.json" .claude/settings.json
+
+  run_bootstrap frontend --sync --yes
+
+  [ "$status" -eq 0 ]
+  [ -f .claude/hooks/custom.sh ]
+  [ -f .claude/hooks/.custom-hook ]
+  [ -L .claude/hooks/custom-link.sh ]
+  jq -e '.customSetting == "preserve-me"' .claude/settings.json >/dev/null
+  ! grep -Fq '.claude/hooks/' .claude/settings.json
+  [[ "$output" == *"Managed asset cleanup conflicts (preserved):"* ]]
+  [[ "$output" == *".claude/hooks/custom.sh is custom content; preserved"* ]]
+  [[ "$output" == *".claude/hooks/.custom-hook is custom content; preserved"* ]]
+  [[ "$output" == *".claude/hooks/custom-link.sh is a custom symlink; preserved"* ]]
 }
 
 @test "identical legacy Claude copies become canonical symlinks" {
@@ -133,7 +192,8 @@ run_bootstrap() {
     grep -Fq -- '- Read and follow `.agents/rules/coding-style.md`.' AGENTS.md
     grep -Fq -- '- Read and follow `.agents/rules/security.md`.' AGENTS.md
     grep -Fq -- '- Read and follow `.agents/rules/testing.md`.' AGENTS.md
-    jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .claude/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes"' .claude/settings.json >/dev/null
+    jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes"' .claude/settings.json >/dev/null
+    jq -e '.hooks.PostToolUse[0].hooks[0].command == "bash .agents/hooks/check-harness-consistency.sh"' .claude/settings.json >/dev/null
     jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex --sync-instructions --yes"' .codex/hooks/hooks.json >/dev/null
   done
 }
@@ -248,7 +308,7 @@ EOF
   mkdir -p "$non_git_project"
   cd "$non_git_project"
 
-  run bash "$skill_dir/scripts/bootstrap.sh" --stack node --skill-dir "$skill_dir"
+  run bash "$skill_dir/scripts/bootstrap.sh" --stack node --skill-dir "$skill_dir" --provider claude
 
   [ "$status" -ne 0 ]
   [[ "$output" == *"bootstrap must run inside a Git worktree"* ]]
@@ -439,7 +499,7 @@ EOF
 }
 
 @test "rejects unsupported stack and missing arguments" {
-  run bash "$skill_dir/scripts/bootstrap.sh" --stack rust --skill-dir "$skill_dir"
+  run bash "$skill_dir/scripts/bootstrap.sh" --stack rust --skill-dir "$skill_dir" --provider claude
   [ "$status" -ne 0 ]
   [[ "$output" == *"Unsupported stack"* ]]
 
@@ -448,7 +508,100 @@ EOF
   [[ "$output" == *"--stack and --skill-dir are required"* ]]
 }
 
-@test "sync hooks pass marketplace provider and support legacy path detection" {
+@test "bootstrap infers Codex from installed skill path without provider override" {
+  codex_home="$test_root/codex-home"
+  codex_skill_dir="$codex_home/.codex/skills/agent-ready-setup"
+  invocation_log="$test_root/codex-fury-invocation.log"
+  mkdir -p "$codex_skill_dir"
+  cp -R "$skill_dir/." "$codex_skill_dir/"
+  cat > "$test_root/bin/fury" <<'EOF'
+#!/bin/bash
+printf '%s\n' "$*" > "$FURY_INVOCATION_LOG"
+EOF
+  chmod +x "$test_root/bin/fury"
+
+  FURY_INVOCATION_LOG="$invocation_log" \
+    run env -u AGENT_READY_SETUP_ACTIVE_PROVIDER \
+      HOME="$codex_home" PATH="$test_root/bin:$PATH" \
+      bash "$codex_skill_dir/scripts/bootstrap.sh" \
+      --stack node --skill-dir "$codex_skill_dir"
+
+  [ "$status" -eq 0 ]
+  grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider codex' "$invocation_log"
+  [ -f .codex/hooks/hooks.json ]
+}
+
+@test "bootstrap rejects ambiguous skill path without provider override" {
+  run env -u AGENT_READY_SETUP_ACTIVE_PROVIDER PATH="$test_root/bin:$PATH" \
+    bash "$skill_dir/scripts/bootstrap.sh" \
+    --stack node --skill-dir "$skill_dir"
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"could not infer provider from skill directory"* ]]
+  [ ! -e AGENTS.md ]
+}
+
+@test "bootstrap upgrades marketplace before projecting all provider trees" {
+  invocation_log="$test_root/fury-invocation.log"
+  cat > "$test_root/bin/fury" <<'EOF'
+#!/bin/bash
+if [[ -e AGENTS.md || -e CLAUDE.md || -e .claude || -e .agents || -e .codex ]]; then
+  exit 43
+fi
+printf '%s\n' "$*" > "$FURY_INVOCATION_LOG"
+EOF
+  chmod +x "$test_root/bin/fury"
+
+  FURY_INVOCATION_LOG="$invocation_log" run_bootstrap frontend
+
+  [ "$status" -eq 0 ]
+  grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider claude' "$invocation_log"
+  [ -f AGENTS.md ]
+  [ -f .agents/hooks/sync-marketplace.sh ]
+  [ -f .claude/settings.json ]
+  [ -f .codex/hooks/hooks.json ]
+  [[ "$output" == *"[marketplace-bootstrap] Marketplace upgrade completed."* ]]
+}
+
+@test "bootstrap upgrades marketplace for Codex when provider is explicit" {
+  invocation_log="$test_root/fury-invocation.log"
+  cat > "$test_root/bin/fury" <<'EOF'
+#!/bin/bash
+printf '%s\n' "$*" > "$FURY_INVOCATION_LOG"
+EOF
+  chmod +x "$test_root/bin/fury"
+
+  FURY_INVOCATION_LOG="$invocation_log" \
+    run env PATH="$test_root/bin:$PATH" bash "$skill_dir/scripts/bootstrap.sh" \
+      --stack node --skill-dir "$skill_dir" --provider codex
+
+  [ "$status" -eq 0 ]
+  grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider codex' "$invocation_log"
+  [ -f .agents/skills/fury-deploy/SKILL.md ]
+  [ -f .claude/settings.json ]
+  [ -f .codex/hooks/hooks.json ]
+}
+
+@test "bootstrap stops before projection when marketplace upgrade fails" {
+  cat > "$test_root/bin/fury" <<'EOF'
+#!/bin/bash
+exit 42
+EOF
+  chmod +x "$test_root/bin/fury"
+
+  run_bootstrap node
+
+  [ "$status" -ne 0 ]
+  [ ! -e AGENTS.md ]
+  [ ! -e CLAUDE.md ]
+  [ ! -e .claude ]
+  [ ! -e .agents ]
+  [ ! -e .codex ]
+  [[ "$output" == *"marketplace upgrade failed"* ]]
+  [ -z "$(find .agents -type f -print -quit 2>/dev/null)" ]
+}
+
+@test "sync hooks pass provider and infer Codex from canonical path" {
   fake_bin="$test_root/bin"
   invocation_log="$test_root/fury-invocation.log"
   mkdir -p "$fake_bin"
@@ -471,14 +624,8 @@ EOF
     [ "$status" -eq 0 ]
     grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider codex' "$invocation_log"
 
-    mkdir -p .claude/hooks .agents/hooks
-    cp "$hook" .claude/hooks/sync-marketplace.sh
+    mkdir -p .agents/hooks
     cp "$hook" .agents/hooks/sync-marketplace.sh
-
-    FURY_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
-      run bash .claude/hooks/sync-marketplace.sh
-    [ "$status" -eq 0 ]
-    grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider claude' "$invocation_log"
 
     FURY_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
       run bash .agents/hooks/sync-marketplace.sh
@@ -543,7 +690,7 @@ EOF
   chmod +x "$fake_bin/cp"
 
   run env PATH="$fake_bin:$PATH" bash "$skill_dir/scripts/bootstrap.sh" \
-    --stack frontend --skill-dir "$skill_dir" --sync --yes
+    --stack frontend --skill-dir "$skill_dir" --provider claude --sync --yes
 
   [ "$status" -eq 0 ]
   [ "$(cat .agents/rules/security.md)" = '# Newer destination change' ]
@@ -560,7 +707,7 @@ EOF
   [ "$status" -eq 0 ]
   cmp -s .agents/rules/security.md "$skill_dir/assets/stacks/node/rules/security.md"
 
-  run bash "$skill_dir/scripts/bootstrap.sh" --stack node --skill-dir "$skill_dir" --yes
+  run bash "$skill_dir/scripts/bootstrap.sh" --stack node --skill-dir "$skill_dir" --provider claude --yes
   [ "$status" -ne 0 ]
   [[ "$output" == *"--yes requires --sync or --update"* ]]
 }
@@ -582,17 +729,44 @@ EOF
   [[ "$output" == *"is a symlink; neither it nor its target was changed"* ]]
 }
 
+@test "bootstrap re-resolves replaced versioned marketplace cache after upgrade" {
+  fake_bin="$test_root/bin"
+  cache_root="$test_root/.claude/plugins/cache/groot-marketplace/groot-kit"
+  old_source="$cache_root/1.0.0/skills/agent-ready-setup"
+  updated_source="$cache_root/2.0.0/skills/agent-ready-setup"
+  mkdir -p "$old_source" "$updated_source"
+  cp -R "$skill_dir"/. "$old_source"/
+  cp -R "$skill_dir"/. "$updated_source"/
+  printf '%s\n' '# Updated marketplace template' >> "$updated_source/assets/stacks/node/rules/security.md"
+  cat > "$fake_bin/fury" <<EOF
+#!/bin/bash
+rm -rf "$old_source"
+EOF
+  chmod +x "$fake_bin/fury"
+
+  run env HOME="$test_root" PATH="$fake_bin:$PATH" bash "$old_source/scripts/bootstrap.sh" \
+    --stack node \
+    --skill-dir "$old_source" \
+    --provider claude
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$old_source" ]
+  grep -Fq '# Updated marketplace template' .agents/rules/security.md
+}
+
 @test "sync hooks project updated content after marketplace upgrade" {
   fake_bin="$test_root/bin"
   source_dir="$test_root/agent-ready-setup"
   event_log="$test_root/events.log"
   bootstrap_log="$test_root/bootstrap.log"
+  bootstrap_marker_log="$test_root/bootstrap-marker.log"
   mkdir -p "$fake_bin" "$source_dir/assets/stacks" "$source_dir/scripts"
   touch "$source_dir/SKILL.md"
   cat > "$source_dir/scripts/bootstrap.sh" <<'EOF'
 #!/bin/bash
 printf 'bootstrap\n' >> "$EVENT_LOG"
 printf '%s\n' "$*" > "$BOOTSTRAP_INVOCATION_LOG"
+printf '%s\n' "${AGENT_READY_SETUP_MARKETPLACE_UPGRADED:-}" > "$BOOTSTRAP_MARKER_LOG"
 EOF
   chmod +x "$source_dir/scripts/bootstrap.sh"
   cat > "$fake_bin/fury" <<'EOF'
@@ -606,6 +780,7 @@ EOF
   EVENT_LOG="$event_log" \
     FURY_INVOCATION_LOG="$test_root/fury.log" \
     BOOTSTRAP_INVOCATION_LOG="$bootstrap_log" \
+    BOOTSTRAP_MARKER_LOG="$bootstrap_marker_log" \
     AGENT_READY_SETUP_SKILL_DIR="$source_dir" \
     PATH="$fake_bin:$PATH" \
     run bash "$skill_dir/assets/stacks/frontend/hooks/sync-marketplace.sh" \
@@ -615,7 +790,8 @@ EOF
   [ "$(sed -n '1p' "$event_log")" = "fury" ]
   [ "$(sed -n '2p' "$event_log")" = "bootstrap" ]
   grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider claude' "$test_root/fury.log"
-  grep -Fq -- "--stack frontend --skill-dir $source_dir --sync" "$bootstrap_log"
+  grep -Fq -- "--stack frontend --skill-dir $source_dir --provider claude --sync" "$bootstrap_log"
+  [ "$(cat "$bootstrap_marker_log")" = "1" ]
 }
 
 @test "sync hooks do not project content when marketplace upgrade fails" {
