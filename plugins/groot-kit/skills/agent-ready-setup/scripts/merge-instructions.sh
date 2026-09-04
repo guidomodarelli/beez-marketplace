@@ -523,6 +523,21 @@ try:
         temporary_file.flush()
         os.fsync(temporary_file.fileno())
 
+    original_target_stat = os.fstat(target_file.fileno())
+    current_target_stat = os.stat(target_path, follow_symlinks=False)
+    if (
+        current_target_stat.st_dev,
+        current_target_stat.st_ino,
+    ) != (
+        original_target_stat.st_dev,
+        original_target_stat.st_ino,
+    ):
+        print(
+            f"ERROR: {target_path} changed during descriptor merge; merge cancelled",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
     os.replace(temporary_path, target_path)
     temporary_path = None
 

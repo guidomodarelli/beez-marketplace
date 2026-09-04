@@ -340,12 +340,13 @@ EOF
   [[ "$output" == *"changed before descriptor write"* ]]
 }
 
-@test "descriptor write rejects changes immediately before update" {
+@test "atomic replacement rejects stale descriptor write" {
   printf '%s\n' '# Original instructions' > AGENTS.md
   write_auto_claude_response $'# Model merge\n\n'"$valid_node_rule_block"
   cat > "$fake_bin/python3" <<'EOF'
 #!/bin/bash
-printf '%s\n' '# Newer descriptor instructions' > AGENTS.md
+printf '%s\n' '# Newer descriptor instructions' > .AGENTS.md.new
+mv .AGENTS.md.new AGENTS.md
 exec /usr/bin/python3 "$@"
 EOF
   chmod +x "$fake_bin/python3"
