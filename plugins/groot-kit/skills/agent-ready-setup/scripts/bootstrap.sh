@@ -13,7 +13,7 @@ readonly MARKETPLACE_NAME="groot-marketplace"
 
 STACK=""
 SKILL_DIR=""
-PROVIDER="${AGENT_READY_SETUP_ACTIVE_PROVIDER:-claude}"
+PROVIDER="${AGENT_READY_SETUP_ACTIVE_PROVIDER:-}"
 MARKETPLACE_ALREADY_UPGRADED="${AGENT_READY_SETUP_MARKETPLACE_UPGRADED:-0}"
 SYNC_MODE=0
 AUTO_CONFIRM=0
@@ -57,14 +57,6 @@ if [[ "$AUTO_CONFIRM" -eq 1 && "$SYNC_MODE" -ne 1 ]]; then
   exit 1
 fi
 
-case "$PROVIDER" in
-  claude|codex) ;;
-  *)
-    echo "ERROR: Unsupported provider '$PROVIDER'. Expected claude or codex." >&2
-    exit 1
-    ;;
-esac
-
 case "$MARKETPLACE_ALREADY_UPGRADED" in
   0|1) ;;
   *)
@@ -90,6 +82,23 @@ if [[ ! -d "$SKILL_DIR" ]]; then
   echo "ERROR: --skill-dir must point to an existing directory: $SKILL_DIR" >&2
   exit 1
 fi
+
+if [[ -z "$PROVIDER" ]]; then
+  provider_resolver="$SKILL_DIR/scripts/resolve-provider.sh"
+  if [[ ! -f "$provider_resolver" ]]; then
+    echo "ERROR: provider is not explicit and resolver is missing: $provider_resolver" >&2
+    exit 1
+  fi
+  PROVIDER="$(bash "$provider_resolver" --skill-dir "$SKILL_DIR")"
+fi
+
+case "$PROVIDER" in
+  claude|codex) ;;
+  *)
+    echo "ERROR: Unsupported provider '$PROVIDER'. Expected claude or codex." >&2
+    exit 1
+    ;;
+esac
 
 SRC="$SKILL_DIR/assets/stacks/$STACK"
 CODEX_ASSETS="$SKILL_DIR/assets/codex"

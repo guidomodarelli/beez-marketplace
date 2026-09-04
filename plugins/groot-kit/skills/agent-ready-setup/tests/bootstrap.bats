@@ -28,6 +28,7 @@ run_bootstrap() {
   run env PATH="$test_root/bin:$PATH" bash "$skill_dir/scripts/bootstrap.sh" \
     --stack "$stack" \
     --skill-dir "$skill_dir" \
+    --provider claude \
     "$@"
 }
 
@@ -307,7 +308,7 @@ EOF
   mkdir -p "$non_git_project"
   cd "$non_git_project"
 
-  run bash "$skill_dir/scripts/bootstrap.sh" --stack node --skill-dir "$skill_dir"
+  run bash "$skill_dir/scripts/bootstrap.sh" --stack node --skill-dir "$skill_dir" --provider claude
 
   [ "$status" -ne 0 ]
   [[ "$output" == *"bootstrap must run inside a Git worktree"* ]]
@@ -498,13 +499,46 @@ EOF
 }
 
 @test "rejects unsupported stack and missing arguments" {
-  run bash "$skill_dir/scripts/bootstrap.sh" --stack rust --skill-dir "$skill_dir"
+  run bash "$skill_dir/scripts/bootstrap.sh" --stack rust --skill-dir "$skill_dir" --provider claude
   [ "$status" -ne 0 ]
   [[ "$output" == *"Unsupported stack"* ]]
 
   run bash "$skill_dir/scripts/bootstrap.sh" --stack frontend
   [ "$status" -ne 0 ]
   [[ "$output" == *"--stack and --skill-dir are required"* ]]
+}
+
+@test "bootstrap infers Codex from installed skill path without provider override" {
+  codex_home="$test_root/codex-home"
+  codex_skill_dir="$codex_home/.codex/skills/agent-ready-setup"
+  invocation_log="$test_root/codex-fury-invocation.log"
+  mkdir -p "$codex_skill_dir"
+  cp -R "$skill_dir/." "$codex_skill_dir/"
+  cat > "$test_root/bin/fury" <<'EOF'
+#!/bin/bash
+printf '%s\n' "$*" > "$FURY_INVOCATION_LOG"
+EOF
+  chmod +x "$test_root/bin/fury"
+
+  FURY_INVOCATION_LOG="$invocation_log" \
+    run env -u AGENT_READY_SETUP_ACTIVE_PROVIDER \
+      HOME="$codex_home" PATH="$test_root/bin:$PATH" \
+      bash "$codex_skill_dir/scripts/bootstrap.sh" \
+      --stack node --skill-dir "$codex_skill_dir"
+
+  [ "$status" -eq 0 ]
+  grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider codex' "$invocation_log"
+  [ -f .codex/hooks/hooks.json ]
+}
+
+@test "bootstrap rejects ambiguous skill path without provider override" {
+  run env -u AGENT_READY_SETUP_ACTIVE_PROVIDER PATH="$test_root/bin:$PATH" \
+    bash "$skill_dir/scripts/bootstrap.sh" \
+    --stack node --skill-dir "$skill_dir"
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"could not infer provider from skill directory"* ]]
+  [ ! -e AGENTS.md ]
 }
 
 @test "bootstrap upgrades marketplace before projecting all provider trees" {
@@ -656,7 +690,7 @@ EOF
   chmod +x "$fake_bin/cp"
 
   run env PATH="$fake_bin:$PATH" bash "$skill_dir/scripts/bootstrap.sh" \
-    --stack frontend --skill-dir "$skill_dir" --sync --yes
+    --stack frontend --skill-dir "$skill_dir" --provider claude --sync --yes
 
   [ "$status" -eq 0 ]
   [ "$(cat .agents/rules/security.md)" = '# Newer destination change' ]
@@ -673,7 +707,7 @@ EOF
   [ "$status" -eq 0 ]
   cmp -s .agents/rules/security.md "$skill_dir/assets/stacks/node/rules/security.md"
 
-  run bash "$skill_dir/scripts/bootstrap.sh" --stack node --skill-dir "$skill_dir" --yes
+  run bash "$skill_dir/scripts/bootstrap.sh" --stack node --skill-dir "$skill_dir" --provider claude --yes
   [ "$status" -ne 0 ]
   [[ "$output" == *"--yes requires --sync or --update"* ]]
 }

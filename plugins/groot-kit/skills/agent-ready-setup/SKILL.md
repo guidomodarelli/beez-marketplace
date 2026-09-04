@@ -118,7 +118,7 @@ Si detección tiene éxito, confirmar:
 ## Step 3 — Run bootstrap script
 
 ```bash
-PROVIDER="${AGENT_READY_SETUP_ACTIVE_PROVIDER:-claude}"
+PROVIDER="$(bash "$SKILL_DIR/scripts/resolve-provider.sh" --skill-dir "$SKILL_DIR")"
 bash "$SKILL_DIR/scripts/bootstrap.sh" \
   --stack "$STACK" \
   --skill-dir "$SKILL_DIR" \
@@ -129,6 +129,11 @@ bash "$SKILL_DIR/scripts/merge-instructions.sh" \
   --stack "$STACK" \
   --skill-dir "$SKILL_DIR"
 ```
+
+`resolve-provider.sh` respeta `AGENT_READY_SETUP_ACTIVE_PROVIDER` cuando vale
+`claude` o `codex`; si no existe, infiere provider desde `SKILL_DIR` bajo
+`$HOME/.claude/`, `$HOME/.codex/` o `CLAUDE_PLUGIN_ROOT`. Para rutas fuera de
+instalación reconocible, termina con error y exige provider explícito.
 
 En modo inicial, el script copia assets compartidos faltantes a `.agents/`, crea
 symlinks relativos para assets no-hook bajo `.claude/` y prepara bridge `.codex/`.
