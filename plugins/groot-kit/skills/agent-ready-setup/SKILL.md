@@ -261,12 +261,14 @@ El modelo debe:
    baja confianza o salida incompleta.
 
 Resultado `auto` se valida contra catálogo completo antes de aplicarse
-automáticamente, con backup y reemplazo atómico. El helper registra hash de
-template en `.agents/.agent-ready-instructions-template.sha256` para no invocar
-IA nuevamente mientras template y referencias requeridas no cambien. Si
-`AGENTS.md` cambia durante merge, helper detecta hash distinto y cancela antes
-de reemplazo. Si faltan referencias portables o quedan referencias `@...`, no
-usa hash como atajo y vuelve a solicitar análisis IA.
+automáticamente, con reemplazo atómico y sin conservar backup persistente; limpia
+backups legacy regulares de merges anteriores. El helper registra último hash de template en `.git/info/agent-ready-instructions-template.sha256`
+para no invocar IA nuevamente mientras template y referencias requeridas no
+cambien; ese archivo se reemplaza, no se acumula, y no aparece como cambio del
+proyecto. Hash legacy bajo `.agents/` se migra y elimina durante primera
+ejecución. Si `AGENTS.md` cambia durante merge, helper detecta hash distinto y
+cancela antes de reemplazo. Si faltan referencias portables o quedan referencias
+`@...`, no usa hash como atajo y vuelve a solicitar análisis IA.
 
 Hooks generados pasan `--yes` para evitar prompts interactivos durante
 SessionStart. Resultado `human_required` muestra diff y preserva bytes

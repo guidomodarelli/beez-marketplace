@@ -31,9 +31,10 @@ teardown() {
   rm -rf "$test_root"
 }
 
-@test "auto merge updates AGENTS and creates a backup without confirmation" {
+@test "auto merge updates AGENTS without retaining backup or visible metadata" {
   printf '%s\n' '# Existing project instructions' > AGENTS.md
   printf '%s\n' '@AGENTS.md' > CLAUDE.md
+  printf '%s\n' '# Stale backup' > AGENTS.md.agent-ready-backup.stale
   write_auto_claude_response $'# Existing project instructions\n\n'"$valid_node_rule_block"
 
   PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
@@ -43,9 +44,12 @@ teardown() {
   [ "$(cat AGENTS.md)" = $'# Existing project instructions\n\n'"$valid_node_rule_block" ]
   [ "$(cat CLAUDE.md)" = '@AGENTS.md' ]
   backup_files=(AGENTS.md.agent-ready-backup.*)
-  [ -f "${backup_files[0]}" ]
-  [ -f .agents/.agent-ready-instructions-template.sha256 ]
-  [[ "$output" == *"Updated AGENTS.md automatically"* ]]
+  [ ! -e "${backup_files[0]}" ]
+  [ -f .git/info/agent-ready-instructions-template.sha256 ]
+  [ ! -e .agents/.agent-ready-instructions-template.sha256 ]
+  hash_files=(.git/info/agent-ready-instructions-template.sha256*)
+  [ "${#hash_files[@]}" -eq 1 ]
+  [[ "$output" == *"Updated AGENTS.md automatically; no backup retained."* ]]
 
   cat > "$fake_bin/claude" <<'EOF'
 #!/bin/bash
@@ -174,7 +178,7 @@ EOF
 - Read and follow `.agents/rules/security.md`.
 <!-- END AGENT-READY RULE REFERENCES -->
 EOF
-  mkdir -p .agents
+  mkdir -p .agents .git/info
   candidate_file="$test_root/rendered-template.md"
   bash "$skill_dir/scripts/render-instruction-template.sh" \
     --template "$skill_dir/assets/stacks/node/CLAUDE.md" \
@@ -187,6 +191,8 @@ EOF
 
   [ "$status" -eq 0 ]
   grep -Fq -- '- Read and follow `.agents/rules/testing.md`.' AGENTS.md
+  [ ! -e .agents/.agent-ready-instructions-template.sha256 ]
+  [ -f .git/info/agent-ready-instructions-template.sha256 ]
   [[ "$output" != *"merge not required"* ]]
 }
 
