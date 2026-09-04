@@ -10,8 +10,10 @@
 set -euo pipefail
 
 readonly MARKETPLACE_NAME="groot-marketplace"
+readonly SKILL_NAME="agent-ready-setup"
 
 STACK=""
+REQUESTED_SKILL_DIR=""
 SKILL_DIR=""
 PROVIDER="${AGENT_READY_SETUP_ACTIVE_PROVIDER:-}"
 MARKETPLACE_ALREADY_UPGRADED="${AGENT_READY_SETUP_MARKETPLACE_UPGRADED:-0}"
@@ -29,7 +31,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skill-dir)
       [[ $# -ge 2 ]] || { echo "ERROR: --skill-dir requires a value" >&2; exit 1; }
-      SKILL_DIR="$2"
+      REQUESTED_SKILL_DIR="$2"
       shift 2
       ;;
     --provider)
@@ -65,7 +67,7 @@ case "$MARKETPLACE_ALREADY_UPGRADED" in
     ;;
 esac
 
-if [[ -z "$STACK" || -z "$SKILL_DIR" ]]; then
+if [[ -z "$STACK" || -z "$REQUESTED_SKILL_DIR" ]]; then
   echo "ERROR: --stack and --skill-dir are required" >&2
   exit 1
 fi
@@ -78,11 +80,20 @@ case "$STACK" in
     ;;
 esac
 
-if [[ ! -d "$SKILL_DIR" ]]; then
-  echo "ERROR: --skill-dir must point to an existing directory: $SKILL_DIR" >&2
+is_valid_skill_dir() {
+  local candidate="$1"
+
+  [[ -f "$candidate/SKILL.md" && \
+    -f "$candidate/scripts/bootstrap.sh" && \
+    -d "$candidate/assets/stacks" ]]
+}
+
+if [[ ! -d "$REQUESTED_SKILL_DIR" ]]; then
+  echo "ERROR: --skill-dir must point to an existing directory: $REQUESTED_SKILL_DIR" >&2
   exit 1
 fi
 
+SKILL_DIR="$REQUESTED_SKILL_DIR"
 if [[ -z "$PROVIDER" ]]; then
   provider_resolver="$SKILL_DIR/scripts/resolve-provider.sh"
   if [[ ! -f "$provider_resolver" ]]; then
@@ -100,46 +111,131 @@ case "$PROVIDER" in
     ;;
 esac
 
-SRC="$SKILL_DIR/assets/stacks/$STACK"
-CODEX_ASSETS="$SKILL_DIR/assets/codex"
-ROOT_CLAUDE_TEMPLATE="$SKILL_DIR/assets/root-claude.md"
-CENTRALIZATION_TEMPLATE="$SKILL_DIR/assets/instruction-centralization.md"
-TEMPLATE_RENDERER="$SKILL_DIR/scripts/render-instruction-template.sh"
+resolve_skill_dir() {
+  local candidate
+  local provider_root
+  local cache_root
+  local project_root
 
-if [[ ! -d "$SRC" ]]; then
-  echo "ERROR: No template found for stack '$STACK' at $SRC" >&2
-  exit 1
-fi
+  if [[ -n "${AGENT_READY_SETUP_SKILL_DIR:-}" ]]; then
+    candidate="$AGENT_READY_SETUP_SKILL_DIR"
+    if is_valid_skill_dir "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+    printf 'ERROR: AGENT_READY_SETUP_SKILL_DIR is not a valid %s source: %s\n' \
+      "$SKILL_NAME" "$candidate" >&2
+    return 1
+  fi
 
-if [[ ! -f "$SRC/CLAUDE.md" ]]; then
-  echo "ERROR: Stack template is missing CLAUDE.md: $SRC/CLAUDE.md" >&2
-  exit 1
-fi
+  if [[ "$MARKETPLACE_ALREADY_UPGRADED" -eq 1 ]]; then
+    if is_valid_skill_dir "$REQUESTED_SKILL_DIR"; then
+      printf '%s\n' "$REQUESTED_SKILL_DIR"
+      return 0
+    fi
+    return 1
+  fi
 
-if [[ ! -d "$SRC/rules" ]]; then
-  echo "ERROR: Stack template is missing rules directory: $SRC/rules" >&2
-  exit 1
-fi
+  if [[ "$REQUESTED_SKILL_DIR" == "$HOME/.codex/plugins/cache/$MARKETPLACE_NAME"/* ]]; then
+    provider_root="$HOME/.codex"
+  elif [[ "$REQUESTED_SKILL_DIR" == "$HOME/.claude/plugins/cache/$MARKETPLACE_NAME"/* ]]; then
+    provider_root="$HOME/.claude"
+  elif [[ "$PROVIDER" == "claude" ]]; then
+    provider_root="$HOME/.claude"
+  else
+    provider_root="$HOME/.codex"
+  fi
+  cache_root="$provider_root/plugins/cache/$MARKETPLACE_NAME"
 
-if [[ ! -f "$TEMPLATE_RENDERER" ]]; then
-  echo "ERROR: Instruction template renderer is missing: $TEMPLATE_RENDERER" >&2
-  exit 1
-fi
+  if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    for candidate in \
+      "$CLAUDE_PLUGIN_ROOT/skills/$SKILL_NAME" \
+      "$CLAUDE_PLUGIN_ROOT"; do
+      if [[ "$candidate" != "$REQUESTED_SKILL_DIR" ]] && is_valid_skill_dir "$candidate"; then
+        printf '%s\n' "$candidate"
+        return 0
+      fi
+    done
+  fi
 
-if [[ ! -f "$CODEX_ASSETS/hooks.json" ]]; then
-  echo "ERROR: Codex hook template is missing: $CODEX_ASSETS/hooks.json" >&2
-  exit 1
-fi
+  if [[ "$REQUESTED_SKILL_DIR" != "$cache_root"/* ]] && \
+    is_valid_skill_dir "$REQUESTED_SKILL_DIR"; then
+    printf '%s\n' "$REQUESTED_SKILL_DIR"
+    return 0
+  fi
 
-if [[ ! -f "$ROOT_CLAUDE_TEMPLATE" ]]; then
-  echo "ERROR: Root CLAUDE.md template is missing: $ROOT_CLAUDE_TEMPLATE" >&2
-  exit 1
-fi
+  candidate="$provider_root/skills/$SKILL_NAME"
+  if [[ "$candidate" != "$REQUESTED_SKILL_DIR" ]] && is_valid_skill_dir "$candidate"; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
 
-if [[ ! -f "$CENTRALIZATION_TEMPLATE" ]]; then
-  echo "ERROR: Instruction centralization template is missing: $CENTRALIZATION_TEMPLATE" >&2
-  exit 1
-fi
+  while IFS= read -r candidate; do
+    candidate="${candidate%/SKILL.md}"
+    if [[ "$candidate" != "$REQUESTED_SKILL_DIR" ]] && is_valid_skill_dir "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done < <(find "$cache_root" -type f -path "*/skills/$SKILL_NAME/SKILL.md" -print 2>/dev/null | sort -r)
+
+  if project_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    candidate="$project_root/plugins/groot-kit/skills/$SKILL_NAME"
+    if [[ "$candidate" != "$REQUESTED_SKILL_DIR" ]] && is_valid_skill_dir "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  fi
+
+  if is_valid_skill_dir "$REQUESTED_SKILL_DIR"; then
+    printf '%s\n' "$REQUESTED_SKILL_DIR"
+    return 0
+  fi
+
+  return 1
+}
+
+validate_skill_source() {
+  SRC="$SKILL_DIR/assets/stacks/$STACK"
+  CODEX_ASSETS="$SKILL_DIR/assets/codex"
+  ROOT_CLAUDE_TEMPLATE="$SKILL_DIR/assets/root-claude.md"
+  CENTRALIZATION_TEMPLATE="$SKILL_DIR/assets/instruction-centralization.md"
+  TEMPLATE_RENDERER="$SKILL_DIR/scripts/render-instruction-template.sh"
+
+  if [[ ! -d "$SRC" ]]; then
+    echo "ERROR: No template found for stack '$STACK' at $SRC" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$SRC/CLAUDE.md" ]]; then
+    echo "ERROR: Stack template is missing CLAUDE.md: $SRC/CLAUDE.md" >&2
+    exit 1
+  fi
+
+  if [[ ! -d "$SRC/rules" ]]; then
+    echo "ERROR: Stack template is missing rules directory: $SRC/rules" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$TEMPLATE_RENDERER" ]]; then
+    echo "ERROR: Instruction template renderer is missing: $TEMPLATE_RENDERER" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$CODEX_ASSETS/hooks.json" ]]; then
+    echo "ERROR: Codex hook template is missing: $CODEX_ASSETS/hooks.json" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$ROOT_CLAUDE_TEMPLATE" ]]; then
+    echo "ERROR: Root CLAUDE.md template is missing: $ROOT_CLAUDE_TEMPLATE" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$CENTRALIZATION_TEMPLATE" ]]; then
+    echo "ERROR: Instruction centralization template is missing: $CENTRALIZATION_TEMPLATE" >&2
+    exit 1
+  fi
+}
 
 CLAUDE_DIR=".claude"
 SHARED_DIR=".agents"
@@ -208,6 +304,12 @@ if [[ "$MARKETPLACE_ALREADY_UPGRADED" -eq 0 ]]; then
 else
   echo "[marketplace-bootstrap] Marketplace upgrade already completed by caller."
 fi
+
+if ! SKILL_DIR="$(resolve_skill_dir)"; then
+  echo "ERROR: could not resolve updated $SKILL_NAME source after marketplace upgrade" >&2
+  exit 1
+fi
+validate_skill_source
 
 # Serializes sync writers so concurrent invocations cannot replace each other's
 # files. Upgrade runs before this lock to keep failed upgrades write-free.

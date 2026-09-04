@@ -53,24 +53,101 @@ como fuente de verdad para omitir instrucciones anidadas cubiertas por
 ## Step 1 — Resolve SKILL_DIR
 
 ```bash
-if [[ -n "$AGENT_READY_SETUP_SKILL_DIR" ]]; then
-  SKILL_DIR="$AGENT_READY_SETUP_SKILL_DIR"
-elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" && -f "$CLAUDE_PLUGIN_ROOT/skills/agent-ready-setup/SKILL.md" ]]; then
-  SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/agent-ready-setup"
-elif [[ "${AGENT_READY_SETUP_ACTIVE_PROVIDER:-}" == "codex" && -f "$HOME/.codex/skills/agent-ready-setup/SKILL.md" ]]; then
-  SKILL_DIR="$HOME/.codex/skills/agent-ready-setup"
-elif [[ "${AGENT_READY_SETUP_ACTIVE_PROVIDER:-}" == "claude" && -f "$HOME/.claude/skills/agent-ready-setup/SKILL.md" ]]; then
-  SKILL_DIR="$HOME/.claude/skills/agent-ready-setup"
-elif [[ -f "$HOME/.codex/skills/agent-ready-setup/SKILL.md" ]]; then
-  SKILL_DIR="$HOME/.codex/skills/agent-ready-setup"
-elif [[ -f "$HOME/.claude/skills/agent-ready-setup/SKILL.md" ]]; then
-  SKILL_DIR="$HOME/.claude/skills/agent-ready-setup"
-else
-  SKILL_DIR="$(pwd)/plugins/groot-kit/skills/agent-ready-setup"
-fi
+readonly MARKETPLACE_NAME="groot-marketplace"
+readonly SKILL_NAME="agent-ready-setup"
+PROVIDER="${AGENT_READY_SETUP_ACTIVE_PROVIDER:-claude}"
+
+is_valid_skill_dir() {
+  local candidate="$1"
+
+  [[ -f "$candidate/SKILL.md" && \
+    -f "$candidate/scripts/bootstrap.sh" && \
+    -d "$candidate/assets/stacks" ]]
+}
+
+resolve_skill_dir() {
+  local requested_skill_dir="${1:-}"
+  local candidate
+  local provider_root
+  local cache_root
+  local project_root
+
+  if [[ -n "${AGENT_READY_SETUP_SKILL_DIR:-}" ]]; then
+    candidate="$AGENT_READY_SETUP_SKILL_DIR"
+    if is_valid_skill_dir "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+    printf 'ERROR: AGENT_READY_SETUP_SKILL_DIR is not a valid %s source: %s\n' \
+      "$SKILL_NAME" "$candidate" >&2
+    return 1
+  fi
+
+  if [[ "$requested_skill_dir" == "$HOME/.codex/plugins/cache/$MARKETPLACE_NAME"/* ]]; then
+    provider_root="$HOME/.codex"
+  elif [[ "$requested_skill_dir" == "$HOME/.claude/plugins/cache/$MARKETPLACE_NAME"/* ]]; then
+    provider_root="$HOME/.claude"
+  elif [[ "$PROVIDER" == "claude" ]]; then
+    provider_root="$HOME/.claude"
+  else
+    provider_root="$HOME/.codex"
+  fi
+  cache_root="$provider_root/plugins/cache/$MARKETPLACE_NAME"
+
+  if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    for candidate in \
+      "$CLAUDE_PLUGIN_ROOT/skills/$SKILL_NAME" \
+      "$CLAUDE_PLUGIN_ROOT"; do
+      if [[ "$candidate" != "$requested_skill_dir" ]] && is_valid_skill_dir "$candidate"; then
+        printf '%s\n' "$candidate"
+        return 0
+      fi
+    done
+  fi
+
+  if [[ "$requested_skill_dir" != "$cache_root"/* ]] && \
+    is_valid_skill_dir "$requested_skill_dir"; then
+    printf '%s\n' "$requested_skill_dir"
+    return 0
+  fi
+
+  candidate="$provider_root/skills/$SKILL_NAME"
+  if [[ "$candidate" != "$requested_skill_dir" ]] && is_valid_skill_dir "$candidate"; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  while IFS= read -r candidate; do
+    candidate="${candidate%/SKILL.md}"
+    if [[ "$candidate" != "$requested_skill_dir" ]] && is_valid_skill_dir "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done < <(find "$cache_root" -type f -path "*/skills/$SKILL_NAME/SKILL.md" -print 2>/dev/null | sort -r)
+
+  if project_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    candidate="$project_root/plugins/groot-kit/skills/$SKILL_NAME"
+    if [[ "$candidate" != "$requested_skill_dir" ]] && is_valid_skill_dir "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  fi
+
+  if is_valid_skill_dir "$requested_skill_dir"; then
+    printf '%s\n' "$requested_skill_dir"
+    return 0
+  fi
+
+  printf 'ERROR: could not resolve %s source\n' "$SKILL_NAME" >&2
+  return 1
+}
+
+SKILL_DIR="$(resolve_skill_dir "${SKILL_DIR:-}")"
 ```
 
-Usar path resuelto para ejecutar scripts y leer assets. No asumir que provider
+Usar path resuelto para ejecutar scripts y leer assets. Después de ejecutar
+`bootstrap.sh`, resolver nuevamente: marketplace upgrade puede reemplazar una
+fuente versionada y dejar path anterior inexistente. No asumir que provider
 actual define ubicación de fuente compartida.
 
 ---
@@ -124,6 +201,7 @@ bash "$SKILL_DIR/scripts/bootstrap.sh" \
   --skill-dir "$SKILL_DIR" \
   --provider "$PROVIDER"
 
+SKILL_DIR="$(resolve_skill_dir "$SKILL_DIR")"
 bash "$SKILL_DIR/scripts/merge-instructions.sh" \
   --provider "$PROVIDER" \
   --stack "$STACK" \

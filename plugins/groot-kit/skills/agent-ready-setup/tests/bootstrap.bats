@@ -729,6 +729,31 @@ EOF
   [[ "$output" == *"is a symlink; neither it nor its target was changed"* ]]
 }
 
+@test "bootstrap re-resolves replaced versioned marketplace cache after upgrade" {
+  fake_bin="$test_root/bin"
+  cache_root="$test_root/.claude/plugins/cache/groot-marketplace/groot-kit"
+  old_source="$cache_root/1.0.0/skills/agent-ready-setup"
+  updated_source="$cache_root/2.0.0/skills/agent-ready-setup"
+  mkdir -p "$old_source" "$updated_source"
+  cp -R "$skill_dir"/. "$old_source"/
+  cp -R "$skill_dir"/. "$updated_source"/
+  printf '%s\n' '# Updated marketplace template' >> "$updated_source/assets/stacks/node/rules/security.md"
+  cat > "$fake_bin/fury" <<EOF
+#!/bin/bash
+rm -rf "$old_source"
+EOF
+  chmod +x "$fake_bin/fury"
+
+  run env HOME="$test_root" PATH="$fake_bin:$PATH" bash "$old_source/scripts/bootstrap.sh" \
+    --stack node \
+    --skill-dir "$old_source" \
+    --provider claude
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$old_source" ]
+  grep -Fq '# Updated marketplace template' .agents/rules/security.md
+}
+
 @test "sync hooks project updated content after marketplace upgrade" {
   fake_bin="$test_root/bin"
   source_dir="$test_root/agent-ready-setup"
