@@ -869,6 +869,30 @@ def has_custom_keys(current, expected):
     return False
 
 
+def matches_managed_template(current, expected):
+    if isinstance(current, dict) and isinstance(expected, dict):
+        return all(
+            key in current and matches_managed_template(current[key], value)
+            for key, value in expected.items()
+        )
+    if isinstance(current, list) and isinstance(expected, list):
+        current_index = 0
+        for expected_entry in expected:
+            matching_index = next(
+                (
+                    index
+                    for index in range(current_index, len(current))
+                    if matches_managed_template(current[index], expected_entry)
+                ),
+                None,
+            )
+            if matching_index is None:
+                return False
+            current_index = matching_index + 1
+        return True
+    return current == expected
+
+
 def merge_managed_template(current, expected):
     if isinstance(current, dict) and isinstance(expected, dict):
         merged = dict(current)
@@ -879,13 +903,33 @@ def merge_managed_template(current, expected):
                 merged[key] = value
         return merged
     if isinstance(current, list) and isinstance(expected, list):
-        merged = [
-            merge_managed_template(current[index], expected_entry)
-            if index < len(current)
-            else expected_entry
-            for index, expected_entry in enumerate(expected)
-        ]
-        return merged + current[len(expected):]
+        if len(current) == len(expected):
+            return [
+                merge_managed_template(current[index], expected_entry)
+                for index, expected_entry in enumerate(expected)
+            ]
+        remaining_current = list(current)
+        merged = []
+        for expected_entry in expected:
+            matching_index = next(
+                (
+                    index
+                    for index, current_entry in enumerate(remaining_current)
+                    if matches_managed_template(current_entry, expected_entry)
+                ),
+                None,
+            )
+            if matching_index is None:
+                merged.append(expected_entry)
+                continue
+            merged.extend(remaining_current[:matching_index])
+            merged.append(
+                merge_managed_template(
+                    remaining_current[matching_index], expected_entry
+                )
+            )
+            remaining_current = remaining_current[matching_index + 1 :]
+        return merged + remaining_current
     return expected
 
 migrated_settings = migrate(settings)

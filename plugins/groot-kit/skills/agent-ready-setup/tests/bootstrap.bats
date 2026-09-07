@@ -147,6 +147,25 @@ run_bootstrap() {
   jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)")' .claude/settings.json >/dev/null
 }
 
+@test "sync preserves custom settings array entries inserted before managed entries" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+
+  jq '
+    .permissions.allow = ["Bash(custom-before-managed)"] + .permissions.allow
+    | .hooks.PostToolUse[0].hooks = [{"type":"command","command":"bash .agents/hooks/custom-before-managed.sh"}] + .hooks.PostToolUse[0].hooks
+  ' .claude/settings.json > "$test_root/settings.json"
+  mv "$test_root/settings.json" .claude/settings.json
+
+  run_bootstrap frontend --sync --yes
+
+  [ "$status" -eq 0 ]
+  jq -e '.permissions.allow[0] == "Bash(custom-before-managed)"' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)")' .claude/settings.json >/dev/null
+  jq -e '.hooks.PostToolUse[0].hooks[0] == {"type":"command","command":"bash .agents/hooks/custom-before-managed.sh"}' .claude/settings.json >/dev/null
+  jq -e '.hooks.PostToolUse[0].hooks | index({"type":"command","command":"bash .agents/hooks/check-harness-consistency.sh"})' .claude/settings.json >/dev/null
+}
+
 @test "identical legacy Claude copies become canonical symlinks" {
   run_bootstrap frontend
   [ "$status" -eq 0 ]
