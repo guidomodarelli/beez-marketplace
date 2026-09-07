@@ -848,6 +848,48 @@ EOF
   cmp -s .codex/hooks/hooks.json "$source_dir/assets/codex/hooks.json"
 }
 
+@test "bootstrap creates new managed assets through atomic rename" {
+  mv_log="$test_root/mv.log"
+  cat > "$fake_bin/mv" <<'EOF'
+#!/bin/bash
+printf '%s\n' "$*" >> "$MV_LOG"
+exec /bin/mv "$@"
+EOF
+  chmod +x "$fake_bin/mv"
+
+  MV_LOG="$mv_log" run env PATH="$fake_bin:$PATH" bash "$skill_dir/scripts/bootstrap.sh" \
+    --stack frontend --skill-dir "$skill_dir" --provider claude --sync --yes
+
+  [ "$status" -eq 0 ]
+  grep -Eq 'agent-ready-sync\.[^ ]+ \.agents/hooks/sync-marketplace\.sh$' "$mv_log"
+}
+
+@test "sync hook creates new managed assets through atomic rename" {
+  source_dir="$test_root/agent-ready-setup"
+  mv_log="$test_root/mv.log"
+  mkdir -p \
+    "$source_dir/assets/common/hooks" \
+    "$source_dir/assets/codex" \
+    "$source_dir/assets/stacks/go/hooks"
+  touch "$source_dir/SKILL.md"
+  printf '%s\n' '#!/bin/bash' > "$source_dir/assets/common/hooks/sync-marketplace.sh"
+  printf '%s\n' '{"settings":"updated"}' > "$source_dir/assets/common/settings.json"
+  printf '%s\n' '{"hooks":"updated"}' > "$source_dir/assets/codex/hooks.json"
+  cat > "$fake_bin/mv" <<'EOF'
+#!/bin/bash
+printf '%s\n' "$*" >> "$MV_LOG"
+exec /bin/mv "$@"
+EOF
+  chmod +x "$fake_bin/mv"
+
+  AGENT_READY_SETUP_SKILL_DIR="$source_dir" MV_LOG="$mv_log" PATH="$fake_bin:$PATH" \
+    run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
+      --provider claude --stack go --sync --yes
+
+  [ "$status" -eq 0 ]
+  grep -Eq 'agent-ready-sync\.[^ ]+ \.agents/hooks/sync-marketplace\.sh$' "$mv_log"
+}
+
 @test "sync hook replaces its own running file atomically" {
   source_dir="$test_root/agent-ready-setup"
   mkdir -p .agents/hooks
@@ -866,50 +908,50 @@ EOF
 @test "sync hook reclaims lock left by terminated process" {
   source_dir="$test_root/agent-ready-setup"
   cp -R "$skill_dir"/. "$source_dir"/
-  mkdir -p .agents/.agent-ready-sync.lock
+  mkdir -p .agents/.agent-ready-assets.lock
   (sleep 30) &
   stale_pid=$!
   kill "$stale_pid"
   wait "$stale_pid" 2>/dev/null || true
-  printf '%s\n' "$stale_pid" > .agents/.agent-ready-sync.lock/owner
+  printf '%s\n' "$stale_pid" > .agents/.agent-ready-assets.lock/owner
 
   AGENT_READY_SETUP_SKILL_DIR="$source_dir" PATH="$test_root/bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
       --provider claude --stack go --sync --yes
 
   [ "$status" -eq 0 ]
-  [ ! -e .agents/.agent-ready-sync.lock ]
+  [ ! -e .agents/.agent-ready-assets.lock ]
   cmp -s .agents/hooks/sync-marketplace.sh "$source_dir/assets/common/hooks/sync-marketplace.sh"
 }
 
 @test "sync hook preserves lock held by live process" {
   source_dir="$test_root/agent-ready-setup"
   cp -R "$skill_dir"/. "$source_dir"/
-  mkdir -p .agents/.agent-ready-sync.lock
+  mkdir -p .agents/.agent-ready-assets.lock
   owner_start_time="$(ps -p "$$" -o lstart= | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-  printf '%s\n%s\n' "$$" "$owner_start_time" > .agents/.agent-ready-sync.lock/owner
+  printf '%s\n%s\n' "$$" "$owner_start_time" > .agents/.agent-ready-assets.lock/owner
 
   AGENT_READY_SETUP_SKILL_DIR="$source_dir" PATH="$test_root/bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
       --provider claude --stack go --sync --yes
 
   [ "$status" -eq 0 ]
-  [ -d .agents/.agent-ready-sync.lock ]
+  [ -d .agents/.agent-ready-assets.lock ]
   [[ "$output" == *"active/ambiguous lock"* ]]
 }
 
 @test "sync hook reclaims legacy stale lock without owner metadata" {
   source_dir="$test_root/agent-ready-setup"
   cp -R "$skill_dir"/. "$source_dir"/
-  mkdir -p .agents/.agent-ready-sync.lock
-  touch -t 200001010000 .agents/.agent-ready-sync.lock
+  mkdir -p .agents/.agent-ready-assets.lock
+  touch -t 200001010000 .agents/.agent-ready-assets.lock
 
   AGENT_READY_SETUP_SKILL_DIR="$source_dir" PATH="$test_root/bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
       --provider claude --stack go --sync --yes
 
   [ "$status" -eq 0 ]
-  [ ! -e .agents/.agent-ready-sync.lock ]
+  [ ! -e .agents/.agent-ready-assets.lock ]
   cmp -s .agents/hooks/sync-marketplace.sh "$source_dir/assets/common/hooks/sync-marketplace.sh"
 }
 

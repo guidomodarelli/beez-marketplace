@@ -560,7 +560,20 @@ sync_file() {
   fi
 
   if [[ ! -e "$dst" ]]; then
-    cp -- "$src" "$dst"
+    if ! temporary_destination="$(mktemp "${dst}.agent-ready-sync.XXXXXX")"; then
+      CONFLICTS+=("could not stage new content for $dst; neither was changed")
+      return 0
+    fi
+    if ! cp -p -- "$src" "$temporary_destination"; then
+      rm -f -- "$temporary_destination"
+      CONFLICTS+=("could not stage new content for $dst; neither was changed")
+      return 0
+    fi
+    if ! mv -f -- "$temporary_destination" "$dst"; then
+      rm -f -- "$temporary_destination"
+      CONFLICTS+=("could not create $dst atomically; neither was changed")
+      return 0
+    fi
     record_created "$dst"
     return 0
   fi

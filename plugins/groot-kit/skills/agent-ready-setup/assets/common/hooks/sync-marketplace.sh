@@ -10,7 +10,7 @@ readonly SKILL_NAME="agent-ready-setup"
 readonly AGENTS_DIRECTORY=".agents"
 readonly CLAUDE_DIRECTORY=".claude"
 readonly CODEX_DIRECTORY=".codex"
-readonly SYNC_LOCK_DIRECTORY="$AGENTS_DIRECTORY/.agent-ready-sync.lock"
+readonly SYNC_LOCK_DIRECTORY="$AGENTS_DIRECTORY/.agent-ready-assets.lock"
 readonly SYNC_LOCK_OWNER_FILE="$SYNC_LOCK_DIRECTORY/owner"
 readonly SYNC_LOCK_STALE_AFTER_MINUTES=10
 
@@ -332,7 +332,20 @@ sync_file() {
     return 0
   fi
   if [[ ! -e "$destination" ]]; then
-    cp -- "$source" "$destination"
+    if ! temporary_destination="$(mktemp "${destination}.agent-ready-sync.XXXXXX")"; then
+      conflicts+=("could not stage new content for $destination; neither was changed")
+      return 0
+    fi
+    if ! cp -p -- "$source" "$temporary_destination"; then
+      rm -f -- "$temporary_destination"
+      conflicts+=("could not stage new content for $destination; neither was changed")
+      return 0
+    fi
+    if ! mv -f -- "$temporary_destination" "$destination"; then
+      rm -f -- "$temporary_destination"
+      conflicts+=("could not create $destination atomically; neither was changed")
+      return 0
+    fi
     record_created "$destination"
     return 0
   fi
