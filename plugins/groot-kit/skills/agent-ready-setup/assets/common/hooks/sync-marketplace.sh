@@ -133,11 +133,14 @@ resolve_skill_dir() {
   fi
 
   hook_directory="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-  candidate="$hook_directory/../../../.."
-  if [[ -f "$candidate/SKILL.md" && -f "$candidate/scripts/bootstrap.sh" && -d "$candidate/assets/stacks" ]]; then
-    printf '%s\n' "$candidate"
-    return 0
-  fi
+  for candidate in \
+    "$hook_directory/../../../.." \
+    "$hook_directory/../../.."; do
+    if [[ -f "$candidate/SKILL.md" && -f "$candidate/scripts/bootstrap.sh" && -d "$candidate/assets/stacks" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
 
   if [[ "$provider" == "claude" ]]; then
     provider_root="$HOME/.claude"

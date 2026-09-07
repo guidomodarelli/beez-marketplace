@@ -195,11 +195,27 @@ resolve_skill_dir() {
 }
 
 validate_skill_source() {
+  COMMON_SRC="$SKILL_DIR/assets/common"
   SRC="$SKILL_DIR/assets/stacks/$STACK"
   CODEX_ASSETS="$SKILL_DIR/assets/codex"
   ROOT_CLAUDE_TEMPLATE="$SKILL_DIR/assets/root-claude.md"
   CENTRALIZATION_TEMPLATE="$SKILL_DIR/assets/instruction-centralization.md"
   TEMPLATE_RENDERER="$SKILL_DIR/scripts/render-instruction-template.sh"
+
+  if [[ ! -d "$COMMON_SRC" ]]; then
+    echo "ERROR: Common assets directory is missing: $COMMON_SRC" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$COMMON_SRC/settings.json" ]]; then
+    echo "ERROR: Common Claude settings template is missing: $COMMON_SRC/settings.json" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$COMMON_SRC/hooks/sync-marketplace.sh" ]]; then
+    echo "ERROR: Common marketplace sync hook is missing: $COMMON_SRC/hooks/sync-marketplace.sh" >&2
+    exit 1
+  fi
 
   if [[ ! -d "$SRC" ]]; then
     echo "ERROR: No template found for stack '$STACK' at $SRC" >&2
@@ -1008,43 +1024,53 @@ create_skill_adapter() {
 # settings remain copied to .claude; non-hook Claude assets are symlinked views
 # of the canonical shared files so providers cannot drift independently. Hooks
 # remain only in .agents because both providers execute the canonical scripts.
-while IFS= read -r -d '' file; do
-  relative="${file#"$SRC/"}"
+project_asset_tree() {
+  local source_root="$1"
+  local file
+  local relative
+  local skill_name
 
-  if [[ "$relative" == "CLAUDE.md" ]]; then
-    continue
-  elif [[ "$relative" == "settings.json" ]]; then
-    if [[ "$SYNC_MODE" -eq 1 && ( -e "$CLAUDE_DIR/$relative" || -L "$CLAUDE_DIR/$relative" ) ]]; then
-      migrate_claude_settings
+  while IFS= read -r -d '' file; do
+    relative="${file#"$source_root/"}"
+
+    if [[ "$relative" == "CLAUDE.md" ]]; then
+      continue
+    elif [[ "$relative" == "settings.json" ]]; then
+      if [[ "$SYNC_MODE" -eq 1 && ( -e "$CLAUDE_DIR/$relative" || -L "$CLAUDE_DIR/$relative" ) ]]; then
+        migrate_claude_settings
+      else
+        copy_if_missing "$file" "$CLAUDE_DIR/$relative"
+      fi
     else
-      copy_if_missing "$file" "$CLAUDE_DIR/$relative"
-    fi
-  else
-    case "$relative" in
-      skills/*/SKILL.md)
-        skill_name="${relative#skills/}"
-        skill_name="${skill_name%/SKILL.md}"
-        create_skill_adapter "$file" "$skill_name"
-        ;;
-      skills/*/*.md)
-        copy_if_missing "$file" "$SHARED_DIR/$relative"
-        ;;
-      agents/*.md|commands/*.md|skills/*.md)
-        copy_if_missing "$file" "$SHARED_DIR/$relative"
-        skill_name="${relative##*/}"
-        skill_name="${skill_name%.md}"
-        create_skill_adapter "$file" "$skill_name"
-        ;;
-      *)
-        copy_if_missing "$file" "$SHARED_DIR/$relative"
-        ;;
-    esac
+      case "$relative" in
+        skills/*/SKILL.md)
+          skill_name="${relative#skills/}"
+          skill_name="${skill_name%/SKILL.md}"
+          create_skill_adapter "$file" "$skill_name"
+          ;;
+        skills/*/*.md)
+          copy_if_missing "$file" "$SHARED_DIR/$relative"
+          ;;
+        agents/*.md|commands/*.md|skills/*.md)
+          copy_if_missing "$file" "$SHARED_DIR/$relative"
+          skill_name="${relative##*/}"
+          skill_name="${skill_name%.md}"
+          create_skill_adapter "$file" "$skill_name"
+          ;;
+        *)
+          copy_if_missing "$file" "$SHARED_DIR/$relative"
+          ;;
+      esac
 
-    if [[ "$relative" != hooks/* ]]; then
-      link_claude_asset "$relative"
+      if [[ "$relative" != hooks/* ]]; then
+        link_claude_asset "$relative"
+      fi
     fi
-  fi
-done < <(find "$SRC" -type f -print0)
+  done < <(find "$source_root" -type f -print0)
+}
+
+project_asset_tree "$COMMON_SRC"
+project_asset_tree "$SRC"
 
 if [[ "$SYNC_MODE" -eq 1 ]]; then
   cleanup_legacy_claude_hooks

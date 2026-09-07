@@ -192,6 +192,8 @@ run_bootstrap() {
     grep -Fq -- '- Read and follow `.agents/rules/coding-style.md`.' AGENTS.md
     grep -Fq -- '- Read and follow `.agents/rules/security.md`.' AGENTS.md
     grep -Fq -- '- Read and follow `.agents/rules/testing.md`.' AGENTS.md
+    cmp -s .claude/settings.json "$skill_dir/assets/common/settings.json"
+    cmp -s .agents/hooks/sync-marketplace.sh "$skill_dir/assets/common/hooks/sync-marketplace.sh"
     jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes"' .claude/settings.json >/dev/null
     jq -e '.hooks.PostToolUse[0].hooks[0].command == "bash .agents/hooks/check-harness-consistency.sh"' .claude/settings.json >/dev/null
     jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex --sync-instructions --yes"' .codex/hooks/hooks.json >/dev/null
@@ -601,9 +603,10 @@ EOF
   [ -z "$(find .agents -type f -print -quit 2>/dev/null)" ]
 }
 
-@test "sync hooks pass provider and infer Codex from canonical path" {
+@test "common sync hook passes provider and infers Codex from canonical path" {
   fake_bin="$test_root/bin"
   invocation_log="$test_root/fury-invocation.log"
+  hook="$skill_dir/assets/common/hooks/sync-marketplace.sh"
   mkdir -p "$fake_bin"
   cat > "$fake_bin/fury" <<'EOF'
 #!/bin/bash
@@ -611,31 +614,33 @@ printf '%s\n' "$*" > "$FURY_INVOCATION_LOG"
 EOF
   chmod +x "$fake_bin/fury"
 
-  for stack in frontend node java go; do
-    hook="$skill_dir/assets/stacks/$stack/hooks/sync-marketplace.sh"
+  FURY_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
+    run bash "$hook" --provider claude
+  [ "$status" -eq 0 ]
+  grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider claude' "$invocation_log"
 
+  FURY_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
+    run bash "$hook" -p codex
+  [ "$status" -eq 0 ]
+  grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider codex' "$invocation_log"
+
+  mkdir -p .agents/hooks
+  cp "$hook" .agents/hooks/sync-marketplace.sh
+
+  FURY_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
+    run bash .agents/hooks/sync-marketplace.sh
+  [ "$status" -eq 0 ]
+  grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider codex' "$invocation_log"
+
+  run bash "$hook" --provider unsupported
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"unsupported marketplace provider"* ]]
+
+  run env -u AGENT_READY_SETUP_SKILL_DIR \
     FURY_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
-      run bash "$hook" --provider claude
-    [ "$status" -eq 0 ]
-    grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider claude' "$invocation_log"
-
-    FURY_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
-      run bash "$hook" -p codex
-    [ "$status" -eq 0 ]
-    grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider codex' "$invocation_log"
-
-    mkdir -p .agents/hooks
-    cp "$hook" .agents/hooks/sync-marketplace.sh
-
-    FURY_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
-      run bash .agents/hooks/sync-marketplace.sh
-    [ "$status" -eq 0 ]
-    grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider codex' "$invocation_log"
-
-    run bash "$hook" --provider unsupported
-    [ "$status" -ne 0 ]
-    [[ "$output" == *"unsupported marketplace provider"* ]]
-  done
+    bash "$hook" --provider claude --sync
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"could not detect project stack"* ]]
 }
 
 @test "sync mode shows diffs and preserves existing assets without confirmation" {
@@ -783,7 +788,7 @@ EOF
     BOOTSTRAP_MARKER_LOG="$bootstrap_marker_log" \
     AGENT_READY_SETUP_SKILL_DIR="$source_dir" \
     PATH="$fake_bin:$PATH" \
-    run bash "$skill_dir/assets/stacks/frontend/hooks/sync-marketplace.sh" \
+    run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
       --provider claude --sync
 
   [ "$status" -eq 0 ]
@@ -815,17 +820,19 @@ EOF
     BOOTSTRAP_INVOCATION_LOG="$bootstrap_log" \
     AGENT_READY_SETUP_SKILL_DIR="$source_dir" \
     PATH="$fake_bin:$PATH" \
-    run bash "$skill_dir/assets/stacks/frontend/hooks/sync-marketplace.sh" \
+    run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
       --provider claude --sync
 
   [ "$status" -ne 0 ]
   [ ! -e "$bootstrap_log" ]
 }
 
-@test "all stack sync hooks remain byte-identical" {
+@test "common marketplace assets have no stack duplicates" {
+  [ -f "$skill_dir/assets/common/settings.json" ]
+  [ -f "$skill_dir/assets/common/hooks/sync-marketplace.sh" ]
+
   for stack in frontend node java go; do
-    cmp -s \
-      "$skill_dir/assets/stacks/frontend/hooks/sync-marketplace.sh" \
-      "$skill_dir/assets/stacks/$stack/hooks/sync-marketplace.sh"
+    [ ! -e "$skill_dir/assets/stacks/$stack/settings.json" ]
+    [ ! -e "$skill_dir/assets/stacks/$stack/hooks/sync-marketplace.sh" ]
   done
 }
