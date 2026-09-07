@@ -180,6 +180,28 @@ run_marketplace_sync() {
   jq -e '.hooks.PostToolUse[0].hooks | index({"type":"command","command":"bash .agents/hooks/check-harness-consistency.sh"})' .claude/settings.json >/dev/null
 }
 
+@test "sync preserves replaced custom settings entries with equal length" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+
+  jq '
+    .permissions.allow[0] = "Bash(custom-replaced-permission)"
+    | .hooks.PostToolUse[0].hooks[0] = {"type":"command","command":"bash .agents/hooks/custom-replaced-hook.sh"}
+  ' .claude/settings.json > "$test_root/settings.json"
+  mv "$test_root/settings.json" .claude/settings.json
+
+  run_bootstrap frontend --sync --yes
+
+  [ "$status" -eq 0 ]
+  jq -e '.permissions.allow | length == 3' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(custom-replaced-permission)") != null' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)") != null' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/check-harness-consistency.sh)") != null' .claude/settings.json >/dev/null
+  jq -e '.hooks.PostToolUse | length == 2' .claude/settings.json >/dev/null
+  jq -e '[.hooks.PostToolUse[].hooks[]] | index({"type":"command","command":"bash .agents/hooks/custom-replaced-hook.sh"}) != null' .claude/settings.json >/dev/null
+  jq -e '[.hooks.PostToolUse[].hooks[]] | index({"type":"command","command":"bash .agents/hooks/check-harness-consistency.sh"}) != null' .claude/settings.json >/dev/null
+}
+
 @test "autonomous sync merges custom Claude settings before instruction merge" {
   dynamic_skill_dir="$test_root/dynamic-skill"
   cp -R "$skill_dir" "$dynamic_skill_dir"

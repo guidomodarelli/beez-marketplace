@@ -871,8 +871,15 @@ def has_custom_keys(current, expected):
 
 def matches_managed_template(current, expected):
     if isinstance(current, dict) and isinstance(expected, dict):
-        return all(
+        if all(
             key in current and matches_managed_template(current[key], value)
+            for key, value in expected.items()
+        ):
+            return True
+        return any(
+            key in current
+            and isinstance(value, (dict, list))
+            and matches_managed_template(current[key], value)
             for key, value in expected.items()
         )
     if isinstance(current, list) and isinstance(expected, list):
@@ -903,11 +910,6 @@ def merge_managed_template(current, expected):
                 merged[key] = value
         return merged
     if isinstance(current, list) and isinstance(expected, list):
-        if len(current) == len(expected):
-            return [
-                merge_managed_template(current[index], expected_entry)
-                for index, expected_entry in enumerate(expected)
-            ]
         remaining_current = list(current)
         merged = []
         for expected_entry in expected:
