@@ -60,6 +60,11 @@ run_bootstrap() {
   [ -f .agents/hooks/check-harness-consistency.sh ]
   [ -f .agents/hooks/pre-tool-use.md ]
   [ -f .codex/hooks/hooks.json ]
+  cmp -s .agents/hooks/sync-marketplace.sh "$skill_dir/assets/common/hooks/sync-marketplace.sh"
+  cmp -s .codex/hooks/hooks.json "$skill_dir/assets/codex/hooks.json"
+  for hook_file in check-harness-consistency.sh pre-tool-use.md; do
+    cmp -s ".agents/hooks/$hook_file" "$skill_dir/assets/stacks/frontend/hooks/$hook_file"
+  done
   [ ! -f .claude/CLAUDE.md ]
   [ ! -d .codex/agents ]
   for rule_file in frontend-style.md no-unnecessary-mocks.md security.md testing.md; do
@@ -194,6 +199,10 @@ run_bootstrap() {
     grep -Fq -- '- Read and follow `.agents/rules/testing.md`.' AGENTS.md
     cmp -s .claude/settings.json "$skill_dir/assets/common/settings.json"
     cmp -s .agents/hooks/sync-marketplace.sh "$skill_dir/assets/common/hooks/sync-marketplace.sh"
+    cmp -s .codex/hooks/hooks.json "$skill_dir/assets/codex/hooks.json"
+    for hook_file in check-harness-consistency.sh pre-tool-use.md; do
+      cmp -s ".agents/hooks/$hook_file" "$skill_dir/assets/stacks/$stack/hooks/$hook_file"
+    done
     jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes"' .claude/settings.json >/dev/null
     jq -e '.hooks.PostToolUse[0].hooks[0].command == "bash .agents/hooks/check-harness-consistency.sh"' .claude/settings.json >/dev/null
     jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex --sync-instructions --yes"' .codex/hooks/hooks.json >/dev/null
@@ -675,6 +684,37 @@ EOF
   [[ "$output" == *"Updated from templates:"* ]]
 }
 
+@test "sync updates managed provider assets without legacy Claude hooks" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+  [ ! -e .claude/hooks ]
+
+  source_dir="$test_root/updated-agent-ready"
+  cp -R "$skill_dir"/. "$source_dir"/
+  jq '.hooks.SessionStart[0].matcher = "changed"' \
+    "$source_dir/assets/common/settings.json" > "$test_root/settings.json"
+  mv "$test_root/settings.json" "$source_dir/assets/common/settings.json"
+  printf '%s\n' '# updated common hook' >> "$source_dir/assets/common/hooks/sync-marketplace.sh"
+  jq '.hooks.SessionStart[0].hooks[0].command = "bash .agents/hooks/updated-sync.sh"' \
+    "$source_dir/assets/codex/hooks.json" > "$test_root/hooks.json"
+  mv "$test_root/hooks.json" "$source_dir/assets/codex/hooks.json"
+
+  run env \
+    AGENT_READY_SETUP_SKILL_DIR="$source_dir" \
+    PATH="$test_root/bin:$PATH" \
+    bash "$source_dir/scripts/bootstrap.sh" \
+      --stack frontend \
+      --skill-dir "$source_dir" \
+      --provider claude \
+      --sync \
+      --yes
+
+  [ "$status" -eq 0 ]
+  cmp -s .agents/hooks/sync-marketplace.sh "$source_dir/assets/common/hooks/sync-marketplace.sh"
+  cmp -s .claude/settings.json "$source_dir/assets/common/settings.json"
+  cmp -s .codex/hooks/hooks.json "$source_dir/assets/codex/hooks.json"
+}
+
 @test "sync mode detects managed destination changes before atomic rename" {
   run_bootstrap frontend
   [ "$status" -eq 0 ]
@@ -759,19 +799,27 @@ EOF
   grep -Fq '# Updated marketplace template' .agents/rules/security.md
 }
 
-@test "sync hooks project updated content after marketplace upgrade" {
+@test "sync hook projects managed assets without bootstrap" {
   fake_bin="$test_root/bin"
   source_dir="$test_root/agent-ready-setup"
   event_log="$test_root/events.log"
   bootstrap_log="$test_root/bootstrap.log"
-  bootstrap_marker_log="$test_root/bootstrap-marker.log"
-  mkdir -p "$fake_bin" "$source_dir/assets/stacks" "$source_dir/scripts"
+  mkdir -p \
+    "$fake_bin" \
+    "$source_dir/assets/common/hooks" \
+    "$source_dir/assets/codex" \
+    "$source_dir/assets/stacks/go/hooks" \
+    "$source_dir/scripts"
   touch "$source_dir/SKILL.md"
+  printf '%s\n' '# updated common sync hook' > "$source_dir/assets/common/hooks/sync-marketplace.sh"
+  printf '%s\n' '{"settings":"updated"}' > "$source_dir/assets/common/settings.json"
+  printf '%s\n' '{"hooks":"updated"}' > "$source_dir/assets/codex/hooks.json"
+  printf '%s\n' '#!/bin/bash' > "$source_dir/assets/stacks/go/hooks/check-harness-consistency.sh"
+  printf '%s\n' '# updated pre-tool hook' > "$source_dir/assets/stacks/go/hooks/pre-tool-use.md"
   cat > "$source_dir/scripts/bootstrap.sh" <<'EOF'
 #!/bin/bash
 printf 'bootstrap\n' >> "$EVENT_LOG"
 printf '%s\n' "$*" > "$BOOTSTRAP_INVOCATION_LOG"
-printf '%s\n' "${AGENT_READY_SETUP_MARKETPLACE_UPGRADED:-}" > "$BOOTSTRAP_MARKER_LOG"
 EOF
   chmod +x "$source_dir/scripts/bootstrap.sh"
   cat > "$fake_bin/fury" <<'EOF'
@@ -780,23 +828,39 @@ printf 'fury\n' >> "$EVENT_LOG"
 printf '%s\n' "$*" > "$FURY_INVOCATION_LOG"
 EOF
   chmod +x "$fake_bin/fury"
-  printf '%s\n' '{"dependencies":{"react":"1.0.0"}}' > package.json
-
   EVENT_LOG="$event_log" \
     FURY_INVOCATION_LOG="$test_root/fury.log" \
     BOOTSTRAP_INVOCATION_LOG="$bootstrap_log" \
-    BOOTSTRAP_MARKER_LOG="$bootstrap_marker_log" \
     AGENT_READY_SETUP_SKILL_DIR="$source_dir" \
     PATH="$fake_bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
-      --provider claude --sync
+      --provider claude --stack go --sync --yes
 
   [ "$status" -eq 0 ]
   [ "$(sed -n '1p' "$event_log")" = "fury" ]
-  [ "$(sed -n '2p' "$event_log")" = "bootstrap" ]
+  [ "$(wc -l < "$event_log")" -eq 1 ]
+  [ ! -e "$bootstrap_log" ]
   grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider claude' "$test_root/fury.log"
-  grep -Fq -- "--stack frontend --skill-dir $source_dir --provider claude --sync" "$bootstrap_log"
-  [ "$(cat "$bootstrap_marker_log")" = "1" ]
+  cmp -s .agents/hooks/sync-marketplace.sh "$source_dir/assets/common/hooks/sync-marketplace.sh"
+  cmp -s .agents/hooks/check-harness-consistency.sh "$source_dir/assets/stacks/go/hooks/check-harness-consistency.sh"
+  cmp -s .agents/hooks/pre-tool-use.md "$source_dir/assets/stacks/go/hooks/pre-tool-use.md"
+  cmp -s .claude/settings.json "$source_dir/assets/common/settings.json"
+  cmp -s .codex/hooks/hooks.json "$source_dir/assets/codex/hooks.json"
+}
+
+@test "sync hook replaces its own running file atomically" {
+  source_dir="$test_root/agent-ready-setup"
+  mkdir -p .agents/hooks
+  cp -R "$skill_dir"/. "$source_dir"/
+  cp "$skill_dir/assets/common/hooks/sync-marketplace.sh" .agents/hooks/sync-marketplace.sh
+  printf '%s\n' '# stale target marker' >> .agents/hooks/sync-marketplace.sh
+
+  AGENT_READY_SETUP_SKILL_DIR="$source_dir" PATH="$test_root/bin:$PATH" \
+    run bash .agents/hooks/sync-marketplace.sh \
+      --provider claude --stack go --sync --yes
+
+  [ "$status" -eq 0 ]
+  cmp -s .agents/hooks/sync-marketplace.sh "$source_dir/assets/common/hooks/sync-marketplace.sh"
 }
 
 @test "sync hooks do not project content when marketplace upgrade fails" {

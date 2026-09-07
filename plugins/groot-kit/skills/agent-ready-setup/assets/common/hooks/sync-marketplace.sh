@@ -1,18 +1,27 @@
 #!/bin/bash
 # sync-marketplace.sh
-# Upgrades groot-marketplace and optionally projects updated assets locally.
+# Upgrades groot-marketplace and projects managed Agent Ready assets locally.
 # Runs automatically on session start (SessionStart hook).
 
 set -euo pipefail
 
 readonly MARKETPLACE_NAME="groot-marketplace"
 readonly SKILL_NAME="agent-ready-setup"
+readonly AGENTS_DIRECTORY=".agents"
+readonly CLAUDE_DIRECTORY=".claude"
+readonly CODEX_DIRECTORY=".codex"
+readonly SYNC_LOCK_DIRECTORY="$AGENTS_DIRECTORY/.agent-ready-sync.lock"
 
 provider=""
 stack_override="${AGENT_READY_SETUP_STACK:-}"
 sync_requested=0
 instructions_requested=0
 auto_confirm="${AGENT_READY_SETUP_SYNC_YES:-0}"
+created_assets=()
+updated_assets=()
+skipped_assets=()
+pending_assets=()
+conflicts=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -93,6 +102,16 @@ if [[ "$auto_confirm" -eq 1 && "$sync_requested" -ne 1 ]]; then
   exit 1
 fi
 
+is_valid_skill_dir() {
+  local candidate="$1"
+
+  [[ -f "$candidate/SKILL.md" && \
+    -d "$candidate/assets/stacks" && \
+    -f "$candidate/assets/common/hooks/sync-marketplace.sh" && \
+    -f "$candidate/assets/common/settings.json" && \
+    -f "$candidate/assets/codex/hooks.json" ]]
+}
+
 echo "[marketplace-sync] Upgrading $MARKETPLACE_NAME for $provider..."
 fury ai assets marketplace upgrade \
   --name "$MARKETPLACE_NAME" \
@@ -113,7 +132,7 @@ resolve_skill_dir() {
 
   if [[ -n "${AGENT_READY_SETUP_SKILL_DIR:-}" ]]; then
     candidate="$AGENT_READY_SETUP_SKILL_DIR"
-    if [[ -f "$candidate/SKILL.md" && -f "$candidate/scripts/bootstrap.sh" && -d "$candidate/assets/stacks" ]]; then
+    if is_valid_skill_dir "$candidate"; then
       printf '%s\n' "$candidate"
       return 0
     fi
@@ -125,7 +144,7 @@ resolve_skill_dir() {
     for candidate in \
       "$CLAUDE_PLUGIN_ROOT/skills/$SKILL_NAME" \
       "$CLAUDE_PLUGIN_ROOT"; do
-      if [[ -f "$candidate/SKILL.md" && -f "$candidate/scripts/bootstrap.sh" && -d "$candidate/assets/stacks" ]]; then
+      if is_valid_skill_dir "$candidate"; then
         printf '%s\n' "$candidate"
         return 0
       fi
@@ -136,7 +155,7 @@ resolve_skill_dir() {
   for candidate in \
     "$hook_directory/../../../.." \
     "$hook_directory/../../.."; do
-    if [[ -f "$candidate/SKILL.md" && -f "$candidate/scripts/bootstrap.sh" && -d "$candidate/assets/stacks" ]]; then
+    if is_valid_skill_dir "$candidate"; then
       printf '%s\n' "$candidate"
       return 0
     fi
@@ -149,7 +168,7 @@ resolve_skill_dir() {
   fi
 
   candidate="$provider_root/skills/$SKILL_NAME"
-  if [[ -f "$candidate/SKILL.md" && -f "$candidate/scripts/bootstrap.sh" && -d "$candidate/assets/stacks" ]]; then
+  if is_valid_skill_dir "$candidate"; then
     printf '%s\n' "$candidate"
     return 0
   fi
@@ -157,7 +176,7 @@ resolve_skill_dir() {
   cache_root="$provider_root/plugins/cache/$MARKETPLACE_NAME/groot-kit"
   while IFS= read -r candidate; do
     candidate="${candidate%/SKILL.md}"
-    if [[ -f "$candidate/scripts/bootstrap.sh" && -d "$candidate/assets/stacks" ]]; then
+    if is_valid_skill_dir "$candidate"; then
       printf '%s\n' "$candidate"
       return 0
     fi
@@ -165,7 +184,7 @@ resolve_skill_dir() {
 
   if project_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
     candidate="$project_root/plugins/groot-kit/skills/$SKILL_NAME"
-    if [[ -f "$candidate/SKILL.md" && -f "$candidate/scripts/bootstrap.sh" && -d "$candidate/assets/stacks" ]]; then
+    if is_valid_skill_dir "$candidate"; then
       printf '%s\n' "$candidate"
       return 0
     fi
@@ -207,11 +226,6 @@ if ! skill_dir="$(resolve_skill_dir)"; then
   exit 0
 fi
 
-if [[ "$instructions_requested" -eq 1 && ! -f "$skill_dir/scripts/merge-instructions.sh" ]]; then
-  printf 'ERROR: resolved %s source does not include merge-instructions.sh: %s\n' "$SKILL_NAME" "$skill_dir" >&2
-  exit 1
-fi
-
 stack="$(detect_stack || true)"
 if [[ -z "$stack" ]]; then
   printf 'WARNING: could not detect project stack; local projection skipped.\n' >&2
@@ -219,46 +233,225 @@ if [[ -z "$stack" ]]; then
   exit 0
 fi
 
-bootstrap_args=(
-  --stack "$stack"
-  --skill-dir "$skill_dir"
-  --provider "$provider"
-  --sync
-)
-if [[ "$auto_confirm" -eq 1 ]]; then
-  bootstrap_args+=(--yes)
-fi
+record_created() {
+  created_assets+=("$1")
+}
 
-echo "[marketplace-sync] Projecting updated $SKILL_NAME assets for $stack..."
-if ! AGENT_READY_SETUP_MARKETPLACE_UPGRADED=1 \
-  bash "$skill_dir/scripts/bootstrap.sh" "${bootstrap_args[@]}"; then
-  printf 'ERROR: local asset projection failed for %s.\n' "$skill_dir" >&2
-  exit 1
-fi
-echo "[marketplace-sync] Local projection completed."
+record_updated() {
+  updated_assets+=("$1")
+}
 
-if [[ "$instructions_requested" -eq 1 ]]; then
-  merge_environment=()
+record_skipped() {
+  skipped_assets+=("$1")
+}
+
+record_pending() {
+  pending_assets+=("$1")
+}
+
+validate_destination_parent() {
+  local destination="$1"
+  local parent_directory
+  local current_path="."
+  local path_component
+  local relative_parent
+  local -a path_components
+
+  parent_directory="$(dirname -- "$destination")"
+  [[ "$parent_directory" == "." ]] && return 0
+
+  relative_parent="${parent_directory#./}"
+  IFS='/' read -r -a path_components <<< "$relative_parent"
+  for path_component in "${path_components[@]}"; do
+    [[ -z "$path_component" || "$path_component" == "." ]] && continue
+    current_path="$current_path/$path_component"
+
+    if [[ -L "$current_path" ]]; then
+      conflicts+=("$destination parent directory contains symlink $current_path; neither was changed")
+      return 1
+    fi
+    if [[ -e "$current_path" && ! -d "$current_path" ]]; then
+      conflicts+=("$destination parent directory is not a directory: $current_path; neither was changed")
+      return 1
+    fi
+  done
+}
+
+show_sync_diff() {
+  local source="$1"
+  local destination="$2"
+
+  printf 'Diff for %s (source: %s):\n' "$destination" "$source"
+  if [[ -f "$destination" ]]; then
+    diff -u -- "$destination" "$source" || true
+  else
+    diff -u -- /dev/null "$source" || true
+  fi
+}
+
+confirm_sync_replacement() {
+  local destination="$1"
+  local answer
+
   if [[ "$auto_confirm" -eq 1 ]]; then
-    merge_environment+=(AGENT_READY_SETUP_NON_INTERACTIVE=1)
+    return 0
+  fi
+  if [[ ! -t 0 || ! -t 1 ]]; then
+    printf 'Skipping %s: sync requires interactive confirmation or --yes.\n' "$destination"
+    return 1
   fi
 
-  merge_status=0
-  env "${merge_environment[@]}" bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider "$provider" \
-    --stack "$stack" \
-    --skill-dir "$skill_dir" || merge_status=$?
+  printf 'Replace %s with the template? [y/N] ' "$destination"
+  IFS= read -r answer || return 1
+  [[ "$answer" =~ ^([YySs]|[Yy][Ee][Ss])$ ]]
+}
 
-  case "$merge_status" in
-    0)
-      echo "[marketplace-sync] Instruction merge completed."
-      ;;
-    2)
-      echo "[marketplace-sync] Instruction merge requires human review; local file preserved."
-      ;;
-    *)
-      printf 'ERROR: instruction merge failed for %s; local file was preserved.\n' "$skill_dir" >&2
-      exit 1
-      ;;
-  esac
+sync_file() {
+  local source="$1"
+  local destination="$2"
+  local expected_destination
+  local temporary_destination
+
+  if [[ ! -f "$source" ]]; then
+    conflicts+=("$source is not a regular file; $destination was not changed")
+    return 0
+  fi
+  if ! validate_destination_parent "$destination"; then
+    return 0
+  fi
+  mkdir -p -- "$(dirname -- "$destination")"
+
+  if [[ -L "$destination" ]]; then
+    conflicts+=("$destination is a symlink; neither it nor its target was changed")
+    return 0
+  fi
+  if [[ -e "$destination" && ! -f "$destination" ]]; then
+    conflicts+=("$destination is not a regular file; neither was changed")
+    return 0
+  fi
+  if [[ ! -e "$destination" ]]; then
+    cp -- "$source" "$destination"
+    record_created "$destination"
+    return 0
+  fi
+  if cmp -s "$destination" "$source"; then
+    record_skipped "$destination"
+    return 0
+  fi
+
+  expected_destination="$(mktemp "${destination}.agent-ready-expected.XXXXXX")"
+  if ! cp -p -- "$destination" "$expected_destination"; then
+    rm -f -- "$expected_destination"
+    conflicts+=("could not snapshot $destination; neither was changed")
+    return 0
+  fi
+
+  show_sync_diff "$source" "$destination"
+  if ! confirm_sync_replacement "$destination"; then
+    rm -f -- "$expected_destination"
+    record_pending "$destination"
+    return 0
+  fi
+
+  temporary_destination="$(mktemp "${destination}.agent-ready-sync.XXXXXX")"
+  if ! cp -p -- "$source" "$temporary_destination"; then
+    rm -f -- "$temporary_destination" "$expected_destination"
+    conflicts+=("could not stage updated content for $destination; neither was changed")
+    return 0
+  fi
+  if [[ -L "$destination" || ! -f "$destination" ]] || \
+     ! cmp -s "$destination" "$expected_destination"; then
+    rm -f -- "$temporary_destination" "$expected_destination"
+    conflicts+=("$destination changed after confirmation; neither was changed")
+    return 0
+  fi
+  if ! mv -f -- "$temporary_destination" "$destination"; then
+    rm -f -- "$temporary_destination" "$expected_destination"
+    conflicts+=("could not replace $destination atomically; neither was changed")
+    return 0
+  fi
+
+  rm -f -- "$expected_destination"
+  record_updated "$destination"
+}
+
+release_sync_lock() {
+  if [[ -d "$SYNC_LOCK_DIRECTORY" ]]; then
+    rmdir -- "$SYNC_LOCK_DIRECTORY" 2>/dev/null || true
+  fi
+}
+
+if [[ -L "$AGENTS_DIRECTORY" || ( -e "$AGENTS_DIRECTORY" && ! -d "$AGENTS_DIRECTORY" ) ]]; then
+  echo "WARNING: .agents is a symlink or non-directory; no asset was changed" >&2
+  exit 0
+fi
+if ! mkdir -p -- "$AGENTS_DIRECTORY" || ! mkdir -- "$SYNC_LOCK_DIRECTORY" 2>/dev/null; then
+  echo "WARNING: another asset synchronization is running or left a stale lock; no asset was changed" >&2
+  exit 0
+fi
+trap release_sync_lock EXIT
+
+sync_file \
+  "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
+  "$AGENTS_DIRECTORY/hooks/sync-marketplace.sh"
+
+stack_hooks_directory="$skill_dir/assets/stacks/$stack/hooks"
+if [[ -d "$stack_hooks_directory" ]]; then
+  while IFS= read -r -d '' source_hook; do
+    relative_hook="${source_hook#"$stack_hooks_directory/"}"
+    [[ "$relative_hook" == "sync-marketplace.sh" ]] && continue
+    sync_file "$source_hook" "$AGENTS_DIRECTORY/hooks/$relative_hook"
+  done < <(find "$stack_hooks_directory" -type f -print0)
+fi
+
+sync_file "$skill_dir/assets/common/settings.json" "$CLAUDE_DIRECTORY/settings.json"
+sync_file "$skill_dir/assets/codex/hooks.json" "$CODEX_DIRECTORY/hooks/hooks.json"
+
+echo "[marketplace-sync] Local managed asset projection completed for $stack."
+
+if [[ ${#created_assets[@]} -gt 0 ]]; then
+  echo "Created:"
+  printf '  + %s\n' "${created_assets[@]}"
+fi
+if [[ ${#updated_assets[@]} -gt 0 ]]; then
+  echo "Updated from templates:"
+  printf '  ↻ %s\n' "${updated_assets[@]}"
+fi
+if [[ ${#pending_assets[@]} -gt 0 ]]; then
+  echo "Pending confirmation (not overwritten):"
+  printf '  ? %s\n' "${pending_assets[@]}"
+fi
+if [[ ${#conflicts[@]} -gt 0 ]]; then
+  echo "Managed asset conflicts (preserved):" >&2
+  printf '  ! %s\n' "${conflicts[@]}" >&2
+fi
+
+if [[ "$instructions_requested" -eq 1 ]]; then
+  if [[ ! -f "$skill_dir/scripts/merge-instructions.sh" ]]; then
+    echo "WARNING: merge-instructions.sh is unavailable; managed assets were synchronized without instruction merge." >&2
+  else
+    merge_environment=()
+    if [[ "$auto_confirm" -eq 1 ]]; then
+      merge_environment+=(AGENT_READY_SETUP_NON_INTERACTIVE=1)
+    fi
+
+    merge_status=0
+    env "${merge_environment[@]}" bash "$skill_dir/scripts/merge-instructions.sh" \
+      --provider "$provider" \
+      --stack "$stack" \
+      --skill-dir "$skill_dir" || merge_status=$?
+
+    case "$merge_status" in
+      0)
+        echo "[marketplace-sync] Instruction merge completed."
+        ;;
+      2)
+        echo "[marketplace-sync] Instruction merge requires human review; local file preserved."
+        ;;
+      *)
+        printf 'ERROR: instruction merge failed for %s; local file was preserved.\n' "$skill_dir" >&2
+        exit 1
+        ;;
+    esac
+  fi
 fi

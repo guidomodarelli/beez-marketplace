@@ -723,9 +723,11 @@ cleanup_stale_claude_links() {
   done < <(find "$CLAUDE_DIR" -type l -print0)
 }
 
-migrate_claude_settings() {
+sync_claude_settings() {
+  local template="$1"
   local destination="$CLAUDE_DIR/settings.json"
   local temporary_settings
+  local merge_status=0
 
   if [[ -L "$destination" ]]; then
     record_cleanup_conflict "$destination is a symlink; preserved"
@@ -735,20 +737,24 @@ migrate_claude_settings() {
     record_cleanup_conflict "$destination is not a regular file; preserved"
     return 0
   fi
-  [[ -f "$destination" ]] || return 0
-  if ! grep -Fq '.claude/hooks/' "$destination"; then
-    record_skipped "$destination"
+  if [[ ! -f "$destination" ]]; then
+    sync_file "$template" "$destination" "$template"
     return 0
   fi
 
   temporary_settings="$(mktemp "${TMPDIR:-/tmp}/agent-ready-settings.XXXXXX")"
-  if ! python3 - "$destination" > "$temporary_settings" <<'PY'
+  python3 - "$template" "$destination" > "$temporary_settings" <<'PY' || merge_status=$?
 import json
 import sys
 
-settings_path = sys.argv[1]
-with open(settings_path, encoding="utf-8") as settings_file:
-    settings = json.load(settings_file)
+template_path, settings_path = sys.argv[1:3]
+try:
+    with open(template_path, encoding="utf-8") as template_file:
+        template = json.load(template_file)
+    with open(settings_path, encoding="utf-8") as settings_file:
+        settings = json.load(settings_file)
+except (OSError, json.JSONDecodeError):
+    sys.exit(1)
 
 
 def migrate(value):
@@ -763,16 +769,47 @@ def migrate(value):
         return value.replace(".claude/hooks/", ".agents/hooks/", 1)
     return value
 
-json.dump(migrate(settings), sys.stdout, indent=2)
+
+def has_custom_keys(current, expected):
+    if isinstance(current, dict) and isinstance(expected, dict):
+        return any(
+            key not in expected or has_custom_keys(value, expected[key])
+            for key, value in current.items()
+        )
+    return False
+
+
+def merge_managed_template(current, expected):
+    if isinstance(current, dict) and isinstance(expected, dict):
+        merged = dict(current)
+        for key, value in expected.items():
+            if key in current:
+                merged[key] = merge_managed_template(current[key], value)
+            else:
+                merged[key] = value
+        return merged
+    return expected
+
+migrated_settings = migrate(settings)
+if not has_custom_keys(migrated_settings, template):
+    sys.exit(10)
+
+json.dump(merge_managed_template(migrated_settings, template), sys.stdout, indent=2)
 sys.stdout.write("\n")
 PY
-  then
-    rm -f -- "$temporary_settings"
-    record_cleanup_conflict "$destination contains invalid JSON; preserved"
-    return 0
-  fi
 
-  sync_file "$temporary_settings" "$destination" "legacy hook paths in $destination"
+  case "$merge_status" in
+    0)
+      sync_file "$temporary_settings" "$destination" "$template"
+      ;;
+    10)
+      cp -- "$template" "$temporary_settings"
+      sync_file "$temporary_settings" "$destination" "$template"
+      ;;
+    *)
+      record_cleanup_conflict "$destination contains invalid JSON; preserved"
+      ;;
+  esac
   rm -f -- "$temporary_settings"
 }
 
@@ -1036,8 +1073,8 @@ project_asset_tree() {
     if [[ "$relative" == "CLAUDE.md" ]]; then
       continue
     elif [[ "$relative" == "settings.json" ]]; then
-      if [[ "$SYNC_MODE" -eq 1 && ( -e "$CLAUDE_DIR/$relative" || -L "$CLAUDE_DIR/$relative" ) ]]; then
-        migrate_claude_settings
+      if [[ "$SYNC_MODE" -eq 1 ]]; then
+        sync_claude_settings "$file"
       else
         copy_if_missing "$file" "$CLAUDE_DIR/$relative"
       fi
@@ -1082,7 +1119,11 @@ fi
 if [[ -f "$SRC/mcp.json" ]]; then
   copy_if_missing "$SRC/mcp.json" "$CODEX_DIR/.mcp.json"
 fi
-copy_if_missing "$CODEX_ASSETS/hooks.json" "$CODEX_DIR/hooks/hooks.json"
+if [[ "$SYNC_MODE" -eq 1 ]]; then
+  sync_file "$CODEX_ASSETS/hooks.json" "$CODEX_DIR/hooks/hooks.json" "$CODEX_ASSETS/hooks.json"
+else
+  copy_if_missing "$CODEX_ASSETS/hooks.json" "$CODEX_DIR/hooks/hooks.json"
+fi
 
 # Print report
 printf '\nStack: %s\n' "$STACK"
