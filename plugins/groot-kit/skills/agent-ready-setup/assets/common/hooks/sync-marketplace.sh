@@ -444,7 +444,32 @@ link_claude_asset() {
     return 0
   fi
   if [[ -e "$destination" ]]; then
-    conflicts+=("$destination differs from canonical shared asset $source; neither was overwritten")
+    if [[ ! -f "$destination" || ! -f "$source" ]] || ! cmp -s "$destination" "$source"; then
+      conflicts+=("$destination differs from canonical shared asset $source; neither was overwritten")
+      return 0
+    fi
+
+    temporary_link="${destination}.agent-ready-link.$$"
+    if [[ -e "$temporary_link" || -L "$temporary_link" ]]; then
+      conflicts+=("temporary normalization path already exists for $destination; neither was changed")
+      return 0
+    fi
+    if ! ln -s -- "$target" "$temporary_link"; then
+      rm -f -- "$temporary_link"
+      conflicts+=("could not stage Claude view $destination; neither was changed")
+      return 0
+    fi
+    if [[ -L "$destination" || ! -f "$destination" ]] || ! cmp -s "$destination" "$source"; then
+      rm -f -- "$temporary_link"
+      conflicts+=("$destination changed before normalization; neither was changed")
+      return 0
+    fi
+    if ! mv -f -- "$temporary_link" "$destination"; then
+      rm -f -- "$temporary_link"
+      conflicts+=("could not normalize Claude view $destination; neither was changed")
+      return 0
+    fi
+    record_updated "$destination -> $source"
     return 0
   fi
 

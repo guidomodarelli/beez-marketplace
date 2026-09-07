@@ -213,6 +213,37 @@ run_marketplace_sync() {
   jq -e '.hooks.PostToolUse[0].hooks | index({"type":"command","command":"bash .agents/hooks/check-harness-consistency.sh"})' .claude/settings.json >/dev/null
 }
 
+@test "autonomous sync normalizes identical legacy Claude copies and preserves divergent copies" {
+  dynamic_skill_dir="$test_root/dynamic-skill"
+  cp -R "$skill_dir" "$dynamic_skill_dir"
+
+  run_marketplace_sync "$skill_dir/assets/common/hooks/sync-marketplace.sh" "$dynamic_skill_dir" \
+    --sync --yes
+
+  [ "$status" -eq 0 ]
+  rm .claude/rules/security.md
+  cp .agents/rules/security.md .claude/rules/security.md
+
+  run_marketplace_sync ".agents/hooks/sync-marketplace.sh" "$dynamic_skill_dir" \
+    --sync --yes
+
+  [ "$status" -eq 0 ]
+  [ -L .claude/rules/security.md ]
+  [ "$(readlink .claude/rules/security.md)" = "../../.agents/rules/security.md" ]
+  [[ "$output" != *".claude/rules/security.md differs from canonical shared asset"* ]]
+
+  rm .claude/rules/security.md
+  printf '%s\n' '# Claude-only security override' > .claude/rules/security.md
+
+  run_marketplace_sync ".agents/hooks/sync-marketplace.sh" "$dynamic_skill_dir" \
+    --sync --yes
+
+  [ "$status" -eq 0 ]
+  [ ! -L .claude/rules/security.md ]
+  grep -Fxq '# Claude-only security override' .claude/rules/security.md
+  [[ "$output" == *".claude/rules/security.md differs from canonical shared asset"* ]]
+}
+
 @test "identical legacy Claude copies become canonical symlinks" {
   run_bootstrap frontend
   [ "$status" -eq 0 ]
