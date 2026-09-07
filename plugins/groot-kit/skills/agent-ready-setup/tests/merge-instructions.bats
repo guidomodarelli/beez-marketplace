@@ -528,7 +528,7 @@ EOF
     MERGE_LOG="$merge_log" \
     AGENT_READY_SETUP_SKILL_DIR="$source_dir" \
     PATH="$fake_bin:$PATH" \
-    run bash "$skill_dir/assets/stacks/frontend/hooks/sync-marketplace.sh" \
+    run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
       --provider claude --merge-instructions
 
   [ "$status" -eq 0 ]
@@ -559,7 +559,7 @@ EOF
   printf '%s\n' '{}' > package.json
 
   AGENT_READY_SETUP_SKILL_DIR="$source_dir" PATH="$fake_bin:$PATH" \
-    run bash "$skill_dir/assets/stacks/frontend/hooks/sync-marketplace.sh" \
+    run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
       --provider claude --sync-instructions --yes
 
   [ "$status" -eq 0 ]

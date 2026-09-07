@@ -40,9 +40,10 @@ skill: contiene `@AGENTS.md` más la regla breve de centralización.
 `CLAUDE.md` en subdirectorios contiene únicamente `@AGENTS.md`. Nunca se
 mantienen dos clones de instrucciones.
 
-Templates viven en `assets/stacks/<stack>/` y reflejan estructura de assets.
-El marker `{{AGENT_READY_RULE_REFERENCES}}` se renderiza dinámicamente con cada
-archivo de `rules/`; no mantener listado duplicado en templates.
+Assets comunes viven en `assets/common/`; templates y hooks específicos viven en
+`assets/stacks/<stack>/` y reflejan estructura de assets. El marker
+`{{AGENT_READY_RULE_REFERENCES}}` se renderiza dinámicamente con cada archivo de
+`rules/`; no mantener listado duplicado en templates.
 
 Bootstrap requiere ejecución dentro de un worktree Git. Usa `git check-ignore`
 como fuente de verdad para omitir instrucciones anidadas cubiertas por
