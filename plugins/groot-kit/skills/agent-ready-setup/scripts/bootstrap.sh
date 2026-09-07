@@ -864,6 +864,8 @@ def has_custom_keys(current, expected):
             key not in expected or has_custom_keys(value, expected[key])
             for key, value in current.items()
         )
+    if isinstance(current, list) and isinstance(expected, list):
+        return any(entry not in expected for entry in current)
     return False
 
 
@@ -876,6 +878,14 @@ def merge_managed_template(current, expected):
             else:
                 merged[key] = value
         return merged
+    if isinstance(current, list) and isinstance(expected, list):
+        merged = [
+            merge_managed_template(current[index], expected_entry)
+            if index < len(current)
+            else expected_entry
+            for index, expected_entry in enumerate(expected)
+        ]
+        return merged + current[len(expected):]
     return expected
 
 migrated_settings = migrate(settings)

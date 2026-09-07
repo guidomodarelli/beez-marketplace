@@ -113,7 +113,7 @@ run_bootstrap() {
   printf '%s\n' '# Custom hook' > .claude/hooks/custom.sh
   printf '%s\n' '# Hidden custom hook' > .claude/hooks/.custom-hook
   ln -s "$outside_file" .claude/hooks/custom-link.sh
-  jq '.customSetting = "preserve-me" | .permissions.allow |= map(gsub("\\.agents/hooks/"; ".claude/hooks/")) | .hooks.SessionStart[0].hooks[0].command |= gsub("\\.agents/hooks/"; ".claude/hooks/") | .hooks.PostToolUse[0].hooks[0].command |= gsub("\\.agents/hooks/"; ".claude/hooks/")' .claude/settings.json > "$test_root/settings.json"
+  jq '.customSetting = "preserve-me" | .permissions.allow |= map(gsub("\\.agents/hooks/"; ".claude/hooks/")) | .permissions.allow += ["Bash(custom-project-command)"] | .hooks.SessionStart[0].hooks[0].command |= gsub("\\.agents/hooks/"; ".claude/hooks/") | .hooks.PostToolUse[0].hooks[0].command |= gsub("\\.agents/hooks/"; ".claude/hooks/") | .hooks.PostToolUse[0].hooks += [{"type":"command","command":"bash .agents/hooks/custom-project-hook.sh"}]' .claude/settings.json > "$test_root/settings.json"
   mv "$test_root/settings.json" .claude/settings.json
 
   run_bootstrap frontend --sync --yes
@@ -123,11 +123,28 @@ run_bootstrap() {
   [ -f .claude/hooks/.custom-hook ]
   [ -L .claude/hooks/custom-link.sh ]
   jq -e '.customSetting == "preserve-me"' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(custom-project-command)")' .claude/settings.json >/dev/null
+  jq -e '.hooks.PostToolUse[0].hooks | index({"type":"command","command":"bash .agents/hooks/custom-project-hook.sh"})' .claude/settings.json >/dev/null
   ! grep -Fq '.claude/hooks/' .claude/settings.json
   [[ "$output" == *"Managed asset cleanup conflicts (preserved):"* ]]
   [[ "$output" == *".claude/hooks/custom.sh is custom content; preserved"* ]]
   [[ "$output" == *".claude/hooks/.custom-hook is custom content; preserved"* ]]
   [[ "$output" == *".claude/hooks/custom-link.sh is a custom symlink; preserved"* ]]
+}
+
+@test "sync preserves custom settings array entries without other custom keys" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+
+  jq '.permissions.allow += ["Bash(custom-project-command)"] | .hooks.PostToolUse[0].hooks += [{"type":"command","command":"bash .agents/hooks/custom-project-hook.sh"}]' .claude/settings.json > "$test_root/settings.json"
+  mv "$test_root/settings.json" .claude/settings.json
+
+  run_bootstrap frontend --sync --yes
+
+  [ "$status" -eq 0 ]
+  jq -e '.permissions.allow | index("Bash(custom-project-command)")' .claude/settings.json >/dev/null
+  jq -e '.hooks.PostToolUse[0].hooks | index({"type":"command","command":"bash .agents/hooks/custom-project-hook.sh"})' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)")' .claude/settings.json >/dev/null
 }
 
 @test "identical legacy Claude copies become canonical symlinks" {
