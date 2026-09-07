@@ -545,6 +545,38 @@
           "description": "Repara referencias en archivo canónico"
         }
       ]
+    },
+    {
+      "id": "next-steps-report-distinguishes-automatic-and-manual-work",
+      "description": "Reporta únicamente tareas aplicables y separa validación automática de trabajo manual.",
+      "input": "Explicá cómo debe construir agent-ready-setup la sección Next steps después del bootstrap. El proyecto no tiene `.agents/rules/`, `.agents/skills/` ni `.agents/agents/`, y `CLAUDE.md` raíz ya coincide con `assets/root-claude.md`. Indicá qué debe validarse automáticamente, qué requiere completar manualmente y cómo tratar placeholders o directorios ausentes. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["[AUTO]", "automátic", "automático"],
+          "description": "Distingue validaciones deterministas"
+        },
+        {
+          "type": "contains_any",
+          "values": ["[MANUAL]", "manual", "manualmente"],
+          "description": "Distingue trabajo específico del proyecto"
+        },
+        {
+          "type": "contains_any",
+          "values": ["N/A", "no aplica", "no existe", "no hay"],
+          "description": "No presenta directorios ausentes como pendientes"
+        },
+        {
+          "type": "contains_any",
+          "values": ["scaffold", "comentarios", "{{...}}", "<domain>", "<component-name>"],
+          "description": "Distingue placeholders reales de ejemplos documentales"
+        },
+        {
+          "type": "not_contains_any",
+          "values": ["[AUTO + MANUAL]"],
+          "description": "No mezcla validación automática con resolución manual"
+        }
+      ]
     }
   ]
 }

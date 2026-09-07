@@ -399,21 +399,25 @@ copiados durante bootstrap. No modifica `~/.codex/config.toml`,
 
 ## Step 4 — Report
 
-Mostrar output del script sin alterarlo. En respuestas documentales, enumerar paths relevantes de template detectado además del resumen: para Go incluir `coding-style.md`, `security.md`, `testing.md` y `mcp.json`; para frontend incluir `frontend-style.md`, `security.md`, `testing.md`, `no-unnecessary-mocks.md`, `mcp.json` y `skills/component-creation/`. Luego agregar:
+Mostrar output del script sin alterarlo. En respuestas documentales, enumerar paths relevantes de template detectado además del resumen: para Go incluir `coding-style.md`, `security.md`, `testing.md` y `mcp.json`; para frontend incluir `frontend-style.md`, `security.md`, `testing.md`, `no-unnecessary-mocks.md`, `mcp.json` y `skills/component-creation/`. Luego agregar únicamente acciones aplicables, usando estas etiquetas:
+
+- `[AUTO]`: el agente puede comprobarlo de forma determinista y debe reportar `PASS`, `FAIL` o `N/A` con los paths involucrados.
+- `[MANUAL]`: requiere conocimiento específico del proyecto y no debe presentarse como validación ya realizada.
 
 ```
 Next steps:
-  1. Completar AGENTS.md con descripción, comandos y arquitectura del proyecto.
-  2. Verificar que `CLAUDE.md` raíz sea exactamente igual a `assets/root-claude.md` (contiene `@AGENTS.md` más la regla de centralización); en subdirectorios, debe contener únicamente `@AGENTS.md`.
-  3. Confirmar en `AGENTS.md` una referencia portable y completa a cada `.agents/rules/<relative-path>`; no aceptar `@./rules/...`, `@.agents/rules/...` ni `@path/to/folder`.
-  4. Completar placeholders bajo .agents/rules/, .agents/skills/ y .agents/agents/.
-  5. Configurar o revisar MCP y hooks Codex bajo .codex/ antes de habilitarlos.
-  6. Verificar dimensiones Agent Ready Score bajo .claude/.
+  1. [MANUAL] Completar `AGENTS.md` solo si todavía faltan descripción, comandos, arquitectura u ownership del proyecto.
+  2. [AUTO] Validar que `CLAUDE.md` raíz sea byte-a-byte igual a `assets/root-claude.md` (incluye `@AGENTS.md` y la regla de centralización), y que cada `CLAUDE.md` anidado contenga únicamente `@AGENTS.md` con un `AGENTS.md` hermano. Si no hay archivos anidados, reportar `N/A`.
+  3. [AUTO] Si existe `.agents/rules/`, validar que el bloque gestionado de `AGENTS.md` tenga una referencia portable con instrucción explícita de lectura/seguimiento para cada archivo real; rechazar `@./rules/...`, `@.agents/rules/...` y `@path/to/folder`. Si no existe el directorio o no contiene rules, reportar `N/A`, no una tarea pendiente.
+  4. [AUTO] Si existen archivos bajo `.agents/rules/`, `.agents/skills/` o `.agents/agents/`, detectar comentarios scaffold (`<!-- Add ... -->`, `<!-- Describe ... -->`) y marcadores sin renderizar (`{{...}}`). Reportar cada path. No tratar ejemplos como `<domain>` o `<component-name>` dentro de documentación como placeholders pendientes. Si no existen esos archivos, reportar `N/A`.
+  5. [AUTO] Validar JSON, paths y referencias de MCP/hooks bajo `.codex/`. Si `.codex/` no existe, reportar `N/A`.
+     [MANUAL] Revisar permisos, credenciales, alcance y si corresponde habilitar MCP/hooks; no presentar esa decisión como validada automáticamente.
+  6. [AUTO] Verificar dimensiones de Agent Ready Score solo si existe configuración o reporte bajo `.claude/`; reportar dimensiones faltantes con sus paths. Si no existe score/configuración, reportar `N/A`.
 ```
 
 Si hay archivos omitidos, agregar:
 
-> `Existing files were not modified. Review them to make sure they cover the same dimensions as the templates.`
+> `Existing files were not modified. [AUTO] Verify whether omitted files already cover the same dimensions as the templates; report each path and result.`
 
 Si queda una contradicción semántica irresoluble, detener solo la normalización
 de esos archivos y mostrar paths, fragmentos afectados y motivo por el que falta
