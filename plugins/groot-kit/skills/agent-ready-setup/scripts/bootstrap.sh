@@ -19,7 +19,9 @@ PROVIDER="${AGENT_READY_SETUP_ACTIVE_PROVIDER:-}"
 MARKETPLACE_ALREADY_UPGRADED="${AGENT_READY_SETUP_MARKETPLACE_UPGRADED:-0}"
 SYNC_MODE=0
 AUTO_CONFIRM=0
-SYNC_LOCK_DIRECTORY=".agents/.agent-ready-assets.lock"
+readonly SYNC_LOCK_DIRECTORY=".agents/.agent-ready-assets.lock"
+readonly SYNC_LOCK_OWNER_FILE="$SYNC_LOCK_DIRECTORY/owner"
+readonly SYNC_LOCK_STALE_AFTER_MINUTES=10
 SYNC_LOCK_ACQUIRED=0
 
 while [[ $# -gt 0 ]]; do
@@ -329,9 +331,72 @@ validate_skill_source
 
 # Serializes sync writers so concurrent invocations cannot replace each other's
 # files. Upgrade runs before this lock to keep failed upgrades write-free.
+get_process_start_time() {
+  local process_id="$1"
+
+  ps -p "$process_id" -o lstart= 2>/dev/null | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
+write_sync_lock_owner() {
+  local owner_metadata_temp
+
+  if ! owner_metadata_temp="$(mktemp "${SYNC_LOCK_DIRECTORY}/owner.XXXXXX")"; then
+    return 1
+  fi
+  if ! printf '%s\n%s\n' "$$" "$(get_process_start_time "$$")" > "$owner_metadata_temp"; then
+    rm -f -- "$owner_metadata_temp"
+    return 1
+  fi
+  if ! mv -f -- "$owner_metadata_temp" "$SYNC_LOCK_OWNER_FILE"; then
+    rm -f -- "$owner_metadata_temp"
+    return 1
+  fi
+}
+
+is_legacy_sync_lock_stale() {
+  [[ -d "$SYNC_LOCK_DIRECTORY" && ! -L "$SYNC_LOCK_DIRECTORY" ]] || return 1
+  find "$SYNC_LOCK_DIRECTORY" -prune -type d \
+    -mmin "+$SYNC_LOCK_STALE_AFTER_MINUTES" -print -quit 2>/dev/null | grep -q .
+}
+
+is_sync_lock_stale() {
+  local owner_pid
+  local owner_start_time=""
+  local current_start_time
+
+  [[ -d "$SYNC_LOCK_DIRECTORY" && ! -L "$SYNC_LOCK_DIRECTORY" ]] || return 1
+
+  if [[ -f "$SYNC_LOCK_OWNER_FILE" && ! -L "$SYNC_LOCK_OWNER_FILE" ]]; then
+    IFS= read -r owner_pid < "$SYNC_LOCK_OWNER_FILE" || owner_pid=""
+    if [[ "$owner_pid" =~ ^[1-9][0-9]*$ ]]; then
+      if ! kill -0 "$owner_pid" 2>/dev/null; then
+        return 0
+      fi
+
+      IFS= read -r owner_start_time < <(sed -n '2p' "$SYNC_LOCK_OWNER_FILE") || true
+      if [[ -n "$owner_start_time" ]]; then
+        current_start_time="$(get_process_start_time "$owner_pid")"
+        [[ -n "$current_start_time" && "$current_start_time" != "$owner_start_time" ]] && return 0
+      fi
+
+      return 1
+    fi
+  fi
+
+  is_legacy_sync_lock_stale
+}
+
+reclaim_stale_sync_lock() {
+  is_sync_lock_stale || return 1
+
+  rm -f -- "$SYNC_LOCK_OWNER_FILE"
+  rmdir -- "$SYNC_LOCK_DIRECTORY" 2>/dev/null
+}
+
 # shellcheck disable=SC2329
 release_sync_lock() {
   if [[ "$SYNC_LOCK_ACQUIRED" -eq 1 ]]; then
+    rm -f -- "$SYNC_LOCK_OWNER_FILE"
     rmdir -- "$SYNC_LOCK_DIRECTORY" 2>/dev/null || true
   fi
 }
@@ -340,12 +405,22 @@ acquire_sync_lock() {
   [[ "$SYNC_MODE" -eq 1 ]] || return 0
 
   mkdir -p -- "$SHARED_DIR"
-  if ! mkdir -- "$SYNC_LOCK_DIRECTORY" 2>/dev/null; then
-    echo "WARNING: another asset synchronization is running or left a stale lock; no asset was changed" >&2
-    return 1
+  if mkdir -- "$SYNC_LOCK_DIRECTORY" 2>/dev/null; then
+    SYNC_LOCK_ACQUIRED=1
+    trap release_sync_lock EXIT
+    write_sync_lock_owner
+    return $?
   fi
-  SYNC_LOCK_ACQUIRED=1
-  trap release_sync_lock EXIT
+
+  if reclaim_stale_sync_lock && mkdir -- "$SYNC_LOCK_DIRECTORY" 2>/dev/null; then
+    SYNC_LOCK_ACQUIRED=1
+    trap release_sync_lock EXIT
+    write_sync_lock_owner
+    return $?
+  fi
+
+  printf 'WARNING: another asset synchronization is running or left an active/ambiguous lock; no asset was changed\n' >&2
+  return 1
 }
 
 if [[ "$SYNC_MODE" -eq 1 ]] && ! acquire_sync_lock; then

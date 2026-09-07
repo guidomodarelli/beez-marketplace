@@ -863,6 +863,71 @@ EOF
   cmp -s .agents/hooks/sync-marketplace.sh "$source_dir/assets/common/hooks/sync-marketplace.sh"
 }
 
+@test "sync hook reclaims lock left by terminated process" {
+  source_dir="$test_root/agent-ready-setup"
+  cp -R "$skill_dir"/. "$source_dir"/
+  mkdir -p .agents/.agent-ready-sync.lock
+  (sleep 30) &
+  stale_pid=$!
+  kill "$stale_pid"
+  wait "$stale_pid" 2>/dev/null || true
+  printf '%s\n' "$stale_pid" > .agents/.agent-ready-sync.lock/owner
+
+  AGENT_READY_SETUP_SKILL_DIR="$source_dir" PATH="$test_root/bin:$PATH" \
+    run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
+      --provider claude --stack go --sync --yes
+
+  [ "$status" -eq 0 ]
+  [ ! -e .agents/.agent-ready-sync.lock ]
+  cmp -s .agents/hooks/sync-marketplace.sh "$source_dir/assets/common/hooks/sync-marketplace.sh"
+}
+
+@test "sync hook preserves lock held by live process" {
+  source_dir="$test_root/agent-ready-setup"
+  cp -R "$skill_dir"/. "$source_dir"/
+  mkdir -p .agents/.agent-ready-sync.lock
+  owner_start_time="$(ps -p "$$" -o lstart= | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+  printf '%s\n%s\n' "$$" "$owner_start_time" > .agents/.agent-ready-sync.lock/owner
+
+  AGENT_READY_SETUP_SKILL_DIR="$source_dir" PATH="$test_root/bin:$PATH" \
+    run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
+      --provider claude --stack go --sync --yes
+
+  [ "$status" -eq 0 ]
+  [ -d .agents/.agent-ready-sync.lock ]
+  [[ "$output" == *"active/ambiguous lock"* ]]
+}
+
+@test "sync hook reclaims legacy stale lock without owner metadata" {
+  source_dir="$test_root/agent-ready-setup"
+  cp -R "$skill_dir"/. "$source_dir"/
+  mkdir -p .agents/.agent-ready-sync.lock
+  touch -t 200001010000 .agents/.agent-ready-sync.lock
+
+  AGENT_READY_SETUP_SKILL_DIR="$source_dir" PATH="$test_root/bin:$PATH" \
+    run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
+      --provider claude --stack go --sync --yes
+
+  [ "$status" -eq 0 ]
+  [ ! -e .agents/.agent-ready-sync.lock ]
+  cmp -s .agents/hooks/sync-marketplace.sh "$source_dir/assets/common/hooks/sync-marketplace.sh"
+}
+
+@test "bootstrap reclaims asset lock left by terminated process" {
+  mkdir -p .agents/.agent-ready-assets.lock
+  (sleep 30) &
+  stale_pid=$!
+  kill "$stale_pid"
+  wait "$stale_pid" 2>/dev/null || true
+  printf '%s\n' "$stale_pid" > .agents/.agent-ready-assets.lock/owner
+
+  run_bootstrap frontend --sync --yes
+
+  [ "$status" -eq 0 ]
+  [ ! -e .agents/.agent-ready-assets.lock ]
+  [ -f .agents/hooks/sync-marketplace.sh ]
+}
+
 @test "sync hooks do not project content when marketplace upgrade fails" {
   fake_bin="$test_root/bin"
   source_dir="$test_root/agent-ready-setup"
