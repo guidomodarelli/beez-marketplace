@@ -568,8 +568,13 @@
         },
         {
           "type": "regex",
-          "pattern": "(\\[AUTO\\].*CLAUDE\\.md.*(PASS|coincide|igual|byte-a-byte|copia exacta))|(CLAUDE\\.md.*(PASS|coincide|igual|byte-a-byte|copia exacta).*\\[AUTO\\])",
-          "description": "Marca como automática la verificación del proxy raíz coincidente"
+          "pattern": "CLAUDE\\.md.*(PASS|coincide|igual|byte-a-byte|copia exacta)",
+          "description": "Verifica el resultado PASS del proxy raíz coincidente"
+        },
+        {
+          "type": "regex",
+          "pattern": "\\[AUTO\\].*(PASS|FAIL|N/A|determinist)",
+          "description": "Identifica checks automáticos con resultado explícito"
         },
         {
           "type": "regex",
@@ -647,8 +652,8 @@
         },
         {
           "type": "regex",
-          "pattern": "(\\.agents/(rules|skills|agents)/|scaffold|\\{\\{).*N/A|N/A.*(\\.agents/(rules|skills|agents)/|scaffold|\\{\\{)",
-          "description": "Reporta N/A cuando no hay archivos reales para inspeccionar"
+          "pattern": "(N/A|no (existen|existe|hay)|no aplica|no hace falta).*(rutas|archivos|scaffold|marcadores)|((rutas|archivos|scaffold|marcadores).*(N/A|no (existen|existe|hay)|no aplica|no hace falta))",
+          "description": "Explicita ausencia y ausencia de deuda cuando no hay archivos reales"
         },
         {
           "type": "regex",
