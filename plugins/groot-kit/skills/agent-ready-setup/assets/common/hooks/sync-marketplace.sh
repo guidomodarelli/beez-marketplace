@@ -535,6 +535,150 @@ project_stack_assets() {
   done < <(find "$source_root" -type f -print0)
 }
 
+sync_claude_settings() {
+  local template="$1"
+  local destination="$CLAUDE_DIRECTORY/settings.json"
+  local temporary_settings
+  local merge_status=0
+
+  if [[ -L "$destination" ]]; then
+    conflicts+=("$destination is a symlink; preserved")
+    return 0
+  fi
+  if [[ -e "$destination" && ! -f "$destination" ]]; then
+    conflicts+=("$destination is not a regular file; preserved")
+    return 0
+  fi
+  if [[ ! -f "$destination" ]]; then
+    sync_file "$template" "$destination"
+    return 0
+  fi
+
+  temporary_settings="$(mktemp "${TMPDIR:-/tmp}/agent-ready-settings.XXXXXX")"
+  python3 - "$template" "$destination" > "$temporary_settings" <<'PY' || merge_status=$?
+import json
+import sys
+
+template_path, settings_path = sys.argv[1:3]
+try:
+    with open(template_path, encoding="utf-8") as template_file:
+        template = json.load(template_file)
+    with open(settings_path, encoding="utf-8") as settings_file:
+        settings = json.load(settings_file)
+except (OSError, json.JSONDecodeError):
+    sys.exit(1)
+
+
+def migrate(value):
+    if isinstance(value, dict):
+        return {key: migrate(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [migrate(item) for item in value]
+    if isinstance(value, str) and (
+        value.startswith("Bash(.claude/hooks/")
+        or value.startswith("bash .claude/hooks/")
+    ):
+        return value.replace(".claude/hooks/", ".agents/hooks/", 1)
+    return value
+
+
+def has_custom_keys(current, expected):
+    if isinstance(current, dict) and isinstance(expected, dict):
+        return any(
+            key not in expected or has_custom_keys(value, expected[key])
+            for key, value in current.items()
+        )
+    if isinstance(current, list) and isinstance(expected, list):
+        return any(entry not in expected for entry in current)
+    return False
+
+
+def matches_managed_template(current, expected):
+    if isinstance(current, dict) and isinstance(expected, dict):
+        return all(
+            key in current and matches_managed_template(current[key], value)
+            for key, value in expected.items()
+        )
+    if isinstance(current, list) and isinstance(expected, list):
+        current_index = 0
+        for expected_entry in expected:
+            matching_index = next(
+                (
+                    index
+                    for index in range(current_index, len(current))
+                    if matches_managed_template(current[index], expected_entry)
+                ),
+                None,
+            )
+            if matching_index is None:
+                return False
+            current_index = matching_index + 1
+        return True
+    return current == expected
+
+
+def merge_managed_template(current, expected):
+    if isinstance(current, dict) and isinstance(expected, dict):
+        merged = dict(current)
+        for key, value in expected.items():
+            if key in current:
+                merged[key] = merge_managed_template(current[key], value)
+            else:
+                merged[key] = value
+        return merged
+    if isinstance(current, list) and isinstance(expected, list):
+        if len(current) == len(expected):
+            return [
+                merge_managed_template(current[index], expected_entry)
+                for index, expected_entry in enumerate(expected)
+            ]
+        remaining_current = list(current)
+        merged = []
+        for expected_entry in expected:
+            matching_index = next(
+                (
+                    index
+                    for index, current_entry in enumerate(remaining_current)
+                    if matches_managed_template(current_entry, expected_entry)
+                ),
+                None,
+            )
+            if matching_index is None:
+                merged.append(expected_entry)
+                continue
+            merged.extend(remaining_current[:matching_index])
+            merged.append(
+                merge_managed_template(
+                    remaining_current[matching_index], expected_entry
+                )
+            )
+            remaining_current = remaining_current[matching_index + 1 :]
+        return merged + remaining_current
+    return expected
+
+migrated_settings = migrate(settings)
+if not has_custom_keys(migrated_settings, template):
+    sys.exit(10)
+
+json.dump(merge_managed_template(migrated_settings, template), sys.stdout, indent=2)
+sys.stdout.write("\n")
+PY
+
+  case "$merge_status" in
+    0)
+      sync_file "$temporary_settings" "$destination"
+      ;;
+    10)
+      cp -- "$template" "$temporary_settings"
+      sync_file "$temporary_settings" "$destination"
+      ;;
+    *)
+      conflicts+=("$destination contains invalid JSON; preserved")
+      ;;
+  esac
+  rm -f -- "$temporary_settings"
+}
+
 sync_lock_acquired=0
 
 get_process_start_time() {
@@ -650,7 +794,7 @@ fi
 # shared tree remains canonical, while Claude and Codex receive provider views.
 project_stack_assets
 
-sync_file "$skill_dir/assets/common/settings.json" "$CLAUDE_DIRECTORY/settings.json"
+sync_claude_settings "$skill_dir/assets/common/settings.json"
 sync_file "$skill_dir/assets/codex/hooks.json" "$CODEX_DIRECTORY/hooks/hooks.json"
 
 echo "[marketplace-sync] Local managed asset projection completed for $stack."

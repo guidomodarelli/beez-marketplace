@@ -32,6 +32,20 @@ run_bootstrap() {
     "$@"
 }
 
+run_marketplace_sync() {
+  local hook_path="$1"
+  local source_skill_dir="$2"
+  shift 2
+
+  run env \
+    PATH="$test_root/bin:$PATH" \
+    AGENT_READY_SETUP_SKILL_DIR="$source_skill_dir" \
+    bash "$hook_path" \
+    --provider claude \
+    --stack frontend \
+    "$@"
+}
+
 @test "bootstrap projects Claude, shared, and Codex trees" {
   run_bootstrap frontend
 
@@ -163,6 +177,39 @@ run_bootstrap() {
   jq -e '.permissions.allow[0] == "Bash(custom-before-managed)"' .claude/settings.json >/dev/null
   jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)")' .claude/settings.json >/dev/null
   jq -e '.hooks.PostToolUse[0].hooks[0] == {"type":"command","command":"bash .agents/hooks/custom-before-managed.sh"}' .claude/settings.json >/dev/null
+  jq -e '.hooks.PostToolUse[0].hooks | index({"type":"command","command":"bash .agents/hooks/check-harness-consistency.sh"})' .claude/settings.json >/dev/null
+}
+
+@test "autonomous sync merges custom Claude settings before instruction merge" {
+  dynamic_skill_dir="$test_root/dynamic-skill"
+  cp -R "$skill_dir" "$dynamic_skill_dir"
+
+  run_marketplace_sync "$skill_dir/assets/common/hooks/sync-marketplace.sh" "$dynamic_skill_dir" \
+    --sync-instructions --yes
+
+  [ "$status" -eq 0 ]
+  [ -f .claude/settings.json ]
+
+  jq '
+    .customSetting = "preserve-me"
+    | .permissions.allow = ["Bash(custom-before-managed)"] + .permissions.allow
+    | .hooks.PostToolUse[0].hooks = [{"type":"command","command":"bash .agents/hooks/custom-project-hook.sh"}] + .hooks.PostToolUse[0].hooks
+  ' .claude/settings.json > "$test_root/settings.json"
+  mv "$test_root/settings.json" .claude/settings.json
+
+  jq '.newManagedSetting = "new-value"' \
+    "$dynamic_skill_dir/assets/common/settings.json" > "$test_root/template.json"
+  mv "$test_root/template.json" "$dynamic_skill_dir/assets/common/settings.json"
+
+  run_marketplace_sync ".agents/hooks/sync-marketplace.sh" "$dynamic_skill_dir" \
+    --sync-instructions --yes
+
+  [ "$status" -eq 0 ]
+  jq -e '.customSetting == "preserve-me"' .claude/settings.json >/dev/null
+  jq -e '.newManagedSetting == "new-value"' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow[0] == "Bash(custom-before-managed)"' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)")' .claude/settings.json >/dev/null
+  jq -e '.hooks.PostToolUse[0].hooks[0] == {"type":"command","command":"bash .agents/hooks/custom-project-hook.sh"}' .claude/settings.json >/dev/null
   jq -e '.hooks.PostToolUse[0].hooks | index({"type":"command","command":"bash .agents/hooks/check-harness-consistency.sh"})' .claude/settings.json >/dev/null
 }
 
