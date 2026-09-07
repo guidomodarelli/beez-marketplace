@@ -486,6 +486,7 @@ create_skill_adapter() {
     conflicts+=("could not render skill adapter for $source; neither was changed")
     return 0
   fi
+  chmod 0644 "$temporary_adapter"
 
   sync_file "$temporary_adapter" "$destination" "$source"
   rm -f -- "$temporary_adapter"

@@ -978,6 +978,10 @@ EOF
   cmp -s .agents/agents/security-scanner.md "$source_dir/assets/stacks/go/agents/security-scanner.md"
   cmp -s .agents/commands/review-pr.md "$source_dir/assets/stacks/go/commands/review-pr.md"
   grep -Fq '# Fury deploy' .agents/skills/fury-deploy/SKILL.md
+  adapter_mode="$(python3 -c 'import os, stat, sys; print(format(stat.S_IMODE(os.stat(sys.argv[1]).st_mode), "o"))' .agents/skills/fury-deploy/SKILL.md)"
+  [ "$adapter_mode" = "644" ]
+  claude_adapter_mode="$(python3 -c 'import os, stat, sys; print(format(stat.S_IMODE(os.stat(sys.argv[1]).st_mode), "o"))' .claude/skills/fury-deploy/SKILL.md)"
+  [ "$claude_adapter_mode" = "644" ]
   cmp -s .agents/mcp.json "$source_dir/assets/stacks/go/mcp.json"
   cmp -s .claude/settings.json "$source_dir/assets/common/settings.json"
   cmp -s .codex/hooks/hooks.json "$source_dir/assets/codex/hooks.json"
