@@ -627,11 +627,6 @@ def merge_managed_template(current, expected):
                 merged[key] = value
         return merged
     if isinstance(current, list) and isinstance(expected, list):
-        if len(current) == len(expected):
-            return [
-                merge_managed_template(current[index], expected_entry)
-                for index, expected_entry in enumerate(expected)
-            ]
         remaining_current = list(current)
         merged = []
         for expected_entry in expected:

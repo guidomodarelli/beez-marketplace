@@ -882,6 +882,24 @@ EOF
   grep -Fq '# Updated marketplace template' .agents/rules/security.md
 }
 
+@test "sync hook preserves custom Claude array entries with equal length" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+
+  jq '.permissions.allow[0] = "Bash(custom-command)"' .claude/settings.json > "$test_root/settings.json"
+  mv "$test_root/settings.json" .claude/settings.json
+
+  AGENT_READY_SETUP_SKILL_DIR="$skill_dir" PATH="$test_root/bin:$PATH" \
+    run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
+      --provider claude --stack frontend --sync-instructions --yes
+
+  [ "$status" -eq 0 ]
+  jq -e '.permissions.allow | length == 3' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(custom-command)") != null' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)") != null' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/check-harness-consistency.sh)") != null' .claude/settings.json >/dev/null
+}
+
 @test "sync hook projects managed assets without bootstrap" {
   fake_bin="$test_root/bin"
   source_dir="$test_root/agent-ready-setup"
