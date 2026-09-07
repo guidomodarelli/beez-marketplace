@@ -226,11 +226,11 @@ recursiva de instrucciones respeta `.gitignore` y nunca recorre `node_modules/`;
 esta regla no impide crear los destinos explícitos `.claude/`, `.agents/` y
 `.codex/`. Los hooks de sincronización reciben provider explícito (`--provider
 claude` desde `.claude/settings.json` y `--provider codex` desde `.codex/`),
-pero ambos ejecutan el script canónico bajo `.agents/hooks/`. Las
-configuraciones generadas agregan `--sync-instructions`, que activa también
-`--sync` y reproyecta contenido actualizado. `-p` es alias de `--provider`; al
-invocarse directamente desde `.agents/hooks/`, el script infiere `codex` si no
-se especifica provider. También normaliza instrucciones raíz:
+y el hook canónico bajo `.agents/hooks/` es autosuficiente: no necesita que
+`bootstrap.sh` exista dentro del repositorio consumidor. `-p` es alias de
+`--provider`; al invocarse directamente desde `.agents/hooks/`, el script
+infiere `codex` si no se especifica provider. También normaliza instrucciones
+raíz:
 
 1. Si `CLAUDE.md` raíz ya es byte-a-byte igual a `assets/root-claude.md`, lo
    considera normalizado y no lo modifica.
@@ -251,18 +251,23 @@ se especifica provider. También normaliza instrucciones raíz:
 `fury ai assets marketplace upgrade` actualiza la copia global del marketplace;
 no vuelve a proyectar por sí mismo los templates sobre un proyecto ya preparado.
 `bootstrap.sh` ejecuta ese upgrade automáticamente para el provider activo antes
-de proyectar assets o adquirir lock local. Los hooks generados actualizan primero,
-resuelven la fuente instalada y luego invocan `bootstrap.sh --sync --yes` sin
-repetir upgrade. El modo
-`--sync-instructions` ejecuta además merge IA sobre `AGENTS.md`, usando catálogo
-de rules renderizado y provider explícito.
+de proyectar assets o adquirir lock local. El hook canónico
+`.agents/hooks/sync-marketplace.sh` también ejecuta el upgrade, resuelve la fuente
+instalada y proyecta de forma autónoma el hook común, los hooks de
+`assets/stacks/<stack>/hooks/`, `.claude/settings.json` y
+`.codex/hooks/hooks.json`; no invoca ni requiere `bootstrap.sh` dentro del repo
+consumidor. El modo `--sync-instructions` ejecuta además merge IA sobre
+`AGENTS.md` cuando el helper está disponible, usando catálogo de rules renderizado
+y provider explícito.
 
 `--sync` compara cada asset gestionado con el template actualizado y muestra
 `diff -u` antes de reemplazar un archivo existente. El reemplazo requiere una
 confirmación interactiva; `--yes` habilita la aplicación no interactiva solo
 cuando se proporciona explícitamente. Sin TTY, el script muestra las diferencias,
-conserva los bytes locales y reporta la sincronización pendiente. `--sync` solo
-no modifica instrucciones raíz ni ejecuta IA; usar `--sync-instructions` para
+conserva los bytes locales y reporta la sincronización pendiente. Con
+`--sync --yes`, `.agents/hooks/sync-marketplace.sh` queda byte a byte igual al
+hook común y cada hook del stack coincide con su template. `--sync` solo no
+modifica instrucciones raíz ni ejecuta IA; usar `--sync-instructions` para
 analizar y reparar referencias en `AGENTS.md`.
 
 ### Riesgos del upgrade automático

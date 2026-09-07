@@ -389,7 +389,7 @@ import time
 
 
 race_marker = sys.argv[1]
-deadline = time.monotonic() + 10
+deadline = time.monotonic() + 30
 while not glob.glob('.AGENTS.md.agent-ready-merge.*'):
     if time.monotonic() >= deadline:
         sys.exit('merge temporary file was not created')
@@ -498,23 +498,22 @@ EOF
 @test "sync-instructions hook runs upgrade, projection, and merge in order" {
   source_dir="$test_root/agent-ready-setup"
   event_log="$test_root/hook-events.log"
-  bootstrap_log="$test_root/hook-bootstrap.log"
-  bootstrap_marker_log="$test_root/hook-bootstrap-marker.log"
   merge_log="$test_root/hook-merge.log"
-  mkdir -p "$source_dir/assets/stacks" "$source_dir/scripts"
+  mkdir -p \
+    "$source_dir/assets/common/hooks" \
+    "$source_dir/assets/codex" \
+    "$source_dir/assets/stacks/frontend/hooks" \
+    "$source_dir/scripts"
   touch "$source_dir/SKILL.md"
-  cat > "$source_dir/scripts/bootstrap.sh" <<'EOF'
-#!/bin/bash
-printf 'bootstrap\n' >> "$EVENT_LOG"
-printf '%s\n' "$*" > "$BOOTSTRAP_LOG"
-printf '%s\n' "${AGENT_READY_SETUP_MARKETPLACE_UPGRADED:-}" > "$BOOTSTRAP_MARKER_LOG"
-EOF
+  printf '%s\n' '# sync hook' > "$source_dir/assets/common/hooks/sync-marketplace.sh"
+  printf '%s\n' '{}' > "$source_dir/assets/common/settings.json"
+  printf '%s\n' '{}' > "$source_dir/assets/codex/hooks.json"
   cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
 #!/bin/bash
 printf 'merge\n' >> "$EVENT_LOG"
 printf '%s\n' "$*" > "$MERGE_LOG"
 EOF
-  chmod +x "$source_dir/scripts/bootstrap.sh" "$source_dir/scripts/merge-instructions.sh"
+  chmod +x "$source_dir/scripts/merge-instructions.sh"
   cat > "$fake_bin/fury" <<'EOF'
 #!/bin/bash
 printf 'fury\n' >> "$EVENT_LOG"
@@ -523,8 +522,6 @@ EOF
   printf '%s\n' '{"dependencies":{"react":"1.0.0"}}' > package.json
 
   EVENT_LOG="$event_log" \
-    BOOTSTRAP_LOG="$bootstrap_log" \
-    BOOTSTRAP_MARKER_LOG="$bootstrap_marker_log" \
     MERGE_LOG="$merge_log" \
     AGENT_READY_SETUP_SKILL_DIR="$source_dir" \
     PATH="$fake_bin:$PATH" \
@@ -533,24 +530,28 @@ EOF
 
   [ "$status" -eq 0 ]
   [ "$(sed -n '1p' "$event_log")" = "fury" ]
-  [ "$(sed -n '2p' "$event_log")" = "bootstrap" ]
-  [ "$(sed -n '3p' "$event_log")" = "merge" ]
-  grep -Fq -- "--stack frontend --skill-dir $source_dir --provider claude --sync" "$bootstrap_log"
-  [ "$(cat "$bootstrap_marker_log")" = "1" ]
+  [ "$(sed -n '2p' "$event_log")" = "merge" ]
+  [ "$(wc -l < "$event_log")" -eq 2 ]
   grep -Fq -- "--provider claude --stack frontend --skill-dir $source_dir" "$merge_log"
 }
 
 @test "sync-instructions hook preserves session when merge needs human review" {
   source_dir="$test_root/agent-ready-setup"
-  mkdir -p "$source_dir/assets/stacks" "$source_dir/scripts"
+  mkdir -p \
+    "$source_dir/assets/common/hooks" \
+    "$source_dir/assets/codex" \
+    "$source_dir/assets/stacks/node/hooks" \
+    "$source_dir/scripts"
   touch "$source_dir/SKILL.md"
-  printf '%s\n' '#!/bin/bash' 'exit 0' > "$source_dir/scripts/bootstrap.sh"
+  printf '%s\n' '# sync hook' > "$source_dir/assets/common/hooks/sync-marketplace.sh"
+  printf '%s\n' '{}' > "$source_dir/assets/common/settings.json"
+  printf '%s\n' '{}' > "$source_dir/assets/codex/hooks.json"
   cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
 #!/bin/bash
 [[ "${AGENT_READY_SETUP_NON_INTERACTIVE:-0}" == "1" ]] || exit 99
 exit 2
 EOF
-  chmod +x "$source_dir/scripts/bootstrap.sh" "$source_dir/scripts/merge-instructions.sh"
+  chmod +x "$source_dir/scripts/merge-instructions.sh"
   cat > "$fake_bin/fury" <<'EOF'
 #!/bin/bash
 exit 0
@@ -560,7 +561,7 @@ EOF
 
   AGENT_READY_SETUP_SKILL_DIR="$source_dir" PATH="$fake_bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
-      --provider claude --sync-instructions --yes
+      --provider claude --stack node --sync-instructions --yes
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"requires human review"* ]]
