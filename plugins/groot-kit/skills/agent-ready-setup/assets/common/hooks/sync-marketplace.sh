@@ -390,6 +390,151 @@ sync_file() {
   record_updated "$destination"
 }
 
+relative_shared_target() {
+  local relative="$1"
+  local destination_directory
+  local slash_count
+  local parent_levels=1
+  local level
+  local prefix=""
+
+  if [[ "$relative" == */* ]]; then
+    destination_directory="${relative%/*}"
+    slash_count="${destination_directory//[^\/]/}"
+    parent_levels=$(( ${#slash_count} + 2 ))
+  fi
+
+  for ((level = 0; level < parent_levels; level++)); do
+    prefix+="../"
+  done
+
+  printf '%s%s/%s\n' "$prefix" "$AGENTS_DIRECTORY" "$relative"
+}
+
+link_claude_asset() {
+  local relative="$1"
+  local source="$AGENTS_DIRECTORY/$relative"
+  local destination="$CLAUDE_DIRECTORY/$relative"
+  local target
+  local temporary_link
+
+  case "$relative" in
+    ""|/*|../*|*/../*|*/..)
+      conflicts+=("invalid shared asset path: $relative; no Claude view was created")
+      return 0
+      ;;
+  esac
+
+  if [[ ! -e "$source" && ! -L "$source" ]]; then
+    conflicts+=("canonical shared asset is missing: $source; no Claude view was created")
+    return 0
+  fi
+  if ! validate_destination_parent "$destination"; then
+    return 0
+  fi
+  mkdir -p -- "$(dirname -- "$destination")"
+  target="$(relative_shared_target "$relative")"
+
+  if [[ -L "$destination" ]]; then
+    if [[ "$(readlink -- "$destination")" == "$target" ]]; then
+      record_skipped "$destination"
+    else
+      conflicts+=("$destination is a custom symlink; preserved")
+    fi
+    return 0
+  fi
+  if [[ -e "$destination" ]]; then
+    conflicts+=("$destination differs from canonical shared asset $source; neither was overwritten")
+    return 0
+  fi
+
+  temporary_link="${destination}.agent-ready-link.$$"
+  if [[ -e "$temporary_link" || -L "$temporary_link" ]]; then
+    conflicts+=("temporary normalization path already exists for $destination; neither was changed")
+    return 0
+  fi
+  if ! ln -s -- "$target" "$temporary_link" || ! mv -- "$temporary_link" "$destination"; then
+    rm -f -- "$temporary_link"
+    conflicts+=("could not create Claude view $destination; neither was changed")
+    return 0
+  fi
+  record_created "$destination"
+}
+
+create_skill_adapter() {
+  local source="$1"
+  local skill_name="$2"
+  local destination="$AGENTS_DIRECTORY/skills/$skill_name/SKILL.md"
+  local temporary_adapter
+
+  if ! temporary_adapter="$(mktemp "${TMPDIR:-/tmp}/agent-ready-adapter.XXXXXX")"; then
+    conflicts+=("could not stage skill adapter for $source; neither was changed")
+    return 0
+  fi
+  if ! {
+    printf '%s\n' '---'
+    printf 'name: %s\n' "$skill_name"
+    printf 'description: Provider-neutral reusable workflow for %s.\n' "$skill_name"
+    printf '%s\n\n' '---'
+    awk '
+      NR == 1 && $0 == "---" { in_frontmatter = 1; next }
+      in_frontmatter && $0 == "---" { in_frontmatter = 0; next }
+      !in_frontmatter { print }
+    ' "$source"
+  } > "$temporary_adapter"; then
+    rm -f -- "$temporary_adapter"
+    conflicts+=("could not render skill adapter for $source; neither was changed")
+    return 0
+  fi
+
+  sync_file "$temporary_adapter" "$destination" "$source"
+  rm -f -- "$temporary_adapter"
+  link_claude_asset "skills/$skill_name/SKILL.md"
+}
+
+project_stack_assets() {
+  local source_root="$skill_dir/assets/stacks/$stack"
+  local source_asset
+  local relative_asset
+  local skill_name
+
+  [[ -d "$source_root" ]] || return 0
+
+  while IFS= read -r -d '' source_asset; do
+    relative_asset="${source_asset#"$source_root/"}"
+    case "$relative_asset" in
+      CLAUDE.md|hooks/*)
+        continue
+        ;;
+      mcp.json)
+        sync_file "$source_asset" "$AGENTS_DIRECTORY/$relative_asset"
+        link_claude_asset "$relative_asset"
+        sync_file "$source_asset" "$CODEX_DIRECTORY/.mcp.json"
+        ;;
+      skills/*/SKILL.md)
+        skill_name="${relative_asset#skills/}"
+        skill_name="${skill_name%/SKILL.md}"
+        create_skill_adapter "$source_asset" "$skill_name"
+        ;;
+      skills/*/*.md)
+        sync_file "$source_asset" "$AGENTS_DIRECTORY/$relative_asset"
+        link_claude_asset "$relative_asset"
+        ;;
+      agents/*.md|commands/*.md|skills/*.md)
+        sync_file "$source_asset" "$AGENTS_DIRECTORY/$relative_asset"
+        link_claude_asset "$relative_asset"
+        skill_name="${relative_asset##*/}"
+        skill_name="${skill_name%.md}"
+        create_skill_adapter "$source_asset" "$skill_name"
+        ;;
+      *)
+        sync_file "$source_asset" "$AGENTS_DIRECTORY/$relative_asset"
+        link_claude_asset "$relative_asset"
+        ;;
+    esac
+  done < <(find "$source_root" -type f -print0)
+}
+
 sync_lock_acquired=0
 
 get_process_start_time() {
@@ -500,6 +645,10 @@ if [[ -d "$stack_hooks_directory" ]]; then
     sync_file "$source_hook" "$AGENTS_DIRECTORY/hooks/$relative_hook"
   done < <(find "$stack_hooks_directory" -type f -print0)
 fi
+
+# Project all non-hook stack assets before merging instruction references. The
+# shared tree remains canonical, while Claude and Codex receive provider views.
+project_stack_assets
 
 sync_file "$skill_dir/assets/common/settings.json" "$CLAUDE_DIRECTORY/settings.json"
 sync_file "$skill_dir/assets/codex/hooks.json" "$CODEX_DIRECTORY/hooks/hooks.json"

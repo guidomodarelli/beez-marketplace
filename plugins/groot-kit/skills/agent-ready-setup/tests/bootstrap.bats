@@ -845,19 +845,47 @@ EOF
     "$source_dir/assets/common/hooks" \
     "$source_dir/assets/codex" \
     "$source_dir/assets/stacks/go/hooks" \
-    "$source_dir/scripts"
+    "$source_dir/assets/stacks/go/rules" \
+    "$source_dir/assets/stacks/go/agents" \
+    "$source_dir/assets/stacks/go/commands" \
+    "$source_dir/assets/stacks/go/skills/fury-deploy" \
+    "$source_dir/scripts" \
+    .agents/rules
   touch "$source_dir/SKILL.md"
   printf '%s\n' '# updated common sync hook' > "$source_dir/assets/common/hooks/sync-marketplace.sh"
   printf '%s\n' '{"settings":"updated"}' > "$source_dir/assets/common/settings.json"
   printf '%s\n' '{"hooks":"updated"}' > "$source_dir/assets/codex/hooks.json"
   printf '%s\n' '#!/bin/bash' > "$source_dir/assets/stacks/go/hooks/check-harness-consistency.sh"
   printf '%s\n' '# updated pre-tool hook' > "$source_dir/assets/stacks/go/hooks/pre-tool-use.md"
+  printf '%s\n' '# updated coding style' > "$source_dir/assets/stacks/go/rules/coding-style.md"
+  printf '%s\n' '# security scanner' > "$source_dir/assets/stacks/go/agents/security-scanner.md"
+  printf '%s\n' '# review command' > "$source_dir/assets/stacks/go/commands/review-pr.md"
+  cat > "$source_dir/assets/stacks/go/skills/fury-deploy/SKILL.md" <<'EOF'
+---
+name: fury-deploy
+description: Deploy Fury applications.
+---
+
+# Fury deploy
+EOF
+  printf '%s\n' '{"mcp":"updated"}' > "$source_dir/assets/stacks/go/mcp.json"
+  printf '%s\n' '# previous coding style' > .agents/rules/coding-style.md
   cat > "$source_dir/scripts/bootstrap.sh" <<'EOF'
 #!/bin/bash
 printf 'bootstrap\n' >> "$EVENT_LOG"
 printf '%s\n' "$*" > "$BOOTSTRAP_INVOCATION_LOG"
 EOF
   chmod +x "$source_dir/scripts/bootstrap.sh"
+  cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
+#!/bin/bash
+[[ -f .agents/rules/coding-style.md ]] || exit 42
+[[ -f .agents/agents/security-scanner.md ]] || exit 42
+[[ -f .agents/commands/review-pr.md ]] || exit 42
+[[ -f .agents/skills/fury-deploy/SKILL.md ]] || exit 42
+[[ -f .codex/.mcp.json ]] || exit 42
+printf 'merge\n' >> "$EVENT_LOG"
+EOF
+  chmod +x "$source_dir/scripts/merge-instructions.sh"
   cat > "$fake_bin/fury" <<'EOF'
 #!/bin/bash
 printf 'fury\n' >> "$EVENT_LOG"
@@ -870,18 +898,30 @@ EOF
     AGENT_READY_SETUP_SKILL_DIR="$source_dir" \
     PATH="$fake_bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
-      --provider claude --stack go --sync --yes
+      --provider claude --stack go --sync-instructions --yes
 
   [ "$status" -eq 0 ]
   [ "$(sed -n '1p' "$event_log")" = "fury" ]
-  [ "$(wc -l < "$event_log")" -eq 1 ]
+  [ "$(sed -n '2p' "$event_log")" = "merge" ]
+  [ "$(wc -l < "$event_log")" -eq 2 ]
   [ ! -e "$bootstrap_log" ]
   grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider claude' "$test_root/fury.log"
   cmp -s .agents/hooks/sync-marketplace.sh "$source_dir/assets/common/hooks/sync-marketplace.sh"
   cmp -s .agents/hooks/check-harness-consistency.sh "$source_dir/assets/stacks/go/hooks/check-harness-consistency.sh"
   cmp -s .agents/hooks/pre-tool-use.md "$source_dir/assets/stacks/go/hooks/pre-tool-use.md"
+  cmp -s .agents/rules/coding-style.md "$source_dir/assets/stacks/go/rules/coding-style.md"
+  cmp -s .agents/agents/security-scanner.md "$source_dir/assets/stacks/go/agents/security-scanner.md"
+  cmp -s .agents/commands/review-pr.md "$source_dir/assets/stacks/go/commands/review-pr.md"
+  grep -Fq '# Fury deploy' .agents/skills/fury-deploy/SKILL.md
+  cmp -s .agents/mcp.json "$source_dir/assets/stacks/go/mcp.json"
   cmp -s .claude/settings.json "$source_dir/assets/common/settings.json"
   cmp -s .codex/hooks/hooks.json "$source_dir/assets/codex/hooks.json"
+  cmp -s .codex/.mcp.json "$source_dir/assets/stacks/go/mcp.json"
+  [ -L .claude/rules/coding-style.md ]
+  [ "$(readlink .claude/rules/coding-style.md)" = "../../.agents/rules/coding-style.md" ]
+  [ -L .claude/agents/security-scanner.md ]
+  [ -L .claude/commands/review-pr.md ]
+  [ -L .claude/skills/fury-deploy/SKILL.md ]
 }
 
 @test "bootstrap creates new managed assets through atomic rename" {
