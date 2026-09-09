@@ -631,7 +631,19 @@
             "- .*automátic.*manual",
             "- .*manual.*automátic",
             "^[[:space:]]\\{2,\\}\\[AUTO\\]",
-            "^[[:space:]]\\{2,\\}\\[MANUAL\\]"
+            "^[[:space:]]\\{2,\\}\\[MANUAL\\]",
+            "\\[AUTO\\].*permis",
+            "\\[AUTO\\].*permission",
+            "\\[AUTO\\].*permiss",
+            "\\[AUTO\\].*credenc",
+            "\\[AUTO\\].*credential",
+            "\\[AUTO\\].*alcance",
+            "\\[AUTO\\].*escopo",
+            "\\[AUTO\\].*scope",
+            "\\[AUTO\\].*habilit",
+            "\\[AUTO\\].*autoriza",
+            "\\[AUTO\\].*authoriz",
+            "\\[AUTO\\].*enable"
           ],
           "description": "Rechaza mezclar acciones automáticas y manuales dentro del mismo paso"
         }
@@ -713,7 +725,19 @@
             "- .*automátic.*manual",
             "- .*manual.*automátic",
             "^[[:space:]]\\{2,\\}\\[AUTO\\]",
-            "^[[:space:]]\\{2,\\}\\[MANUAL\\]"
+            "^[[:space:]]\\{2,\\}\\[MANUAL\\]",
+            "\\[AUTO\\].*permis",
+            "\\[AUTO\\].*permission",
+            "\\[AUTO\\].*permiss",
+            "\\[AUTO\\].*credenc",
+            "\\[AUTO\\].*credential",
+            "\\[AUTO\\].*alcance",
+            "\\[AUTO\\].*escopo",
+            "\\[AUTO\\].*scope",
+            "\\[AUTO\\].*habilit",
+            "\\[AUTO\\].*autoriza",
+            "\\[AUTO\\].*authoriz",
+            "\\[AUTO\\].*enable"
           ],
           "description": "Rechaza pasos que mezclan validación y decisión operativa"
         }
