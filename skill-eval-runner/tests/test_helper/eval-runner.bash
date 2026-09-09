@@ -47,7 +47,11 @@ case "$*" in
     ;;
   *)
     printf '%s\n' "$*" >> "$CLAUDE_ARGS_LOG"
-    printf 'ok\n'
+    if [[ -n "${CLAUDE_RESPONSE_FILE:-}" ]]; then
+      cat "$CLAUDE_RESPONSE_FILE"
+    else
+      printf 'ok\n'
+    fi
     ;;
 esac
 CLAUDE_STUB
@@ -79,6 +83,9 @@ run_eval_runner() {
 
     if [[ -n "${GROOT_MARKETPLACE_EVAL_MODEL:-}" ]]; then
         environment+=("GROOT_MARKETPLACE_EVAL_MODEL=${GROOT_MARKETPLACE_EVAL_MODEL}")
+    fi
+    if [[ -n "${CLAUDE_RESPONSE_FILE:-}" ]]; then
+        environment+=("CLAUDE_RESPONSE_FILE=${CLAUDE_RESPONSE_FILE}")
     fi
 
     run --separate-stderr env "${environment[@]}" \

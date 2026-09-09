@@ -319,19 +319,66 @@ validate_assertion_contains_any() {
     return 1
 }
 
+normalize_response_continuations() {
+    local response="$1"
+
+    awk '
+        function flush_step() {
+            if (logical_step != "") {
+                print logical_step
+                logical_step = ""
+            }
+        }
+        function indentation(line) {
+            match(line, /^[[:space:]]*/)
+            return RLENGTH
+        }
+        function starts_list_item(line) {
+            return line ~ /^[[:space:]]*([0-9]+[.)]|[-*])[[:space:]]/
+        }
+        BEGIN {
+            step_indent = -1
+        }
+        /^[[:space:]]*$/ {
+            flush_step()
+            print ""
+            step_indent = -1
+            next
+        }
+        {
+            line_indent = indentation($0)
+            if (starts_list_item($0) && (step_indent < 0 || line_indent <= step_indent)) {
+                flush_step()
+                logical_step = $0
+                step_indent = line_indent
+                next
+            }
+            if (logical_step == "") {
+                logical_step = $0
+            } else {
+                logical_step = logical_step " " $0
+            }
+        }
+        END {
+            flush_step()
+        }
+    ' <<< "$response"
+}
+
 validate_assertion_not_contains_any() {
     local response="$1"
     local config_file="$2"
     local case_idx="$3"
     local assert_idx="$4"
 
-    local values_count
+    local values_count normalized_response
     values_count=$(jq ".test_cases[$case_idx].assertions[$assert_idx].values | length" "$config_file")
+    normalized_response=$(normalize_response_continuations "$response")
 
     for k in $(seq 0 $((values_count - 1))); do
         local v
         v=$(jq -r ".test_cases[$case_idx].assertions[$assert_idx].values[$k]" "$config_file")
-        if echo "$response" | grep -qi "$v"; then
+        if printf '%s\n' "$normalized_response" | grep -qi "$v"; then
             return 1
         fi
     done

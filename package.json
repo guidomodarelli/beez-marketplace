@@ -5,7 +5,7 @@
   "scripts": {
     "create-version": "node scripts/create-version.js",
     "test": "npm run test:shell",
-    "test:shell": "bats plugins/groot-kit/skills/agent-ready-setup/tests/bootstrap.bats plugins/groot-kit/skills/agent-ready-setup/tests/merge-instructions.bats plugins/groot-queue/tests/check-groot-queue-readiness.bats plugins/groot-queue/tests/query-kraken-user-data.bats plugins/groot-queue/tests/query-labor-share-data.bats plugins/groot-queue/tests/run-groot-queue.bats plugins/groot-queue/tests/install.bats plugins/groot-queue/tests/render-catalog.bats skill-eval-runner/tests/run-evals-env-contract.bats",
+    "test:shell": "bats plugins/groot-kit/skills/agent-ready-setup/tests/bootstrap.bats plugins/groot-kit/skills/agent-ready-setup/tests/merge-instructions.bats plugins/groot-queue/tests/check-groot-queue-readiness.bats plugins/groot-queue/tests/query-kraken-user-data.bats plugins/groot-queue/tests/query-labor-share-data.bats plugins/groot-queue/tests/run-groot-queue.bats plugins/groot-queue/tests/install.bats plugins/groot-queue/tests/render-catalog.bats skill-eval-runner/tests/run-evals-env-contract.bats skill-eval-runner/tests/run-evals-assertions.bats",
     "test:e2e": "bats plugins/groot-queue/tests/setup-e2e.bats",
     "test:all": "npm run test:shell && npm run test:e2e"
   },
