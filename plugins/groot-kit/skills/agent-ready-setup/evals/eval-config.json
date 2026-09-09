@@ -629,7 +629,9 @@
             "[0-9][0-9]*\\..*automátic.*manual",
             "[0-9][0-9]*\\..*manual.*automátic",
             "- .*automátic.*manual",
-            "- .*manual.*automátic"
+            "- .*manual.*automátic",
+            "^[[:space:]]\\{2,\\}\\[AUTO\\]",
+            "^[[:space:]]\\{2,\\}\\[MANUAL\\]"
           ],
           "description": "Rechaza mezclar acciones automáticas y manuales dentro del mismo paso"
         }
@@ -709,7 +711,9 @@
             "[0-9][0-9]*\\..*automátic.*manual",
             "[0-9][0-9]*\\..*manual.*automátic",
             "- .*automátic.*manual",
-            "- .*manual.*automátic"
+            "- .*manual.*automátic",
+            "^[[:space:]]\\{2,\\}\\[AUTO\\]",
+            "^[[:space:]]\\{2,\\}\\[MANUAL\\]"
           ],
           "description": "Rechaza pasos que mezclan validación y decisión operativa"
         }
