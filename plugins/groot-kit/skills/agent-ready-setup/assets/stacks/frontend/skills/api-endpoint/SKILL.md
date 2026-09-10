@@ -113,6 +113,7 @@ api/
 import * as iv from '@meli/input-validation';
 import Ragnar from 'nordic/ragnar';
 import { logError } from '../logger';
+import { mapKnownErrorToHttpResponse } from '../../src/errors/map-known-error-to-http-response';
 import { getProduct, createProduct } from '../../src/services/product';
 
 const router = Ragnar.router();
@@ -155,6 +156,8 @@ router.post('/product', iv.createValidationMiddleware({ schema: postSchema }), a
 export default router;
 ```
 
+`mapKnownErrorToHttpResponse` must be implemented in the imported module as the project's typed error mapper. If the project uses a different module path, update the import before copying the example; do not leave the mapper as an implicit dependency.
+
 ### 2. Mount in `api/index.ts`
 
 ```ts
@@ -174,7 +177,7 @@ Rules:
 - Use allowlist strategy — declare only what is permitted in the schema.
 - Never retrieve user identity from user-provided input — use `req.session`.
 - Never log request/response bodies containing PII or tokens.
-- Map known client/domain failures to their corresponding 4xx response at the middleend boundary; do not turn known causes into 5xx responses. `mapKnownErrorToHttpResponse` in the example represents the project's typed error mapper and must preserve this rule.
+- Map known client/domain failures to their corresponding 4xx response at the middleend boundary; do not turn known causes into 5xx responses. The imported `mapKnownErrorToHttpResponse` must be a project-level typed error mapper and preserve this rule.
 - Never expose internal error details or stack traces in responses.
 - Never inline business logic — delegate to a service.
 - Never disable CSRF without WebSec validation.

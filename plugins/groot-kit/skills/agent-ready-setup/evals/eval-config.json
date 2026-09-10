@@ -348,6 +348,70 @@
       ]
     },
     {
+      "id": "frontend-api-endpoint-defines-error-mapper-dependency",
+      "description": "Hace explícita la dependencia del ejemplo REST respecto del mapper tipado de errores.",
+      "input": "Revisá el ejemplo `api/product/index.ts` de agent-ready-setup: sus handlers usan `mapKnownErrorToHttpResponse`. Explicá qué debe mostrar el ejemplo para que esa dependencia no quede implícita, qué módulo debe existir y qué regla debe conservar el mapper. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "mapKnownErrorToHttpResponse",
+          "description": "Identifica el mapper usado por los handlers"
+        },
+        {
+          "type": "contains_any",
+          "values": ["import", "importar", "importado"],
+          "description": "Exige importar explícitamente el mapper"
+        },
+        {
+          "type": "contains_any",
+          "values": ["src/errors", "módulo", "module", "error mapper", "mapper tipado"],
+          "description": "Ubica la dependencia en un módulo de errores"
+        },
+        {
+          "type": "contains_any",
+          "values": ["implementar", "definir", "exista", "existir", "implementado"],
+          "description": "Evita dejar el símbolo sin implementación"
+        },
+        {
+          "type": "contains_any",
+          "values": ["4xx", "cliente", "dominio", "causa conocida"],
+          "description": "Conserva el mapping de causas conocidas a 4xx"
+        }
+      ]
+    },
+    {
+      "id": "frontend-logger-example-defines-error-mapper-dependency",
+      "description": "Hace explícita la dependencia del ejemplo de logger respecto del mapper tipado de errores.",
+      "input": "Revisá el ejemplo de uso de `logger/SKILL.md` de agent-ready-setup: el handler llama a `mapKnownErrorToHttpResponse`. Explicá qué debe mostrar el ejemplo para que compile al copiarse, qué módulo debe existir y qué regla debe conservar el mapper. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "mapKnownErrorToHttpResponse",
+          "description": "Identifica el mapper usado por el handler"
+        },
+        {
+          "type": "contains_any",
+          "values": ["import", "importar", "importado"],
+          "description": "Exige importar explícitamente el mapper"
+        },
+        {
+          "type": "contains_any",
+          "values": ["src/errors", "módulo", "module", "error mapper", "mapper tipado"],
+          "description": "Ubica la dependencia en un módulo de errores"
+        },
+        {
+          "type": "contains_any",
+          "values": ["implementar", "definir", "exista", "existir", "implementado"],
+          "description": "Evita dejar el símbolo sin implementación"
+        },
+        {
+          "type": "contains_any",
+          "values": ["4xx", "cliente", "dominio", "causa conocida"],
+          "description": "Conserva el mapping de causas conocidas a 4xx"
+        }
+      ]
+    },
+    {
       "id": "frontend-middleend-known-errors-use-4xx",
       "description": "Traduce causas conocidas de middleend a 4xx sin fallback 5xx genérico.",
       "input": "Estoy implementando un endpoint REST middleend para crear y consultar productos. El servicio puede devolver errores de validación de dominio, recurso inexistente o conflicto de estado, y el request ya pasó la validación de forma. Explicá cómo debe manejar esos errores agent-ready-setup, qué statuses públicos elegir, qué registrar y qué respuesta evitar. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
@@ -375,24 +439,34 @@
       ]
     },
     {
-      "id": "frontend-middleend-rejects-hydration-502-pattern",
-      "description": "Rechaza clasificar una causa conocida de hidratación como gateway failure 502.",
-      "input": "Revisá este caso para un middleend: una causa conocida de hidratación parcial de atributos se representa con `status: 502`. Explicá qué regla debe seguir agent-ready-setup, cómo traducir la causa al contrato HTTP público y cuándo sí sería válido un 5xx. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "id": "frontend-middleend-distinguishes-hydration-origin",
+      "description": "Distingue hidratación causada por request/dominio de payload upstream incompleto.",
+      "input": "Revisá dos casos para un middleend: A) el request o estado de dominio produce atributos incompletos y llega con `status: 502`; B) un backend/upstream devuelve un payload incompleto o rompe su contrato y también llega con `status: 502`. Respondé primero con exactamente dos líneas etiquetadas `A:` y `B:` indicando el status público de cada caso; después explicá cómo debe clasificar cada origen agent-ready-setup y cuándo debe conservarse un 5xx. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
       "assertions": [
         {
-          "type": "contains",
-          "value": "502",
-          "description": "Explica por qué 502 es incorrecto en ese caso"
+          "type": "contains_any",
+          "values": ["origen", "causa", "atribuible", "distinguir"],
+          "description": "Exige clasificar según el origen de la falla"
+        },
+        {
+          "type": "regex",
+          "pattern": "^[[:space:]]*A[[:space:]]*:[[:space:]]*(4xx|400|404|409|422)([[:space:][:punct:]]|$)",
+          "description": "Asigna 4xx o 422 al caso A de request o dominio"
         },
         {
           "type": "contains_any",
-          "values": ["4xx", "422", "400", "404", "409"],
-          "description": "Propone status 4xx correspondiente"
+          "values": ["upstream", "backend", "dependencia", "contrato"],
+          "description": "Reconoce una respuesta upstream como causa distinta"
+        },
+        {
+          "type": "regex",
+          "pattern": "^[[:space:]]*B[[:space:]]*:[[:space:]]*(5xx|502|503)([[:space:][:punct:]]|$)",
+          "description": "Asigna 5xx o 502 al caso B de upstream o dependencia"
         },
         {
           "type": "contains_any",
-          "values": ["inesperado", "inesperadas", "genuinamente inesperadas", "desconocida", "unknown", "no puede atribuirse", "no pueda atribuirse", "no atribuible"],
-          "description": "Delimita uso de 5xx a fallas no atribuibles"
+          "values": ["no automáticamente", "no por el síntoma", "no el síntoma", "no clasificar", "no asumir", "no debe atribuirse"],
+          "description": "Evita mapear hidratación a un status por el síntoma solamente"
         }
       ]
     },

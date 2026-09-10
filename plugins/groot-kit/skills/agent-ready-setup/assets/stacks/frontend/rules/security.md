@@ -48,8 +48,8 @@ Treat the middleend as a translation boundary: convert known client- or domain-c
 
 - Never return a 5xx from a middleend when the cause is known and attributable to the request or domain state. Return the corresponding 4xx: `400` for malformed requests, `401` for missing or invalid authentication, `403` for insufficient permissions, `404` for missing resources, `409` for state conflicts, or `422` for semantically invalid or unprocessable input.
 - Do not use a generic `500`, `502`, or `503` fallback for a known client/domain error. Preserve a safe public message and log the diagnostic cause server-side without exposing internals.
-- Do not assign `502` to a known hydration or partial-attribute cause: that misclassifies a client/domain failure as a gateway failure. Map the known cause to its applicable 4xx at the middleend boundary; `422` is typically appropriate when incomplete attributes make the request semantically unprocessable.
-- Reserve 5xx responses for genuinely unexpected middleend failures or dependency failures whose cause cannot be attributed to the request; never use them as a shortcut for error mapping.
+- Do not classify hydration or partial-attribute failures by symptom alone. First identify the origin: when client-controlled input or domain state caused incomplete attributes, map the cause to its applicable 4xx at the middleend boundary; `422` is often appropriate when the request is semantically unprocessable. When an upstream or dependency returns an incomplete payload or violates its contract, treat it as a dependency failure and map it to the appropriate 5xx (often `502`) instead of blaming the client.
+- Reserve 5xx responses for genuinely unexpected middleend failures or dependency failures, including incomplete or contract-invalid upstream responses; never use them as a shortcut for client/domain error mapping.
 - Never expose stack traces or internal error details to users — return generic messages.
 - Never log sensitive data in error handlers.
 
