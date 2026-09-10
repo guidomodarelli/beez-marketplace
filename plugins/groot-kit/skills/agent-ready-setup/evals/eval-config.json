@@ -552,29 +552,194 @@
       "input": "Explicá cómo debe construir agent-ready-setup la sección Next steps después del bootstrap. El proyecto no tiene `.agents/rules/`, `.agents/skills/` ni `.agents/agents/`, y `CLAUDE.md` raíz ya coincide con `assets/root-claude.md`. Indicá qué debe validarse automáticamente, qué requiere completar manualmente y cómo tratar placeholders o directorios ausentes. No ejecutes Bash ni escribas archivos.",
       "assertions": [
         {
-          "type": "contains_any",
-          "values": ["[AUTO]", "automátic", "automático"],
-          "description": "Distingue validaciones deterministas"
+          "type": "regex",
+          "pattern": "\\.agents/rules/.*(N/A|no (existe|hay)|no aplica)",
+          "description": "Asocia `.agents/rules/` ausente con estado N/A"
         },
         {
-          "type": "contains_any",
-          "values": ["[MANUAL]", "manual", "manualmente"],
-          "description": "Distingue trabajo específico del proyecto"
+          "type": "regex",
+          "pattern": "\\.agents/skills/.*(N/A|no (existe|hay)|no aplica)",
+          "description": "Asocia `.agents/skills/` ausente con estado N/A"
         },
         {
-          "type": "contains_any",
-          "values": ["N/A", "no aplica", "no existe", "no hay"],
-          "description": "No presenta directorios ausentes como pendientes"
+          "type": "regex",
+          "pattern": "\\.agents/agents/.*(N/A|no (existe|hay)|no aplica)",
+          "description": "Asocia `.agents/agents/` ausente con estado N/A"
         },
         {
-          "type": "contains_any",
-          "values": ["scaffold", "comentarios", "{{...}}", "<domain>", "<component-name>"],
-          "description": "Distingue placeholders reales de ejemplos documentales"
+          "type": "regex",
+          "pattern": "CLAUDE\\.md.*(PASS|coincide|igual|byte-a-byte|copia exacta)",
+          "description": "Verifica el resultado PASS del proxy raíz coincidente"
+        },
+        {
+          "type": "regex",
+          "pattern": "\\[AUTO\\].*(PASS|FAIL|N/A|determinist)",
+          "description": "Identifica checks automáticos con resultado explícito"
+        },
+        {
+          "type": "regex",
+          "pattern": "(\\[MANUAL\\].*AGENTS\\.md.*(si|cuando|solo))|(AGENTS\\.md.*(si|cuando|solo).*\\[MANUAL\\])",
+          "description": "Mantiene completar AGENTS.md como acción manual condicional"
+        },
+        {
+          "type": "regex",
+          "pattern": "(<domain>|<component-name>).*((ejemplo)|(documentaci[oó]n)|(documental))|((ejemplo)|(documentaci[oó]n)|(documental)).*(<domain>|<component-name>)",
+          "description": "Identifica `<domain>` y `<component-name>` como ejemplos documentales"
         },
         {
           "type": "not_contains_any",
-          "values": ["[AUTO + MANUAL]"],
-          "description": "No mezcla validación automática con resolución manual"
+          "values": [
+            "\\.agents/rules/[[:space:]]*:[[:space:]]*pendiente",
+            "\\.agents/rules/[[:space:]]*:[[:space:]]*completar",
+            "\\.agents/rules/[[:space:]]*:[[:space:]]*TODO",
+            "pendiente:[[:space:]]*\\.agents/rules/",
+            "completar:[[:space:]]*\\.agents/rules/",
+            "\\.agents/skills/[[:space:]]*:[[:space:]]*pendiente",
+            "\\.agents/skills/[[:space:]]*:[[:space:]]*completar",
+            "\\.agents/skills/[[:space:]]*:[[:space:]]*TODO",
+            "pendiente:[[:space:]]*\\.agents/skills/",
+            "completar:[[:space:]]*\\.agents/skills/",
+            "\\.agents/agents/[[:space:]]*:[[:space:]]*pendiente",
+            "\\.agents/agents/[[:space:]]*:[[:space:]]*completar",
+            "\\.agents/agents/[[:space:]]*:[[:space:]]*TODO",
+            "pendiente:[[:space:]]*\\.agents/agents/",
+            "completar:[[:space:]]*\\.agents/agents/"
+          ],
+          "description": "Rechaza presentar recursos ausentes como tareas pendientes"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "<domain>[[:space:]]*:[[:space:]]*pendiente",
+            "<domain>[[:space:]]*:[[:space:]]*incompleto",
+            "<domain>[[:space:]]*:[[:space:]]*TODO",
+            "<component-name>[[:space:]]*:[[:space:]]*pendiente",
+            "<component-name>[[:space:]]*:[[:space:]]*incompleto",
+            "<component-name>[[:space:]]*:[[:space:]]*TODO"
+          ],
+          "description": "Rechaza clasificar ejemplos documentales como placeholders pendientes"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "[0-9][0-9]*\\..*\\[AUTO\\].*\\[MANUAL\\]",
+            "[0-9][0-9]*\\..*\\[MANUAL\\].*\\[AUTO\\]",
+            "- .*\\[AUTO\\].*\\[MANUAL\\]",
+            "- .*\\[MANUAL\\].*\\[AUTO\\]",
+            "[0-9][0-9]*\\..*automátic.*manual",
+            "[0-9][0-9]*\\..*manual.*automátic",
+            "- .*automátic.*manual",
+            "- .*manual.*automátic",
+            "^[[:space:]]\\{2,\\}\\[AUTO\\]",
+            "^[[:space:]]\\{2,\\}\\[MANUAL\\]",
+            "\\[AUTO\\].*permis",
+            "\\[AUTO\\].*permission",
+            "\\[AUTO\\].*permiss",
+            "\\[AUTO\\].*credenc",
+            "\\[AUTO\\].*credential",
+            "\\[AUTO\\].*alcance",
+            "\\[AUTO\\].*escopo",
+            "\\[AUTO\\].*scope",
+            "\\[AUTO\\].*habilit",
+            "\\[AUTO\\].*autoriza",
+            "\\[AUTO\\].*authoriz",
+            "\\[AUTO\\].*enable"
+          ],
+          "description": "Rechaza mezclar acciones automáticas y manuales dentro del mismo paso"
+        }
+      ]
+    },
+    {
+      "id": "next-steps-report-ignores-documentation-examples",
+      "description": "No convierte ejemplos documentales en scaffolds incompletos.",
+      "input": "Redactá únicamente la sección Next steps para un proyecto donde la documentación explica rutas de ejemplo con `<domain>` y `<component-name>`, pero no existen archivos bajo `.agents/rules/`, `.agents/skills/` ni `.agents/agents/`, tampoco comentarios scaffold ni marcadores `{{...}}` reales. Explicá cómo distinguir esos ejemplos de archivos que sí requerirían completar. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "regex",
+          "pattern": "(<domain>).*((ejemplo)|(documentaci[oó]n)|(documental))|((ejemplo)|(documentaci[oó]n)|(documental)).*(<domain>)",
+          "description": "Relaciona `<domain>` con documentación de ejemplo"
+        },
+        {
+          "type": "regex",
+          "pattern": "(<component-name>).*((ejemplo)|(documentaci[oó]n)|(documental))|((ejemplo)|(documentaci[oó]n)|(documental)).*(<component-name>)",
+          "description": "Relaciona `<component-name>` con documentación de ejemplo"
+        },
+        {
+          "type": "regex",
+          "pattern": "(N/A|no (existen|existe|hay)|no aplica|no hace falta).*(rutas|archivos|scaffold|marcadores)|((rutas|archivos|scaffold|marcadores).*(N/A|no (existen|existe|hay)|no aplica|no hace falta))",
+          "description": "Explicita ausencia y ausencia de deuda cuando no hay archivos reales"
+        },
+        {
+          "type": "regex",
+          "pattern": "(scaffold|\\{\\{).*(archivo|path|marcador|comentario).*(real|existente)|((archivo|path|marcador|comentario).*(real|existente)).*(scaffold|\\{\\{)",
+          "description": "Reserva detección de scaffold a artefactos reales"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "<domain>[[:space:]]*:[[:space:]]*pendiente",
+            "<domain>[[:space:]]*:[[:space:]]*incompleto",
+            "<domain>[[:space:]]*:[[:space:]]*TODO",
+            "<component-name>[[:space:]]*:[[:space:]]*pendiente",
+            "<component-name>[[:space:]]*:[[:space:]]*incompleto",
+            "<component-name>[[:space:]]*:[[:space:]]*TODO"
+          ],
+          "description": "Evita convertir ejemplos de documentación en trabajo pendiente"
+        }
+      ]
+    },
+    {
+      "id": "next-steps-report-separates-automatic-and-manual-actions",
+      "description": "Separa checks técnicos automáticos de decisiones operativas manuales.",
+      "input": "Generá una sección Next steps numerada para un proyecto que sí tiene `.codex/` con JSON, MCP y hooks válidos. La validación técnica de JSON, paths y referencias puede ser automática, mientras que permisos, credenciales, alcance y habilitación requieren decisión del proyecto. No mezcles ambos tipos de trabajo en un mismo paso y no ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "regex",
+          "pattern": "\\[AUTO\\].*(JSON|paths|referencias|MCP|hooks|validar)",
+          "description": "Asocia validación técnica de Codex con acción automática"
+        },
+        {
+          "type": "regex",
+          "pattern": "\\[MANUAL\\].*(permisos|credenciales|alcance|habilit|autoriza)",
+          "description": "Asocia permisos y habilitación con decisión manual"
+        },
+        {
+          "type": "regex",
+          "pattern": "[0-9][0-9]*\\..*\\[AUTO\\]|- .*\\[AUTO\\]",
+          "description": "Expresa la acción automática como paso separado"
+        },
+        {
+          "type": "regex",
+          "pattern": "[0-9][0-9]*\\..*\\[MANUAL\\]|- .*\\[MANUAL\\]",
+          "description": "Expresa la acción manual como paso separado"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "[0-9][0-9]*\\..*\\[AUTO\\].*\\[MANUAL\\]",
+            "[0-9][0-9]*\\..*\\[MANUAL\\].*\\[AUTO\\]",
+            "- .*\\[AUTO\\].*\\[MANUAL\\]",
+            "- .*\\[MANUAL\\].*\\[AUTO\\]",
+            "[0-9][0-9]*\\..*automátic.*manual",
+            "[0-9][0-9]*\\..*manual.*automátic",
+            "- .*automátic.*manual",
+            "- .*manual.*automátic",
+            "^[[:space:]]\\{2,\\}\\[AUTO\\]",
+            "^[[:space:]]\\{2,\\}\\[MANUAL\\]",
+            "\\[AUTO\\].*permis",
+            "\\[AUTO\\].*permission",
+            "\\[AUTO\\].*permiss",
+            "\\[AUTO\\].*credenc",
+            "\\[AUTO\\].*credential",
+            "\\[AUTO\\].*alcance",
+            "\\[AUTO\\].*escopo",
+            "\\[AUTO\\].*scope",
+            "\\[AUTO\\].*habilit",
+            "\\[AUTO\\].*autoriza",
+            "\\[AUTO\\].*authoriz",
+            "\\[AUTO\\].*enable"
+          ],
+          "description": "Rechaza pasos que mezclan validación y decisión operativa"
         }
       ]
     }
