@@ -48,7 +48,12 @@ case "$*" in
   *)
     printf '%s\n' "$*" >> "$CLAUDE_ARGS_LOG"
     if [[ -n "${CLAUDE_RESPONSE_FILE:-}" ]]; then
-      cat "$CLAUDE_RESPONSE_FILE"
+      if [[ -f "$CLAUDE_RESPONSE_FILE" ]]; then
+        cat "$CLAUDE_RESPONSE_FILE"
+      else
+        printf 'ERROR: CLAUDE_RESPONSE_FILE not found: %s\n' "$CLAUDE_RESPONSE_FILE" >&2
+        exit 1
+      fi
     else
       printf 'ok\n'
     fi
