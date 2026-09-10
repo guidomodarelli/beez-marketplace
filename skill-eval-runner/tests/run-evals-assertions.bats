@@ -70,6 +70,22 @@ run_mixed_action_assertion() {
     [ "$status" -eq 0 ]
 }
 
+@test "rejects manual continuation after blank line" {
+    run_mixed_action_assertion $'1. [AUTO] Validate generated files.\n\n   [MANUAL] Decide project permissions.'
+
+    [ "$status" -eq 1 ]
+    run jq -e 'select(.event == "summary" and .passed == 0 and .failed == 1)' <<< "$output"
+    [ "$status" -eq 0 ]
+}
+
+@test "rejects automatic continuation after blank line" {
+    run_mixed_action_assertion $'1. [MANUAL] Decide project permissions.\n\n   [AUTO] Validate generated files.'
+
+    [ "$status" -eq 1 ]
+    run jq -e 'select(.event == "summary" and .passed == 0 and .failed == 1)' <<< "$output"
+    [ "$status" -eq 0 ]
+}
+
 @test "accepts separate numbered steps" {
     run_mixed_action_assertion $'1. [AUTO] Validate generated files.\n2. [MANUAL] Decide project permissions.'
 

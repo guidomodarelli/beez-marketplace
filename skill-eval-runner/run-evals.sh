@@ -340,9 +340,7 @@ normalize_response_continuations() {
             step_indent = -1
         }
         /^[[:space:]]*$/ {
-            flush_step()
             print ""
-            step_indent = -1
             next
         }
         {
