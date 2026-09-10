@@ -13,10 +13,9 @@ setup() {
 write_mixed_action_config() {
     local config_file="${SKILL_DIR}/evals/eval-config.json"
 
-    cat > "$config_file" <<'JSON'
+    cat > "$config_file" <<JSON
 {
-  "skill": "assertion-contract-skill",
-  "test_cases": [
+  "skill": "${SKILL_NAME}",
     {
       "id": "mixed-actions",
       "input": "Describe next steps",
