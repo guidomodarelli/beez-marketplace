@@ -375,24 +375,34 @@
       ]
     },
     {
-      "id": "frontend-middleend-rejects-hydration-502-pattern",
-      "description": "Rechaza clasificar una causa conocida de hidratación como gateway failure 502.",
-      "input": "Revisá este caso para un middleend: una causa conocida de hidratación parcial de atributos se representa con `status: 502`. Explicá qué regla debe seguir agent-ready-setup, cómo traducir la causa al contrato HTTP público y cuándo sí sería válido un 5xx. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "id": "frontend-middleend-distinguishes-hydration-origin",
+      "description": "Distingue hidratación causada por request/dominio de payload upstream incompleto.",
+      "input": "Revisá dos casos para un middleend: A) el request o estado de dominio produce atributos incompletos y llega con `status: 502`; B) un backend/upstream devuelve un payload incompleto o rompe su contrato y también llega con `status: 502`. Explicá cómo debe clasificar cada origen agent-ready-setup, qué status público corresponde y cuándo debe conservarse un 5xx. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
       "assertions": [
         {
-          "type": "contains",
-          "value": "502",
-          "description": "Explica por qué 502 es incorrecto en ese caso"
+          "type": "contains_any",
+          "values": ["origen", "causa", "atribuible", "distinguir"],
+          "description": "Exige clasificar según el origen de la falla"
         },
         {
           "type": "contains_any",
           "values": ["4xx", "422", "400", "404", "409"],
-          "description": "Propone status 4xx correspondiente"
+          "description": "Usa 4xx para causa atribuible al request o dominio"
         },
         {
           "type": "contains_any",
-          "values": ["inesperado", "inesperadas", "genuinamente inesperadas", "desconocida", "unknown", "no puede atribuirse", "no pueda atribuirse", "no atribuible"],
-          "description": "Delimita uso de 5xx a fallas no atribuibles"
+          "values": ["upstream", "backend", "dependencia", "contrato"],
+          "description": "Reconoce una respuesta upstream como causa distinta"
+        },
+        {
+          "type": "contains_any",
+          "values": ["5xx", "502", "503"],
+          "description": "Conserva 5xx para falla upstream o de dependencia"
+        },
+        {
+          "type": "contains_any",
+          "values": ["no automáticamente", "no por el síntoma", "no el síntoma", "no clasificar", "no asumir", "no debe atribuirse"],
+          "description": "Evita mapear hidratación a un status por el síntoma solamente"
         }
       ]
     },
