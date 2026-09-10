@@ -16,6 +16,7 @@ write_mixed_action_config() {
     cat > "$config_file" <<JSON
 {
   "skill": "${SKILL_NAME}",
+  "test_cases": [
     {
       "id": "mixed-actions",
       "input": "Describe next steps",
