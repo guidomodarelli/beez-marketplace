@@ -380,6 +380,38 @@
       ]
     },
     {
+      "id": "frontend-logger-example-defines-error-mapper-dependency",
+      "description": "Hace explícita la dependencia del ejemplo de logger respecto del mapper tipado de errores.",
+      "input": "Revisá el ejemplo de uso de `logger/SKILL.md` de agent-ready-setup: el handler llama a `mapKnownErrorToHttpResponse`. Explicá qué debe mostrar el ejemplo para que compile al copiarse, qué módulo debe existir y qué regla debe conservar el mapper. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "mapKnownErrorToHttpResponse",
+          "description": "Identifica el mapper usado por el handler"
+        },
+        {
+          "type": "contains_any",
+          "values": ["import", "importar", "importado"],
+          "description": "Exige importar explícitamente el mapper"
+        },
+        {
+          "type": "contains_any",
+          "values": ["src/errors", "módulo", "module", "error mapper", "mapper tipado"],
+          "description": "Ubica la dependencia en un módulo de errores"
+        },
+        {
+          "type": "contains_any",
+          "values": ["implementar", "definir", "exista", "existir", "implementado"],
+          "description": "Evita dejar el símbolo sin implementación"
+        },
+        {
+          "type": "contains_any",
+          "values": ["4xx", "cliente", "dominio", "causa conocida"],
+          "description": "Conserva el mapping de causas conocidas a 4xx"
+        }
+      ]
+    },
+    {
       "id": "frontend-middleend-known-errors-use-4xx",
       "description": "Traduce causas conocidas de middleend a 4xx sin fallback 5xx genérico.",
       "input": "Estoy implementando un endpoint REST middleend para crear y consultar productos. El servicio puede devolver errores de validación de dominio, recurso inexistente o conflicto de estado, y el request ya pasó la validación de forma. Explicá cómo debe manejar esos errores agent-ready-setup, qué statuses públicos elegir, qué registrar y qué respuesta evitar. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",

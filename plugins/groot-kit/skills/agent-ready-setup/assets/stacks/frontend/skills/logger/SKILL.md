@@ -74,6 +74,7 @@ Show the created file path and a usage example:
 
 ```ts
 import { logError, logWarning } from '../logger';
+import { mapKnownErrorToHttpResponse } from '../../src/errors/map-known-error-to-http-response';
 
 try {
   const product = await getProduct(req.params.id);
@@ -84,6 +85,8 @@ try {
   res.status(publicError.statusCode).json({ error: publicError.message });
 }
 ```
+
+`mapKnownErrorToHttpResponse` must be implemented in the imported module as the project's typed error mapper. If the project uses a different module path, update the import before copying the example; do not leave the mapper as an implicit dependency.
 
 `mapKnownErrorToHttpResponse` is a project-level typed error mapper: known client/domain causes must become the corresponding 4xx response, while unexpected failures follow the error policy in `../../rules/security.md` and must not be disguised as a known client error.
 
