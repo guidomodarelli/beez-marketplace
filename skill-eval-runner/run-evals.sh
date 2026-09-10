@@ -378,7 +378,8 @@ validate_assertion_not_contains_any() {
     for k in $(seq 0 $((values_count - 1))); do
         local v
         v=$(jq -r ".test_cases[$case_idx].assertions[$assert_idx].values[$k]" "$config_file")
-        if printf '%s\n' "$normalized_response" | grep -qi "$v"; then
+        if printf '%s\n' "$response" | grep -qi "$v" ||
+            printf '%s\n' "$normalized_response" | grep -qi "$v"; then
             return 1
         fi
     done
