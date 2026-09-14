@@ -610,6 +610,11 @@
         },
         {
           "type": "contains_any",
+          "values": ["actualiza primero", "reinicia", "re-ejecuta", "versión nueva", "latest version"],
+          "description": "Ejecuta el resto con la versión actualizada del hook"
+        },
+        {
+          "type": "contains_any",
           "values": ["nueva", "nuevas", "agregada", "obsoleta", "eliminada"],
           "description": "Cubre cambios dinámicos del catálogo"
         },

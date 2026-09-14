@@ -264,13 +264,16 @@ de proyectar assets o adquirir lock local. En `frontend`, también ejecuta el he
 que instala o actualiza `groot-ui@latest` y configura los scripts de `package.json`.
 El hook canónico `.agents/hooks/sync-marketplace.sh` también ejecuta el upgrade y,
 para `frontend`, actualiza `groot-ui@latest` aunque no se haya solicitado proyección
-local; luego resuelve la fuente instalada y proyecta de forma autónoma el hook común,
-los hooks de
-`assets/stacks/<stack>/hooks/`, `.claude/settings.json` y
-`.codex/hooks/hooks.json`; no invoca ni requiere `bootstrap.sh` dentro del repo
-consumidor. El modo `--sync-instructions` ejecuta además merge IA sobre
-`AGENTS.md` cuando el helper está disponible, usando catálogo de rules renderizado
-y provider explícito.
+local; luego resuelve la fuente instalada. En modo `--sync`, actualiza primero su
+propia copia en `.agents/hooks/sync-marketplace.sh` y, si esa copia cambió o la
+instancia en ejecución era anterior, se reejecuta con el mismo provider, stack y
+flags antes de proyectar el resto. La reejecución conserva el lock de assets y usa
+una guarda interna para no repetir `fury ai assets marketplace upgrade`.
+Después proyecta de forma autónoma los hooks de `assets/stacks/<stack>/hooks/`,
+`.claude/settings.json` y `.codex/hooks/hooks.json`; no invoca ni requiere
+`bootstrap.sh` dentro del repo consumidor. El modo `--sync-instructions` ejecuta
+además merge IA sobre `AGENTS.md` cuando el helper está disponible, usando catálogo
+de rules renderizado y provider explícito.
 
 `--sync` compara cada asset gestionado con el template actualizado y muestra
 `diff -u` antes de reemplazar un archivo existente. El reemplazo requiere una

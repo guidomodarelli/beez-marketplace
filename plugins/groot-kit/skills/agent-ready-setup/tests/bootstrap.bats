@@ -870,6 +870,16 @@ EOF
   [[ "$output" == *"could not detect project stack"* ]]
 }
 
+@test "sync hook rejects invalid reexecution guards" {
+  for guard in AGENT_READY_SETUP_MARKETPLACE_UPGRADED AGENT_READY_SETUP_SYNC_LOCK_HELD; do
+    run env "$guard=invalid" PATH="$test_root/bin:$PATH" \
+      bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" --provider claude
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"$guard must be 0 or 1"* ]]
+  done
+}
+
 @test "sync mode shows diffs and preserves existing assets without confirmation" {
   run_bootstrap frontend
   [ "$status" -eq 0 ]
@@ -1052,7 +1062,8 @@ EOF
     "$source_dir/scripts" \
     .agents/rules
   touch "$source_dir/SKILL.md"
-  printf '%s\n' '# updated common sync hook' > "$source_dir/assets/common/hooks/sync-marketplace.sh"
+  cp "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
+    "$source_dir/assets/common/hooks/sync-marketplace.sh"
   printf '%s\n' '{"settings":"updated"}' > "$source_dir/assets/common/settings.json"
   printf '%s\n' '{"hooks":"updated"}' > "$source_dir/assets/codex/hooks.json"
   printf '%s\n' '#!/bin/bash' > "$source_dir/assets/stacks/go/hooks/check-harness-consistency.sh"
@@ -1152,7 +1163,8 @@ EOF
     "$source_dir/assets/codex" \
     "$source_dir/assets/stacks/go/hooks"
   touch "$source_dir/SKILL.md"
-  printf '%s\n' '#!/bin/bash' > "$source_dir/assets/common/hooks/sync-marketplace.sh"
+  cp "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
+    "$source_dir/assets/common/hooks/sync-marketplace.sh"
   printf '%s\n' '{"settings":"updated"}' > "$source_dir/assets/common/settings.json"
   printf '%s\n' '{"hooks":"updated"}' > "$source_dir/assets/codex/hooks.json"
   cat > "$fake_bin/mv" <<'EOF'
@@ -1182,6 +1194,9 @@ EOF
       --provider claude --stack go --sync --yes
 
   [ "$status" -eq 0 ]
+  grep -Fq -- "Sync hook updated; restarting with latest version." <<< "$output"
+  grep -Fq -- "Local managed asset projection completed for go." <<< "$output"
+  [ ! -e .agents/.agent-ready-assets.lock ]
   cmp -s .agents/hooks/sync-marketplace.sh "$source_dir/assets/common/hooks/sync-marketplace.sh"
 }
 

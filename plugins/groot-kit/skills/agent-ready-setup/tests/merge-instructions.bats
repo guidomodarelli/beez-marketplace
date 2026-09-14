@@ -505,7 +505,8 @@ EOF
     "$source_dir/assets/stacks/frontend/hooks" \
     "$source_dir/scripts"
   touch "$source_dir/SKILL.md"
-  printf '%s\n' '# sync hook' > "$source_dir/assets/common/hooks/sync-marketplace.sh"
+  cp "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
+    "$source_dir/assets/common/hooks/sync-marketplace.sh"
   printf '%s\n' '{}' > "$source_dir/assets/common/settings.json"
   printf '%s\n' '{}' > "$source_dir/assets/codex/hooks.json"
   cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
@@ -532,6 +533,9 @@ EOF
   [ "$(sed -n '1p' "$event_log")" = "fury" ]
   [ "$(sed -n '2p' "$event_log")" = "merge" ]
   [ "$(wc -l < "$event_log")" -eq 2 ]
+  grep -Fq -- "Sync hook updated; restarting with latest version." <<< "$output"
+  [ -f .agents/hooks/sync-marketplace.sh ]
+  cmp -s .agents/hooks/sync-marketplace.sh "$source_dir/assets/common/hooks/sync-marketplace.sh"
   grep -Fq -- "--provider claude --stack frontend --skill-dir $source_dir" "$merge_log"
 }
 
@@ -543,7 +547,8 @@ EOF
     "$source_dir/assets/stacks/node/hooks" \
     "$source_dir/scripts"
   touch "$source_dir/SKILL.md"
-  printf '%s\n' '# sync hook' > "$source_dir/assets/common/hooks/sync-marketplace.sh"
+  cp "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
+    "$source_dir/assets/common/hooks/sync-marketplace.sh"
   printf '%s\n' '{}' > "$source_dir/assets/common/settings.json"
   printf '%s\n' '{}' > "$source_dir/assets/codex/hooks.json"
   cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'

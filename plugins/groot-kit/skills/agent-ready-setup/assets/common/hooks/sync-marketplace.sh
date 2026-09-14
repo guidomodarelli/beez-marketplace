@@ -20,11 +20,14 @@ stack_override="${AGENT_READY_SETUP_STACK:-}"
 sync_requested=0
 instructions_requested=0
 auto_confirm="${AGENT_READY_SETUP_SYNC_YES:-0}"
+marketplace_already_upgraded="${AGENT_READY_SETUP_MARKETPLACE_UPGRADED:-0}"
+sync_lock_inherited="${AGENT_READY_SETUP_SYNC_LOCK_HELD:-0}"
 created_assets=()
 updated_assets=()
 skipped_assets=()
 pending_assets=()
 conflicts=()
+original_arguments=("$@")
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -100,6 +103,16 @@ if [[ "$auto_confirm" != 0 && "$auto_confirm" != 1 ]]; then
   exit 1
 fi
 
+if [[ "$marketplace_already_upgraded" != 0 && "$marketplace_already_upgraded" != 1 ]]; then
+  printf 'ERROR: AGENT_READY_SETUP_MARKETPLACE_UPGRADED must be 0 or 1\n' >&2
+  exit 1
+fi
+
+if [[ "$sync_lock_inherited" != 0 && "$sync_lock_inherited" != 1 ]]; then
+  printf 'ERROR: AGENT_READY_SETUP_SYNC_LOCK_HELD must be 0 or 1\n' >&2
+  exit 1
+fi
+
 if [[ "$auto_confirm" -eq 1 && "$sync_requested" -ne 1 ]]; then
   printf 'ERROR: --yes requires --sync or --update\n' >&2
   exit 1
@@ -115,11 +128,15 @@ is_valid_skill_dir() {
     -f "$candidate/assets/codex/hooks.json" ]]
 }
 
-echo "[marketplace-sync] Upgrading $MARKETPLACE_NAME for $provider..."
-fury ai assets marketplace upgrade \
-  --name "$MARKETPLACE_NAME" \
-  --provider "$provider"
-echo "[marketplace-sync] Marketplace upgrade completed."
+if [[ "$marketplace_already_upgraded" -eq 0 ]]; then
+  echo "[marketplace-sync] Upgrading $MARKETPLACE_NAME for $provider..."
+  fury ai assets marketplace upgrade \
+    --name "$MARKETPLACE_NAME" \
+    --provider "$provider"
+  echo "[marketplace-sync] Marketplace upgrade completed."
+else
+  echo "[marketplace-sync] Marketplace upgrade already completed by caller."
+fi
 
 resolve_skill_dir() {
   local candidate
@@ -231,15 +248,18 @@ if [[ -z "$stack" ]]; then
   exit 0
 fi
 
-if [[ "$stack" == "frontend" ]]; then
+setup_groot_ui() {
+  [[ "$stack" == "frontend" ]] || return 0
+
   if [[ -x "$skill_dir/$GROOT_UI_SETUP_SCRIPT" ]]; then
     bash "$skill_dir/$GROOT_UI_SETUP_SCRIPT" "package.json"
   else
     printf 'WARNING: %s is unavailable; groot-ui setup skipped.\n' "$skill_dir/$GROOT_UI_SETUP_SCRIPT" >&2
   fi
-fi
+}
 
 if [[ "$sync_requested" -eq 0 ]]; then
+  setup_groot_ui
   echo "[marketplace-sync] Local projection not requested; use --sync to update project assets."
   exit 0
 fi
@@ -773,6 +793,21 @@ reclaim_stale_sync_lock() {
   rmdir -- "$SYNC_LOCK_DIRECTORY" 2>/dev/null
 }
 
+has_current_sync_lock_owner() {
+  local owner_pid
+  local owner_start_time=""
+  local current_start_time
+
+  [[ -f "$SYNC_LOCK_OWNER_FILE" && ! -L "$SYNC_LOCK_OWNER_FILE" ]] || return 1
+  IFS= read -r owner_pid < "$SYNC_LOCK_OWNER_FILE" || return 1
+  [[ "$owner_pid" == "$$" ]] || return 1
+
+  IFS= read -r owner_start_time < <(sed -n '2p' "$SYNC_LOCK_OWNER_FILE") || true
+  [[ -n "$owner_start_time" ]] || return 1
+  current_start_time="$(get_process_start_time "$$")"
+  [[ -n "$current_start_time" && "$current_start_time" == "$owner_start_time" ]]
+}
+
 release_sync_lock() {
   if [[ "$sync_lock_acquired" -eq 1 ]]; then
     rm -f -- "$SYNC_LOCK_OWNER_FILE"
@@ -781,6 +816,12 @@ release_sync_lock() {
 }
 
 acquire_sync_lock() {
+  if [[ "$sync_lock_inherited" -eq 1 ]] && has_current_sync_lock_owner; then
+    sync_lock_acquired=1
+    trap release_sync_lock EXIT
+    return 0
+  fi
+
   if mkdir -p -- "$AGENTS_DIRECTORY" && mkdir -- "$SYNC_LOCK_DIRECTORY" 2>/dev/null; then
     sync_lock_acquired=1
     trap release_sync_lock EXIT
@@ -807,9 +848,31 @@ if ! acquire_sync_lock; then
   exit 0
 fi
 
-sync_file \
-  "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
-  "$AGENTS_DIRECTORY/hooks/sync-marketplace.sh"
+sync_hook_source="$skill_dir/assets/common/hooks/sync-marketplace.sh"
+sync_hook_destination="$AGENTS_DIRECTORY/hooks/sync-marketplace.sh"
+sync_hook_destination_was_different=1
+current_hook_needs_restart=0
+
+if [[ -f "$sync_hook_destination" && ! -L "$sync_hook_destination" ]] && \
+  cmp -s "$sync_hook_destination" "$sync_hook_source"; then
+  sync_hook_destination_was_different=0
+fi
+if [[ -f "${BASH_SOURCE[0]}" ]] && ! cmp -s "${BASH_SOURCE[0]}" "$sync_hook_source"; then
+  current_hook_needs_restart=1
+fi
+
+sync_file "$sync_hook_source" "$sync_hook_destination"
+
+if [[ "$sync_hook_destination_was_different" -eq 1 || "$current_hook_needs_restart" -eq 1 ]] && \
+  [[ -f "$sync_hook_destination" && ! -L "$sync_hook_destination" ]] && \
+  cmp -s "$sync_hook_destination" "$sync_hook_source"; then
+  echo "[marketplace-sync] Sync hook updated; restarting with latest version."
+  export AGENT_READY_SETUP_MARKETPLACE_UPGRADED=1
+  export AGENT_READY_SETUP_SYNC_LOCK_HELD=1
+  exec bash "$sync_hook_destination" "${original_arguments[@]}"
+fi
+
+setup_groot_ui
 
 stack_hooks_directory="$skill_dir/assets/stacks/$stack/hooks"
 if [[ -d "$stack_hooks_directory" ]]; then
