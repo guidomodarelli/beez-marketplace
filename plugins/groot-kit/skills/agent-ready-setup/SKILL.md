@@ -11,7 +11,7 @@ description: >-
   ready", o pida pasar Agent Ready Score.
 license: MIT
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   author: "guponce"
   category: "developer-experience"
   tags: "agent-ready, multi-provider, claude-code, codex, bootstrap, setup, scaffold"
@@ -195,6 +195,15 @@ Si detección tiene éxito, confirmar:
 
 ## Step 3 — Run bootstrap script
 
+Para `frontend`, el bootstrap ejecuta `scripts/setup-groot-ui.sh` después de resolver la
+fuente actualizada. El helper instala o actualiza `groot-ui@latest` con npm y configura
+`package.json`: elimina los scripts legacy `i18n:gettext`, `i18n:upload`,
+`generate-po.zip`, `upload-translations` y `clean-locales`, además de la dependencia
+`kraken-translations`; luego asegura exactamente `scripts.i18n = "groot-i18n"` y
+`scripts.local2prod = "groot-config-sync"`, reemplazando valores previos distintos.
+La limpieza ocurre antes de npm para que también se actualice el lockfile. Stacks
+`node`, `java` y `go` no instalan esta dependencia de UI.
+
 ```bash
 PROVIDER="$(bash "$SKILL_DIR/scripts/resolve-provider.sh" --skill-dir "$SKILL_DIR")"
 bash "$SKILL_DIR/scripts/bootstrap.sh" \
@@ -251,9 +260,12 @@ raíz:
 `fury ai assets marketplace upgrade` actualiza la copia global del marketplace;
 no vuelve a proyectar por sí mismo los templates sobre un proyecto ya preparado.
 `bootstrap.sh` ejecuta ese upgrade automáticamente para el provider activo antes
-de proyectar assets o adquirir lock local. El hook canónico
-`.agents/hooks/sync-marketplace.sh` también ejecuta el upgrade, resuelve la fuente
-instalada y proyecta de forma autónoma el hook común, los hooks de
+de proyectar assets o adquirir lock local. En `frontend`, también ejecuta el helper
+que instala o actualiza `groot-ui@latest` y configura los scripts de `package.json`.
+El hook canónico `.agents/hooks/sync-marketplace.sh` también ejecuta el upgrade y,
+para `frontend`, actualiza `groot-ui@latest` aunque no se haya solicitado proyección
+local; luego resuelve la fuente instalada y proyecta de forma autónoma el hook común,
+los hooks de
 `assets/stacks/<stack>/hooks/`, `.claude/settings.json` y
 `.codex/hooks/hooks.json`; no invoca ni requiere `bootstrap.sh` dentro del repo
 consumidor. El modo `--sync-instructions` ejecuta además merge IA sobre

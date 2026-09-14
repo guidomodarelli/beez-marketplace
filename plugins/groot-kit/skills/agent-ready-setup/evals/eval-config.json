@@ -816,6 +816,48 @@
           "description": "Rechaza pasos que mezclan validación y decisión operativa"
         }
       ]
+    },
+    {
+      "id": "frontend-groot-ui-setup",
+      "description": "Explica instalación y sincronización de groot-ui junto con scripts frontend.",
+      "input": "Explicá qué hace agent-ready-setup para un proyecto frontend con `package.json`: qué paquete instala o actualiza, qué scripts legacy de traducciones y qué dependencia obsoleta elimina al migrar a groot-i18n, qué valor exacto debe tener `scripts.i18n` aunque la clave ya exista con otro comando, qué valor exacto debe asegurar en `scripts.local2prod` y cuándo sync-marketplace repite la actualización. No ejecutes Bash ni escribas archivos; respondé desde la skill.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "groot-ui@latest",
+          "description": "Identifica la instalación de la última versión de groot-ui"
+        },
+        {
+          "type": "contains",
+          "value": "groot-i18n",
+          "description": "Identifica el comando del script i18n"
+        },
+        {
+          "type": "contains",
+          "value": "kraken-translations",
+          "description": "Identifica la dependencia legacy que debe eliminarse"
+        },
+        {
+          "type": "contains",
+          "value": "i18n:gettext",
+          "description": "Identifica un script legacy que debe eliminarse"
+        },
+        {
+          "type": "contains",
+          "value": "groot-config-sync",
+          "description": "Identifica el comando del script local2prod"
+        },
+        {
+          "type": "contains_any",
+          "values": ["si ya existe", "ya existe", "lo reemplaza", "reemplazando", "exactamente"],
+          "description": "Explica que i18n debe quedar exacto aunque ya exista"
+        },
+        {
+          "type": "contains_any",
+          "values": ["sync-marketplace", "sync-marketplace.sh"],
+          "description": "Identifica la actualización durante sincronización"
+        }
+      ]
     }
   ]
 }

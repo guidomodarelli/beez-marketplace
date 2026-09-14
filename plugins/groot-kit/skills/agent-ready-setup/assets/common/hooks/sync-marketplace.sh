@@ -10,6 +10,7 @@ readonly SKILL_NAME="agent-ready-setup"
 readonly AGENTS_DIRECTORY=".agents"
 readonly CLAUDE_DIRECTORY=".claude"
 readonly CODEX_DIRECTORY=".codex"
+readonly GROOT_UI_SETUP_SCRIPT="scripts/setup-groot-ui.sh"
 readonly SYNC_LOCK_DIRECTORY="$AGENTS_DIRECTORY/.agent-ready-assets.lock"
 readonly SYNC_LOCK_OWNER_FILE="$SYNC_LOCK_DIRECTORY/owner"
 readonly SYNC_LOCK_STALE_AFTER_MINUTES=10
@@ -120,11 +121,6 @@ fury ai assets marketplace upgrade \
   --provider "$provider"
 echo "[marketplace-sync] Marketplace upgrade completed."
 
-if [[ "$sync_requested" -eq 0 ]]; then
-  echo "[marketplace-sync] Local projection not requested; use --sync to update project assets."
-  exit 0
-fi
-
 resolve_skill_dir() {
   local candidate
   local provider_root
@@ -232,6 +228,19 @@ stack="$(detect_stack || true)"
 if [[ -z "$stack" ]]; then
   printf 'WARNING: could not detect project stack; local projection skipped.\n' >&2
   printf 'Rerun with --stack frontend|node|java|go.\n' >&2
+  exit 0
+fi
+
+if [[ "$stack" == "frontend" ]]; then
+  if [[ -x "$skill_dir/$GROOT_UI_SETUP_SCRIPT" ]]; then
+    bash "$skill_dir/$GROOT_UI_SETUP_SCRIPT" "package.json"
+  else
+    printf 'WARNING: %s is unavailable; groot-ui setup skipped.\n' "$skill_dir/$GROOT_UI_SETUP_SCRIPT" >&2
+  fi
+fi
+
+if [[ "$sync_requested" -eq 0 ]]; then
+  echo "[marketplace-sync] Local projection not requested; use --sync to update project assets."
   exit 0
 fi
 

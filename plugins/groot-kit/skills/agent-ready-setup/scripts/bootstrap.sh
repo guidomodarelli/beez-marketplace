@@ -253,6 +253,11 @@ validate_skill_source() {
     echo "ERROR: Instruction centralization template is missing: $CENTRALIZATION_TEMPLATE" >&2
     exit 1
   fi
+
+  if [[ "$STACK" == "frontend" && ! -x "$SKILL_DIR/scripts/setup-groot-ui.sh" ]]; then
+    echo "ERROR: Frontend groot-ui setup helper is missing or not executable: $SKILL_DIR/scripts/setup-groot-ui.sh" >&2
+    exit 1
+  fi
 }
 
 CLAUDE_DIR=".claude"
@@ -425,6 +430,10 @@ acquire_sync_lock() {
 
 if [[ "$SYNC_MODE" -eq 1 ]] && ! acquire_sync_lock; then
   exit 0
+fi
+
+if [[ "$STACK" == "frontend" ]]; then
+  bash "$SKILL_DIR/scripts/setup-groot-ui.sh" "package.json"
 fi
 
 record_created() {

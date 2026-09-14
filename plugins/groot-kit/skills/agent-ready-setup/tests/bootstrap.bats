@@ -12,6 +12,12 @@ setup() {
 exit 0
 EOF
   chmod +x "$fake_bin/fury"
+  cat > "$fake_bin/npm" <<'EOF'
+#!/bin/bash
+printf '%s\n' "$*" >> "${NPM_INVOCATION_LOG:-/dev/null}"
+exit 0
+EOF
+  chmod +x "$fake_bin/npm"
   git -C "$project_dir" -c init.defaultBranch=main init -q
   cd "$project_dir"
 }
@@ -729,6 +735,82 @@ EOF
   [ -f .codex/hooks/hooks.json ]
 }
 
+@test "frontend bootstrap installs groot-ui and configures package scripts" {
+  npm_log="$test_root/npm-invocation.log"
+  cat > package.json <<'EOF'
+{
+  "name": "frontend-project",
+  "scripts": {
+    "i18n:gettext": "i18n gettext",
+    "i18n:upload": "i18n upload",
+    "generate-po.zip": "node ./translations/po-generate-zip.js",
+    "upload-translations": "upload-translations --appName=test",
+    "clean-locales": "clean-po-locales && clean-json-locales",
+    "install-selenium": "selenium-standalone install"
+  },
+  "dependencies": {
+    "react": "1.0.0",
+    "kraken-translations": "^0.1.4"
+  }
+}
+EOF
+
+  NPM_INVOCATION_LOG="$npm_log" run_bootstrap frontend
+
+  [ "$status" -eq 0 ]
+  grep -Fxq 'install --save groot-ui@latest' "$npm_log"
+  jq -e '.scripts.i18n == "groot-i18n"' package.json >/dev/null
+  jq -e '.scripts.local2prod == "groot-config-sync"' package.json >/dev/null
+  jq -e '(.scripts | has("i18n:gettext")) | not' package.json >/dev/null
+  jq -e '(.scripts | has("i18n:upload")) | not' package.json >/dev/null
+  jq -e '(.scripts | has("generate-po.zip")) | not' package.json >/dev/null
+  jq -e '(.scripts | has("upload-translations")) | not' package.json >/dev/null
+  jq -e '(.scripts | has("clean-locales")) | not' package.json >/dev/null
+  jq -e '(.scripts["install-selenium"] == "selenium-standalone install")' package.json >/dev/null
+  jq -e '(.dependencies | has("kraken-translations")) | not' package.json >/dev/null
+  [[ "$output" == *"[groot-ui] Configured"* ]]
+}
+
+@test "frontend sync updates groot-ui and enforces frontend scripts" {
+  npm_log="$test_root/npm-invocation.log"
+  cat > package.json <<'EOF'
+{
+  "name": "frontend-project",
+  "scripts": {
+    "i18n": "custom-i18n",
+    "local2prod": "old-config-command",
+    "i18n:gettext": "i18n gettext",
+    "i18n:upload": "i18n upload",
+    "generate-po.zip": "node ./translations/po-generate-zip.js",
+    "upload-translations": "upload-translations --appName=test",
+    "clean-locales": "clean-po-locales && clean-json-locales",
+    "install-selenium": "selenium-standalone install"
+  },
+  "dependencies": {
+    "react": "1.0.0",
+    "kraken-translations": "^0.1.4"
+  }
+}
+EOF
+
+  NPM_INVOCATION_LOG="$npm_log" AGENT_READY_SETUP_SKILL_DIR="$skill_dir" \
+    PATH="$test_root/bin:$PATH" \
+    run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" --provider claude
+
+  [ "$status" -eq 0 ]
+  grep -Fxq 'install --save groot-ui@latest' "$npm_log"
+  jq -e '.scripts.i18n == "groot-i18n"' package.json >/dev/null
+  jq -e '.scripts.local2prod == "groot-config-sync"' package.json >/dev/null
+  jq -e '(.scripts | has("i18n:gettext")) | not' package.json >/dev/null
+  jq -e '(.scripts | has("i18n:upload")) | not' package.json >/dev/null
+  jq -e '(.scripts | has("generate-po.zip")) | not' package.json >/dev/null
+  jq -e '(.scripts | has("upload-translations")) | not' package.json >/dev/null
+  jq -e '(.scripts | has("clean-locales")) | not' package.json >/dev/null
+  jq -e '(.scripts["install-selenium"] == "selenium-standalone install")' package.json >/dev/null
+  jq -e '(.dependencies | has("kraken-translations")) | not' package.json >/dev/null
+  [[ "$output" == *"Local projection not requested"* ]]
+}
+
 @test "bootstrap stops before projection when marketplace upgrade fails" {
   cat > "$test_root/bin/fury" <<'EOF'
 #!/bin/bash
@@ -944,7 +1026,7 @@ EOF
 
   AGENT_READY_SETUP_SKILL_DIR="$skill_dir" PATH="$test_root/bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
-      --provider claude --stack frontend --sync-instructions --yes
+      --provider claude --stack frontend --sync --yes
 
   [ "$status" -eq 0 ]
   jq -e '.permissions.allow | length == 3' .claude/settings.json >/dev/null
