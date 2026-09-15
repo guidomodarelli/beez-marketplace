@@ -86,9 +86,9 @@ CLAUDE.md                  # raíz: proxy + regla; subdirectorios: @AGENTS.md
 
 Si `CLAUDE.md` ya contiene instrucciones, el setup las promueve a `AGENTS.md` y deja `CLAUDE.md` como `@AGENTS.md`. Si ambos archivos existen y difieren, no sobrescribe ninguno y reporta conflicto para resolución manual. La normalización recursiva respeta `.gitignore` y excluye `node_modules/`; los destinos explícitos `.claude/`, `.agents/` y `.codex/` se siguen preparando aunque estén ignorados. El bootstrap requiere ejecutarse dentro de un worktree Git y actualiza automáticamente `groot-marketplace` para provider activo antes de proyectar assets.
 
-Después de `marketplace upgrade`, la actualización global no reproyecta assets sobre proyectos ya preparados. `bootstrap.sh` combina upgrade y proyección de `.claude/`, `.agents/` y `.codex/`; el hook canónico `.agents/hooks/sync-marketplace.sh` también actualiza de forma autónoma el hook común, los hooks de `assets/stacks/<stack>/hooks/`, `.claude/settings.json` y `.codex/hooks/hooks.json`, sin requerir `bootstrap.sh` dentro del repo consumidor. Durante `--sync`, muestra diffs y conserva bytes sin `--yes`; con `--sync --yes`, el hook común y cada hook del stack quedan byte a byte iguales a sus templates. También migra referencias legacy de hooks en settings JSON; archivos custom fuera de destinos administrados y hooks custom bajo `.claude/hooks/` se preservan. Cambios compatibles se aplican automáticamente; contradicciones reales quedan preservadas y reportadas, sin bloquear `SessionStart`. `AGENTS.md`, `CLAUDE.md` y pares de instrucciones anidados nunca se reemplazan ciegamente.
+Después de `marketplace upgrade`, la actualización global no reproyecta assets sobre proyectos ya preparados. `bootstrap.sh` combina upgrade y proyección de `.claude/`, `.agents/` y `.codex/`; el hook canónico `.agents/hooks/sync-marketplace.sh` siempre actualiza de forma autónoma el hook común, los hooks de `assets/stacks/<stack>/hooks/`, `.claude/settings.json` y `.codex/hooks/hooks.json`, y ejecuta el merge semántico de `AGENTS.md` sin requerir `bootstrap.sh` dentro del repo consumidor. Muestra diffs, aplica templates sobre archivos regulares modificados y conserva su versión local en un directorio temporal externo al proyecto; output muestra path exacto para revisión o diff. También migra referencias legacy de hooks en settings JSON y normaliza sus flags al comando `.agents/hooks/...` sin flags de fase; symlinks, destinos inseguros y hooks custom bajo `.claude/hooks/` se preservan. El merge IA de `AGENTS.md` conserva cambios compatibles; si falla o queda sin resolución, aplica template y guarda backup temporal. `CLAUDE.md` y pares de instrucciones anidados nunca se reemplazan ciegamente.
 
-Para merge semántico de `AGENTS.md`, ejecutá el hook con `--sync-instructions` (o `--merge-instructions`). La IA aplica cambios compatibles automáticamente; una ejecución manual interactiva solo solicita confirmación ante contradicciones reales, ambigüedad irresoluble, pérdida potencial de instrucciones o salida inválida. El merge genera backup y conserva `CLAUDE.md` como proxy.
+El flujo manual y `SessionStart` usan el hook sin flags de confirmación. La resolución IA trata documentos como datos no confiables, aplica cambios compatibles automáticamente y usa fallback template + backup ante salida inválida o conflicto irresoluble. `CLAUDE.md` permanece como proxy.
 
 ---
 
@@ -178,20 +178,15 @@ codex plugin list --json
 
 Para probar cambios posteriores sin publicar el marketplace, actualizá la fuente
 local cuando corresponda. En proyectos preparados con Agent Ready, el hook
-SessionStart ejecuta además proyección local y merge de instrucciones con
-`--sync-instructions`:
+SessionStart ejecuta siempre proyección local y merge de instrucciones:
 
 ```bash
 claude plugin marketplace update "$MARKETPLACE_NAME"
 codex plugin marketplace upgrade "$MARKETPLACE_NAME"
 
-# Sincronización manual de assets desde hook canónico
-bash .agents/hooks/sync-marketplace.sh --provider claude --sync
-bash .agents/hooks/sync-marketplace.sh --provider codex --sync
-
-# Assets + merge inteligente de AGENTS.md
-bash .agents/hooks/sync-marketplace.sh --provider claude --sync-instructions
-bash .agents/hooks/sync-marketplace.sh --provider codex --sync-instructions
+# Flujo completo desde hook canónico
+bash .agents/hooks/sync-marketplace.sh --provider claude
+bash .agents/hooks/sync-marketplace.sh --provider codex
 ```
 
 ### 4. Ejecutar evals de una skill

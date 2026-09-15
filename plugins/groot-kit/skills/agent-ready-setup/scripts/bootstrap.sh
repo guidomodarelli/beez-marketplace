@@ -842,7 +842,24 @@ sync_claude_settings() {
   temporary_settings="$(mktemp "${TMPDIR:-/tmp}/agent-ready-settings.XXXXXX")"
   python3 - "$template" "$destination" > "$temporary_settings" <<'PY' || merge_status=$?
 import json
+import re
 import sys
+
+
+def canonical_managed_sync_command(value):
+    managed_command_pattern = re.compile(
+        r"^(?:Bash\((?:\.claude/hooks|\.agents/hooks)/sync-marketplace\.sh "
+        r"--provider claude(?: --(?:sync|update|sync-instructions|merge-instructions))?"
+        r"(?: --yes)?\)|bash (?:\.claude/hooks|\.agents/hooks)/sync-marketplace\.sh "
+        r"--provider claude(?: --(?:sync|update|sync-instructions|merge-instructions))?"
+        r"(?: --yes)?)$"
+    )
+    if managed_command_pattern.match(value):
+        if value.startswith("Bash("):
+            return "Bash(.agents/hooks/sync-marketplace.sh --provider claude)"
+        return "bash .agents/hooks/sync-marketplace.sh --provider claude"
+    return None
+
 
 template_path, settings_path = sys.argv[1:3]
 try:
@@ -859,11 +876,18 @@ def migrate(value):
         return {key: migrate(item) for key, item in value.items()}
     if isinstance(value, list):
         return [migrate(item) for item in value]
-    if isinstance(value, str) and (
-        value.startswith("Bash(.claude/hooks/")
-        or value.startswith("bash .claude/hooks/")
+    if not isinstance(value, str):
+        return value
+
+    canonical_value = canonical_managed_sync_command(value)
+    if canonical_value is not None:
+        return canonical_value
+
+    if value.startswith("Bash(.claude/hooks/") or value.startswith(
+        "bash .claude/hooks/"
     ):
         return value.replace(".claude/hooks/", ".agents/hooks/", 1)
+
     return value
 
 

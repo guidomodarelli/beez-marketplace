@@ -6,7 +6,8 @@ setup() {
   test_root="$(mktemp -d)"
   project_dir="$test_root/project"
   fake_bin="$test_root/bin"
-  mkdir -p "$project_dir" "$fake_bin"
+  mkdir -p "$project_dir" "$fake_bin" "$test_root/tmp"
+  export TMPDIR="$test_root/tmp"
   cat > "$fake_bin/fury" <<'EOF'
 #!/bin/bash
 exit 0
@@ -96,11 +97,11 @@ run_marketplace_sync() {
   jq -n --slurpfile claude .claude/mcp.json --slurpfile codex .codex/.mcp.json \
     '$claude[0].mcpServers == $codex[0].mcpServers' >/dev/null
   jq -e '.hooks.SessionStart[0].matcher == "startup|clear|resume"' .codex/hooks/hooks.json >/dev/null
-  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)")' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude)")' .claude/settings.json >/dev/null
   jq -e '.permissions.allow | index("Bash(.agents/hooks/check-harness-consistency.sh)")' .claude/settings.json >/dev/null
-  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes"' .claude/settings.json >/dev/null
+  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider claude"' .claude/settings.json >/dev/null
   jq -e '.hooks.PostToolUse[0].hooks[0].command == "bash .agents/hooks/check-harness-consistency.sh"' .claude/settings.json >/dev/null
-  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex --sync-instructions --yes"' .codex/hooks/hooks.json >/dev/null
+  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex"' .codex/hooks/hooks.json >/dev/null
   [[ "$output" == *"Providers: Claude Code + Codex-compatible shared tree"* ]]
 }
 
@@ -133,7 +134,7 @@ run_marketplace_sync() {
   printf '%s\n' '# Custom hook' > .claude/hooks/custom.sh
   printf '%s\n' '# Hidden custom hook' > .claude/hooks/.custom-hook
   ln -s "$outside_file" .claude/hooks/custom-link.sh
-  jq '.customSetting = "preserve-me" | .permissions.allow |= map(gsub("\\.agents/hooks/"; ".claude/hooks/")) | .permissions.allow += ["Bash(custom-project-command)"] | .hooks.SessionStart[0].hooks[0].command |= gsub("\\.agents/hooks/"; ".claude/hooks/") | .hooks.PostToolUse[0].hooks[0].command |= gsub("\\.agents/hooks/"; ".claude/hooks/") | .hooks.PostToolUse[0].hooks += [{"type":"command","command":"bash .agents/hooks/custom-project-hook.sh"}]' .claude/settings.json > "$test_root/settings.json"
+  jq '.customSetting = "preserve-me" | .permissions.allow |= map(gsub("\\.agents/hooks/"; ".claude/hooks/") | gsub(" --provider claude\\)$"; " --provider claude --sync-instructions --yes)")) | .permissions.allow += ["Bash(custom-project-command)"] | .hooks.SessionStart[0].hooks[0].command |= (gsub("\\.agents/hooks/"; ".claude/hooks/") | gsub(" --provider claude$"; " --provider claude --sync-instructions --yes")) | .hooks.PostToolUse[0].hooks[0].command |= gsub("\\.agents/hooks/"; ".claude/hooks/") | .hooks.PostToolUse[0].hooks += [{"type":"command","command":"bash .agents/hooks/custom-project-hook.sh"}]' .claude/settings.json > "$test_root/settings.json"
   mv "$test_root/settings.json" .claude/settings.json
 
   run_bootstrap frontend --sync --yes
@@ -144,8 +145,11 @@ run_marketplace_sync() {
   [ -L .claude/hooks/custom-link.sh ]
   jq -e '.customSetting == "preserve-me"' .claude/settings.json >/dev/null
   jq -e '.permissions.allow | index("Bash(custom-project-command)")' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude)")' .claude/settings.json >/dev/null
+  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider claude"' .claude/settings.json >/dev/null
   jq -e '.hooks.PostToolUse[0].hooks | index({"type":"command","command":"bash .agents/hooks/custom-project-hook.sh"})' .claude/settings.json >/dev/null
   ! grep -Fq '.claude/hooks/' .claude/settings.json
+  ! grep -Fq -- '--sync' .claude/settings.json
   [[ "$output" == *"Managed asset cleanup conflicts (preserved):"* ]]
   [[ "$output" == *".claude/hooks/custom.sh is custom content; preserved"* ]]
   [[ "$output" == *".claude/hooks/.custom-hook is custom content; preserved"* ]]
@@ -164,7 +168,7 @@ run_marketplace_sync() {
   [ "$status" -eq 0 ]
   jq -e '.permissions.allow | index("Bash(custom-project-command)")' .claude/settings.json >/dev/null
   jq -e '.hooks.PostToolUse[0].hooks | index({"type":"command","command":"bash .agents/hooks/custom-project-hook.sh"})' .claude/settings.json >/dev/null
-  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)")' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude)")' .claude/settings.json >/dev/null
 }
 
 @test "sync preserves custom settings array entries inserted before managed entries" {
@@ -181,7 +185,7 @@ run_marketplace_sync() {
 
   [ "$status" -eq 0 ]
   jq -e '.permissions.allow[0] == "Bash(custom-before-managed)"' .claude/settings.json >/dev/null
-  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)")' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude)")' .claude/settings.json >/dev/null
   jq -e '.hooks.PostToolUse[0].hooks[0] == {"type":"command","command":"bash .agents/hooks/custom-before-managed.sh"}' .claude/settings.json >/dev/null
   jq -e '.hooks.PostToolUse[0].hooks | index({"type":"command","command":"bash .agents/hooks/check-harness-consistency.sh"})' .claude/settings.json >/dev/null
 }
@@ -201,7 +205,7 @@ run_marketplace_sync() {
   [ "$status" -eq 0 ]
   jq -e '.permissions.allow | length == 3' .claude/settings.json >/dev/null
   jq -e '.permissions.allow | index("Bash(custom-replaced-permission)") != null' .claude/settings.json >/dev/null
-  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)") != null' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude)") != null' .claude/settings.json >/dev/null
   jq -e '.permissions.allow | index("Bash(.agents/hooks/check-harness-consistency.sh)") != null' .claude/settings.json >/dev/null
   jq -e '.hooks.PostToolUse | length == 2' .claude/settings.json >/dev/null
   jq -e '[.hooks.PostToolUse[].hooks[]] | index({"type":"command","command":"bash .agents/hooks/custom-replaced-hook.sh"}) != null' .claude/settings.json >/dev/null
@@ -213,7 +217,6 @@ run_marketplace_sync() {
   cp -R "$skill_dir" "$dynamic_skill_dir"
 
   run_marketplace_sync "$skill_dir/assets/common/hooks/sync-marketplace.sh" "$dynamic_skill_dir" \
-    --sync-instructions --yes
 
   [ "$status" -eq 0 ]
   [ -f .claude/settings.json ]
@@ -230,13 +233,12 @@ run_marketplace_sync() {
   mv "$test_root/template.json" "$dynamic_skill_dir/assets/common/settings.json"
 
   run_marketplace_sync ".agents/hooks/sync-marketplace.sh" "$dynamic_skill_dir" \
-    --sync-instructions --yes
 
   [ "$status" -eq 0 ]
   jq -e '.customSetting == "preserve-me"' .claude/settings.json >/dev/null
   jq -e '.newManagedSetting == "new-value"' .claude/settings.json >/dev/null
   jq -e '.permissions.allow[0] == "Bash(custom-before-managed)"' .claude/settings.json >/dev/null
-  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)")' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude)")' .claude/settings.json >/dev/null
   jq -e '.hooks.PostToolUse[0].hooks[0] == {"type":"command","command":"bash .agents/hooks/custom-project-hook.sh"}' .claude/settings.json >/dev/null
   jq -e '.hooks.PostToolUse[0].hooks | index({"type":"command","command":"bash .agents/hooks/check-harness-consistency.sh"})' .claude/settings.json >/dev/null
 }
@@ -246,14 +248,12 @@ run_marketplace_sync() {
   cp -R "$skill_dir" "$dynamic_skill_dir"
 
   run_marketplace_sync "$skill_dir/assets/common/hooks/sync-marketplace.sh" "$dynamic_skill_dir" \
-    --sync --yes
 
   [ "$status" -eq 0 ]
   rm .claude/rules/security.md
   cp .agents/rules/security.md .claude/rules/security.md
 
   run_marketplace_sync ".agents/hooks/sync-marketplace.sh" "$dynamic_skill_dir" \
-    --sync --yes
 
   [ "$status" -eq 0 ]
   [ -L .claude/rules/security.md ]
@@ -264,7 +264,6 @@ run_marketplace_sync() {
   printf '%s\n' '# Claude-only security override' > .claude/rules/security.md
 
   run_marketplace_sync ".agents/hooks/sync-marketplace.sh" "$dynamic_skill_dir" \
-    --sync --yes
 
   [ "$status" -eq 0 ]
   [ ! -L .claude/rules/security.md ]
@@ -345,9 +344,9 @@ run_marketplace_sync() {
     for hook_file in check-harness-consistency.sh pre-tool-use.md; do
       cmp -s ".agents/hooks/$hook_file" "$skill_dir/assets/stacks/$stack/hooks/$hook_file"
     done
-    jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes"' .claude/settings.json >/dev/null
+    jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider claude"' .claude/settings.json >/dev/null
     jq -e '.hooks.PostToolUse[0].hooks[0].command == "bash .agents/hooks/check-harness-consistency.sh"' .claude/settings.json >/dev/null
-    jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex --sync-instructions --yes"' .codex/hooks/hooks.json >/dev/null
+    jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex"' .codex/hooks/hooks.json >/dev/null
   done
 }
 
@@ -808,7 +807,7 @@ EOF
   jq -e '(.scripts | has("clean-locales")) | not' package.json >/dev/null
   jq -e '(.scripts["install-selenium"] == "selenium-standalone install")' package.json >/dev/null
   jq -e '(.dependencies | has("kraken-translations")) | not' package.json >/dev/null
-  [[ "$output" == *"Local projection not requested"* ]]
+  [[ "$output" == *"Local managed asset projection completed for frontend."* ]]
 }
 
 @test "bootstrap stops before projection when marketplace upgrade fails" {
@@ -865,9 +864,19 @@ EOF
 
   run env -u AGENT_READY_SETUP_SKILL_DIR \
     FURY_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
-    bash "$hook" --provider claude --sync
+    bash "$hook" --provider claude
   [ "$status" -eq 0 ]
   [[ "$output" == *"could not detect project stack"* ]]
+}
+
+@test "sync hook rejects removed phase flags" {
+  for removed_flag in --sync --update --sync-instructions --merge-instructions --yes; do
+    run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
+      --provider claude "$removed_flag"
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"unsupported marketplace sync argument: $removed_flag"* ]]
+  done
 }
 
 @test "sync hook rejects invalid reexecution guards" {
@@ -936,7 +945,6 @@ EOF
       --provider claude \
       --sync \
       --yes
-
   [ "$status" -eq 0 ]
   cmp -s .agents/hooks/sync-marketplace.sh "$source_dir/assets/common/hooks/sync-marketplace.sh"
   cmp -s .claude/settings.json "$source_dir/assets/common/settings.json"
@@ -1034,15 +1042,60 @@ EOF
   jq '.permissions.allow[0] = "Bash(custom-command)"' .claude/settings.json > "$test_root/settings.json"
   mv "$test_root/settings.json" .claude/settings.json
 
+  cat > "$test_root/bin/claude" <<'EOF'
+#!/bin/bash
+jq -n --rawfile merged_content AGENTS.md \
+  '{status:"auto", reason:"No changes", conflicts:[], merged_content:$merged_content}'
+EOF
+  chmod +x "$test_root/bin/claude"
+
   AGENT_READY_SETUP_SKILL_DIR="$skill_dir" PATH="$test_root/bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
-      --provider claude --stack frontend --sync --yes
+      --provider claude --stack frontend
 
   [ "$status" -eq 0 ]
   jq -e '.permissions.allow | length == 3' .claude/settings.json >/dev/null
   jq -e '.permissions.allow | index("Bash(custom-command)") != null' .claude/settings.json >/dev/null
-  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)") != null' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude)") != null' .claude/settings.json >/dev/null
   jq -e '.permissions.allow | index("Bash(.agents/hooks/check-harness-consistency.sh)") != null' .claude/settings.json >/dev/null
+  [[ "$output" == *"Local backups directory:"* ]]
+  backup_files=("$test_root"/tmp/agent-ready-backups.*/.claude/settings.json.agent-ready-backup.*)
+  [ -f "${backup_files[0]}" ]
+  grep -Fq 'Bash(custom-command)' "${backup_files[0]}"
+}
+
+@test "sync hook migrates legacy Claude settings path and flags" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+
+  jq '
+    .permissions.allow[0] = "Bash(.claude/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)"
+    | .permissions.allow += [
+        "bash .agents/hooks/sync-marketplace.sh-wrapper --provider claude --custom",
+        "bash .agents/hooks/sync-marketplace.sh --provider claude --stack node"
+      ]
+    | .hooks.SessionStart[0].hooks[0].command = "bash .claude/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes"
+  ' .claude/settings.json > "$test_root/settings.json"
+  mv "$test_root/settings.json" .claude/settings.json
+
+  cat > "$test_root/bin/claude" <<'EOF'
+#!/bin/bash
+jq -n --rawfile merged_content AGENTS.md \
+  '{status:"auto", reason:"No changes", conflicts:[], merged_content:$merged_content}'
+EOF
+  chmod +x "$test_root/bin/claude"
+
+  AGENT_READY_SETUP_SKILL_DIR="$skill_dir" PATH="$test_root/bin:$PATH" \
+    run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
+      --provider claude --stack frontend
+
+  [ "$status" -eq 0 ]
+  jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude)")' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("bash .agents/hooks/sync-marketplace.sh-wrapper --provider claude --custom")' .claude/settings.json >/dev/null
+  jq -e '.permissions.allow | index("bash .agents/hooks/sync-marketplace.sh --provider claude --stack node")' .claude/settings.json >/dev/null
+  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider claude"' .claude/settings.json >/dev/null
+  ! grep -Fq '.claude/hooks/' .claude/settings.json
+  ! grep -Fq -- '--sync' .claude/settings.json
 }
 
 @test "sync hook projects managed assets without bootstrap" {
@@ -1109,7 +1162,7 @@ EOF
     AGENT_READY_SETUP_SKILL_DIR="$source_dir" \
     PATH="$fake_bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
-      --provider claude --stack go --sync-instructions --yes
+      --provider claude --stack go
 
   [ "$status" -eq 0 ]
   [ "$(sed -n '1p' "$event_log")" = "fury" ]
@@ -1176,7 +1229,7 @@ EOF
 
   AGENT_READY_SETUP_SKILL_DIR="$source_dir" MV_LOG="$mv_log" PATH="$fake_bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
-      --provider claude --stack go --sync --yes
+      --provider claude --stack go
 
   [ "$status" -eq 0 ]
   grep -Eq 'agent-ready-sync\.[^ ]+ \.agents/hooks/sync-marketplace\.sh$' "$mv_log"
@@ -1191,7 +1244,7 @@ EOF
 
   AGENT_READY_SETUP_SKILL_DIR="$source_dir" PATH="$test_root/bin:$PATH" \
     run bash .agents/hooks/sync-marketplace.sh \
-      --provider claude --stack go --sync --yes
+      --provider claude --stack go
 
   [ "$status" -eq 0 ]
   grep -Fq -- "Sync hook updated; restarting with latest version." <<< "$output"
@@ -1212,7 +1265,7 @@ EOF
 
   AGENT_READY_SETUP_SKILL_DIR="$source_dir" PATH="$test_root/bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
-      --provider claude --stack go --sync --yes
+      --provider claude --stack go
 
   [ "$status" -eq 0 ]
   [ ! -e .agents/.agent-ready-assets.lock ]
@@ -1228,7 +1281,7 @@ EOF
 
   AGENT_READY_SETUP_SKILL_DIR="$source_dir" PATH="$test_root/bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
-      --provider claude --stack go --sync --yes
+      --provider claude --stack go
 
   [ "$status" -eq 0 ]
   [ -d .agents/.agent-ready-assets.lock ]
@@ -1243,7 +1296,7 @@ EOF
 
   AGENT_READY_SETUP_SKILL_DIR="$source_dir" PATH="$test_root/bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
-      --provider claude --stack go --sync --yes
+      --provider claude --stack go
 
   [ "$status" -eq 0 ]
   [ ! -e .agents/.agent-ready-assets.lock ]
@@ -1287,7 +1340,7 @@ EOF
     AGENT_READY_SETUP_SKILL_DIR="$source_dir" \
     PATH="$fake_bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
-      --provider claude --sync
+      --provider claude
 
   [ "$status" -ne 0 ]
   [ ! -e "$bootstrap_log" ]

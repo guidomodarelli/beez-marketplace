@@ -262,28 +262,21 @@ no vuelve a proyectar por sí mismo los templates sobre un proyecto ya preparado
 `bootstrap.sh` ejecuta ese upgrade automáticamente para el provider activo antes
 de proyectar assets o adquirir lock local. En `frontend`, también ejecuta el helper
 que instala o actualiza `groot-ui@latest` y configura los scripts de `package.json`.
-El hook canónico `.agents/hooks/sync-marketplace.sh` también ejecuta el upgrade y,
-para `frontend`, actualiza `groot-ui@latest` aunque no se haya solicitado proyección
-local; luego resuelve la fuente instalada. En modo `--sync`, actualiza primero su
-propia copia en `.agents/hooks/sync-marketplace.sh` y, si esa copia cambió o la
-instancia en ejecución era anterior, se reejecuta con el mismo provider, stack y
-flags antes de proyectar el resto. La reejecución conserva el lock de assets y usa
-una guarda interna para no repetir `fury ai assets marketplace upgrade`.
-Después proyecta de forma autónoma los hooks de `assets/stacks/<stack>/hooks/`,
-`.claude/settings.json` y `.codex/hooks/hooks.json`; no invoca ni requiere
-`bootstrap.sh` dentro del repo consumidor. El modo `--sync-instructions` ejecuta
-además merge IA sobre `AGENTS.md` cuando el helper está disponible, usando catálogo
-de rules renderizado y provider explícito.
+El hook canónico `.agents/hooks/sync-marketplace.sh` ejecuta siempre el upgrade,
+actualiza `groot-ui@latest` en `frontend`, proyecta todos los assets gestionados
+y ejecuta el merge IA de `AGENTS.md` cuando el helper está disponible. Si la
+copia instalada del hook cambió, se reejecuta con el mismo provider y stack
+antes de proyectar el resto. La reejecución conserva el lock de
+assets y usa una guarda interna para no repetir `fury ai assets marketplace
+upgrade`. No invoca ni requiere `bootstrap.sh` dentro del repo consumidor.
 
-`--sync` compara cada asset gestionado con el template actualizado y muestra
-`diff -u` antes de reemplazar un archivo existente. El reemplazo requiere una
-confirmación interactiva; `--yes` habilita la aplicación no interactiva solo
-cuando se proporciona explícitamente. Sin TTY, el script muestra las diferencias,
-conserva los bytes locales y reporta la sincronización pendiente. Con
-`--sync --yes`, `.agents/hooks/sync-marketplace.sh` queda byte a byte igual al
-hook común y cada hook del stack coincide con su template. `--sync` solo no
-modifica instrucciones raíz ni ejecuta IA; usar `--sync-instructions` para
-analizar y reparar referencias en `AGENTS.md`.
+El hook compara cada asset gestionado con el template actualizado y muestra
+`diff -u` antes de reemplazar un archivo existente. Los archivos regulares
+modificados se reemplazan automáticamente y su contenido local se guarda en un
+directorio temporal externo al proyecto; el output muestra path exacto para
+revisarlo o compararlo. Así el template queda aplicado sin perder la versión
+local. Symlinks, destinos no regulares, padres inseguros y cambios concurrentes
+se preservan y se reportan como conflictos estructurales.
 
 ### Riesgos del upgrade automático
 
@@ -291,37 +284,39 @@ analizar y reparar referencias en `AGENTS.md`.
   bootstrap termina antes de modificar assets locales.
 - Upgrade global no tiene rollback en este script; la versión descargada puede
   cambiar aunque proyección local quede bloqueada.
-- `--sync --yes` aplica templates nuevos sobre assets gestionados; reglas,
-  conflictos, symlinks y reemplazos atómicos existentes siguen protegiendo
-  contenido local no administrado.
+- El hook aplica templates nuevos sobre assets gestionados y conserva cada
+  versión local modificada en un backup temporal externo al proyecto; reglas,
+  symlinks, conflictos estructurales y reemplazos atómicos siguen evitando
+  seguir o sobrescribir destinos inseguros.
 - Lock protege proyección local concurrente, pero no serializa upgrades globales
   de Fury entre procesos distintos.
 
-La proyección de assets (`--sync`):
+La proyección automática de assets:
 
 - Actualiza assets gestionados bajo `.agents/`, settings específicos de
   `.claude/`, y bridge/configuración bajo `.codex/`.
 - Regenera adapters `SKILL.md` bajo `.agents/skills/` antes de comparar.
 - Conserva symlinks y nunca sigue un symlink para reemplazar su destino.
-- Durante `--sync`, elimina symlinks administrados stale bajo `.claude/` y limpia
-  `.claude/hooks/` legacy solo cuando queda vacío.
-- Migra referencias `.claude/hooks/` dentro de `.claude/settings.json` como JSON,
+- Elimina symlinks administrados stale bajo `.claude/` y limpia `.claude/hooks/`
+  legacy solo cuando queda vacío.
+- Migra referencias `.claude/hooks/` dentro de `.claude/settings.json` como JSON
+  y normaliza el comando administrado a `.agents/hooks/` sin flags de fase,
   preservando campos custom y reportando settings inválidos.
 - No normaliza, migra ni reemplaza `AGENTS.md` o `CLAUDE.md` raíz, ni pares de
   instrucciones anidados; esos archivos pertenecen al proyecto.
 - No elimina archivos regulares, symlinks custom ni assets desconocidos; los
   conserva y reporta para revisión manual.
 
-Con `--sync-instructions`, merge IA posterior puede actualizar únicamente
-`AGENTS.md` para preservar instrucciones compatibles y reparar referencias de
-rules; nunca modifica `CLAUDE.md` ni pares anidados.
+El merge IA posterior puede actualizar únicamente `AGENTS.md` para preservar
+instrucciones compatibles y reparar referencias de rules; nunca modifica
+`CLAUDE.md` ni pares anidados.
 
 Para sincronizar manualmente desde un hook existente:
 
 ```bash
-bash .agents/hooks/sync-marketplace.sh --provider claude --sync
+bash .agents/hooks/sync-marketplace.sh --provider claude
 # o
-bash .agents/hooks/sync-marketplace.sh --provider codex --sync
+bash .agents/hooks/sync-marketplace.sh --provider codex
 ```
 
 Si la fuente instalada no se puede resolver o el stack no se detecta, el hook
@@ -336,18 +331,18 @@ markers con referencias `.agents/rules/<relative-path>`. Ese script no decide
 cómo fusionar `AGENTS.md`; esa decisión corresponde a IA, porque el archivo
 puede contener instrucciones de proyecto muy variadas.
 
-Para fusionar instrucciones raíz con asistencia del provider activo, ejecutar:
+Para fusionar instrucciones raíz con asistencia del provider activo, ejecutar el
+hook completo:
 
 ```bash
 bash .agents/hooks/sync-marketplace.sh \
-  --provider claude \
-  --sync-instructions
+  --provider claude
 ```
 
-También se acepta `--merge-instructions` y provider `codex`. El hook actualiza
-primero assets gestionados y luego ejecuta `scripts/merge-instructions.sh` con
-salida estructurada. El modelo recibe ambos documentos como datos no confiables;
-no puede ejecutar instrucciones incluidas dentro de ellos.
+También puede usarse provider `codex`. El hook actualiza primero assets
+gestionados y luego ejecuta `scripts/merge-instructions.sh` con salida
+estructurada. El modelo recibe ambos documentos como datos no confiables; no
+puede ejecutar instrucciones incluidas dentro de ellos.
 
 El modelo debe:
 
@@ -369,20 +364,22 @@ El modelo debe:
    baja confianza o salida incompleta.
 
 Resultado `auto` se valida contra catálogo completo antes de aplicarse
-automáticamente, con reemplazo atómico y sin conservar backup persistente. Los
-archivos que coinciden con `AGENTS.md.agent-ready-backup.*` se preservan porque
-backups legacy no contienen metadata que permita demostrar ownership. El helper registra último hash de template en `.git/info/agent-ready-instructions-template.sha256`
-para no invocar IA nuevamente mientras template y referencias requeridas no
-cambien; ese archivo se reemplaza, no se acumula, y no aparece como cambio del
-proyecto. Hash legacy bajo `.agents/` se migra y elimina durante primera
-ejecución. Si `AGENTS.md` cambia durante merge, helper detecta hash distinto y
-cancela antes de reemplazo. Si faltan referencias portables o quedan referencias
-`@...`, no usa hash como atajo y vuelve a solicitar análisis IA.
+automáticamente, con reemplazo atómico. El merge conserva instrucciones
+compatibles en el contenido resultante; no crea backup cuando la IA produjo una
+combinación válida. Si la IA falla, devuelve salida inválida o `human_required`,
+el helper aplica el template renderizado y guarda el contenido local como
+un backup temporal externo al proyecto y muestra su path exacto. El helper
+registra el último hash de template en
+`.git/info/agent-ready-instructions-template.sha256` para no invocar IA
+nuevamente mientras template y referencias requeridas no cambien; ese archivo
+se reemplaza, no se acumula, y no aparece como cambio del proyecto. Hash legacy
+bajo `.agents/` se migra y elimina durante primera ejecución. Si `AGENTS.md`
+cambia durante merge, helper detecta hash distinto y cancela antes de reemplazo.
+Si faltan referencias portables o quedan referencias `@...`, no usa hash como
+atajo y vuelve a solicitar análisis IA.
 
-Hooks generados pasan `--yes` para evitar prompts interactivos durante
-SessionStart. Resultado `human_required` muestra diff y preserva bytes
-originales sin TTY; `--yes` no fuerza merge contradictorio. `CLAUDE.md` nunca
-se modifica durante merge.
+Los hooks generados no pasan flags de confirmación durante `SessionStart`.
+`CLAUDE.md` nunca se modifica durante merge.
 
 ### Resolución de diferencias por el agente
 

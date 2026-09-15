@@ -17,15 +17,13 @@ readonly SYNC_LOCK_STALE_AFTER_MINUTES=10
 
 provider=""
 stack_override="${AGENT_READY_SETUP_STACK:-}"
-sync_requested=0
-instructions_requested=0
-auto_confirm="${AGENT_READY_SETUP_SYNC_YES:-0}"
 marketplace_already_upgraded="${AGENT_READY_SETUP_MARKETPLACE_UPGRADED:-0}"
 sync_lock_inherited="${AGENT_READY_SETUP_SYNC_LOCK_HELD:-0}"
+backup_directory="${AGENT_READY_SETUP_BACKUP_DIRECTORY:-}"
 created_assets=()
 updated_assets=()
 skipped_assets=()
-pending_assets=()
+backups=()
 conflicts=()
 original_arguments=("$@")
 
@@ -51,15 +49,6 @@ while [[ $# -gt 0 ]]; do
       provider="$1"
       shift
       ;;
-    --sync|--update)
-      sync_requested=1
-      shift
-      ;;
-    --sync-instructions|--merge-instructions)
-      sync_requested=1
-      instructions_requested=1
-      shift
-      ;;
     --stack)
       if [[ $# -lt 2 || -z "${2:-}" ]]; then
         printf 'ERROR: --stack requires frontend, node, java, or go\n' >&2
@@ -67,10 +56,6 @@ while [[ $# -gt 0 ]]; do
       fi
       stack_override="$2"
       shift 2
-      ;;
-    --yes)
-      auto_confirm=1
-      shift
       ;;
     *)
       printf 'ERROR: unsupported marketplace sync argument: %s\n' "$1" >&2
@@ -98,11 +83,6 @@ case "$provider" in
     ;;
 esac
 
-if [[ "$auto_confirm" != 0 && "$auto_confirm" != 1 ]]; then
-  printf 'ERROR: AGENT_READY_SETUP_SYNC_YES must be 0 or 1\n' >&2
-  exit 1
-fi
-
 if [[ "$marketplace_already_upgraded" != 0 && "$marketplace_already_upgraded" != 1 ]]; then
   printf 'ERROR: AGENT_READY_SETUP_MARKETPLACE_UPGRADED must be 0 or 1\n' >&2
   exit 1
@@ -110,11 +90,6 @@ fi
 
 if [[ "$sync_lock_inherited" != 0 && "$sync_lock_inherited" != 1 ]]; then
   printf 'ERROR: AGENT_READY_SETUP_SYNC_LOCK_HELD must be 0 or 1\n' >&2
-  exit 1
-fi
-
-if [[ "$auto_confirm" -eq 1 && "$sync_requested" -ne 1 ]]; then
-  printf 'ERROR: --yes requires --sync or --update\n' >&2
   exit 1
 fi
 
@@ -258,12 +233,6 @@ setup_groot_ui() {
   fi
 }
 
-if [[ "$sync_requested" -eq 0 ]]; then
-  setup_groot_ui
-  echo "[marketplace-sync] Local projection not requested; use --sync to update project assets."
-  exit 0
-fi
-
 record_created() {
   created_assets+=("$1")
 }
@@ -274,10 +243,6 @@ record_updated() {
 
 record_skipped() {
   skipped_assets+=("$1")
-}
-
-record_pending() {
-  pending_assets+=("$1")
 }
 
 validate_destination_parent() {
@@ -320,21 +285,36 @@ show_sync_diff() {
   fi
 }
 
-confirm_sync_replacement() {
-  local destination="$1"
-  local answer
-
-  if [[ "$auto_confirm" -eq 1 ]]; then
-    return 0
+ensure_backup_directory() {
+  if [[ -n "$backup_directory" ]]; then
+    [[ -d "$backup_directory" && ! -L "$backup_directory" ]]
+    return
   fi
-  if [[ ! -t 0 || ! -t 1 ]]; then
-    printf 'Skipping %s: sync requires interactive confirmation or --yes.\n' "$destination"
+
+  backup_directory="$(mktemp -d "${TMPDIR:-/tmp}/agent-ready-backups.XXXXXX")" || return 1
+}
+
+backup_file() {
+  local destination="$1"
+  local relative_destination
+  local backup_destination
+
+  if ! ensure_backup_directory; then
     return 1
   fi
-
-  printf 'Replace %s with the template? [y/N] ' "$destination"
-  IFS= read -r answer || return 1
-  [[ "$answer" =~ ^([YySs]|[Yy][Ee][Ss])$ ]]
+  relative_destination="${destination#./}"
+  backup_destination="$backup_directory/$relative_destination"
+  if ! mkdir -p -- "$(dirname -- "$backup_destination")"; then
+    return 1
+  fi
+  if ! backup_destination="$(mktemp "${backup_destination}.agent-ready-backup.XXXXXX")"; then
+    return 1
+  fi
+  if ! cp -p -- "$destination" "$backup_destination"; then
+    rm -f -- "$backup_destination"
+    return 1
+  fi
+  backups+=("$backup_destination")
 }
 
 sync_file() {
@@ -391,9 +371,9 @@ sync_file() {
   fi
 
   show_sync_diff "$source" "$destination"
-  if ! confirm_sync_replacement "$destination"; then
+  if ! backup_file "$destination"; then
     rm -f -- "$expected_destination"
-    record_pending "$destination"
+    conflicts+=("could not back up $destination; neither was changed")
     return 0
   fi
 
@@ -406,7 +386,7 @@ sync_file() {
   if [[ -L "$destination" || ! -f "$destination" ]] || \
      ! cmp -s "$destination" "$expected_destination"; then
     rm -f -- "$temporary_destination" "$expected_destination"
-    conflicts+=("$destination changed after confirmation; neither was changed")
+    conflicts+=("$destination changed during synchronization; neither was changed")
     return 0
   fi
   if ! mv -f -- "$temporary_destination" "$destination"; then
@@ -612,7 +592,24 @@ sync_claude_settings() {
   temporary_settings="$(mktemp "${TMPDIR:-/tmp}/agent-ready-settings.XXXXXX")"
   python3 - "$template" "$destination" > "$temporary_settings" <<'PY' || merge_status=$?
 import json
+import re
 import sys
+
+
+def canonical_managed_sync_command(value):
+    managed_command_pattern = re.compile(
+        r"^(?:Bash\((?:\.claude/hooks|\.agents/hooks)/sync-marketplace\.sh "
+        r"--provider claude(?: --(?:sync|update|sync-instructions|merge-instructions))?"
+        r"(?: --yes)?\)|bash (?:\.claude/hooks|\.agents/hooks)/sync-marketplace\.sh "
+        r"--provider claude(?: --(?:sync|update|sync-instructions|merge-instructions))?"
+        r"(?: --yes)?)$"
+    )
+    if managed_command_pattern.match(value):
+        if value.startswith("Bash("):
+            return "Bash(.agents/hooks/sync-marketplace.sh --provider claude)"
+        return "bash .agents/hooks/sync-marketplace.sh --provider claude"
+    return None
+
 
 template_path, settings_path = sys.argv[1:3]
 try:
@@ -629,11 +626,18 @@ def migrate(value):
         return {key: migrate(item) for key, item in value.items()}
     if isinstance(value, list):
         return [migrate(item) for item in value]
-    if isinstance(value, str) and (
-        value.startswith("Bash(.claude/hooks/")
-        or value.startswith("bash .claude/hooks/")
+    if not isinstance(value, str):
+        return value
+
+    canonical_value = canonical_managed_sync_command(value)
+    if canonical_value is not None:
+        return canonical_value
+
+    if value.startswith("Bash(.claude/hooks/") or value.startswith(
+        "bash .claude/hooks/"
     ):
         return value.replace(".claude/hooks/", ".agents/hooks/", 1)
+
     return value
 
 
@@ -869,6 +873,9 @@ if [[ "$sync_hook_destination_was_different" -eq 1 || "$current_hook_needs_resta
   echo "[marketplace-sync] Sync hook updated; restarting with latest version."
   export AGENT_READY_SETUP_MARKETPLACE_UPGRADED=1
   export AGENT_READY_SETUP_SYNC_LOCK_HELD=1
+  if [[ -n "$backup_directory" ]]; then
+    export AGENT_READY_SETUP_BACKUP_DIRECTORY="$backup_directory"
+  fi
   exec bash "$sync_hook_destination" "${original_arguments[@]}"
 fi
 
@@ -900,41 +907,39 @@ if [[ ${#updated_assets[@]} -gt 0 ]]; then
   echo "Updated from templates:"
   printf '  ↻ %s\n' "${updated_assets[@]}"
 fi
-if [[ ${#pending_assets[@]} -gt 0 ]]; then
-  echo "Pending confirmation (not overwritten):"
-  printf '  ? %s\n' "${pending_assets[@]}"
+if [[ ${#backups[@]} -gt 0 ]]; then
+  echo "Local backups directory: $backup_directory"
+  printf '  ↩ %s\n' "${backups[@]}"
 fi
 if [[ ${#conflicts[@]} -gt 0 ]]; then
   echo "Managed asset conflicts (preserved):" >&2
   printf '  ! %s\n' "${conflicts[@]}" >&2
 fi
 
-if [[ "$instructions_requested" -eq 1 ]]; then
-  if [[ ! -f "$skill_dir/scripts/merge-instructions.sh" ]]; then
-    echo "WARNING: merge-instructions.sh is unavailable; managed assets were synchronized without instruction merge." >&2
-  else
-    merge_environment=()
-    if [[ "$auto_confirm" -eq 1 ]]; then
-      merge_environment+=(AGENT_READY_SETUP_NON_INTERACTIVE=1)
-    fi
-
-    merge_status=0
-    env "${merge_environment[@]}" bash "$skill_dir/scripts/merge-instructions.sh" \
-      --provider "$provider" \
-      --stack "$stack" \
-      --skill-dir "$skill_dir" || merge_status=$?
-
-    case "$merge_status" in
-      0)
-        echo "[marketplace-sync] Instruction merge completed."
-        ;;
-      2)
-        echo "[marketplace-sync] Instruction merge requires human review; local file preserved."
-        ;;
-      *)
-        printf 'ERROR: instruction merge failed for %s; local file was preserved.\n' "$skill_dir" >&2
-        exit 1
-        ;;
-    esac
+if [[ ! -f "$skill_dir/scripts/merge-instructions.sh" ]]; then
+  echo "WARNING: merge-instructions.sh is unavailable; managed assets were synchronized without instruction merge." >&2
+else
+  merge_environment=(AGENT_READY_SETUP_NON_INTERACTIVE=1)
+  if [[ -n "$backup_directory" ]]; then
+    merge_environment+=(AGENT_READY_SETUP_BACKUP_DIRECTORY="$backup_directory")
   fi
+
+  merge_status=0
+  env "${merge_environment[@]}" bash "$skill_dir/scripts/merge-instructions.sh" \
+    --provider "$provider" \
+    --stack "$stack" \
+    --skill-dir "$skill_dir" || merge_status=$?
+
+  case "$merge_status" in
+    0)
+      echo "[marketplace-sync] Instruction merge completed."
+      ;;
+    2)
+      echo "[marketplace-sync] Instruction merge requires human review; local file preserved."
+      ;;
+    *)
+      printf 'ERROR: instruction merge failed for %s; local file was preserved.\n' "$skill_dir" >&2
+      exit 1
+      ;;
+  esac
 fi

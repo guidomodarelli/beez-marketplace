@@ -1,7 +1,7 @@
 #!/bin/bash
 # merge-instructions.sh
 # Uses the active agent provider to merge project instructions with a template.
-# The model proposes content only; this script owns validation, confirmation,
+# The model proposes content only; this script owns validation, fallback backups,
 # and atomic writes.
 
 set -euo pipefail
@@ -13,6 +13,7 @@ PROVIDER=""
 STACK=""
 SKILL_DIR=""
 NON_INTERACTIVE="${AGENT_READY_SETUP_NON_INTERACTIVE:-0}"
+BACKUP_DIRECTORY="${AGENT_READY_SETUP_BACKUP_DIRECTORY:-}"
 TEMPORARY_DIRECTORY=""
 GIT_DIRECTORY=""
 GIT_INFO_DIRECTORY=""
@@ -310,6 +311,61 @@ EOF
 current_content="$(<"$AGENTS_FILE")"
 template_content="$(<"$CANDIDATE_FILE")"
 original_agents_hash="$(sha256_file "$AGENTS_FILE")"
+
+ensure_backup_directory() {
+  if [[ -n "$BACKUP_DIRECTORY" ]]; then
+    [[ -d "$BACKUP_DIRECTORY" && ! -L "$BACKUP_DIRECTORY" ]]
+    return
+  fi
+
+  BACKUP_DIRECTORY="$(mktemp -d "${TMPDIR:-/tmp}/agent-ready-backups.XXXXXX")" || return 1
+}
+
+backup_and_apply_template() {
+  local backup_path
+  local temporary_path
+  local current_hash
+
+  if ! ensure_backup_directory; then
+    echo "ERROR: could not create backup directory; template was not applied" >&2
+    return 1
+  fi
+  if ! backup_path="$(mktemp "$BACKUP_DIRECTORY/AGENTS.md.agent-ready-backup.XXXXXX")"; then
+    echo "ERROR: could not stage local backup for $AGENTS_FILE; template was not applied" >&2
+    return 1
+  fi
+  if ! cp -p -- "$AGENTS_FILE" "$backup_path"; then
+    rm -f -- "$backup_path"
+    echo "ERROR: could not create local backup for $AGENTS_FILE; template was not applied" >&2
+    return 1
+  fi
+
+  if ! temporary_path="$(mktemp "${AGENTS_FILE}.agent-ready-template.XXXXXX")"; then
+    echo "ERROR: could not stage template fallback for $AGENTS_FILE; local backup preserved at $backup_path" >&2
+    return 1
+  fi
+  if ! cp -p -- "$CANDIDATE_FILE" "$temporary_path"; then
+    rm -f -- "$temporary_path"
+    echo "ERROR: could not stage template fallback for $AGENTS_FILE; local backup preserved at $backup_path" >&2
+    return 1
+  fi
+
+  current_hash="$(sha256_file "$AGENTS_FILE")"
+  if [[ "$current_hash" != "$original_agents_hash" ]]; then
+    rm -f -- "$temporary_path"
+    echo "ERROR: $AGENTS_FILE changed during fallback; local backup preserved at $backup_path" >&2
+    return 2
+  fi
+  if ! mv -f -- "$temporary_path" "$AGENTS_FILE"; then
+    rm -f -- "$temporary_path"
+    echo "ERROR: could not apply template fallback to $AGENTS_FILE; local backup preserved at $backup_path" >&2
+    return 1
+  fi
+
+  printf 'Applied template fallback to %s; local content backed up at %s.\n' "$AGENTS_FILE" "$backup_path"
+  return 0
+}
+
 merge_prompt=$(cat <<EOF
 You are a conservative instruction-file merge engine.
 
@@ -394,14 +450,24 @@ invoke_codex() {
 case "$PROVIDER" in
   claude)
     if ! invoke_claude; then
-      echo "ERROR: Claude merge provider failed; $AGENTS_FILE was not changed" >&2
-      exit 1
+      echo "WARNING: Claude merge provider failed; applying template fallback" >&2
+      fallback_status=0
+      backup_and_apply_template || fallback_status=$?
+      if [[ "$fallback_status" -eq 0 ]]; then
+        write_template_hash
+      fi
+      exit "$fallback_status"
     fi
     ;;
   codex)
     if ! invoke_codex; then
-      echo "ERROR: Codex merge provider failed; $AGENTS_FILE was not changed" >&2
-      exit 1
+      echo "WARNING: Codex merge provider failed; applying template fallback" >&2
+      fallback_status=0
+      backup_and_apply_template || fallback_status=$?
+      if [[ "$fallback_status" -eq 0 ]]; then
+        write_template_hash
+      fi
+      exit "$fallback_status"
     fi
     ;;
 esac
@@ -423,8 +489,13 @@ extract_result() {
 }
 
 if ! structured_result="$(extract_result)"; then
-  echo "ERROR: merge provider returned invalid structured output; $AGENTS_FILE was not changed" >&2
-  exit 1
+  echo "WARNING: merge provider returned invalid structured output; applying template fallback" >&2
+  fallback_status=0
+  backup_and_apply_template || fallback_status=$?
+  if [[ "$fallback_status" -eq 0 ]]; then
+    write_template_hash
+  fi
+  exit "$fallback_status"
 fi
 
 printf '%s\n' "$structured_result" > "$RESULT_FILE"
@@ -439,23 +510,38 @@ if [[ "$status" == "auto" && "$conflict_count" -ne 0 ]]; then
 fi
 
 if [[ ! -s "$MERGED_FILE" ]]; then
-  echo "ERROR: merge provider returned empty merged_content; $AGENTS_FILE was not changed" >&2
-  exit 1
+  echo "WARNING: merge provider returned empty merged_content; applying template fallback" >&2
+  fallback_status=0
+  backup_and_apply_template || fallback_status=$?
+  if [[ "$fallback_status" -eq 0 ]]; then
+    write_template_hash
+  fi
+  exit "$fallback_status"
 fi
 
 first_merged_line="$(sed -n '1p' "$MERGED_FILE")"
 last_merged_line="$(sed -n '$p' "$MERGED_FILE")"
 if [[ "$first_merged_line" == '```'* && "$last_merged_line" == '```' ]]; then
-  echo "ERROR: merge provider returned fenced content instead of Markdown; $AGENTS_FILE was not changed" >&2
-  exit 1
+  echo "WARNING: merge provider returned fenced content instead of Markdown; applying template fallback" >&2
+  fallback_status=0
+  backup_and_apply_template || fallback_status=$?
+  if [[ "$fallback_status" -eq 0 ]]; then
+    write_template_hash
+  fi
+  exit "$fallback_status"
 fi
 
 if [[ "$status" == "auto" ]]; then
   if ! bash "$TEMPLATE_RENDERER" \
     --validate "$MERGED_FILE" \
     --rules-dir "$RULES_DIRECTORY" >/dev/null 2>&1; then
-    echo "ERROR: automatic merge omitted or corrupted portable rule references; $AGENTS_FILE was not changed" >&2
-    exit 1
+    echo "WARNING: automatic merge omitted or corrupted portable rule references; applying template fallback" >&2
+    fallback_status=0
+    backup_and_apply_template || fallback_status=$?
+    if [[ "$fallback_status" -eq 0 ]]; then
+      write_template_hash
+    fi
+    exit "$fallback_status"
   fi
 fi
 
@@ -591,21 +677,10 @@ if [[ "$status" == "auto" ]]; then
 fi
 
 show_proposed_diff
-if [[ "$NON_INTERACTIVE" -eq 1 || ! -t 0 || ! -t 1 ]]; then
-  printf 'Human confirmation required; non-interactive execution preserved %s.\n' "$AGENTS_FILE"
-  exit "$HUMAN_REQUIRED_EXIT_CODE"
-fi
-
-printf 'Apply this contradictory or unresolved merge? [y/N] '
-answer=""
-if ! IFS= read -r answer || [[ ! "$answer" =~ ^([YySs]|[Yy][Ee][Ss])$ ]]; then
-  printf 'Merge declined; %s was not changed.\n' "$AGENTS_FILE"
-  exit "$HUMAN_REQUIRED_EXIT_CODE"
-fi
-
-apply_merge
-apply_status=$?
-if [[ "$apply_status" -eq 0 ]]; then
+printf 'WARNING: unresolved instruction merge; applying template fallback.\n' >&2
+fallback_status=0
+backup_and_apply_template || fallback_status=$?
+if [[ "$fallback_status" -eq 0 ]]; then
   write_template_hash
 fi
-exit "$apply_status"
+exit "$fallback_status"

@@ -6,7 +6,8 @@ setup() {
   test_root="$(mktemp -d)"
   project_dir="$test_root/project"
   fake_bin="$test_root/bin"
-  mkdir -p "$project_dir" "$fake_bin"
+  mkdir -p "$project_dir" "$fake_bin" "$test_root/tmp"
+  export TMPDIR="$test_root/tmp"
   git -C "$project_dir" -c init.defaultBranch=main init -q
   cd "$project_dir"
   valid_node_rule_block=$'## Rules\n\n<!-- BEGIN AGENT-READY RULE REFERENCES -->\n- Read and follow `.agents/rules/coding-style.md`.\n- Read and follow `.agents/rules/security.md`.\n- Read and follow `.agents/rules/testing.md`.\n<!-- END AGENT-READY RULE REFERENCES -->'
@@ -187,7 +188,7 @@ EOF
   grep -Fq '.agents/rules/runtime.md' AGENTS.md
 }
 
-@test "human-required merge preserves AGENTS without a TTY" {
+@test "human-required merge falls back with an AGENTS backup" {
   printf '%s\n' '# Existing policy' > AGENTS.md
   before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
   cat > "$fake_bin/claude" <<'EOF'
@@ -199,15 +200,16 @@ EOF
   PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
     --provider claude --stack node --skill-dir "$skill_dir"
 
-  [ "$status" -eq 2 ]
-  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" = "$before_hash" ]
+  [ "$status" -eq 0 ]
+  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" != "$before_hash" ]
   [[ "$output" == *"Existing and template policies disagree."* ]]
-  [[ "$output" == *"Human confirmation required"* ]]
-  backup_files=(AGENTS.md.agent-ready-backup.*)
-  [ ! -e "${backup_files[0]}" ]
+  [[ "$output" == *"Applied template fallback"* ]]
+  backup_files=("$test_root"/tmp/agent-ready-backups.*/AGENTS.md.agent-ready-backup.*)
+  [ -f "${backup_files[0]}" ]
+  [ "$(cat "${backup_files[0]}")" = '# Existing policy' ]
 }
 
-@test "invalid provider output fails closed without changing AGENTS" {
+@test "invalid provider output falls back to template with AGENTS backup" {
   printf '%s\n' '# Keep this file' > AGENTS.md
   before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
   cat > "$fake_bin/claude" <<'EOF'
@@ -219,9 +221,13 @@ EOF
   PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
     --provider claude --stack frontend --skill-dir "$skill_dir"
 
-  [ "$status" -ne 0 ]
-  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" = "$before_hash" ]
+  [ "$status" -eq 0 ]
+  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" != "$before_hash" ]
   [[ "$output" == *"invalid structured output"* ]]
+  [[ "$output" == *"Applied template fallback"* ]]
+  backup_files=("$test_root"/tmp/agent-ready-backups.*/AGENTS.md.agent-ready-backup.*)
+  [ -f "${backup_files[0]}" ]
+  [ "$(cat "${backup_files[0]}")" = '# Keep this file' ]
 }
 
 @test "matching template hash does not skip incomplete rule references" {
@@ -261,9 +267,13 @@ EOF
   PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
     --provider claude --stack node --skill-dir "$skill_dir"
 
-  [ "$status" -ne 0 ]
-  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" = "$before_hash" ]
+  [ "$status" -eq 0 ]
+  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" != "$before_hash" ]
   [[ "$output" == *"omitted or corrupted portable rule references"* ]]
+  [[ "$output" == *"Applied template fallback"* ]]
+  backup_files=("$test_root"/tmp/agent-ready-backups.*/AGENTS.md.agent-ready-backup.*)
+  [ -f "${backup_files[0]}" ]
+  [ "$(cat "${backup_files[0]}")" = '# Keep this file' ]
 }
 
 @test "automatic merge fails closed when a rule reference is omitted" {
@@ -274,9 +284,13 @@ EOF
   PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
     --provider claude --stack node --skill-dir "$skill_dir"
 
-  [ "$status" -ne 0 ]
-  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" = "$before_hash" ]
+  [ "$status" -eq 0 ]
+  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" != "$before_hash" ]
   [[ "$output" == *"omitted or corrupted portable rule references"* ]]
+  [[ "$output" == *"Applied template fallback"* ]]
+  backup_files=("$test_root"/tmp/agent-ready-backups.*/AGENTS.md.agent-ready-backup.*)
+  [ -f "${backup_files[0]}" ]
+  [ "$(cat "${backup_files[0]}")" = '# Keep this file' ]
 }
 
 @test "automatic merge rejects Claude-only rule references" {
@@ -287,9 +301,13 @@ EOF
   PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
     --provider claude --stack node --skill-dir "$skill_dir"
 
-  [ "$status" -ne 0 ]
-  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" = "$before_hash" ]
+  [ "$status" -eq 0 ]
+  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" != "$before_hash" ]
   [[ "$output" == *"omitted or corrupted portable rule references"* ]]
+  [[ "$output" == *"Applied template fallback"* ]]
+  backup_files=("$test_root"/tmp/agent-ready-backups.*/AGENTS.md.agent-ready-backup.*)
+  [ -f "${backup_files[0]}" ]
+  [ "$(cat "${backup_files[0]}")" = '# Keep this file' ]
 }
 
 @test "automatic merge rejects stale rule references" {
@@ -300,12 +318,16 @@ EOF
   PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
     --provider claude --stack node --skill-dir "$skill_dir"
 
-  [ "$status" -ne 0 ]
-  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" = "$before_hash" ]
+  [ "$status" -eq 0 ]
+  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" != "$before_hash" ]
   [[ "$output" == *"omitted or corrupted portable rule references"* ]]
+  [[ "$output" == *"Applied template fallback"* ]]
+  backup_files=("$test_root"/tmp/agent-ready-backups.*/AGENTS.md.agent-ready-backup.*)
+  [ -f "${backup_files[0]}" ]
+  [ "$(cat "${backup_files[0]}")" = '# Keep this file' ]
 }
 
-@test "fenced provider output fails closed without changing AGENTS" {
+@test "fenced provider output falls back to template with AGENTS backup" {
   printf '%s\n' '# Keep this file' > AGENTS.md
   before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
   cat > "$fake_bin/claude" <<'EOF'
@@ -317,9 +339,13 @@ EOF
   PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
     --provider claude --stack node --skill-dir "$skill_dir"
 
-  [ "$status" -ne 0 ]
-  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" = "$before_hash" ]
+  [ "$status" -eq 0 ]
+  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" != "$before_hash" ]
   [[ "$output" == *"fenced content"* ]]
+  [[ "$output" == *"Applied template fallback"* ]]
+  backup_files=("$test_root"/tmp/agent-ready-backups.*/AGENTS.md.agent-ready-backup.*)
+  [ -f "${backup_files[0]}" ]
+  [ "$(cat "${backup_files[0]}")" = '# Keep this file' ]
 }
 
 @test "concurrent AGENTS changes are not overwritten by a stale merge" {
@@ -495,7 +521,7 @@ EOF
   [ ! -e "$test_root/claude-called.log" ]
 }
 
-@test "sync-instructions hook runs upgrade, projection, and merge in order" {
+@test "automatic sync hook runs upgrade, projection, and merge in order" {
   source_dir="$test_root/agent-ready-setup"
   event_log="$test_root/hook-events.log"
   merge_log="$test_root/hook-merge.log"
@@ -527,8 +553,7 @@ EOF
     AGENT_READY_SETUP_SKILL_DIR="$source_dir" \
     PATH="$fake_bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
-      --provider claude --merge-instructions
-
+      --provider claude
   [ "$status" -eq 0 ]
   [ "$(sed -n '1p' "$event_log")" = "fury" ]
   [ "$(sed -n '2p' "$event_log")" = "merge" ]
@@ -539,7 +564,7 @@ EOF
   grep -Fq -- "--provider claude --stack frontend --skill-dir $source_dir" "$merge_log"
 }
 
-@test "sync-instructions hook preserves session when merge needs human review" {
+@test "automatic sync hook preserves session when merge needs human review" {
   source_dir="$test_root/agent-ready-setup"
   mkdir -p \
     "$source_dir/assets/common/hooks" \
@@ -566,8 +591,7 @@ EOF
 
   AGENT_READY_SETUP_SKILL_DIR="$source_dir" PATH="$fake_bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
-      --provider claude --stack node --sync-instructions --yes
-
+      --provider claude --stack node
   [ "$status" -eq 0 ]
   [[ "$output" == *"requires human review"* ]]
 }

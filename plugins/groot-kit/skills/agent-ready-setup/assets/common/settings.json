@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(.agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes)",
+      "Bash(.agents/hooks/sync-marketplace.sh --provider claude)",
       "Bash(.agents/hooks/check-harness-consistency.sh)"
     ]
   },
@@ -12,7 +12,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .agents/hooks/sync-marketplace.sh --provider claude --sync-instructions --yes"
+            "command": "bash .agents/hooks/sync-marketplace.sh --provider claude"
           }
         ]
       }

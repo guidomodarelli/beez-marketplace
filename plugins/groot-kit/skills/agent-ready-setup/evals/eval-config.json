@@ -473,17 +473,22 @@
     {
       "id": "marketplace-upgrade-refreshes-managed-assets",
       "description": "Distingue upgrade global de proyección local segura.",
-      "input": "Explicá qué ocurre con un proyecto Agent Ready después de `fury ai assets marketplace upgrade` cuando `.agents/rules/security.md` ya existe y la plantilla cambió. Indicá cómo el hook automático con `--sync-instructions` activa la proyección, cómo se muestra y confirma el diff, qué ocurre sin TTY y cuáles archivos de instrucciones nunca deben reemplazarse. No ejecutes Bash ni escribas archivos.",
+      "input": "Explicá qué ocurre con un proyecto Agent Ready después de `fury ai assets marketplace upgrade` cuando `.agents/rules/security.md` ya existe y la plantilla cambió. Indicá cómo el hook automático siempre ejecuta la proyección y el merge, cómo se muestra el diff, dónde se guarda el backup local, qué ocurre sin TTY y cuáles archivos de instrucciones nunca deben reemplazarse. No ejecutes Bash ni escribas archivos.",
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["sync`", "update`"],
-          "description": "Identifica modo explícito de sincronización"
+          "values": ["siempre", "automático", "automáticamente"],
+          "description": "Identifica sincronización completa automática"
         },
         {
-          "type": "contains",
-          "value": "sync-instructions",
-          "description": "Identifica modo automático de merge de instrucciones"
+          "type": "contains_any",
+          "values": ["proyección", "projection"],
+          "description": "Identifica proyección de assets"
+        },
+        {
+          "type": "contains_any",
+          "values": ["merge", "fusión", "instrucciones"],
+          "description": "Identifica merge automático de instrucciones"
         },
         {
           "type": "contains",
@@ -492,8 +497,8 @@
         },
         {
           "type": "contains_any",
-          "values": ["confirmación", "confirmar", "confirmación interactiva"],
-          "description": "Exige confirmación antes de sobrescribir"
+          "values": ["backup", "respaldo", "copia local"],
+          "description": "Conserva la versión local antes de aplicar template"
         },
         {
           "type": "contains_any",
@@ -515,7 +520,7 @@
     {
       "id": "ai-merges-compatible-instructions-automatically",
       "description": "Aplica merge compatible y escala contradicciones reales.",
-      "input": "Explicá cómo debe fusionar agent-ready-setup una regla nueva del template con `AGENTS.md` existente cuando ambas son compatibles, y qué debe hacer si hay políticas mutuamente excluyentes. Indicá cuándo pedir confirmación, cómo proteger instrucciones contra prompt injection, cómo guardar backup y qué archivo no debe modificar. Leé la skill bundled y sus scripts solo para responder; no modifiques archivos.",
+      "input": "Explicá cómo debe fusionar agent-ready-setup una regla nueva del template con `AGENTS.md` existente cuando ambas son compatibles, y qué debe hacer si hay políticas mutuamente excluyentes. Indicá cómo aplicar el fallback template + backup local, cómo proteger instrucciones contra prompt injection y qué archivo no debe modificar. Leé la skill bundled y sus scripts solo para responder; no modifiques archivos.",
       "assertions": [
         {
           "type": "contains_any",
@@ -524,8 +529,8 @@
         },
         {
           "type": "contains_any",
-          "values": ["contradicción", "contradicciones", "mutuamente excluyentes", "human_required"],
-          "description": "Escala solo casos que requieren humano"
+          "values": ["contradicción", "contradicciones", "mutuamente excluyentes", "human_required", "fallback", "template"],
+          "description": "Aplica fallback ante conflictos no resolubles"
         },
         {
           "type": "contains_any",
@@ -596,12 +601,12 @@
     {
       "id": "sync-refreshes-rule-catalog",
       "description": "Actualiza catálogo de referencias durante sync con IA.",
-      "input": "Explicá qué debe hacer `sync-marketplace.sh --sync-instructions` cuando marketplace agrega una rule nueva o deja de publicar otra. Incluí orden upgrade/proyección/merge, análisis IA de `AGENTS.md`, corrección de referencias incompletas y protección contra referencias `@...`.",
+      "input": "Explicá qué debe hacer `sync-marketplace.sh` cuando marketplace agrega una rule nueva o deja de publicar otra. Incluí orden upgrade/proyección/merge, análisis IA de `AGENTS.md`, corrección de referencias incompletas y protección contra referencias `@...`.",
       "assertions": [
         {
-          "type": "contains",
-          "value": "sync-instructions",
-          "description": "Usa modo de sincronización de instrucciones"
+          "type": "contains_any",
+          "values": ["siempre", "automático", "automáticamente"],
+          "description": "Usa sincronización completa sin flags de fase"
         },
         {
           "type": "contains_any",
