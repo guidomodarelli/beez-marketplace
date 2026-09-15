@@ -118,7 +118,7 @@
       "assertions": [
         {
           "type": "contains",
-          "value": "assets/root-claude.md",
+          "value": "assets/claude-proxy.md",
           "description": "Identifica el asset canónico usado para CLAUDE.md raíz"
         },
         {
@@ -660,7 +660,7 @@
     {
       "id": "next-steps-report-distinguishes-automatic-and-manual-work",
       "description": "Reporta únicamente tareas aplicables y separa validación automática de trabajo manual.",
-      "input": "Explicá cómo debe construir agent-ready-setup la sección Next steps después del bootstrap. El proyecto no tiene `.agents/rules/`, `.agents/skills/` ni `.agents/agents/`, y `CLAUDE.md` raíz ya coincide con `assets/root-claude.md`. Indicá qué debe validarse automáticamente, qué requiere completar manualmente y cómo tratar placeholders o directorios ausentes. No ejecutes Bash ni escribas archivos.",
+      "input": "Explicá cómo debe construir agent-ready-setup la sección Next steps después del bootstrap. El proyecto no tiene `.agents/rules/`, `.agents/skills/` ni `.agents/agents/`, y `CLAUDE.md` raíz ya coincide con `assets/claude-proxy.md`. Indicá qué debe validarse automáticamente, qué requiere completar manualmente y cómo tratar placeholders o directorios ausentes. No ejecutes Bash ni escribas archivos.",
       "assertions": [
         {
           "type": "regex",

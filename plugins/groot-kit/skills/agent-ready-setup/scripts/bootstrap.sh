@@ -1,8 +1,8 @@
 #!/bin/bash
 # bootstrap.sh
 # Projects Agent Ready templates into Claude, shared-agent, and Codex trees.
-# Existing assets are never overwritten. Root instructions are normalized so
-# AGENTS.md is canonical and CLAUDE.md is a proxy with root-only guidance.
+# Existing assets are never overwritten. Instruction files are normalized so
+# AGENTS.md is canonical and every CLAUDE.md is the root proxy template.
 #
 # Usage:
 #   bash bootstrap.sh --stack <frontend|node|java|go> --skill-dir <path> [--provider <claude|codex>] [--sync] [--yes]
@@ -200,7 +200,7 @@ validate_skill_source() {
   COMMON_SRC="$SKILL_DIR/assets/common"
   SRC="$SKILL_DIR/assets/stacks/$STACK"
   CODEX_ASSETS="$SKILL_DIR/assets/codex"
-  ROOT_CLAUDE_TEMPLATE="$SKILL_DIR/assets/root-claude.md"
+  ROOT_CLAUDE_TEMPLATE="$SKILL_DIR/assets/claude-proxy.md"
   CENTRALIZATION_TEMPLATE="$SKILL_DIR/assets/instruction-centralization.md"
   TEMPLATE_RENDERER="$SKILL_DIR/scripts/render-instruction-template.sh"
 
@@ -271,6 +271,7 @@ UPDATED=()
 SKIPPED=()
 PENDING=()
 MIGRATED=()
+RENAMED=()
 REMOVED=()
 CONFLICTS=()
 CLEANUP_CONFLICTS=()
@@ -990,8 +991,125 @@ PY
   rm -f -- "$temporary_settings"
 }
 
+record_renamed() {
+  RENAMED+=("$1")
+}
+
+is_claude_filename() {
+  case "$1" in
+    [cC][lL][aA][uU][dD][eE].[mM][dD]) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+normalize_claude_filename() {
+  local directory="$1"
+  local claude_file="$directory/$CLAUDE_FILE"
+  local candidate
+  local case_variant=""
+  local case_variant_count=0
+  local exact_name_found=0
+  local temporary_path
+  local ignore_status
+
+  while IFS= read -r -d '' candidate; do
+    if is_ignored_path "$candidate"; then
+      continue
+    else
+      ignore_status=$?
+      if [[ "$ignore_status" -eq 2 ]]; then
+        CONFLICTS+=("could not determine whether $candidate is ignored; neither was renamed")
+        return 0
+      fi
+    fi
+
+    if [[ "${candidate##*/}" == "$CLAUDE_FILE" ]]; then
+      exact_name_found=1
+    else
+      case_variant="$candidate"
+      case_variant_count=$((case_variant_count + 1))
+    fi
+  done < <(find "$directory" -mindepth 1 -maxdepth 1 -iname "$CLAUDE_FILE" -print0)
+
+  if [[ "$case_variant_count" -eq 0 ]]; then
+    return 0
+  fi
+
+  if [[ "$exact_name_found" -eq 1 || "$case_variant_count" -ne 1 ]]; then
+    CONFLICTS+=("$directory contains multiple case variants of $CLAUDE_FILE; neither was renamed")
+    return 0
+  fi
+
+  if [[ -L "$case_variant" || ! -f "$case_variant" ]]; then
+    CONFLICTS+=("$case_variant is not a regular file; $claude_file was not renamed")
+    return 0
+  fi
+
+  if ! temporary_path="$(mktemp "$directory/.${CLAUDE_FILE}.agent-ready-name.XXXXXX")"; then
+    CONFLICTS+=("could not stage rename for $case_variant; $claude_file was not changed")
+    return 0
+  fi
+  rm -f -- "$temporary_path"
+
+  if ! mv -- "$case_variant" "$temporary_path" || ! mv -n -- "$temporary_path" "$claude_file"; then
+    if [[ -e "$temporary_path" || -L "$temporary_path" ]]; then
+      if mv -n -- "$temporary_path" "$case_variant"; then
+        CONFLICTS+=("could not rename $case_variant to $claude_file; destination changed concurrently and was preserved")
+      else
+        CONFLICTS+=("could not rename $case_variant to $claude_file; staged content was preserved at $temporary_path")
+      fi
+    else
+      CONFLICTS+=("could not rename $case_variant to $claude_file; neither was changed")
+    fi
+    return 0
+  fi
+
+  if [[ -e "$temporary_path" || -L "$temporary_path" ]]; then
+    if mv -n -- "$temporary_path" "$case_variant"; then
+      CONFLICTS+=("could not rename $case_variant to $claude_file; destination changed concurrently and was preserved")
+    else
+      CONFLICTS+=("could not rename $case_variant to $claude_file; staged content was preserved at $temporary_path")
+    fi
+    return 0
+  fi
+
+  record_renamed "$case_variant -> $claude_file"
+}
+
+normalize_instruction_filenames() {
+  local path
+  local basename
+  local directory
+
+  normalize_claude_filename "."
+  while IFS= read -r -d '' path; do
+    basename="${path##*/}"
+    if ! is_claude_filename "$basename"; then
+      continue
+    fi
+    if [[ "$path" == */* ]]; then
+      directory="${path%/*}"
+    else
+      directory="."
+    fi
+    normalize_claude_filename "$directory"
+  done < <(git ls-files --cached --others --exclude-standard -z)
+}
+
 is_normalized_root_claude() {
   [[ -f "$CLAUDE_FILE" ]] && cmp -s "$CLAUDE_FILE" "$ROOT_CLAUDE_TEMPLATE"
+}
+
+is_normalized_claude_proxy() {
+  local claude_file="$1"
+
+  [[ -f "$claude_file" ]] && cmp -s "$claude_file" "$ROOT_CLAUDE_TEMPLATE"
+}
+
+write_claude_proxy() {
+  local claude_file="$1"
+
+  cp -- "$ROOT_CLAUDE_TEMPLATE" "$claude_file"
 }
 
 is_plain_claude_proxy() {
@@ -1080,6 +1198,7 @@ normalize_root_instructions() {
 }
 
 if [[ "$SYNC_MODE" -eq 0 ]]; then
+  normalize_instruction_filenames
   normalize_root_instructions
 fi
 
@@ -1140,7 +1259,7 @@ normalize_nested_instruction_pair() {
   fi
 
   if [[ -e "$claude_file" ]]; then
-    if is_plain_claude_proxy "$claude_file"; then
+    if is_normalized_claude_proxy "$claude_file"; then
       if [[ -e "$agents_file" ]]; then
         record_skipped "$claude_file"
         record_skipped "$agents_file"
@@ -1150,12 +1269,22 @@ normalize_nested_instruction_pair() {
       return
     fi
 
+    if is_plain_claude_proxy "$claude_file"; then
+      if [[ -e "$agents_file" ]]; then
+        write_claude_proxy "$claude_file"
+        MIGRATED+=("$claude_file -> root instruction proxy")
+      else
+        CONFLICTS+=("$claude_file is an orphaned proxy; $agents_file is missing and neither instruction file was changed")
+      fi
+      return
+    fi
+
     if [[ ! -e "$agents_file" ]]; then
       cp -- "$claude_file" "$agents_file"
-      printf '%s\n' "$CLAUDE_PROXY" > "$claude_file"
+      write_claude_proxy "$claude_file"
       MIGRATED+=("$claude_file -> $agents_file")
     elif cmp -s "$claude_file" "$agents_file"; then
-      printf '%s\n' "$CLAUDE_PROXY" > "$claude_file"
+      write_claude_proxy "$claude_file"
       MIGRATED+=("$claude_file -> $agents_file")
     else
       CONFLICTS+=("$claude_file and $agents_file differ; neither was overwritten")
@@ -1164,21 +1293,29 @@ normalize_nested_instruction_pair() {
   fi
 
   if [[ -e "$agents_file" ]]; then
-    printf '%s\n' "$CLAUDE_PROXY" > "$claude_file"
+    write_claude_proxy "$claude_file"
     MIGRATED+=("$agents_file -> $claude_file proxy")
   fi
 }
 
 normalize_nested_instructions() {
+  local path
+  local basename
   local directory
 
-  while IFS= read -r -d '' directory; do
-    [[ "$directory" == "." ]] && continue
-    if [[ -e "$directory/$CLAUDE_FILE" || -L "$directory/$CLAUDE_FILE" || \
-          -e "$directory/$AGENTS_FILE" || -L "$directory/$AGENTS_FILE" ]]; then
-      normalize_nested_instruction_pair "$directory"
+  while IFS= read -r -d '' path; do
+    basename="${path##*/}"
+    if [[ "$basename" != "$CLAUDE_FILE" && "$basename" != "$AGENTS_FILE" ]]; then
+      continue
     fi
-  done < <(find . -name .git -prune -o -type d -print0)
+    if [[ "$path" == */* ]]; then
+      directory="${path%/*}"
+    else
+      directory="."
+    fi
+    [[ "$directory" == "." ]] && continue
+    normalize_nested_instruction_pair "$directory"
+  done < <(git ls-files --cached --others --exclude-standard -z)
 }
 
 if [[ "$SYNC_MODE" -eq 0 ]]; then
@@ -1321,6 +1458,12 @@ if [[ ${#PENDING[@]} -gt 0 ]]; then
   echo ""
   echo "Pending confirmation (not overwritten):"
   for file in "${PENDING[@]}"; do printf '  ? %s\n' "$file"; done
+fi
+
+if [[ ${#RENAMED[@]} -gt 0 ]]; then
+  echo ""
+  echo "Renamed instruction files:"
+  for file in "${RENAMED[@]}"; do printf '  ↪ %s\n' "$file"; done
 fi
 
 if [[ ${#MIGRATED[@]} -gt 0 ]]; then

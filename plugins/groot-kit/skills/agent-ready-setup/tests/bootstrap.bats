@@ -59,7 +59,7 @@ run_marketplace_sync() {
   [ "$status" -eq 0 ]
   [ -f AGENTS.md ]
   [ -f CLAUDE.md ]
-  cmp -s CLAUDE.md "$skill_dir/assets/root-claude.md"
+  cmp -s CLAUDE.md "$skill_dir/assets/claude-proxy.md"
   [ -f .claude/settings.json ]
   [ -L .claude/rules/security.md ]
   [ "$(readlink .claude/rules/security.md)" = "../../.agents/rules/security.md" ]
@@ -328,7 +328,7 @@ run_marketplace_sync() {
     run_bootstrap "$stack"
 
     [ "$status" -eq 0 ]
-    cmp -s CLAUDE.md "$skill_dir/assets/root-claude.md"
+    cmp -s CLAUDE.md "$skill_dir/assets/claude-proxy.md"
     for provider_root in .claude .agents; do
       skill_path="$provider_root/skills/fury-deploy/SKILL.md"
       [ -f "$skill_path" ]
@@ -381,7 +381,7 @@ EOF
   grep -Fq '# Existing project instructions' AGENTS.md
   grep -Fq 'Run the project test command before merging.' AGENTS.md
   grep -Fxq '## Centralización recursiva de instrucciones' AGENTS.md
-  cmp -s CLAUDE.md "$skill_dir/assets/root-claude.md"
+  cmp -s CLAUDE.md "$skill_dir/assets/claude-proxy.md"
   [[ "$output" == *"Normalized instructions:"* ]]
 }
 
@@ -399,15 +399,14 @@ EOF
   grep -Fq '# Canonical instructions' AGENTS.md
   grep -Fq 'Keep changes backwards compatible.' AGENTS.md
   grep -Fxq '## Centralización recursiva de instrucciones' AGENTS.md
-  grep -Fxq '@AGENTS.md' CLAUDE.md
-  grep -Fxq '## Regla de centralización de instrucciones' CLAUDE.md
+  cmp -s CLAUDE.md "$skill_dir/assets/claude-proxy.md"
 }
 
 @test "normalized root CLAUDE proxy with centralization rule is preserved" {
   cat > AGENTS.md <<'EOF'
 # Canonical instructions
 EOF
-  cp "$skill_dir/assets/root-claude.md" CLAUDE.md
+  cp "$skill_dir/assets/claude-proxy.md" CLAUDE.md
   claude_hash_before="$(shasum CLAUDE.md | cut -d ' ' -f 1)"
 
   run_bootstrap java
@@ -419,7 +418,7 @@ EOF
 }
 
 @test "orphaned normalized root CLAUDE proxy recreates canonical AGENTS" {
-  cp "$skill_dir/assets/root-claude.md" CLAUDE.md
+  cp "$skill_dir/assets/claude-proxy.md" CLAUDE.md
 
   run_bootstrap java
 
@@ -427,8 +426,7 @@ EOF
   [ -f AGENTS.md ]
   grep -Fq '# [Project Name]' AGENTS.md
   grep -Fxq '## Centralización recursiva de instrucciones' AGENTS.md
-  grep -Fxq '@AGENTS.md' CLAUDE.md
-  grep -Fxq '## Regla de centralización de instrucciones' CLAUDE.md
+  cmp -s CLAUDE.md "$skill_dir/assets/claude-proxy.md"
 }
 
 @test "nested instruction pairs normalize recursively" {
@@ -449,10 +447,101 @@ EOF
   [ "$status" -eq 0 ]
   grep -Fq '# Service instructions' service/AGENTS.md
   grep -Fq 'Run service checks before merging.' service/AGENTS.md
-  [ "$(cat service/CLAUDE.md)" = '@AGENTS.md' ]
-  [ "$(cat packages/api/CLAUDE.md)" = '@AGENTS.md' ]
+  cmp -s service/CLAUDE.md "$skill_dir/assets/claude-proxy.md"
+  cmp -s packages/api/CLAUDE.md "$skill_dir/assets/claude-proxy.md"
   grep -Fq '# API instructions' packages/api/AGENTS.md
   grep -Fq 'Keep API changes backwards compatible.' packages/api/AGENTS.md
+}
+
+@test "nested legacy CLAUDE proxy upgrades to root template" {
+  mkdir -p service
+  printf '%s\n' '@AGENTS.md' > service/CLAUDE.md
+  printf '%s\n' '# Canonical service instructions' > service/AGENTS.md
+
+  run_bootstrap node
+
+  [ "$status" -eq 0 ]
+  cmp -s service/CLAUDE.md "$skill_dir/assets/claude-proxy.md"
+  grep -Fq '# Canonical service instructions' service/AGENTS.md
+}
+
+@test "case-variant instruction filenames normalize recursively" {
+  cat > Claude.md <<'EOF'
+# Root instructions
+
+Run root checks before merging.
+EOF
+  mkdir -p services/api/v1
+  cat > services/api/v1/claude.MD <<'EOF'
+# API instructions
+
+Run API checks before merging.
+EOF
+
+  run_bootstrap node
+
+  [ "$status" -eq 0 ]
+  [ "$(find . -maxdepth 1 -type f -name 'Claude.md' -print)" = "" ]
+  [ "$(find services/api/v1 -maxdepth 1 -type f -name 'claude.MD' -print)" = "" ]
+  [ -f CLAUDE.md ]
+  [ -f services/api/v1/CLAUDE.md ]
+  grep -Fq '# Root instructions' AGENTS.md
+  grep -Fq 'Run root checks before merging.' AGENTS.md
+  grep -Fq '# API instructions' services/api/v1/AGENTS.md
+  grep -Fq 'Run API checks before merging.' services/api/v1/AGENTS.md
+  cmp -s CLAUDE.md "$skill_dir/assets/claude-proxy.md"
+  cmp -s services/api/v1/CLAUDE.md "$skill_dir/assets/claude-proxy.md"
+  [[ "$output" == *"Renamed instruction files:"* ]]
+  [[ "$output" == *"Claude.md -> ./CLAUDE.md"* ]]
+  [[ "$output" == *"services/api/v1/claude.MD -> services/api/v1/CLAUDE.md"* ]]
+}
+
+@test "case-variant rename preserves a concurrent canonical destination" {
+  mkdir -p service
+  printf '%s\n' '# Original instructions' > service/Claude.md
+  printf '%s\n' '# Existing canonical instructions' > service/AGENTS.md
+  cat > "$fake_bin/mv" <<'EOF'
+#!/bin/bash
+/bin/mv "$@"
+for argument in "$@"; do
+  if [[ "$argument" == *agent-ready-name.* ]]; then
+    printf '%s\n' '# Concurrent instructions' > service/CLAUDE.md
+    break
+  fi
+done
+EOF
+  chmod +x "$fake_bin/mv"
+
+  run env PATH="$test_root/bin:$PATH" bash "$skill_dir/scripts/bootstrap.sh" \
+    --stack node \
+    --skill-dir "$skill_dir" \
+    --provider claude
+
+  [ "$status" -eq 0 ]
+  [ "$(cat service/CLAUDE.md)" = '# Concurrent instructions' ]
+  [[ "$output" == *"destination changed concurrently and was preserved"* ]]
+  if [ -n "$(find service -maxdepth 1 -type f -name 'Claude.md' -print)" ]; then
+    [ "$(cat service/Claude.md)" = '# Original instructions' ]
+  else
+    staged_files=(service/.CLAUDE.md.agent-ready-name.*)
+    [ -f "${staged_files[0]}" ]
+    [ "$(cat "${staged_files[0]}")" = '# Original instructions' ]
+  fi
+}
+
+@test "ignored case-variant instruction filenames remain untouched" {
+  printf '%s\n' 'node_modules/' > .gitignore
+  mkdir -p node_modules/example-package
+  cat > node_modules/example-package/Claude.md <<'EOF'
+# Dependency instructions
+EOF
+
+  run_bootstrap node
+
+  [ "$status" -eq 0 ]
+  [ -f node_modules/example-package/Claude.md ]
+  [ "$(find node_modules/example-package -maxdepth 1 -type f -name 'CLAUDE.md' -print)" = "" ]
+  [ ! -e node_modules/example-package/AGENTS.md ]
 }
 
 @test "rejects bootstrap outside a Git worktree" {
@@ -501,7 +590,7 @@ EOF
 
   [ "$status" -eq 0 ]
   [ -f node_modules/tracked-package/AGENTS.md ]
-  [ "$(cat node_modules/tracked-package/CLAUDE.md)" = '@AGENTS.md' ]
+  cmp -s node_modules/tracked-package/CLAUDE.md "$skill_dir/assets/claude-proxy.md"
   [ "$(cat node_modules/tracked-package/AGENTS.md)" = '# Tracked instructions' ]
 }
 
@@ -530,8 +619,7 @@ EOF
   [ "$status" -eq 0 ]
   grep -Fq '# Shared instructions' AGENTS.md
   grep -Fq 'Run checks before merging.' AGENTS.md
-  grep -Fxq '@AGENTS.md' CLAUDE.md
-  grep -Fxq '## Regla de centralización de instrucciones' CLAUDE.md
+  cmp -s CLAUDE.md "$skill_dir/assets/claude-proxy.md"
   [[ "$output" == *"Normalized instructions:"* ]]
 }
 
@@ -910,7 +998,7 @@ EOF
 
   printf '%s\n' '# Local change' >> .agents/rules/security.md
   printf '%s\n' '# Project instructions' > AGENTS.md
-  cp "$skill_dir/assets/root-claude.md" CLAUDE.md
+  cp "$skill_dir/assets/claude-proxy.md" CLAUDE.md
   root_hash_before="$(shasum AGENTS.md CLAUDE.md | shasum | cut -d ' ' -f 1)"
 
   run_bootstrap frontend --sync --yes
