@@ -895,6 +895,114 @@
           "description": "Identifica la actualización durante sincronización"
         }
       ]
+    },
+    {
+      "id": "frontend-outbound-payload-separates-contracts",
+      "description": "Distingue el payload saliente del BFF de input, DTO público y response upstream.",
+      "input": "Estoy diseñando un BFF Nordic que recibe un request del cliente y llama a un endpoint upstream. Explicá cómo debe modelar el body que envía al proveedor para que el contrato sea fácil de encontrar, qué entidades debe mantener separadas y dónde ocurre la validación. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["payload saliente", "outbound", "request payload", "payload que envía"],
+          "description": "Identifica el contrato de request enviado por el BFF"
+        },
+        {
+          "type": "contains_any",
+          "values": ["DTO", "request del cliente", "req.body", "input del cliente"],
+          "description": "Distingue el input o DTO público del payload upstream"
+        },
+        {
+          "type": "contains_any",
+          "values": ["response upstream", "respuesta upstream", "respuesta del proveedor", "upstream response"],
+          "description": "Distingue la respuesta upstream del request saliente"
+        },
+        {
+          "type": "contains_any",
+          "values": ["boundary", "borde", "handler", "middleware", "validación"],
+          "description": "Ubica la validación de input en el boundary correspondiente"
+        }
+      ]
+    },
+    {
+      "id": "frontend-outbound-payload-rejects-passthrough",
+      "description": "Evita enviar req.body directamente y exige mapping explícito por operación.",
+      "input": "Revisá este diseño de service: `return upstreamClient.post('/shipments', req.body)`. El endpoint público y el upstream hoy parecen tener los mismos campos, pero el cliente podría agregar propiedades en el futuro. Indicá qué debe recomendar agent-ready-setup y por qué. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["no pasar", "no enviar", "no usar", "no debe", "evitar"],
+          "description": "Prohíbe passthrough directo del request del cliente"
+        },
+        {
+          "type": "contains_any",
+          "values": ["req.body", "request.body", "body del request"],
+          "description": "Menciona explícitamente el objeto que no debe pasarse"
+        },
+        {
+          "type": "contains_any",
+          "values": ["mapping explícito", "mapeo explícito", "explicit mapping", "payload nombrado", "entidad"],
+          "description": "Propone construcción explícita del contrato upstream"
+        },
+        {
+          "type": "contains_any",
+          "values": ["campos del cliente", "leak", "filtrar", "exponer", "contrato"],
+          "description": "Explica el riesgo de filtrar campos o esconder cambios de contrato"
+        }
+      ]
+    },
+    {
+      "id": "frontend-outbound-payload-uses-proportional-builder",
+      "description": "Usa factory o builder según complejidad y evita abstracción ceremonial.",
+      "input": "Compará dos payloads enviados a upstream: A) `POST /health` con un objeto fijo de dos campos; B) `POST /orders` con transformaciones, defaults y secciones anidadas condicionales. Explicá cuándo usar un objeto nombrado, una factory o un builder, y cómo nombrar cada contrato. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["factory", "builder"],
+          "description": "Considera los patrones de construcción disponibles"
+        },
+        {
+          "type": "contains_any",
+          "values": ["payload simple", "simple", "objeto nombrado", "objeto local"],
+          "description": "Mantiene una solución simple para payload trivial"
+        },
+        {
+          "type": "contains_any",
+          "values": ["complejidad", "condicional", "anidada", "transformación", "defaults"],
+          "description": "Relaciona builder con composición real del payload"
+        },
+        {
+          "type": "contains_any",
+          "values": ["operación", "endpoint", "upstream", "Create", "Order"],
+          "description": "Exige nombres específicos por operación y boundary"
+        }
+      ]
+    },
+    {
+      "id": "frontend-outbound-payload-preserves-response-boundary",
+      "description": "No convierte el modelado de requests salientes en validación de responses upstream.",
+      "input": "Una persona propone agregar un builder para el request que el BFF envía a upstream y, además, un schema runtime para validar cada response del proveedor. Explicá qué parte corresponde a la nueva regla y qué parte contradice la regla de payload-validation-boundaries. Diferenciá validación de input del cliente, construcción del request y consumo de response upstream. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["no revalidar", "no validar", "respuesta upstream", "response upstream"],
+          "description": "Mantiene prohibida la validación completa de responses upstream"
+        },
+        {
+          "type": "contains_any",
+          "values": ["builder", "factory", "construcción", "payload saliente"],
+          "description": "Acepta modelar explícitamente el request saliente"
+        },
+        {
+          "type": "contains_any",
+          "values": ["input del cliente", "request del cliente", "boundary", "borde", "middleware"],
+          "description": "Distingue la validación de input en el boundary"
+        },
+        {
+          "type": "contains_any",
+          "values": ["narrowing", "status", "transporte", "control flow", "flujo"],
+          "description": "Conserva narrowing estructural mínimo solo si cambia el flujo"
+        }
+      ]
     }
   ]
 }
