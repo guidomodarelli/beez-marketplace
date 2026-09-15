@@ -14,10 +14,13 @@ Baseline security rules for Nordic applications. These rules are always active a
 ## Input Validation
 
 - Middleend endpoints must validate all untrusted client-controlled request inputs (body, query params, path params, headers) at the controller/handler boundary using `@meli/input-validation`.
-- Never revalidate payloads received from backend/upstream services; they are response data, not client input. Consume them according to the backend contract instead of adding a second validation step.
+- Never revalidate payloads received from backend/upstream services; they are response data, not client input. Consume them according to the adapter contract instead of adding a second validation step.
+- Never validate the complete format or contract of a backend/upstream success payload or error payload at runtime. Do not add a schema, allowlist, field-by-field check, type guard, or error-shape parser for the provider response.
+- Use only minimal structural narrowing when it changes control flow or enables safe access: HTTP status or transport metadata, `null` versus `array` versus `object`, or a minimum discriminator such as `PROCESSING` or `FINISHED`. This narrowing is not upstream contract verification and must not become a complete field allowlist.
+- If an upstream response cannot be consumed, map a controlled failure at the adapter or service boundary without forwarding the raw payload or introducing full contract validation.
 - Whenever code needs to validate a variable, function argument, method argument, or intermediate value that is not a backend/upstream response payload, prefer `@meli/input-validation` over native validation.
 - If `@meli/input-validation` cannot express the complete requirement, keep it as the primary validation and add only the narrowly scoped native checks that are still necessary, such as `Number.isSafeInteger`.
-- Use allowlist strategy — define what is permitted, reject everything else.
+- Use allowlist strategy for client-controlled inputs and public middleend DTOs — define what is permitted, reject everything else.
 - Never trust user-provided identifiers directly — retrieve user identity from session or JWT claims.
 
 ## XSS Prevention
@@ -48,8 +51,8 @@ Treat the middleend as a translation boundary: convert known client- or domain-c
 
 - Never return a 5xx from a middleend when the cause is known and attributable to the request or domain state. Return the corresponding 4xx: `400` for malformed requests, `401` for missing or invalid authentication, `403` for insufficient permissions, `404` for missing resources, `409` for state conflicts, or `422` for semantically invalid or unprocessable input.
 - Do not use a generic `500`, `502`, or `503` fallback for a known client/domain error. Preserve a safe public message and log the diagnostic cause server-side without exposing internals.
-- Do not classify hydration or partial-attribute failures by symptom alone. First identify the origin: when client-controlled input or domain state caused incomplete attributes, map the cause to its applicable 4xx at the middleend boundary; `422` is often appropriate when the request is semantically unprocessable. When an upstream or dependency returns an incomplete payload or violates its contract, treat it as a dependency failure and map it to the appropriate 5xx (often `502`) instead of blaming the client.
-- Reserve 5xx responses for genuinely unexpected middleend failures or dependency failures, including incomplete or contract-invalid upstream responses; never use them as a shortcut for client/domain error mapping.
+- Do not classify hydration or partial-attribute failures by symptom alone. First identify the origin: when client-controlled input or domain state caused incomplete attributes, map the cause to its applicable 4xx at the middleend boundary; `422` is often appropriate when the request is semantically unprocessable. When transport/status metadata or the adapter identifies an upstream dependency failure, treat it as a dependency failure and map it to the appropriate 5xx (often `502`) instead of blaming the client; do not validate the full upstream success or error payload to make that classification.
+- Reserve 5xx responses for genuinely unexpected middleend failures or dependency failures surfaced by transport/status metadata or adapter classification. If the adapter cannot consume an upstream response, map a controlled dependency failure at that boundary; never use 5xx as a shortcut for client/domain error mapping and never introduce full upstream contract validation.
 - Never expose stack traces or internal error details to users — return generic messages.
 - Never log sensitive data in error handlers.
 

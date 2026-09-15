@@ -316,6 +316,33 @@
       ]
     },
     {
+      "id": "frontend-upstream-error-contract-is-not-runtime-validated",
+      "description": "Evita validar el contrato completo de respuestas y errores upstream.",
+      "input": "Revisá un service Nordic que recibe una respuesta exitosa de backend con datos incompletos y, en otro caso, un error upstream cuyo body puede traer `code`, `message` y `details` o puede cambiar entre versiones. Explicá qué debe hacer agent-ready-setup: qué no debe validar ni convertir en schema, qué señales mínimas puede usar para decidir el flujo y cómo debe mapear una falla que el adapter no puede consumir. Diferenciá esto de validar el request del cliente. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["no validar", "no revalidar", "no verificar", "never validate", "do not validate"],
+          "description": "Prohíbe validación completa de payloads upstream"
+        },
+        {
+          "type": "contains_any",
+          "values": ["status", "HTTP", "metadata de transporte", "transport metadata", "adapter"],
+          "description": "Usa status, transporte o clasificación del adapter"
+        },
+        {
+          "type": "contains_any",
+          "values": ["narrowing", "narrowing estructural", "null", "array", "object", "discriminador", "discriminator"],
+          "description": "Permite solo narrowing estructural mínimo para control flow"
+        },
+        {
+          "type": "contains_any",
+          "values": ["request del cliente", "input del cliente", "client request", "client-controlled input", "borde del middleend"],
+          "description": "Distingue input middleend de respuesta upstream"
+        }
+      ]
+    },
+    {
       "id": "frontend-validation-distinguishes-middleend-and-upstream",
       "description": "Distingue validación de requests middleend y respuestas backend/upstream.",
       "input": "Voy a implementar un endpoint middleend que recibe datos del cliente y consume un payload de un backend/upstream; además necesita validar una variable numérica. Explicá qué debe indicar la regla frontend de agent-ready-setup sobre qué validar, qué no revalidar, qué librería preferir y cuándo puede agregarse `Number.isSafeInteger`. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
