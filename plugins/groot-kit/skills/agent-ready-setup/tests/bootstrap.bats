@@ -274,6 +274,60 @@ run_marketplace_sync() {
   [[ "$output" == *".claude/rules/security.md differs from canonical shared asset"* ]]
 }
 
+@test "autonomous sync normalizes CLAUDE.md under .claude and is idempotent" {
+  dynamic_skill_dir="$test_root/dynamic-skill"
+  cp -R "$skill_dir" "$dynamic_skill_dir"
+
+  run_marketplace_sync "$skill_dir/assets/common/hooks/sync-marketplace.sh" "$dynamic_skill_dir"
+  [ "$status" -eq 0 ]
+
+  cat > .claude/CLAUDE.md <<'EOF'
+## Meli SDD Kit
+
+This project uses Meli SDD Kit.
+EOF
+  rm -f .claude/AGENTS.md
+
+  run_marketplace_sync ".agents/hooks/sync-marketplace.sh" "$dynamic_skill_dir"
+
+  [ "$status" -eq 0 ]
+  [ -f .claude/AGENTS.md ]
+  grep -Fxq '## Meli SDD Kit' .claude/AGENTS.md
+  cmp -s .claude/CLAUDE.md "$dynamic_skill_dir/assets/claude-proxy.md"
+
+  claude_hash_before="$(shasum .claude/CLAUDE.md | cut -d ' ' -f 1)"
+  agents_hash_before="$(shasum .claude/AGENTS.md | cut -d ' ' -f 1)"
+
+  run_marketplace_sync ".agents/hooks/sync-marketplace.sh" "$dynamic_skill_dir"
+
+  [ "$status" -eq 0 ]
+  [ "$(shasum .claude/CLAUDE.md | cut -d ' ' -f 1)" = "$claude_hash_before" ]
+  [ "$(shasum .claude/AGENTS.md | cut -d ' ' -f 1)" = "$agents_hash_before" ]
+}
+
+@test "sync hook discovers provider CLAUDE.md from nested cwd" {
+  dynamic_skill_dir="$test_root/dynamic-skill"
+  cp -R "$skill_dir" "$dynamic_skill_dir"
+
+  run_marketplace_sync "$skill_dir/assets/common/hooks/sync-marketplace.sh" "$dynamic_skill_dir"
+  [ "$status" -eq 0 ]
+
+  cat > .claude/CLAUDE.md <<'EOF'
+# Nested hook instructions
+EOF
+  rm -f .claude/AGENTS.md
+
+  run env \
+    PATH="$test_root/bin:$PATH" \
+    AGENT_READY_SETUP_SKILL_DIR="$dynamic_skill_dir" \
+    bash -c 'cd .claude && bash ../.agents/hooks/sync-marketplace.sh --provider claude --stack frontend'
+
+  [ "$status" -eq 0 ]
+  [ -f .claude/AGENTS.md ]
+  grep -Fxq '# Nested hook instructions' .claude/AGENTS.md
+  cmp -s .claude/CLAUDE.md "$dynamic_skill_dir/assets/claude-proxy.md"
+}
+
 @test "identical legacy Claude copies become canonical symlinks" {
   run_bootstrap frontend
   [ "$status" -eq 0 ]
@@ -466,6 +520,52 @@ EOF
   [ "$status" -eq 0 ]
   cmp -s service/CLAUDE.md "$skill_dir/assets/claude-proxy.md"
   grep -Fq '# Canonical service instructions' service/AGENTS.md
+}
+
+@test "nested exact CLAUDE proxy creates an empty canonical sibling" {
+  mkdir -p service
+  cp "$skill_dir/assets/claude-proxy.md" service/CLAUDE.md
+
+  run_bootstrap node
+
+  [ "$status" -eq 0 ]
+  [ -f service/AGENTS.md ]
+  [ ! -s service/AGENTS.md ]
+  cmp -s service/CLAUDE.md "$skill_dir/assets/claude-proxy.md"
+}
+
+@test "provider configuration CLAUDE.md gets a sibling AGENTS.md and exact proxy" {
+  mkdir -p .claude
+  cat > .claude/CLAUDE.md <<'EOF'
+## Meli SDD Kit
+
+This project uses Meli SDD Kit.
+EOF
+
+  run_bootstrap node
+
+  [ "$status" -eq 0 ]
+  [ -f .claude/AGENTS.md ]
+  grep -Fxq '## Meli SDD Kit' .claude/AGENTS.md
+  grep -Fxq 'This project uses Meli SDD Kit.' .claude/AGENTS.md
+  cmp -s .claude/CLAUDE.md "$skill_dir/assets/claude-proxy.md"
+  [[ "$output" == *".claude/CLAUDE.md -> .claude/AGENTS.md"* ]]
+}
+
+@test "instruction normalization uses Git root when invoked from nested directory" {
+  mkdir -p .claude
+  cat > .claude/CLAUDE.md <<'EOF'
+# Claude instructions
+
+Run checks from project root.
+EOF
+
+  run bash -c "cd .claude && env PATH=\"$test_root/bin:\$PATH\" bash \"$skill_dir/scripts/bootstrap.sh\" --stack node --skill-dir \"$skill_dir\" --provider claude"
+
+  [ "$status" -eq 0 ]
+  [ -f .claude/AGENTS.md ]
+  grep -Fxq '# Claude instructions' .claude/AGENTS.md
+  cmp -s .claude/CLAUDE.md "$skill_dir/assets/claude-proxy.md"
 }
 
 @test "case-variant instruction filenames normalize recursively" {

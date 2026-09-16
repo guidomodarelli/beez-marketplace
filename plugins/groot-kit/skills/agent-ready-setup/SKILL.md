@@ -245,18 +245,23 @@ El renderer crea `AGENTS.md` nuevo con catálogo portable; el merge IA analiza
 arquitectura u ownership. El provider debe ser `claude` o `codex`.
 Copias legacy idénticas bajo `.claude/` se normalizan a symlinks; copias
 divergentes se conservan y se reportan como conflicto. Antes de normalizar las
-instrucciones del proyecto, el bootstrap inicial busca recursivamente en todos
+instrucciones del proyecto, bootstrap y sync buscan recursivamente en todos
 los niveles y subniveles cualquier archivo cuyo basename coincida con
 `claude.md` sin respetar exactamente mayúsculas (`Claude.md`, `claude.md`,
-etc.) y lo renombra a `CLAUDE.md` mediante un path temporal del mismo
+etc.) y lo renombran a `CLAUDE.md` mediante un path temporal del mismo
 directorio, para que el cambio de casing también funcione en filesystems
 case-insensitive. Solo renombra archivos regulares no ignorados; paths ignorados se preservan,
 mientras symlinks, archivos no regulares y colisiones se preservan y reportan.
+El descubrimiento parte siempre de la raíz Git, incluso si el comando se invoca
+desde `.claude/` u otro subdirectorio. El hook reutiliza el modo interno
+`bootstrap.sh --normalize-only` después de proyectar assets, sin repetir upgrade
+ni proyección.
 Después aplica la normalización existente a cada `CLAUDE.md`, reemplazándolo
 por una copia byte-a-byte de `assets/claude-proxy.md`; ese template usa el
 `AGENTS.md` hermano mediante la referencia relativa `@AGENTS.md` y nunca usa un
 `AGENTS.md` de otro nivel. Durante la búsqueda recursiva de instrucciones
-respeta `.gitignore` y nunca recorre `node_modules/`; esta regla no impide
+usa el inventario Git: omite paths ignorados no trackeados, pero conserva archivos
+trackeados bajo directorios ignorados como `node_modules/`; esta regla no impide
 crear los destinos explícitos `.claude/`, `.agents/` y `.codex/`. Los hooks de
 sincronización reciben provider explícito (`--provider
 claude` desde `.claude/settings.json` y `--provider codex` desde `.codex/`),
@@ -292,14 +297,17 @@ y configura los scripts.
 El hook canónico `.agents/hooks/sync-marketplace.sh` ejecuta siempre el upgrade,
 consulta la última versión de `groot-ui` en `frontend` sin instalarla ni actualizarla,
 y muestra un aviso con `npm install --save groot-ui@<version>` solo cuando existe una
-versión más nueva. Proyecta todos los assets gestionados y ejecuta el merge IA de
-`AGENTS.md` cuando el helper está disponible. El usuario debe decidir y ejecutar el
+versión más nueva. Proyecta todos los assets gestionados, ejecuta la normalización recursiva de
+instrucciones mediante `bootstrap.sh --normalize-only` cuando la versión instalada
+lo soporta y luego ejecuta el merge IA de `AGENTS.md` cuando el helper está
+disponible. La normalización incluye `CLAUDE.md` bajo `.claude/` y conserva
+conflictos, symlinks y archivos no regulares. El usuario debe decidir y ejecutar el
 comando mostrado (o `npm install` si `groot-ui` ya está al día) para actualizar
 `package-lock.json` y quitar `kraken-translations` del lockfile.
 Si la copia instalada del hook cambió, se reejecuta con el mismo provider y stack
 antes de proyectar el resto. La reejecución conserva el lock de assets y usa una
-guarda interna para no repetir `fury ai assets marketplace upgrade`. No invoca ni
-requiere `bootstrap.sh` dentro del repo consumidor.
+guarda interna para no repetir `fury ai assets marketplace upgrade`; no repite
+proyección ni upgrade durante `--normalize-only`.
 
 El hook compara cada asset gestionado con el template actualizado y muestra
 `diff -u` antes de reemplazar un archivo existente. Los archivos regulares
@@ -338,14 +346,15 @@ La proyección automática de assets:
 - Migra referencias `.claude/hooks/` dentro de `.claude/settings.json` como JSON
   y normaliza el comando administrado a `.agents/hooks/` sin flags de fase,
   preservando campos custom y reportando settings inválidos.
-- No normaliza, migra ni reemplaza `AGENTS.md` o `CLAUDE.md` raíz, ni pares de
-  instrucciones anidados; esos archivos pertenecen al proyecto.
+- Normaliza `CLAUDE.md` raíz y anidados, incluido `.claude/CLAUDE.md`, mediante
+  el modo interno conservador; crea o actualiza únicamente el `AGENTS.md`
+  hermano cuando puede preservar el contenido sin ambigüedad.
 - No elimina archivos regulares, symlinks custom ni assets desconocidos; los
   conserva y reporta para revisión manual.
 
 El merge IA posterior puede actualizar únicamente `AGENTS.md` para preservar
 instrucciones compatibles y reparar referencias de rules; nunca modifica
-`CLAUDE.md` ni pares anidados.
+`CLAUDE.md` directamente.
 
 Para sincronizar manualmente desde un hook existente:
 
@@ -455,7 +464,7 @@ Mostrar output del script sin alterarlo. En respuestas documentales, enumerar pa
 ```
 Next steps:
   1. [MANUAL] Completar `AGENTS.md` solo si todavía faltan descripción, comandos, arquitectura u ownership del proyecto.
-  2. [AUTO] Validar que cada `CLAUDE.md`, raíz o anidado, sea byte-a-byte igual a `assets/claude-proxy.md` (incluye `@AGENTS.md` y la regla de centralización), y que cada uno tenga un `AGENTS.md` hermano cuando corresponda. Si no hay archivos anidados, reportar `N/A`.
+  2. [AUTO] Validar que cada `CLAUDE.md`, raíz o anidado —incluido `.claude/CLAUDE.md`— sea byte-a-byte igual a `assets/claude-proxy.md` (incluye `@AGENTS.md` y la regla de centralización), y que cada uno tenga un `AGENTS.md` hermano. Si no hay archivos anidados, reportar `N/A`.
   3. [AUTO] Si existe `.agents/rules/`, validar que el bloque gestionado de `AGENTS.md` tenga una referencia portable con instrucción explícita de lectura/seguimiento para cada archivo real; rechazar `@./rules/...`, `@.agents/rules/...` y `@path/to/folder`. Si no existe el directorio o no contiene rules, reportar `N/A`, no una tarea pendiente.
   4. [AUTO] Si existen archivos bajo `.agents/rules/`, `.agents/skills/` o `.agents/agents/`, detectar comentarios scaffold (`<!-- Add ... -->`, `<!-- Describe ... -->`) y marcadores sin renderizar (`{{...}}`). Reportar cada path. No tratar ejemplos como `<domain>` o `<component-name>` dentro de documentación como placeholders pendientes. Si no existen esos archivos, reportar `N/A`.
   5. [AUTO] Validar JSON, paths y referencias de MCP/hooks bajo `.codex/`. Si `.codex/` no existe, reportar `N/A`.

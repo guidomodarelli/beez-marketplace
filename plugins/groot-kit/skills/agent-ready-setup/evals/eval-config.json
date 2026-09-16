@@ -215,6 +215,43 @@
       ]
     },
     {
+      "id": "provider-directory-claude-is-normalized",
+      "description": "Incluye .claude/CLAUDE.md en la normalización recursiva y exige un AGENTS.md hermano.",
+      "input": "Un proyecto ya preparado tiene instrucciones propias en `.claude/CLAUDE.md`, pero no tiene `.claude/AGENTS.md`. Explicá qué deben hacer bootstrap y el hook de sync para detectar ese archivo, conservar sus instrucciones, crear el AGENTS.md hermano y dejar cada CLAUDE.md byte-a-byte igual a `assets/claude-proxy.md`. Incluí qué ocurre ante una divergencia real y desde qué raíz se ejecuta el descubrimiento. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": ".claude/CLAUDE.md",
+          "description": "Incluye CLAUDE.md bajo .claude"
+        },
+        {
+          "type": "contains",
+          "value": ".claude/AGENTS.md",
+          "description": "Exige AGENTS.md hermano"
+        },
+        {
+          "type": "contains_any",
+          "values": ["byte-a-byte", "copia exacta", "exactamente"],
+          "description": "Exige proxy idéntico al asset"
+        },
+        {
+          "type": "contains_any",
+          "values": ["bootstrap.sh --normalize-only", "sync", "sincronización"],
+          "description": "Cubre normalización durante sync"
+        },
+        {
+          "type": "contains_any",
+          "values": ["raíz Git", "raíz del repositorio", "git root"],
+          "description": "Cubre descubrimiento desde raíz Git"
+        },
+        {
+          "type": "contains_any",
+          "values": ["conflicto", "diferencia", "divergencia"],
+          "description": "Explica preservación de divergencias"
+        }
+      ]
+    },
+    {
       "id": "go-bootstrap-creates-assets",
       "description": "Detecta Go y reporta assets específicos creados.",
       "input": "Explicá cómo agent-ready-setup detecta Go para un microservicio y qué archivos principales crea bajo .claude/, incluyendo mcp.json y reglas. No ejecutes Bash ni escribas archivos; respondé desde la plantilla bundled.",

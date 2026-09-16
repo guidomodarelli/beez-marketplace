@@ -6,6 +6,7 @@
 #
 # Usage:
 #   bash bootstrap.sh --stack <frontend|node|java|go> --skill-dir <path> [--provider <claude|codex>] [--sync] [--yes]
+#   bash bootstrap.sh --stack <frontend|node|java|go> --skill-dir <path> --normalize-only
 
 set -euo pipefail
 
@@ -19,6 +20,7 @@ PROVIDER="${AGENT_READY_SETUP_ACTIVE_PROVIDER:-}"
 MARKETPLACE_ALREADY_UPGRADED="${AGENT_READY_SETUP_MARKETPLACE_UPGRADED:-0}"
 SYNC_MODE=0
 AUTO_CONFIRM=0
+NORMALIZE_ONLY=0
 readonly SYNC_LOCK_DIRECTORY=".agents/.agent-ready-assets.lock"
 readonly SYNC_LOCK_OWNER_FILE="$SYNC_LOCK_DIRECTORY/owner"
 readonly SYNC_LOCK_STALE_AFTER_MINUTES=10
@@ -47,6 +49,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --yes)
       AUTO_CONFIRM=1
+      shift
+      ;;
+    --normalize-only)
+      NORMALIZE_ONLY=1
       shift
       ;;
     *)
@@ -112,6 +118,13 @@ case "$PROVIDER" in
     exit 1
     ;;
 esac
+
+if [[ "$SKILL_DIR" != /* ]]; then
+  if ! SKILL_DIR="$(CDPATH='' cd -- "$SKILL_DIR" && pwd)"; then
+    echo "ERROR: could not resolve --skill-dir: $SKILL_DIR" >&2
+    exit 1
+  fi
+fi
 
 resolve_skill_dir() {
   local candidate
@@ -282,6 +295,9 @@ if ! command -v git >/dev/null 2>&1 || [[ "$(git rev-parse --is-inside-work-tree
   exit 1
 fi
 
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+cd -- "$PROJECT_ROOT"
+
 validate_provider_roots() {
   local provider_root
 
@@ -321,7 +337,9 @@ upgrade_marketplace() {
   echo "[marketplace-bootstrap] Marketplace upgrade completed."
 }
 
-if [[ "$MARKETPLACE_ALREADY_UPGRADED" -eq 0 ]]; then
+if [[ "$NORMALIZE_ONLY" -eq 1 ]]; then
+  echo "[marketplace-bootstrap] Instruction normalization only; marketplace upgrade skipped."
+elif [[ "$MARKETPLACE_ALREADY_UPGRADED" -eq 0 ]]; then
   if ! upgrade_marketplace; then
     exit 1
   fi
@@ -429,11 +447,11 @@ acquire_sync_lock() {
   return 1
 }
 
-if [[ "$SYNC_MODE" -eq 1 ]] && ! acquire_sync_lock; then
+if [[ "$NORMALIZE_ONLY" -eq 0 && "$SYNC_MODE" -eq 1 ]] && ! acquire_sync_lock; then
   exit 0
 fi
 
-if [[ "$STACK" == "frontend" ]]; then
+if [[ "$NORMALIZE_ONLY" -eq 0 && "$STACK" == "frontend" ]]; then
   bash "$SKILL_DIR/scripts/setup-groot-ui.sh" "package.json"
 fi
 
@@ -1197,7 +1215,7 @@ normalize_root_instructions() {
   record_created "$CLAUDE_FILE"
 }
 
-if [[ "$SYNC_MODE" -eq 0 ]]; then
+if [[ "$SYNC_MODE" -eq 0 || "$NORMALIZE_ONLY" -eq 1 ]]; then
   normalize_instruction_filenames
   normalize_root_instructions
 fi
@@ -1263,8 +1281,10 @@ normalize_nested_instruction_pair() {
       if [[ -e "$agents_file" ]]; then
         record_skipped "$claude_file"
         record_skipped "$agents_file"
+      elif validate_destination_parent "$agents_file" && : > "$agents_file"; then
+        MIGRATED+=("$claude_file -> $agents_file (empty canonical sibling)")
       else
-        CONFLICTS+=("$claude_file is an orphaned proxy; $agents_file is missing and neither instruction file was changed")
+        CONFLICTS+=("$claude_file is an orphaned proxy; $agents_file could not be created")
       fi
       return
     fi
@@ -1273,8 +1293,11 @@ normalize_nested_instruction_pair() {
       if [[ -e "$agents_file" ]]; then
         write_claude_proxy "$claude_file"
         MIGRATED+=("$claude_file -> root instruction proxy")
+      elif validate_destination_parent "$agents_file" && : > "$agents_file"; then
+        write_claude_proxy "$claude_file"
+        MIGRATED+=("$claude_file -> $agents_file (empty canonical sibling)")
       else
-        CONFLICTS+=("$claude_file is an orphaned proxy; $agents_file is missing and neither instruction file was changed")
+        CONFLICTS+=("$claude_file is an orphaned proxy; $agents_file could not be created")
       fi
       return
     fi
@@ -1318,8 +1341,29 @@ normalize_nested_instructions() {
   done < <(git ls-files --cached --others --exclude-standard -z)
 }
 
-if [[ "$SYNC_MODE" -eq 0 ]]; then
+if [[ "$SYNC_MODE" -eq 0 || "$NORMALIZE_ONLY" -eq 1 ]]; then
   normalize_nested_instructions
+fi
+
+if [[ "$NORMALIZE_ONLY" -eq 1 ]]; then
+  printf '\nInstruction normalization completed from %s.\n' "$PROJECT_ROOT"
+  if [[ ${#RENAMED[@]} -gt 0 ]]; then
+    echo "Renamed instruction files:"
+    for file in "${RENAMED[@]}"; do printf '  ↪ %s\n' "$file"; done
+  fi
+  if [[ ${#MIGRATED[@]} -gt 0 ]]; then
+    echo "Normalized instructions:"
+    for file in "${MIGRATED[@]}"; do printf '  ↔ %s\n' "$file"; done
+  fi
+  if [[ ${#SKIPPED[@]} -gt 0 ]]; then
+    echo "Already existed (skipped):"
+    for file in "${SKIPPED[@]}"; do printf '  ~ %s\n' "$file"; done
+  fi
+  if [[ ${#CONFLICTS[@]} -gt 0 ]]; then
+    echo "Instruction conflicts or differences (preserved):" >&2
+    for conflict in "${CONFLICTS[@]}"; do printf '  ! %s\n' "$conflict" >&2; done
+  fi
+  exit 0
 fi
 
 create_skill_adapter() {

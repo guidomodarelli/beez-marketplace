@@ -216,6 +216,12 @@ if ! skill_dir="$(resolve_skill_dir)"; then
   exit 0
 fi
 
+if ! project_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+  printf 'WARNING: could not resolve Git project root; local projection skipped.\n' >&2
+  exit 0
+fi
+cd -- "$project_root"
+
 stack="$(detect_stack || true)"
 if [[ -z "$stack" ]]; then
   printf 'WARNING: could not detect project stack; local projection skipped.\n' >&2
@@ -893,6 +899,19 @@ fi
 # Project all non-hook stack assets before merging instruction references. The
 # shared tree remains canonical, while Claude and Codex receive provider views.
 project_stack_assets
+
+# Reuse bootstrap's conservative instruction normalizer so SessionStart also
+# discovers project CLAUDE.md files under directories such as .claude/.
+if [[ -f "$skill_dir/scripts/bootstrap.sh" ]] && \
+  grep -Fq -- '--normalize-only' "$skill_dir/scripts/bootstrap.sh"; then
+  bash "$skill_dir/scripts/bootstrap.sh" \
+    --stack "$stack" \
+    --skill-dir "$skill_dir" \
+    --provider "$provider" \
+    --normalize-only
+else
+  printf 'WARNING: bootstrap.sh does not support instruction normalization; skipped.\n' >&2
+fi
 
 sync_claude_settings "$skill_dir/assets/common/settings.json"
 sync_file "$skill_dir/assets/codex/hooks.json" "$CODEX_DIRECTORY/hooks/hooks.json"
