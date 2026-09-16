@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Installs the latest groot-ui package and configures frontend helper scripts.
+# Reports the latest groot-ui version and configures frontend helper scripts.
+# Package installation remains an explicit user action so package-lock.json is
+# updated together with the user's chosen package.json version.
 
 set -euo pipefail
 
-readonly GROOT_UI_PACKAGE_SPEC="groot-ui@latest"
+readonly GROOT_UI_PACKAGE_NAME="groot-ui"
 readonly I18N_SCRIPT_NAME="i18n"
 readonly I18N_SCRIPT_COMMAND="groot-i18n"
 readonly LOCAL_TO_PRODUCTION_SCRIPT_NAME="local2prod"
@@ -19,7 +21,7 @@ if [[ $# -gt 1 ]]; then
 fi
 
 if [[ ! -e "$package_json" ]]; then
-  printf '[groot-ui] %s was not found; installation skipped.\n' "$package_json"
+  printf '[groot-ui] %s was not found; version lookup skipped.\n' "$package_json"
   exit 0
 fi
 
@@ -34,7 +36,19 @@ if [[ ! -f "$package_json" ]]; then
 fi
 
 if ! command -v npm >/dev/null 2>&1; then
-  printf 'ERROR: npm is required to install %s.\n' "$GROOT_UI_PACKAGE_SPEC" >&2
+  printf 'ERROR: npm is required to look up the latest %s version.\n' "$GROOT_UI_PACKAGE_NAME" >&2
+  exit 1
+fi
+
+latest_version=""
+if ! latest_version="$(npm view "$GROOT_UI_PACKAGE_NAME" version | tr -d '\r\n')"; then
+  printf 'ERROR: could not look up the latest %s version.\n' "$GROOT_UI_PACKAGE_NAME" >&2
+  exit 1
+fi
+
+if [[ ! "$latest_version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+  printf 'ERROR: npm returned an invalid latest %s version: %s\n' \
+    "$GROOT_UI_PACKAGE_NAME" "$latest_version" >&2
   exit 1
 fi
 
@@ -43,7 +57,64 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
-node - "$package_json" \
+current_version_metadata="$(node - "$package_json" "$GROOT_UI_PACKAGE_NAME" <<'NODE'
+const fs = require('fs');
+const path = require('path');
+
+const [packagePath, packageName] = process.argv.slice(2);
+const packageDirectory = path.dirname(path.resolve(packagePath));
+const dependencySections = [
+  'dependencies',
+  'devDependencies',
+  'optionalDependencies',
+  'peerDependencies',
+];
+
+function readJson(filePath) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+const installedPackage = readJson(
+  path.join(packageDirectory, 'node_modules', packageName, 'package.json'),
+);
+if (installedPackage && typeof installedPackage.version === 'string') {
+  process.stdout.write(`installed\t${installedPackage.version}`);
+  process.exit(0);
+}
+
+const lockfile = readJson(path.join(packageDirectory, 'package-lock.json'));
+const lockedPackage = lockfile?.packages?.[`node_modules/${packageName}`];
+if (lockedPackage && typeof lockedPackage.version === 'string') {
+  process.stdout.write(`lockfile\t${lockedPackage.version}`);
+  process.exit(0);
+}
+
+const legacyLockedPackage = lockfile?.dependencies?.[packageName];
+if (legacyLockedPackage && typeof legacyLockedPackage.version === 'string') {
+  process.stdout.write(`lockfile\t${legacyLockedPackage.version}`);
+  process.exit(0);
+}
+
+const packageJson = readJson(packagePath);
+for (const dependencySection of dependencySections) {
+  const declaredVersion = packageJson?.[dependencySection]?.[packageName];
+  if (typeof declaredVersion === 'string') {
+    process.stdout.write(`declared\t${declaredVersion}`);
+    process.exit(0);
+  }
+}
+
+process.stdout.write('missing\t');
+NODE
+)"
+current_version_source="${current_version_metadata%%$'\t'*}"
+current_version="${current_version_metadata#*$'\t'}"
+
+removed_dependency_names="$(node - "$package_json" \
   "$I18N_SCRIPT_NAME" \
   "$I18N_SCRIPT_COMMAND" \
   "$LOCAL_TO_PRODUCTION_SCRIPT_NAME" \
@@ -70,6 +141,7 @@ const dependencySections = [
   'optionalDependencies',
   'peerDependencies',
 ];
+let removedDependency = false;
 let packageJson;
 
 try {
@@ -96,7 +168,10 @@ for (const dependencySection of dependencySections) {
     continue;
   }
   for (const dependencyName of obsoleteDependencyNames) {
-    delete packageJson[dependencySection][dependencyName];
+    if (Object.prototype.hasOwnProperty.call(packageJson[dependencySection], dependencyName)) {
+      delete packageJson[dependencySection][dependencyName];
+      removedDependency = true;
+    }
   }
 }
 packageJson.scripts[i18nScriptName] = i18nScriptCommand;
@@ -117,12 +192,28 @@ try {
   fs.rmSync(temporaryPackagePath, { force: true });
   throw new Error(`could not update ${packagePath}: ${error.message}`);
 }
+process.stdout.write(removedDependency ? 'kraken-translations' : '');
 NODE
+)"
 
-printf '[groot-ui] Installing %s...\n' "$GROOT_UI_PACKAGE_SPEC"
-npm install --save "$GROOT_UI_PACKAGE_SPEC"
-
-printf '[groot-ui] Configured %s, %s, and %s.\n' \
-  "$GROOT_UI_PACKAGE_SPEC" \
+printf '[groot-ui] Latest available version: %s@%s\n' \
+  "$GROOT_UI_PACKAGE_NAME" "$latest_version"
+if [[ "$current_version" == "$latest_version" ]]; then
+  printf '[groot-ui] Current effective version is %s (%s); no update is required.\n' \
+    "$current_version" "$current_version_source"
+else
+  printf 'WARNING: [groot-ui] Current effective version is %s (%s); %s@%s is available.\n' \
+    "${current_version:-not installed}" "$current_version_source" \
+    "$GROOT_UI_PACKAGE_NAME" "$latest_version"
+  printf '[groot-ui] To update manually, edit package.json and run: npm install --save %s@%s\n' \
+    "$GROOT_UI_PACKAGE_NAME" "$latest_version"
+fi
+printf '[groot-ui] No package installation was performed.\n'
+if [[ "$removed_dependency_names" == "kraken-translations" ]]; then
+  printf '[groot-ui] kraken-translations was removed from package.json; run npm install to update package-lock.json.\n'
+else
+  printf '[groot-ui] kraken-translations was not declared in package.json; no npm install is required for its removal.\n'
+fi
+printf '[groot-ui] Configured %s and %s.\n' \
   "$I18N_SCRIPT_NAME" \
   "$LOCAL_TO_PRODUCTION_SCRIPT_NAME"

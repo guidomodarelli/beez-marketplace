@@ -255,7 +255,7 @@ validate_skill_source() {
   fi
 
   if [[ "$STACK" == "frontend" && ! -x "$SKILL_DIR/scripts/setup-groot-ui.sh" ]]; then
-    echo "ERROR: Frontend groot-ui setup helper is missing or not executable: $SKILL_DIR/scripts/setup-groot-ui.sh" >&2
+    echo "ERROR: Frontend groot-ui version helper is missing or not executable: $SKILL_DIR/scripts/setup-groot-ui.sh" >&2
     exit 1
   fi
 }

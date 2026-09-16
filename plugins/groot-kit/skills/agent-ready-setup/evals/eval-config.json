@@ -855,14 +855,49 @@
       ]
     },
     {
-      "id": "frontend-groot-ui-setup",
-      "description": "Explica instalación y sincronización de groot-ui junto con scripts frontend.",
-      "input": "Explicá qué hace agent-ready-setup para un proyecto frontend con `package.json`: qué paquete instala o actualiza, qué scripts legacy de traducciones y qué dependencia obsoleta elimina al migrar a groot-i18n, qué valor exacto debe tener `scripts.i18n` aunque la clave ya exista con otro comando, qué valor exacto debe asegurar en `scripts.local2prod` y cuándo sync-marketplace repite la actualización. No ejecutes Bash ni escribas archivos; respondé desde la skill.",
+      "id": "frontend-groot-ui-version-report",
+      "description": "Explica consulta de latest y actualización manual de groot-ui junto con scripts frontend.",
+      "input": "Explicá qué hace agent-ready-setup para un proyecto frontend con `package.json`: cómo consulta la última versión publicada de `groot-ui` sin instalarla ni actualizar `package-lock.json`, qué debe modificar manualmente el usuario y qué comando debe ejecutar para sincronizar el lockfile, qué scripts legacy de traducciones elimina al migrar a groot-i18n, cómo elimina `kraken-translations` de `package.json` pero deja su entrada en `package-lock.json` para que el usuario la quite al ejecutar npm install, qué valor exacto debe tener `scripts.i18n` aunque la clave ya exista con otro comando, qué valor exacto debe asegurar en `scripts.local2prod` y cuándo bootstrap o sync-marketplace repiten la consulta. No ejecutes Bash ni escribas archivos; respondé desde la skill.",
       "assertions": [
         {
+          "type": "contains_any",
+          "values": ["npm view groot-ui version", "npm view", "última versión", "latest"],
+          "description": "Identifica la consulta de la última versión publicada"
+        },
+        {
+          "type": "contains_any",
+          "values": ["no instala", "no instalar", "no actualiza", "sin instalar", "sin modificar package-lock", "no modifica package-lock"],
+          "description": "Exige que la automatización no instale ni actualice el lockfile"
+        },
+        {
+          "type": "contains_any",
+          "values": ["usuario", "manualmente", "manual"],
+          "description": "Asigna al usuario el cambio de versión"
+        },
+        {
           "type": "contains",
-          "value": "groot-ui@latest",
-          "description": "Identifica la instalación de la última versión de groot-ui"
+          "value": "package.json",
+          "description": "Identifica el archivo donde el usuario cambia la versión"
+        },
+        {
+          "type": "contains",
+          "value": "package-lock.json",
+          "description": "Identifica el lockfile que se actualiza con npm install"
+        },
+        {
+          "type": "contains",
+          "value": "npm install",
+          "description": "Indica el comando manual para actualizar el lockfile"
+        },
+        {
+          "type": "contains_any",
+          "values": ["npm install --save", "comando exacto", "comando mostrado"],
+          "description": "Muestra el comando exacto con la versión disponible"
+        },
+        {
+          "type": "contains_any",
+          "values": ["versión efectiva", "version efectiva", "node_modules", "lockfile"],
+          "description": "Explica cómo determina si la versión actual está al día"
         },
         {
           "type": "contains",
@@ -891,8 +926,13 @@
         },
         {
           "type": "contains_any",
-          "values": ["sync-marketplace", "sync-marketplace.sh"],
-          "description": "Identifica la actualización durante sincronización"
+          "values": ["sync-marketplace", "sync-marketplace.sh", "bootstrap"],
+          "description": "Identifica los flujos que repiten la consulta de versión"
+        },
+        {
+          "type": "not_contains_any",
+          "values": ["ejecuta automáticamente npm install", "ejecutar automáticamente npm install", "Instala groot-ui automáticamente", "instala automáticamente groot-ui", "actualiza automáticamente groot-ui"],
+          "description": "Rechaza describir ejecución automática de instalación o actualización de groot-ui"
         }
       ]
     },

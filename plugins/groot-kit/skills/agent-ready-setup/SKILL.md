@@ -197,13 +197,26 @@ Si detección tiene éxito, confirmar:
 ## Step 3 — Run bootstrap script
 
 Para `frontend`, el bootstrap ejecuta `scripts/setup-groot-ui.sh` después de resolver la
-fuente actualizada. El helper instala o actualiza `groot-ui@latest` con npm y configura
-`package.json`: elimina los scripts legacy `i18n:gettext`, `i18n:upload`,
-`generate-po.zip`, `upload-translations` y `clean-locales`, además de la dependencia
-`kraken-translations`; luego asegura exactamente `scripts.i18n = "groot-i18n"` y
-`scripts.local2prod = "groot-config-sync"`, reemplazando valores previos distintos.
-La limpieza ocurre antes de npm para que también se actualice el lockfile. Stacks
-`node`, `java` y `go` no instalan esta dependencia de UI.
+fuente actualizada. El helper consulta la última versión publicada con `npm view groot-ui
+version`, la muestra y no instala ni actualiza la dependencia `groot-ui` ni
+`package-lock.json` por cuenta propia. Compara la versión efectiva, priorizando
+`node_modules/groot-ui/package.json`, `package-lock.json` y finalmente la declaración de
+`package.json`. Si difiere de latest, muestra un aviso y el comando exacto
+`npm install --save groot-ui@<version>` sin ejecutarlo; si ya coincide, no muestra aviso
+de actualización. Sí configura `package.json`: elimina los scripts legacy
+`i18n:gettext`, `i18n:upload`, `generate-po.zip`, `upload-translations` y `clean-locales`. Elimina `kraken-translations` de `package.json`, pero no ejecuta
+`npm install` ni modifica `package-lock.json`; si la dependencia fue eliminada, avisa
+explícitamente que el usuario debe ejecutar `npm install` para actualizar el lockfile.
+Si no estaba declarada, informa que no hace falta instalar por ese motivo. Luego asegura
+exactamente `scripts.i18n = "groot-i18n"` y `scripts.local2prod = "groot-config-sync"`,
+reemplazando valores previos distintos.
+
+Después del aviso, el usuario debe decidir el cambio y ejecutar el comando mostrado (o
+`npm install` si `groot-ui` ya está al día) para resolver dependencias, quitar
+`kraken-translations` del lockfile y actualizar `package-lock.json`. Si la
+consulta de npm falla o devuelve una versión inválida, el helper termina antes de
+modificar `package.json`. Stacks `node`, `java` y `go` no consultan esta dependencia de
+UI.
 
 ```bash
 PROVIDER="$(bash "$SKILL_DIR/scripts/resolve-provider.sh" --skill-dir "$SKILL_DIR")"
@@ -273,14 +286,20 @@ raíz:
 no vuelve a proyectar por sí mismo los templates sobre un proyecto ya preparado.
 `bootstrap.sh` ejecuta ese upgrade automáticamente para el provider activo antes
 de proyectar assets o adquirir lock local. En `frontend`, también ejecuta el helper
-que instala o actualiza `groot-ui@latest` y configura los scripts de `package.json`.
+que consulta la última versión disponible de `groot-ui` sin instalarla ni modificar el
+lockfile, compara la versión efectiva, elimina `kraken-translations` de `package.json`
+y configura los scripts.
 El hook canónico `.agents/hooks/sync-marketplace.sh` ejecuta siempre el upgrade,
-actualiza `groot-ui@latest` en `frontend`, proyecta todos los assets gestionados
-y ejecuta el merge IA de `AGENTS.md` cuando el helper está disponible. Si la
-copia instalada del hook cambió, se reejecuta con el mismo provider y stack
-antes de proyectar el resto. La reejecución conserva el lock de
-assets y usa una guarda interna para no repetir `fury ai assets marketplace
-upgrade`. No invoca ni requiere `bootstrap.sh` dentro del repo consumidor.
+consulta la última versión de `groot-ui` en `frontend` sin instalarla ni actualizarla,
+y muestra un aviso con `npm install --save groot-ui@<version>` solo cuando existe una
+versión más nueva. Proyecta todos los assets gestionados y ejecuta el merge IA de
+`AGENTS.md` cuando el helper está disponible. El usuario debe decidir y ejecutar el
+comando mostrado (o `npm install` si `groot-ui` ya está al día) para actualizar
+`package-lock.json` y quitar `kraken-translations` del lockfile.
+Si la copia instalada del hook cambió, se reejecuta con el mismo provider y stack
+antes de proyectar el resto. La reejecución conserva el lock de assets y usa una
+guarda interna para no repetir `fury ai assets marketplace upgrade`. No invoca ni
+requiere `bootstrap.sh` dentro del repo consumidor.
 
 El hook compara cada asset gestionado con el template actualizado y muestra
 `diff -u` antes de reemplazar un archivo existente. Los archivos regulares
@@ -302,6 +321,11 @@ se preservan y se reportan como conflictos estructurales.
   seguir o sobrescribir destinos inseguros.
 - Lock protege proyección local concurrente, pero no serializa upgrades globales
   de Fury entre procesos distintos.
+- En `frontend`, la consulta `npm view groot-ui version` requiere registry,
+  autenticación y red; el helper no instala dependencias ni actualiza
+  `package-lock.json`, aunque elimina `kraken-translations` de `package.json`.
+  El usuario controla el cambio de versión y ejecuta `npm install` cuando decide
+  sincronizar el lockfile.
 
 La proyección automática de assets:
 

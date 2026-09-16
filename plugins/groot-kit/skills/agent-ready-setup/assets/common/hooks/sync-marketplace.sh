@@ -10,7 +10,7 @@ readonly SKILL_NAME="agent-ready-setup"
 readonly AGENTS_DIRECTORY=".agents"
 readonly CLAUDE_DIRECTORY=".claude"
 readonly CODEX_DIRECTORY=".codex"
-readonly GROOT_UI_SETUP_SCRIPT="scripts/setup-groot-ui.sh"
+readonly GROOT_UI_HELPER_SCRIPT="scripts/setup-groot-ui.sh"
 readonly SYNC_LOCK_DIRECTORY="$AGENTS_DIRECTORY/.agent-ready-assets.lock"
 readonly SYNC_LOCK_OWNER_FILE="$SYNC_LOCK_DIRECTORY/owner"
 readonly SYNC_LOCK_STALE_AFTER_MINUTES=10
@@ -223,13 +223,13 @@ if [[ -z "$stack" ]]; then
   exit 0
 fi
 
-setup_groot_ui() {
+report_groot_ui_version() {
   [[ "$stack" == "frontend" ]] || return 0
 
-  if [[ -x "$skill_dir/$GROOT_UI_SETUP_SCRIPT" ]]; then
-    bash "$skill_dir/$GROOT_UI_SETUP_SCRIPT" "package.json"
+  if [[ -x "$skill_dir/$GROOT_UI_HELPER_SCRIPT" ]]; then
+    bash "$skill_dir/$GROOT_UI_HELPER_SCRIPT" "package.json"
   else
-    printf 'WARNING: %s is unavailable; groot-ui setup skipped.\n' "$skill_dir/$GROOT_UI_SETUP_SCRIPT" >&2
+    printf 'WARNING: %s is unavailable; groot-ui version lookup skipped.\n' "$skill_dir/$GROOT_UI_HELPER_SCRIPT" >&2
   fi
 }
 
@@ -879,7 +879,7 @@ if [[ "$sync_hook_destination_was_different" -eq 1 || "$current_hook_needs_resta
   exec bash "$sync_hook_destination" "${original_arguments[@]}"
 fi
 
-setup_groot_ui
+report_groot_ui_version
 
 stack_hooks_directory="$skill_dir/assets/stacks/$stack/hooks"
 if [[ -d "$stack_hooks_directory" ]]; then

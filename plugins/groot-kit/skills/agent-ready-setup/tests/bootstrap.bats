@@ -16,6 +16,9 @@ EOF
   cat > "$fake_bin/npm" <<'EOF'
 #!/bin/bash
 printf '%s\n' "$*" >> "${NPM_INVOCATION_LOG:-/dev/null}"
+if [[ "$1" == "view" ]]; then
+  printf '%s\n' "${GROOT_UI_LATEST_VERSION:-9.9.9}"
+fi
 exit 0
 EOF
   chmod +x "$fake_bin/npm"
@@ -822,7 +825,7 @@ EOF
   [ -f .codex/hooks/hooks.json ]
 }
 
-@test "frontend bootstrap installs groot-ui and configures package scripts" {
+@test "frontend bootstrap reports latest groot-ui without installing and configures package scripts" {
   npm_log="$test_root/npm-invocation.log"
   cat > package.json <<'EOF'
 {
@@ -841,11 +844,13 @@ EOF
   }
 }
 EOF
+  printf '%s\n' '{"lockfileVersion":3,"marker":"preserve"}' > package-lock.json
 
-  NPM_INVOCATION_LOG="$npm_log" run_bootstrap frontend
+  GROOT_UI_LATEST_VERSION="2.3.4" NPM_INVOCATION_LOG="$npm_log" run_bootstrap frontend
 
   [ "$status" -eq 0 ]
-  grep -Fxq 'install --save groot-ui@latest' "$npm_log"
+  grep -Fxq 'view groot-ui version' "$npm_log"
+  ! grep -Fq 'install' "$npm_log"
   jq -e '.scripts.i18n == "groot-i18n"' package.json >/dev/null
   jq -e '.scripts.local2prod == "groot-config-sync"' package.json >/dev/null
   jq -e '(.scripts | has("i18n:gettext")) | not' package.json >/dev/null
@@ -855,10 +860,16 @@ EOF
   jq -e '(.scripts | has("clean-locales")) | not' package.json >/dev/null
   jq -e '(.scripts["install-selenium"] == "selenium-standalone install")' package.json >/dev/null
   jq -e '(.dependencies | has("kraken-translations")) | not' package.json >/dev/null
+  [[ "$output" == *"[groot-ui] Latest available version: groot-ui@2.3.4"* ]]
+  [[ "$output" == *"No package installation was performed"* ]]
+  [[ "$output" == *"kraken-translations was removed from package.json; run npm install to update package-lock.json"* ]]
+  [[ "$output" == *"npm install --save groot-ui@2.3.4"* ]]
+  ! grep -Fq 'Installing' <<< "$output"
+  [ "$(cat package-lock.json)" = '{"lockfileVersion":3,"marker":"preserve"}' ]
   [[ "$output" == *"[groot-ui] Configured"* ]]
 }
 
-@test "frontend sync updates groot-ui and enforces frontend scripts" {
+@test "frontend sync reports latest groot-ui without installing and enforces frontend scripts" {
   npm_log="$test_root/npm-invocation.log"
   cat > package.json <<'EOF'
 {
@@ -875,17 +886,20 @@ EOF
   },
   "dependencies": {
     "react": "1.0.0",
+    "groot-ui": "^1.0.0",
     "kraken-translations": "^0.1.4"
   }
 }
 EOF
+  printf '%s\n' '{"lockfileVersion":3,"marker":"preserve"}' > package-lock.json
 
-  NPM_INVOCATION_LOG="$npm_log" AGENT_READY_SETUP_SKILL_DIR="$skill_dir" \
+  GROOT_UI_LATEST_VERSION="2.3.4" NPM_INVOCATION_LOG="$npm_log" AGENT_READY_SETUP_SKILL_DIR="$skill_dir" \
     PATH="$test_root/bin:$PATH" \
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" --provider claude
 
   [ "$status" -eq 0 ]
-  grep -Fxq 'install --save groot-ui@latest' "$npm_log"
+  grep -Fxq 'view groot-ui version' "$npm_log"
+  ! grep -Fq 'install' "$npm_log"
   jq -e '.scripts.i18n == "groot-i18n"' package.json >/dev/null
   jq -e '.scripts.local2prod == "groot-config-sync"' package.json >/dev/null
   jq -e '(.scripts | has("i18n:gettext")) | not' package.json >/dev/null
@@ -895,7 +909,81 @@ EOF
   jq -e '(.scripts | has("clean-locales")) | not' package.json >/dev/null
   jq -e '(.scripts["install-selenium"] == "selenium-standalone install")' package.json >/dev/null
   jq -e '(.dependencies | has("kraken-translations")) | not' package.json >/dev/null
+  jq -e '.dependencies["groot-ui"] == "^1.0.0"' package.json >/dev/null
+  [[ "$output" == *"Latest available version: groot-ui@2.3.4"* ]]
+  [[ "$output" == *"npm install --save groot-ui@2.3.4"* ]]
+  [ "$(cat package-lock.json)" = '{"lockfileVersion":3,"marker":"preserve"}' ]
   [[ "$output" == *"Local managed asset projection completed for frontend."* ]]
+}
+
+@test "frontend groot-ui warning is omitted when lockfile has latest version" {
+  cat > package.json <<'EOF'
+{
+  "name": "frontend-project",
+  "dependencies": {
+    "react": "1.0.0",
+    "groot-ui": "^2.3.4"
+  }
+}
+EOF
+  cat > package-lock.json <<'EOF'
+{
+  "name": "frontend-project",
+  "lockfileVersion": 3,
+  "packages": {
+    "": {
+      "dependencies": {
+        "groot-ui": "^2.3.4"
+      }
+    },
+    "node_modules/groot-ui": {
+      "version": "2.3.4"
+    }
+  }
+}
+EOF
+
+  GROOT_UI_LATEST_VERSION="2.3.4" run_bootstrap frontend
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Current effective version is 2.3.4 (lockfile); no update is required."* ]]
+  ! grep -Fq 'WARNING: [groot-ui]' <<< "$output"
+  ! grep -Fq 'npm install --save groot-ui@' <<< "$output"
+  [[ "$output" == *"kraken-translations was not declared in package.json; no npm install is required for its removal."* ]]
+}
+
+@test "frontend groot-ui lookup failure leaves package files unchanged" {
+  cat > package.json <<'EOF'
+{
+  "name": "frontend-project",
+  "scripts": {
+    "i18n:gettext": "i18n gettext"
+  },
+  "dependencies": {
+    "react": "1.0.0",
+    "groot-ui": "^1.0.0"
+  }
+}
+EOF
+  printf '%s\n' '{"lockfileVersion":3,"marker":"preserve"}' > package-lock.json
+  cp package.json "$test_root/package.json.before"
+  cp package-lock.json "$test_root/package-lock.json.before"
+  cat > "$fake_bin/npm" <<'EOF'
+#!/bin/bash
+if [[ "$1" == "view" ]]; then
+  printf '%s\n' 'registry unavailable' >&2
+  exit 42
+fi
+exit 0
+EOF
+  chmod +x "$fake_bin/npm"
+
+  run_bootstrap frontend
+
+  [ "$status" -ne 0 ]
+  cmp -s package.json "$test_root/package.json.before"
+  cmp -s package-lock.json "$test_root/package-lock.json.before"
+  [[ "$output" == *"could not look up the latest groot-ui version"* ]]
 }
 
 @test "bootstrap stops before projection when marketplace upgrade fails" {
