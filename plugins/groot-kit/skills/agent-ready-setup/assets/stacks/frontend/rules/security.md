@@ -47,12 +47,14 @@ Baseline security rules for Nordic applications. These rules are always active a
 
 ## Error Handling
 
-Treat the middleend as a translation boundary: convert known client- or domain-caused failures into the public HTTP contract instead of leaking upstream error statuses.
+Treat the middleend/BFF as an error-origin boundary: preserve statuses received from upstream, and translate only failures owned by the BFF into its public HTTP contract.
 
-- Never return a 5xx from a middleend when the cause is known and attributable to the request or domain state. Return the corresponding 4xx: `400` for malformed requests, `401` for missing or invalid authentication, `403` for insufficient permissions, `404` for missing resources, `409` for state conflicts, or `422` for semantically invalid or unprocessable input.
-- Do not use a generic `500`, `502`, or `503` fallback for a known client/domain error. Preserve a safe public message and log the diagnostic cause server-side without exposing internals.
-- Do not classify hydration or partial-attribute failures by symptom alone. First identify the origin: when client-controlled input or domain state caused incomplete attributes, map the cause to its applicable 4xx at the middleend boundary; `422` is often appropriate when the request is semantically unprocessable. When transport/status metadata or the adapter identifies an upstream dependency failure, treat it as a dependency failure and map it to the appropriate 5xx (often `502`) instead of blaming the client; do not validate the full upstream success or error payload to make that classification.
-- Reserve 5xx responses for genuinely unexpected middleend failures or dependency failures surfaced by transport/status metadata or adapter classification. If the adapter cannot consume an upstream response, map a controlled dependency failure at that boundary; never use 5xx as a shortcut for client/domain error mapping and never introduce full upstream contract validation.
+- Preserve the HTTP status received from upstream, including upstream 4xx and 5xx. The BFF may sanitize or adapt the public error body, but must not replace an upstream status with a BFF-owned status merely because the payload is being translated.
+- For failures owned by the BFF and attributable to the request or domain state, return the corresponding 4xx: `400` for malformed requests, `401` for missing or invalid authentication, `403` for insufficient permissions, `404` for missing resources, `409` for state conflicts, or `422` for semantically invalid or unprocessable input.
+- For failures owned by the BFF that are genuinely unexpected or internal, return an appropriate 5xx. Use `502`/`504` for integration failures such as an upstream transport failure, timeout, or response without a usable HTTP status; choose the status according to the failure cause.
+- Do not use a generic 5xx fallback for a known BFF client/domain error, and do not convert an upstream 4xx into a BFF 5xx. Preserve a safe public message and log the diagnostic cause server-side without exposing internals.
+- Do not classify hydration or partial-attribute failures by symptom alone. First identify the origin: when client-controlled input or domain state caused incomplete attributes, map the cause to its applicable BFF-owned 4xx; when upstream transport/status metadata or adapter classification identifies a dependency failure, preserve the upstream status or map a no-status integration failure to the appropriate 5xx. Do not validate the full upstream success or error payload to make that classification.
+- If the adapter cannot consume an upstream response, map a controlled integration failure at that boundary without forwarding the raw payload or introducing full upstream contract validation.
 - Never expose stack traces or internal error details to users — return generic messages.
 - Never log sensitive data in error handlers.
 

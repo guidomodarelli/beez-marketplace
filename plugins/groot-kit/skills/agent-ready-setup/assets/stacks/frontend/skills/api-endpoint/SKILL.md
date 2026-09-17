@@ -8,7 +8,7 @@ description: Create a Nordic API endpoint — either a server hook (getServerSid
 >
 > For the distinction between middleend request validation and backend/upstream response payloads, follow `../../rules/security.md`, section `Input Validation`.
 >
-> For translating known client/domain failures to public HTTP statuses, follow `../../rules/security.md`, section `Error Handling`; do not use a blanket 5xx response.
+> For error-origin and public status mapping, follow `../../rules/security.md`, section `Error Handling`: preserve upstream HTTP statuses, map BFF-owned request/domain failures to 4xx, and use 5xx only for BFF-owned internal or no-status integration failures.
 
 Nordic exposes two ways to handle server-side logic:
 
@@ -156,7 +156,7 @@ router.post('/product', iv.createValidationMiddleware({ schema: postSchema }), a
 export default router;
 ```
 
-`mapKnownErrorToHttpResponse` must be implemented in the imported module as the project's typed error mapper. If the project uses a different module path, update the import before copying the example; do not leave the mapper as an implicit dependency.
+`mapKnownErrorToHttpResponse` must be implemented in the imported module as the project's typed error mapper. It maps BFF-owned client/domain failures to 4xx, preserves an HTTP status received from upstream, and maps BFF-owned internal or no-status integration failures to an appropriate 5xx. If the project uses a different module path, update the import before copying the example; do not leave the mapper as an implicit dependency.
 
 ### 2. Mount in `api/index.ts`
 
@@ -177,7 +177,7 @@ Rules:
 - Use allowlist strategy — declare only what is permitted in the schema.
 - Never retrieve user identity from user-provided input — use `req.session`.
 - Never log request/response bodies containing PII or tokens.
-- Map known client/domain failures to their corresponding 4xx response at the middleend boundary; do not turn known causes into 5xx responses. The imported `mapKnownErrorToHttpResponse` must be a project-level typed error mapper and preserve this rule.
+- Map BFF-owned client/domain failures to their corresponding 4xx response at the middleend boundary; preserve HTTP statuses received from upstream; and use 5xx only for BFF-owned internal or no-status integration failures. The imported `mapKnownErrorToHttpResponse` must be a project-level typed error mapper and preserve this rule.
 - Never expose internal error details or stack traces in responses.
 - Never inline business logic — delegate to a service.
 - Never disable CSRF without WebSec validation.

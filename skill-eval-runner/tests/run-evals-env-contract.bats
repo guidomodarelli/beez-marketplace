@@ -14,7 +14,7 @@ setup() {
 
     [ "$status" -eq 0 ]
     [ "$(wc -l < "$CLAUDE_ARGS_LOG" | tr -d ' ')" -ge 1 ]
-    grep -q -- '--model claude-sonnet-4-6' "$CLAUDE_ARGS_LOG"
+    grep -q -- '--model claude-sonnet-5' "$CLAUDE_ARGS_LOG"
 }
 
 @test "uses the model override" {

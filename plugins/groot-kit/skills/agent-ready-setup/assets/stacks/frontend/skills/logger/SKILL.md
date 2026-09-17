@@ -86,8 +86,8 @@ try {
 }
 ```
 
-`mapKnownErrorToHttpResponse` must be implemented in the imported module as the project's typed error mapper. If the project uses a different module path, update the import before copying the example; do not leave the mapper as an implicit dependency.
+`mapKnownErrorToHttpResponse` must be implemented in the imported module as the project's typed error mapper. It maps BFF-owned client/domain causes to the corresponding 4xx, preserves an HTTP status received from upstream, and maps BFF-owned internal or no-status integration failures to an appropriate 5xx. If the project uses a different module path, update the import before copying the example; do not leave the mapper as an implicit dependency.
 
-`mapKnownErrorToHttpResponse` is a project-level typed error mapper: known client/domain causes must become the corresponding 4xx response, while unexpected failures follow the error policy in `../../rules/security.md` and must not be disguised as a known client error.
+`mapKnownErrorToHttpResponse` is a project-level typed error mapper. Its status mapping must follow the error-origin policy in `../../rules/security.md` and must not disguise upstream errors as BFF-owned failures.
 
 Convention for the `message` string: `[FEATURE-DASH-SEPARATED] - error: description`.

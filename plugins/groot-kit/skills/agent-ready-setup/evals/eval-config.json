@@ -1080,6 +1080,43 @@
           "description": "Conserva narrowing estructural mínimo solo si cambia el flujo"
         }
       ]
+    },
+    {
+      "id": "frontend-bff-preserves-upstream-status-and-owns-local-errors",
+      "description": "Distingue statuses upstream de errores propios del BFF.",
+      "input": "Revisá este contrato de errores para un BFF Nordic: upstream responde `422` por datos inválidos y `503` por indisponibilidad; el BFF rechaza su propio request inválido antes de llamar a upstream; y una falla interna del BFF ocurre sin respuesta HTTP upstream. Explicá qué status público debe devolver en cada caso, cuándo puede adaptar el body, por qué no debe convertir un status upstream, y cómo evitar validar el payload de error completo del proveedor. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["preservar", "preserva", "conservar", "conserva", "mantener", "mantiene", "sigue siendo", "status recibido"],
+          "description": "Conserva el status recibido desde upstream"
+        },
+        {
+          "type": "contains_any",
+          "values": ["422 upstream", "upstream 422", "422", "mismo 422"],
+          "description": "Mantiene 422 originado en upstream"
+        },
+        {
+          "type": "contains_any",
+          "values": ["503 upstream", "upstream 503", "503", "mismo 503"],
+          "description": "Mantiene 503 originado en upstream"
+        },
+        {
+          "type": "contains_any",
+          "values": ["BFF propio", "propio del BFF", "request inválido", "input propio", "input inválido", "causa propia", "4xx propio", "4xx"],
+          "description": "Permite 4xx para una causa propia del BFF"
+        },
+        {
+          "type": "contains_any",
+          "values": ["falla interna", "fallo interno", "sin respuesta", "5xx", "500", "502", "504"],
+          "description": "Usa 5xx para falla interna o integración sin status upstream"
+        },
+        {
+          "type": "contains_any",
+          "values": ["no revalidar", "no validar", "no schema", "narrowing", "status", "transporte"],
+          "description": "Evita validar el payload upstream completo y usa metadata mínima"
+        }
+      ]
     }
   ]
 }

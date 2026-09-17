@@ -54,8 +54,8 @@ usage() {
     echo "  --jobs N, -j N               Run N cases in parallel (default: 4)"
     echo "                               Each case runs 2 agent calls concurrently,"
     echo "                               so total API calls = N*2. Lower if rate-limited."
-    echo "  --model M, -m M              Agent model to use (defaults: claude-sonnet-4-6 for Claude,"
-    echo "                               gpt-5.4-mini for Codex)"
+    echo "  --model M, -m M              Agent model to use (defaults: claude-sonnet-5 for Claude,"
+    echo "                               gpt-5.6-luna:high for Codex)"
     echo "                               Accepts aliases (haiku, sonnet, opus) or full model IDs."
     echo "                               Also configurable via GROOT_MARKETPLACE_EVAL_MODEL env var."
     echo "  --reasoning-effort E, -e E   Reasoning effort: low, medium, high, max (default: high"
@@ -112,8 +112,8 @@ resolve_eval_provider() {
 
     if [ -z "$GROOT_MARKETPLACE_EVAL_MODEL" ]; then
         case "$RESOLVED_EVAL_PROVIDER" in
-            codex) GROOT_MARKETPLACE_EVAL_MODEL="gpt-5.4-mini" ;;
-            *)     GROOT_MARKETPLACE_EVAL_MODEL="claude-sonnet-4-6" ;;
+            codex) GROOT_MARKETPLACE_EVAL_MODEL="gpt-5.6-luna" ;;
+            *)     GROOT_MARKETPLACE_EVAL_MODEL="claude-sonnet-5" ;;
         esac
     fi
 
