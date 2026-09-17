@@ -1,0 +1,93 @@
+{
+  "schema_version": 2,
+  "skill": "nordic-dev-verify",
+  "description": "Evalúa verificación runtime segura de aplicaciones Nordic en desarrollo.",
+  "test_cases": [
+    {
+      "id": "preflight-blocks-before-browser",
+      "description": "Exige listener y health check en 8443 antes de browser.",
+      "input": "Explicá qué debe hacer nordic-dev-verify antes de abrir el browser cuando se pide validar una app Nordic. Incluí el puerto 8443, los estados posibles, qué ocurre si el server no responde y qué interacción debe pedir al usuario. No ejecutes comandos ni abras el browser.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "8443",
+          "description": "Exige preflight del puerto local"
+        },
+        {
+          "type": "contains_any",
+          "values": ["LISTENING", "CLOSED", "REFUSED", "TIMEOUT", "ERROR"],
+          "description": "Reporta estados observables del listener"
+        },
+        {
+          "type": "contains_any",
+          "values": ["AskUserQuestion", "pregunta interactiva", "Listo", "Todavía no"],
+          "description": "Exige sincronización interactiva ante bloqueo"
+        },
+        {
+          "type": "contains_any",
+          "values": ["no abrir browser", "no abrir el browser", "antes de cualquier navegación"],
+          "description": "Bloquea navegación antes de runtime disponible"
+        }
+      ]
+    },
+    {
+      "id": "browser-auth-and-tls-gates",
+      "description": "Conserva pausa explícita ante Okta y advertencias TLS.",
+      "input": "Explicá cómo debe actuar nordic-dev-verify si la navegación llega a Okta o muestra una advertencia TLS en un entorno de desarrollo. Indicá qué no debe leer ni ingresar, cuándo puede continuar y cómo clasifica el bloqueo. No ejecutes comandos ni abras el browser.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["Okta", "autenticación"],
+          "description": "Cubre el gate de autenticación corporativa"
+        },
+        {
+          "type": "contains_any",
+          "values": ["TLS", "certificado", "Not secure"],
+          "description": "Cubre el gate de certificado"
+        },
+        {
+          "type": "contains_any",
+          "values": ["cookies", "tokens", "credenciales", "códigos"],
+          "description": "Evita manipular secretos de autenticación"
+        },
+        {
+          "type": "contains",
+          "value": "BLOCKED",
+          "description": "Clasifica bloqueo de autenticación o TLS"
+        }
+      ]
+    },
+    {
+      "id": "runtime-result-classification",
+      "description": "Distingue resultado funcional de bloqueo de entorno.",
+      "input": "Explicá cómo reportar una verificación runtime Nordic con flujo esperado, requests XHR/fetch y restauración de fixture. Diferenciá PASS, FAIL y BLOCKED, e indicá qué datos sensibles nunca deben incluirse en el reporte. No ejecutes comandos ni abras el browser.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "PASS",
+          "description": "Define resultado exitoso"
+        },
+        {
+          "type": "contains",
+          "value": "FAIL",
+          "description": "Define fallo reproducible"
+        },
+        {
+          "type": "contains",
+          "value": "BLOCKED",
+          "description": "Define bloqueo de entorno"
+        },
+        {
+          "type": "contains_any",
+          "values": ["XHR", "fetch", "Requests"],
+          "description": "Incluye evidencia de requests"
+        },
+        {
+          "type": "contains_any",
+          "values": ["tokens", "cookies", "CSRF", "PII"],
+          "description": "Redacta información sensible"
+        }
+      ]
+    }
+  ]
+}
