@@ -26,6 +26,14 @@ Coding conventions for this stack. Always consult `frontender-web-mcp` for Nordi
 - Never override internal Andes component styles with custom CSS.
 - Always consult `frontender-web-mcp` (`andes-components` tool) before selecting a component.
 
+## User-facing copy
+
+- Write labels, buttons, headings, helper text, empty states, confirmations, and progress messages for people who use the product, not for the team that built it.
+- Avoid implementation terms in regular UI copy, including `preflight`, `bootstrap`, `provider`, `stack`, `upstream`, `lockfile`, `schema`, `sync`, and `retry` when they describe internal mechanics. Prefer the user-visible action or outcome, such as `Reintentar` instead of `Reintentar preflight`.
+- Do not expose internal component names, service names, workflow names, file names, status codes, or infrastructure details in regular UI copy. Keep those details in logs or technical documentation, not in ordinary interface text.
+- Keep error messages clear and actionable. Errors may include the minimum technical detail needed to diagnose or resolve the problem, but never expose secrets or unnecessary internal data.
+- Review every new or changed user-facing string from the perspective of a non-technical user; if the message explains how the system works instead of what the user can do or expect, rewrite it.
+
 ## TypeScript
 
 - Always type props explicitly — no `any`.

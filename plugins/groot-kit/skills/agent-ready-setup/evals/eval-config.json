@@ -1117,6 +1117,33 @@
           "description": "Evita validar el payload upstream completo y usa metadata mínima"
         }
       ]
+    },
+    {
+      "id": "frontend-user-facing-copy-avoids-technical-jargon",
+      "description": "Mantiene la interfaz clara para personas no técnicas y reserva detalle técnico para errores accionables.",
+      "input": "Leé la regla frontend de agent-ready-setup y explicá cómo escribir textos visibles en una interfaz para personas no técnicas. Incluí qué hacer con etiquetas, botones, estados de carga y mensajes normales; usá el caso `Reintentar preflight` como ejemplo de texto que debe simplificarse; y diferenciá la excepción permitida para errores. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["persona no técnica", "personas no técnicas", "non-technical", "nontechnical"],
+          "description": "Prioriza comprensión de personas no técnicas"
+        },
+        {
+          "type": "contains_any",
+          "values": ["Reintentar", "Retry"],
+          "description": "Prefiere una acción simple sin detalle interno"
+        },
+        {
+          "type": "contains_any",
+          "values": ["botones", "etiquetas", "estados de carga", "helper text", "labels", "loading states"],
+          "description": "Aplica la regla a las superficies normales de UI"
+        },
+        {
+          "type": "contains_any",
+          "values": ["error accionable", "errores accionables", "actionable error", "technical detail", "detalle técnico"],
+          "description": "Permite detalle técnico únicamente cuando ayuda a resolver un error"
+        }
+      ]
     }
   ]
 }
