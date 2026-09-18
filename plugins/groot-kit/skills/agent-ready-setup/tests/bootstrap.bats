@@ -1439,6 +1439,8 @@ EOF
   touch "$source_dir/SKILL.md"
   cp "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
     "$source_dir/assets/common/hooks/sync-marketplace.sh"
+  cp "$skill_dir/scripts/asset-sync-common.sh" "$source_dir/scripts/asset-sync-common.sh"
+  cp "$skill_dir/scripts/merge-managed-settings.py" "$source_dir/scripts/merge-managed-settings.py"
   printf '%s\n' '{"settings":"updated"}' > "$source_dir/assets/common/settings.json"
   printf '%s\n' '# updated common asset' > "$source_dir/assets/common/shared/asset.md"
   printf '%s\n' '{"hooks":"updated"}' > "$source_dir/assets/codex/hooks.json"
@@ -1543,10 +1545,13 @@ EOF
   mkdir -p \
     "$source_dir/assets/common/hooks" \
     "$source_dir/assets/codex" \
-    "$source_dir/assets/stacks/go/hooks"
+    "$source_dir/assets/stacks/go/hooks" \
+    "$source_dir/scripts"
   touch "$source_dir/SKILL.md"
   cp "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
     "$source_dir/assets/common/hooks/sync-marketplace.sh"
+  cp "$skill_dir/scripts/asset-sync-common.sh" "$source_dir/scripts/asset-sync-common.sh"
+  cp "$skill_dir/scripts/merge-managed-settings.py" "$source_dir/scripts/merge-managed-settings.py"
   printf '%s\n' '{"settings":"updated"}' > "$source_dir/assets/common/settings.json"
   printf '%s\n' '{"hooks":"updated"}' > "$source_dir/assets/codex/hooks.json"
   cat > "$fake_bin/mv" <<'EOF'
@@ -1678,6 +1683,8 @@ EOF
 @test "common marketplace assets have no stack duplicates" {
   [ -f "$skill_dir/assets/common/settings.json" ]
   [ -f "$skill_dir/assets/common/hooks/sync-marketplace.sh" ]
+  [ -f "$skill_dir/scripts/asset-sync-common.sh" ]
+  [ -f "$skill_dir/scripts/merge-managed-settings.py" ]
 
   for stack in frontend node java go; do
     [ ! -e "$skill_dir/assets/stacks/$stack/settings.json" ]

@@ -533,6 +533,8 @@ EOF
   touch "$source_dir/SKILL.md"
   cp "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
     "$source_dir/assets/common/hooks/sync-marketplace.sh"
+  cp "$skill_dir/scripts/asset-sync-common.sh" "$source_dir/scripts/asset-sync-common.sh"
+  cp "$skill_dir/scripts/merge-managed-settings.py" "$source_dir/scripts/merge-managed-settings.py"
   printf '%s\n' '{}' > "$source_dir/assets/common/settings.json"
   printf '%s\n' '{}' > "$source_dir/assets/codex/hooks.json"
   cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
@@ -574,6 +576,8 @@ EOF
   touch "$source_dir/SKILL.md"
   cp "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
     "$source_dir/assets/common/hooks/sync-marketplace.sh"
+  cp "$skill_dir/scripts/asset-sync-common.sh" "$source_dir/scripts/asset-sync-common.sh"
+  cp "$skill_dir/scripts/merge-managed-settings.py" "$source_dir/scripts/merge-managed-settings.py"
   printf '%s\n' '{}' > "$source_dir/assets/common/settings.json"
   printf '%s\n' '{}' > "$source_dir/assets/codex/hooks.json"
   cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'

@@ -10,6 +10,7 @@
 
 set -euo pipefail
 
+# shellcheck disable=SC2034
 readonly MARKETPLACE_NAME="groot-marketplace"
 readonly SKILL_NAME="agent-ready-setup"
 
@@ -22,9 +23,15 @@ SYNC_MODE=0
 AUTO_CONFIRM=0
 NORMALIZE_ONLY=0
 readonly SYNC_LOCK_DIRECTORY=".agents/.agent-ready-assets.lock"
+# shellcheck disable=SC2034
 readonly SYNC_LOCK_OWNER_FILE="$SYNC_LOCK_DIRECTORY/owner"
+# shellcheck disable=SC2034
 readonly SYNC_LOCK_STALE_AFTER_MINUTES=10
+# shellcheck disable=SC2034
 SYNC_LOCK_ACQUIRED=0
+# shellcheck disable=SC2034
+SYNC_LOCK_INHERITED=0
+SYNC_LOCK_ENABLED=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -273,6 +280,16 @@ validate_skill_source() {
     exit 1
   fi
 
+  if [[ ! -f "$SKILL_DIR/scripts/asset-sync-common.sh" ]]; then
+    echo "ERROR: Shared asset synchronization helper is missing: $SKILL_DIR/scripts/asset-sync-common.sh" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$SKILL_DIR/scripts/merge-managed-settings.py" ]]; then
+    echo "ERROR: Managed settings merger is missing: $SKILL_DIR/scripts/merge-managed-settings.py" >&2
+    exit 1
+  fi
+
   if [[ ! -f "$CODEX_ASSETS/hooks.json" ]]; then
     echo "ERROR: Codex hook template is missing: $CODEX_ASSETS/hooks.json" >&2
     exit 1
@@ -310,6 +327,10 @@ REMOVED=()
 CONFLICTS=()
 CLEANUP_CONFLICTS=()
 PROVIDER_ROOT_CONFLICTS=()
+
+record_conflict() {
+  CONFLICTS+=("$1")
+}
 
 if ! command -v git >/dev/null 2>&1 || [[ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != true ]]; then
   echo "ERROR: bootstrap must run inside a Git worktree" >&2
@@ -373,100 +394,14 @@ if ! SKILL_DIR="$(resolve_skill_dir)"; then
   exit 1
 fi
 validate_skill_source
-
+# shellcheck disable=SC2034
+ASSET_SYNC_SKILL_DIR="$SKILL_DIR"
 # Serializes sync writers so concurrent invocations cannot replace each other's
 # files. Upgrade runs before this lock to keep failed upgrades write-free.
-get_process_start_time() {
-  local process_id="$1"
-
-  ps -p "$process_id" -o lstart= 2>/dev/null | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
-}
-
-write_sync_lock_owner() {
-  local owner_metadata_temp
-
-  if ! owner_metadata_temp="$(mktemp "${SYNC_LOCK_DIRECTORY}/owner.XXXXXX")"; then
-    return 1
-  fi
-  if ! printf '%s\n%s\n' "$$" "$(get_process_start_time "$$")" > "$owner_metadata_temp"; then
-    rm -f -- "$owner_metadata_temp"
-    return 1
-  fi
-  if ! mv -f -- "$owner_metadata_temp" "$SYNC_LOCK_OWNER_FILE"; then
-    rm -f -- "$owner_metadata_temp"
-    return 1
-  fi
-}
-
-is_legacy_sync_lock_stale() {
-  [[ -d "$SYNC_LOCK_DIRECTORY" && ! -L "$SYNC_LOCK_DIRECTORY" ]] || return 1
-  find "$SYNC_LOCK_DIRECTORY" -prune -type d \
-    -mmin "+$SYNC_LOCK_STALE_AFTER_MINUTES" -print -quit 2>/dev/null | grep -q .
-}
-
-is_sync_lock_stale() {
-  local owner_pid
-  local owner_start_time=""
-  local current_start_time
-
-  [[ -d "$SYNC_LOCK_DIRECTORY" && ! -L "$SYNC_LOCK_DIRECTORY" ]] || return 1
-
-  if [[ -f "$SYNC_LOCK_OWNER_FILE" && ! -L "$SYNC_LOCK_OWNER_FILE" ]]; then
-    IFS= read -r owner_pid < "$SYNC_LOCK_OWNER_FILE" || owner_pid=""
-    if [[ "$owner_pid" =~ ^[1-9][0-9]*$ ]]; then
-      if ! kill -0 "$owner_pid" 2>/dev/null; then
-        return 0
-      fi
-
-      IFS= read -r owner_start_time < <(sed -n '2p' "$SYNC_LOCK_OWNER_FILE") || true
-      if [[ -n "$owner_start_time" ]]; then
-        current_start_time="$(get_process_start_time "$owner_pid")"
-        [[ -n "$current_start_time" && "$current_start_time" != "$owner_start_time" ]] && return 0
-      fi
-
-      return 1
-    fi
-  fi
-
-  is_legacy_sync_lock_stale
-}
-
-reclaim_stale_sync_lock() {
-  is_sync_lock_stale || return 1
-
-  rm -f -- "$SYNC_LOCK_OWNER_FILE"
-  rmdir -- "$SYNC_LOCK_DIRECTORY" 2>/dev/null
-}
-
-# shellcheck disable=SC2329
-release_sync_lock() {
-  if [[ "$SYNC_LOCK_ACQUIRED" -eq 1 ]]; then
-    rm -f -- "$SYNC_LOCK_OWNER_FILE"
-    rmdir -- "$SYNC_LOCK_DIRECTORY" 2>/dev/null || true
-  fi
-}
-
-acquire_sync_lock() {
-  [[ "$SYNC_MODE" -eq 1 ]] || return 0
-
-  mkdir -p -- "$SHARED_DIR"
-  if mkdir -- "$SYNC_LOCK_DIRECTORY" 2>/dev/null; then
-    SYNC_LOCK_ACQUIRED=1
-    trap release_sync_lock EXIT
-    write_sync_lock_owner
-    return $?
-  fi
-
-  if reclaim_stale_sync_lock && mkdir -- "$SYNC_LOCK_DIRECTORY" 2>/dev/null; then
-    SYNC_LOCK_ACQUIRED=1
-    trap release_sync_lock EXIT
-    write_sync_lock_owner
-    return $?
-  fi
-
-  printf 'WARNING: another asset synchronization is running or left an active/ambiguous lock; no asset was changed\n' >&2
-  return 1
-}
+# shellcheck disable=SC1091
+source "$SKILL_DIR/scripts/asset-sync-common.sh"
+# shellcheck disable=SC2034
+SYNC_LOCK_ENABLED="$SYNC_MODE"
 
 if [[ "$NORMALIZE_ONLY" -eq 0 && "$SYNC_MODE" -eq 1 ]] && ! acquire_sync_lock; then
   exit 0
@@ -513,51 +448,6 @@ is_ignored_path() {
       return 2
       ;;
   esac
-}
-
-# Validate every existing directory component before creating a destination
-# parent. This prevents writes from following a pre-existing symlink outside
-# the project.
-validate_destination_parent() {
-  local destination="$1"
-  local parent_directory
-  local current_path="."
-  local path_component
-  local relative_parent
-  local -a path_components
-
-  parent_directory="$(dirname -- "$destination")"
-  [[ "$parent_directory" == "." ]] && return 0
-
-  relative_parent="${parent_directory#./}"
-  IFS='/' read -r -a path_components <<< "$relative_parent"
-  for path_component in "${path_components[@]}"; do
-    [[ -z "$path_component" || "$path_component" == "." ]] && continue
-    current_path="$current_path/$path_component"
-
-    if [[ -L "$current_path" ]]; then
-      CONFLICTS+=("$destination parent directory contains symlink $current_path; neither was changed")
-      return 1
-    fi
-
-    if [[ -e "$current_path" && ! -d "$current_path" ]]; then
-      CONFLICTS+=("$destination parent directory is not a directory: $current_path; neither was changed")
-      return 1
-    fi
-  done
-}
-
-show_sync_diff() {
-  local src="$1"
-  local dst="$2"
-  local source_description="${3:-$src}"
-
-  printf 'Diff for %s (source: %s):\n' "$dst" "$source_description"
-  if [[ -f "$dst" ]]; then
-    diff -u -- "$dst" "$src" || true
-  else
-    diff -u -- /dev/null "$src" || true
-  fi
 }
 
 confirm_sync_replacement() {
@@ -692,27 +582,6 @@ copy_if_missing() {
     cp -- "$src" "$dst"
     record_created "$dst"
   fi
-}
-
-relative_shared_target() {
-  local relative="$1"
-  local destination_directory
-  local slash_count
-  local parent_levels=1
-  local prefix=""
-  local level
-
-  if [[ "$relative" == */* ]]; then
-    destination_directory="${relative%/*}"
-    slash_count="${destination_directory//[^\/]/}"
-    parent_levels=$(( ${#slash_count} + 2 ))
-  fi
-
-  for ((level = 0; level < parent_levels; level++)); do
-    prefix+="../"
-  done
-
-  printf '%s%s/%s\n' "$prefix" "$SHARED_DIR" "$relative"
 }
 
 link_claude_asset() {
@@ -880,140 +749,7 @@ sync_claude_settings() {
   fi
 
   temporary_settings="$(mktemp "${TMPDIR:-/tmp}/agent-ready-settings.XXXXXX")"
-  python3 - "$template" "$destination" > "$temporary_settings" <<'PY' || merge_status=$?
-import json
-import re
-import sys
-
-
-def canonical_managed_sync_command(value):
-    managed_command_pattern = re.compile(
-        r"^(?:Bash\((?:\.claude/hooks|\.agents/hooks)/sync-marketplace\.sh "
-        r"--provider claude(?: --(?:sync|update|sync-instructions|merge-instructions))?"
-        r"(?: --yes)?\)|bash (?:\.claude/hooks|\.agents/hooks)/sync-marketplace\.sh "
-        r"--provider claude(?: --(?:sync|update|sync-instructions|merge-instructions))?"
-        r"(?: --yes)?)$"
-    )
-    if managed_command_pattern.match(value):
-        if value.startswith("Bash("):
-            return "Bash(.agents/hooks/sync-marketplace.sh --provider claude)"
-        return "bash .agents/hooks/sync-marketplace.sh --provider claude"
-    return None
-
-
-template_path, settings_path = sys.argv[1:3]
-try:
-    with open(template_path, encoding="utf-8") as template_file:
-        template = json.load(template_file)
-    with open(settings_path, encoding="utf-8") as settings_file:
-        settings = json.load(settings_file)
-except (OSError, json.JSONDecodeError):
-    sys.exit(1)
-
-
-def migrate(value):
-    if isinstance(value, dict):
-        return {key: migrate(item) for key, item in value.items()}
-    if isinstance(value, list):
-        return [migrate(item) for item in value]
-    if not isinstance(value, str):
-        return value
-
-    canonical_value = canonical_managed_sync_command(value)
-    if canonical_value is not None:
-        return canonical_value
-
-    if value.startswith("Bash(.claude/hooks/") or value.startswith(
-        "bash .claude/hooks/"
-    ):
-        return value.replace(".claude/hooks/", ".agents/hooks/", 1)
-
-    return value
-
-
-def has_custom_keys(current, expected):
-    if isinstance(current, dict) and isinstance(expected, dict):
-        return any(
-            key not in expected or has_custom_keys(value, expected[key])
-            for key, value in current.items()
-        )
-    if isinstance(current, list) and isinstance(expected, list):
-        return any(entry not in expected for entry in current)
-    return False
-
-
-def matches_managed_template(current, expected):
-    if isinstance(current, dict) and isinstance(expected, dict):
-        if all(
-            key in current and matches_managed_template(current[key], value)
-            for key, value in expected.items()
-        ):
-            return True
-        return any(
-            key in current
-            and isinstance(value, (dict, list))
-            and matches_managed_template(current[key], value)
-            for key, value in expected.items()
-        )
-    if isinstance(current, list) and isinstance(expected, list):
-        current_index = 0
-        for expected_entry in expected:
-            matching_index = next(
-                (
-                    index
-                    for index in range(current_index, len(current))
-                    if matches_managed_template(current[index], expected_entry)
-                ),
-                None,
-            )
-            if matching_index is None:
-                return False
-            current_index = matching_index + 1
-        return True
-    return current == expected
-
-
-def merge_managed_template(current, expected):
-    if isinstance(current, dict) and isinstance(expected, dict):
-        merged = dict(current)
-        for key, value in expected.items():
-            if key in current:
-                merged[key] = merge_managed_template(current[key], value)
-            else:
-                merged[key] = value
-        return merged
-    if isinstance(current, list) and isinstance(expected, list):
-        remaining_current = list(current)
-        merged = []
-        for expected_entry in expected:
-            matching_index = next(
-                (
-                    index
-                    for index, current_entry in enumerate(remaining_current)
-                    if matches_managed_template(current_entry, expected_entry)
-                ),
-                None,
-            )
-            if matching_index is None:
-                merged.append(expected_entry)
-                continue
-            merged.extend(remaining_current[:matching_index])
-            merged.append(
-                merge_managed_template(
-                    remaining_current[matching_index], expected_entry
-                )
-            )
-            remaining_current = remaining_current[matching_index + 1 :]
-        return merged + remaining_current
-    return expected
-
-migrated_settings = migrate(settings)
-if not has_custom_keys(migrated_settings, template):
-    sys.exit(10)
-
-json.dump(merge_managed_template(migrated_settings, template), sys.stdout, indent=2)
-sys.stdout.write("\n")
-PY
+  merge_managed_settings "$template" "$destination" nested > "$temporary_settings" || merge_status=$?
 
   case "$merge_status" in
     0)
@@ -1404,33 +1140,13 @@ create_skill_adapter() {
       return
     fi
 
-    {
-      printf '%s\n' '---'
-      printf 'name: %s\n' "$skill_name"
-      printf 'description: Provider-neutral reusable workflow for %s.\n' "$skill_name"
-      printf '%s\n\n' '---'
-      awk '
-        NR == 1 && $0 == "---" { in_frontmatter = 1; next }
-        in_frontmatter && $0 == "---" { in_frontmatter = 0; next }
-        !in_frontmatter { print }
-      ' "$src"
-    } > "$dst"
+    render_skill_adapter "$src" "$skill_name" > "$dst"
     record_created "$dst"
     return
   fi
 
   temporary_adapter="$(mktemp "${TMPDIR:-/tmp}/agent-ready-adapter.XXXXXX")"
-  {
-    printf '%s\n' '---'
-    printf 'name: %s\n' "$skill_name"
-    printf 'description: Provider-neutral reusable workflow for %s.\n' "$skill_name"
-    printf '%s\n\n' '---'
-    awk '
-      NR == 1 && $0 == "---" { in_frontmatter = 1; next }
-      in_frontmatter && $0 == "---" { in_frontmatter = 0; next }
-      !in_frontmatter { print }
-    ' "$src"
-  } > "$temporary_adapter"
+  render_skill_adapter "$src" "$skill_name" > "$temporary_adapter"
   chmod 0644 "$temporary_adapter"
   sync_file "$temporary_adapter" "$dst" "$src"
   rm -f -- "$temporary_adapter"
