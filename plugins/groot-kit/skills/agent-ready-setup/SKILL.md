@@ -338,10 +338,16 @@ disponible. La normalización incluye `CLAUDE.md` bajo `.claude/` y conserva
 conflictos, symlinks y archivos no regulares. El usuario debe decidir y ejecutar el
 comando mostrado (o `npm install` si `groot-ui` ya está al día) para actualizar
 `package-lock.json` y quitar `kraken-translations` del lockfile.
+Si la fuente resuelta no contiene `scripts/asset-sync-common.sh`, el hook ejecuta un
+refresh adicional de `groot-marketplace`, vuelve a resolver la fuente y carga helper
+mediante `source` antes de proyectar cualquier asset. Si refresh no entrega helper,
+conserva hook local, omite proyección y muestra diagnóstico; no instala un
+`sync-marketplace.sh` que no pueda arrancar.
 Si la copia instalada del hook cambió, se reejecuta con el mismo provider y stack
 antes de proyectar el resto. La reejecución conserva el lock de assets y usa una
-guarda interna para no repetir `fury ai assets marketplace upgrade`; no repite
-proyección ni upgrade durante `--normalize-only`.
+guarda interna para no repetir el upgrade inicial; refresh por helper faltante solo
+se intenta antes de cargar helper. No repite proyección ni upgrade durante
+`--normalize-only`.
 
 El hook compara cada asset gestionado con el template actualizado y muestra
 `diff -u` antes de reemplazar un archivo existente. Los archivos regulares

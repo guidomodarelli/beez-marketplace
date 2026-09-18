@@ -12,6 +12,7 @@ readonly SHARED_DIR=".agents"
 readonly CLAUDE_DIR=".claude"
 readonly CODEX_DIR=".codex"
 readonly GROOT_UI_HELPER_SCRIPT="scripts/setup-groot-ui.sh"
+readonly ASSET_SYNC_HELPER_PATH="scripts/asset-sync-common.sh"
 readonly SYNC_LOCK_DIRECTORY="$SHARED_DIR/.agent-ready-assets.lock"
 # shellcheck disable=SC2034
 readonly SYNC_LOCK_OWNER_FILE="$SYNC_LOCK_DIRECTORY/owner"
@@ -107,14 +108,15 @@ fi
 
 is_valid_skill_dir() {
   local candidate="$1"
+  local require_asset_sync_helper="${2:-0}"
 
   [[ -f "$candidate/SKILL.md" && \
     -d "$candidate/assets/stacks" && \
     -f "$candidate/assets/common/hooks/sync-marketplace.sh" && \
     -f "$candidate/assets/common/settings.json" && \
     -f "$candidate/assets/codex/hooks.json" && \
-    -f "$candidate/scripts/asset-sync-common.sh" && \
-    -f "$candidate/scripts/merge-managed-settings.py" ]]
+    -f "$candidate/scripts/merge-managed-settings.py" && \
+    ("$require_asset_sync_helper" -eq 0 || -f "$candidate/$ASSET_SYNC_HELPER_PATH") ]]
 }
 
 if [[ "$marketplace_already_upgraded" -eq 0 ]]; then
@@ -154,10 +156,11 @@ resolve_skill_dir() {
   local cache_root
   local hook_directory
   local project_root
+  local require_asset_sync_helper="${1:-0}"
 
   if [[ -n "${AGENT_READY_SETUP_SKILL_DIR:-}" ]]; then
     candidate="$AGENT_READY_SETUP_SKILL_DIR"
-    if is_valid_skill_dir "$candidate"; then
+    if is_valid_skill_dir "$candidate" "$require_asset_sync_helper"; then
       printf '%s\n' "$candidate"
       return 0
     fi
@@ -169,7 +172,7 @@ resolve_skill_dir() {
     for candidate in \
       "$CLAUDE_PLUGIN_ROOT/skills/$SKILL_NAME" \
       "$CLAUDE_PLUGIN_ROOT"; do
-      if is_valid_skill_dir "$candidate"; then
+      if is_valid_skill_dir "$candidate" "$require_asset_sync_helper"; then
         printf '%s\n' "$candidate"
         return 0
       fi
@@ -180,7 +183,7 @@ resolve_skill_dir() {
   for candidate in \
     "$hook_directory/../../../.." \
     "$hook_directory/../../.."; do
-    if is_valid_skill_dir "$candidate"; then
+    if is_valid_skill_dir "$candidate" "$require_asset_sync_helper"; then
       printf '%s\n' "$candidate"
       return 0
     fi
@@ -193,7 +196,7 @@ resolve_skill_dir() {
   fi
 
   candidate="$provider_root/skills/$SKILL_NAME"
-  if is_valid_skill_dir "$candidate"; then
+  if is_valid_skill_dir "$candidate" "$require_asset_sync_helper"; then
     printf '%s\n' "$candidate"
     return 0
   fi
@@ -201,7 +204,7 @@ resolve_skill_dir() {
   cache_root="$provider_root/plugins/cache/$MARKETPLACE_NAME/groot-kit"
   while IFS= read -r candidate; do
     candidate="${candidate%/SKILL.md}"
-    if is_valid_skill_dir "$candidate"; then
+    if is_valid_skill_dir "$candidate" "$require_asset_sync_helper"; then
       printf '%s\n' "$candidate"
       return 0
     fi
@@ -209,13 +212,46 @@ resolve_skill_dir() {
 
   if project_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
     candidate="$project_root/plugins/groot-kit/skills/$SKILL_NAME"
-    if is_valid_skill_dir "$candidate"; then
+    if is_valid_skill_dir "$candidate" "$require_asset_sync_helper"; then
       printf '%s\n' "$candidate"
       return 0
     fi
   fi
 
   return 1
+}
+
+refresh_missing_asset_sync_helper() {
+  local refreshed_skill_dir
+
+  if [[ -f "$skill_dir/$ASSET_SYNC_HELPER_PATH" ]]; then
+    return 0
+  fi
+
+  echo "[marketplace-sync] Shared synchronization helper is missing; refreshing $MARKETPLACE_NAME for $provider..."
+  if ! command -v fury >/dev/null 2>&1; then
+    printf 'ERROR: fury CLI is required to download %s\n' "$ASSET_SYNC_HELPER_PATH" >&2
+    return 1
+  fi
+  if ! fury ai assets marketplace upgrade \
+    --name "$MARKETPLACE_NAME" \
+    --provider "$provider"; then
+    printf 'ERROR: marketplace refresh failed while downloading %s\n' "$ASSET_SYNC_HELPER_PATH" >&2
+    return 1
+  fi
+
+  if ! refreshed_skill_dir="$(resolve_skill_dir 1)"; then
+    printf 'ERROR: refreshed %s source is unavailable; %s could not be downloaded\n' \
+      "$SKILL_NAME" "$ASSET_SYNC_HELPER_PATH" >&2
+    return 1
+  fi
+  skill_dir="$refreshed_skill_dir"
+
+  if [[ ! -f "$skill_dir/$ASSET_SYNC_HELPER_PATH" ]]; then
+    printf 'ERROR: marketplace refresh completed but %s is still missing from %s\n' \
+      "$ASSET_SYNC_HELPER_PATH" "$skill_dir" >&2
+    return 1
+  fi
 }
 
 detect_stack() {
@@ -251,10 +287,19 @@ if ! skill_dir="$(resolve_skill_dir)"; then
   exit 0
 fi
 
+if ! refresh_missing_asset_sync_helper; then
+  if [[ -n "${AGENT_READY_SETUP_SKILL_DIR:-}" ]]; then
+    exit 1
+  fi
+  printf 'WARNING: %s is unavailable after marketplace refresh; local projection skipped.\n' \
+    "$ASSET_SYNC_HELPER_PATH" >&2
+  exit 0
+fi
+
 # shellcheck disable=SC2034
 ASSET_SYNC_SKILL_DIR="$skill_dir"
-# shellcheck disable=SC1091
-source "$skill_dir/scripts/asset-sync-common.sh"
+# shellcheck disable=SC1090
+source "$skill_dir/$ASSET_SYNC_HELPER_PATH"
 # shellcheck disable=SC2034
 SYNC_LOCK_INHERITED="$sync_lock_inherited"
 

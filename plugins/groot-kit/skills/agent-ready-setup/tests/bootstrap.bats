@@ -1356,6 +1356,69 @@ EOF
   done
 }
 
+@test "sync hook refreshes missing shared helper before projecting assets" {
+  cache_root="$test_root/.claude/plugins/cache/groot-marketplace/groot-kit"
+  source_dir="$cache_root/1.0.0/skills/agent-ready-setup"
+  fury_log="$test_root/fury.log"
+  mkdir -p "$(dirname "$source_dir")"
+  cp -R "$skill_dir" "$source_dir"
+  rm "$source_dir/scripts/asset-sync-common.sh"
+  cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+  chmod +x "$source_dir/scripts/merge-instructions.sh"
+  cat > "$fake_bin/fury" <<EOF
+#!/bin/bash
+printf '%s\\n' "\$*" >> "$fury_log"
+if [[ "\$(wc -l < "$fury_log")" -eq 2 ]]; then
+  cp "$skill_dir/scripts/asset-sync-common.sh" "$source_dir/scripts/asset-sync-common.sh"
+fi
+EOF
+  chmod +x "$fake_bin/fury"
+
+  run env HOME="$test_root" PATH="$fake_bin:$PATH" \
+    bash "$source_dir/assets/common/hooks/sync-marketplace.sh" \
+      --provider claude --stack node
+
+  [ "$status" -eq 0 ]
+  [ "$(wc -l < "$fury_log")" -eq 2 ]
+  [ -f "$source_dir/scripts/asset-sync-common.sh" ]
+  cmp -s .agents/hooks/sync-marketplace.sh \
+    "$source_dir/assets/common/hooks/sync-marketplace.sh"
+  [[ "$output" == *"Shared synchronization helper is missing; refreshing"* ]]
+}
+
+@test "sync hook preserves local hook when helper remains unavailable after refresh" {
+  cache_root="$test_root/.claude/plugins/cache/groot-marketplace/groot-kit"
+  source_dir="$cache_root/1.0.0/skills/agent-ready-setup"
+  fury_log="$test_root/fury.log"
+  mkdir -p "$(dirname "$source_dir")" .agents/hooks
+  cp -R "$skill_dir" "$source_dir"
+  rm "$source_dir/scripts/asset-sync-common.sh"
+  printf '%s\n' '# local hook' > .agents/hooks/sync-marketplace.sh
+  cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+  chmod +x "$source_dir/scripts/merge-instructions.sh"
+  cat > "$fake_bin/fury" <<EOF
+#!/bin/bash
+printf '%s\\n' "\$*" >> "$fury_log"
+exit 0
+EOF
+  chmod +x "$fake_bin/fury"
+
+  run env HOME="$test_root" PATH="$fake_bin:$PATH" \
+    bash "$source_dir/assets/common/hooks/sync-marketplace.sh" \
+      --provider claude --stack node
+
+  [ "$status" -eq 0 ]
+  [ "$(wc -l < "$fury_log")" -eq 2 ]
+  grep -Fxq '# local hook' .agents/hooks/sync-marketplace.sh
+  [[ "$output" == *"is unavailable after marketplace refresh; local projection skipped."* ]]
+}
+
 @test "sync hook preserves custom Claude array entries with equal length" {
   run_bootstrap frontend
   [ "$status" -eq 0 ]
