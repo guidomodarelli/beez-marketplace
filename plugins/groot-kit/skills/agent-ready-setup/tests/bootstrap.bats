@@ -1311,6 +1311,51 @@ EOF
   grep -Fq '# Updated marketplace template' .agents/rules/security.md
 }
 
+@test "resolvers select highest semantic cache version for Claude and Codex" {
+  for provider in claude codex; do
+    cache_root="$test_root/.$provider/plugins/cache/groot-marketplace/groot-kit"
+    old_source="$cache_root/1.9.0/skills/agent-ready-setup"
+    new_source="$cache_root/1.10.2/skills/agent-ready-setup"
+    mkdir -p "$old_source" "$new_source"
+    cp -R "$skill_dir"/. "$old_source"/
+    cp -R "$skill_dir"/. "$new_source"/
+    printf '%s\n' "# old $provider template" > "$old_source/assets/stacks/node/rules/security.md"
+    printf '%s\n' "# newest $provider template" > "$new_source/assets/stacks/node/rules/security.md"
+    cat > "$new_source/scripts/merge-instructions.sh" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "$new_source/scripts/merge-instructions.sh"
+
+    rm -rf .agents .claude .codex AGENTS.md CLAUDE.md
+    mkdir -p .agents/rules
+    printf '%s\n' "# existing $provider rule" > .agents/rules/security.md
+
+    run env HOME="$test_root" PATH="$test_root/bin:$PATH" \
+      bash "$old_source/scripts/bootstrap.sh" \
+        --stack node \
+        --skill-dir "$old_source" \
+        --provider "$provider" \
+        --sync \
+        --yes
+
+    [ "$status" -eq 0 ]
+    grep -Fxq "# newest $provider template" .agents/rules/security.md
+
+    rm -rf .agents .claude .codex AGENTS.md CLAUDE.md
+    mkdir -p .agents/rules
+    printf '%s\n' "# existing hook $provider rule" > .agents/rules/security.md
+
+    run env HOME="$test_root" PATH="$test_root/bin:$PATH" \
+      bash "$old_source/assets/common/hooks/sync-marketplace.sh" \
+        --provider "$provider" \
+        --stack node
+
+    [ "$status" -eq 0 ]
+    grep -Fxq "# newest $provider template" .agents/rules/security.md
+  done
+}
+
 @test "sync hook preserves custom Claude array entries with equal length" {
   run_bootstrap frontend
   [ "$status" -eq 0 ]
@@ -1382,6 +1427,7 @@ EOF
   mkdir -p \
     "$fake_bin" \
     "$source_dir/assets/common/hooks" \
+    "$source_dir/assets/common/shared" \
     "$source_dir/assets/codex" \
     "$source_dir/assets/stacks/go/hooks" \
     "$source_dir/assets/stacks/go/rules" \
@@ -1394,6 +1440,7 @@ EOF
   cp "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
     "$source_dir/assets/common/hooks/sync-marketplace.sh"
   printf '%s\n' '{"settings":"updated"}' > "$source_dir/assets/common/settings.json"
+  printf '%s\n' '# updated common asset' > "$source_dir/assets/common/shared/asset.md"
   printf '%s\n' '{"hooks":"updated"}' > "$source_dir/assets/codex/hooks.json"
   printf '%s\n' '#!/bin/bash' > "$source_dir/assets/stacks/go/hooks/check-harness-consistency.sh"
   printf '%s\n' '# updated pre-tool hook' > "$source_dir/assets/stacks/go/hooks/pre-tool-use.md"
@@ -1409,6 +1456,8 @@ description: Deploy Fury applications.
 # Fury deploy
 EOF
   printf '%s\n' '{"mcp":"updated"}' > "$source_dir/assets/stacks/go/mcp.json"
+  mkdir -p .agents/shared
+  printf '%s\n' '# previous common asset' > .agents/shared/asset.md
   printf '%s\n' '# previous coding style' > .agents/rules/coding-style.md
   cat > "$source_dir/scripts/bootstrap.sh" <<'EOF'
 #!/bin/bash
@@ -1418,6 +1467,7 @@ EOF
   chmod +x "$source_dir/scripts/bootstrap.sh"
   cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
 #!/bin/bash
+[[ "$(cat .agents/shared/asset.md)" = '# updated common asset' ]] || exit 42
 [[ -f .agents/rules/coding-style.md ]] || exit 42
 [[ -f .agents/agents/security-scanner.md ]] || exit 42
 [[ -f .agents/commands/review-pr.md ]] || exit 42
@@ -1449,6 +1499,9 @@ EOF
   cmp -s .agents/hooks/sync-marketplace.sh "$source_dir/assets/common/hooks/sync-marketplace.sh"
   cmp -s .agents/hooks/check-harness-consistency.sh "$source_dir/assets/stacks/go/hooks/check-harness-consistency.sh"
   cmp -s .agents/hooks/pre-tool-use.md "$source_dir/assets/stacks/go/hooks/pre-tool-use.md"
+  cmp -s .agents/shared/asset.md "$source_dir/assets/common/shared/asset.md"
+  [ -L .claude/shared/asset.md ]
+  [ "$(readlink .claude/shared/asset.md)" = "../../.agents/shared/asset.md" ]
   cmp -s .agents/rules/coding-style.md "$source_dir/assets/stacks/go/rules/coding-style.md"
   cmp -s .agents/agents/security-scanner.md "$source_dir/assets/stacks/go/agents/security-scanner.md"
   cmp -s .agents/commands/review-pr.md "$source_dir/assets/stacks/go/commands/review-pr.md"

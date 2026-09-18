@@ -126,6 +126,27 @@ if [[ "$SKILL_DIR" != /* ]]; then
   fi
 fi
 
+sorted_skill_candidates() {
+  local cache_root="$1"
+  local skill_name="$2"
+
+  # Prefix candidates with zero-padded numeric components before lexical sorting.
+  find "$cache_root" -type f -path "*/skills/$skill_name/SKILL.md" -print 2>/dev/null |
+    awk -F/ '
+      {
+        version = $(NF - 3)
+        if (version !~ /^[0-9]+(\.[0-9]+)?(\.[0-9]+)?([+-].*)?$/) {
+          printf "%020d.%020d.%020d\t%s\n", 0, 0, 0, $0
+          next
+        }
+        split(version, components, /[.+-]/)
+        printf "%020d.%020d.%020d\t%s\n", components[1] + 0, components[2] + 0, components[3] + 0, $0
+      }
+    ' |
+    sort -r |
+    cut -f2-
+}
+
 resolve_skill_dir() {
   local candidate
   local provider_root
@@ -191,7 +212,7 @@ resolve_skill_dir() {
       printf '%s\n' "$candidate"
       return 0
     fi
-  done < <(find "$cache_root" -type f -path "*/skills/$SKILL_NAME/SKILL.md" -print 2>/dev/null | sort -r)
+  done < <(sorted_skill_candidates "$cache_root" "$SKILL_NAME")
 
   if project_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
     candidate="$project_root/plugins/groot-kit/skills/$SKILL_NAME"

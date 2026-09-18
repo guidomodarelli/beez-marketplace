@@ -49,6 +49,9 @@ Assets comunes viven en `assets/common/`; templates y hooks específicos viven e
 Bootstrap requiere ejecución dentro de un worktree Git. Usa `git check-ignore`
 como fuente de verdad para omitir instrucciones anidadas cubiertas por
 `.gitignore`; fuera de un worktree, termina con error antes de escribir assets.
+El flujo directo de la skill ejecuta bootstrap en modo sync no interactivo para
+actualizar assets gestionados; preserva instrucciones del proyecto, symlinks
+custom y conflictos estructurales.
 
 ---
 
@@ -65,6 +68,27 @@ is_valid_skill_dir() {
   [[ -f "$candidate/SKILL.md" && \
     -f "$candidate/scripts/bootstrap.sh" && \
     -d "$candidate/assets/stacks" ]]
+}
+
+sorted_skill_candidates() {
+  local cache_root="$1"
+  local skill_name="$2"
+
+  # Prefix candidates with zero-padded numeric components before lexical sorting.
+  find "$cache_root" -type f -path "*/skills/$skill_name/SKILL.md" -print 2>/dev/null |
+    awk -F/ '
+      {
+        version = $(NF - 3)
+        if (version !~ /^[0-9]+(\.[0-9]+)?(\.[0-9]+)?([+-].*)?$/) {
+          printf "%020d.%020d.%020d\t%s\n", 0, 0, 0, $0
+          next
+        }
+        split(version, components, /[.+-]/)
+        printf "%020d.%020d.%020d\t%s\n", components[1] + 0, components[2] + 0, components[3] + 0, $0
+      }
+    ' |
+    sort -r |
+    cut -f2-
 }
 
 resolve_skill_dir() {
@@ -125,7 +149,7 @@ resolve_skill_dir() {
       printf '%s\n' "$candidate"
       return 0
     fi
-  done < <(find "$cache_root" -type f -path "*/skills/$SKILL_NAME/SKILL.md" -print 2>/dev/null | sort -r)
+  done < <(sorted_skill_candidates "$cache_root" "$SKILL_NAME")
 
   if project_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
     candidate="$project_root/plugins/groot-kit/skills/$SKILL_NAME"
@@ -223,7 +247,16 @@ PROVIDER="$(bash "$SKILL_DIR/scripts/resolve-provider.sh" --skill-dir "$SKILL_DI
 bash "$SKILL_DIR/scripts/bootstrap.sh" \
   --stack "$STACK" \
   --skill-dir "$SKILL_DIR" \
-  --provider "$PROVIDER"
+  --provider "$PROVIDER" \
+  --sync \
+  --yes
+
+SKILL_DIR="$(resolve_skill_dir "$SKILL_DIR")"
+bash "$SKILL_DIR/scripts/bootstrap.sh" \
+  --stack "$STACK" \
+  --skill-dir "$SKILL_DIR" \
+  --provider "$PROVIDER" \
+  --normalize-only
 
 SKILL_DIR="$(resolve_skill_dir "$SKILL_DIR")"
 bash "$SKILL_DIR/scripts/merge-instructions.sh" \
@@ -237,8 +270,9 @@ bash "$SKILL_DIR/scripts/merge-instructions.sh" \
 `$HOME/.claude/`, `$HOME/.codex/` o `CLAUDE_PLUGIN_ROOT`. Para rutas fuera de
 instalación reconocible, termina con error y exige provider explícito.
 
-En modo inicial, el script copia assets compartidos faltantes a `.agents/`, crea
-symlinks relativos para assets no-hook bajo `.claude/` y prepara bridge `.codex/`.
+El script actualiza assets compartidos gestionados bajo `.agents/`, crea o
+conserva symlinks relativos para assets no-hook bajo `.claude/` y prepara bridge
+`.codex/`.
 Los scripts de hooks permanecen únicamente bajo `.agents/hooks/`.
 El renderer crea `AGENTS.md` nuevo con catálogo portable; el merge IA analiza
 `AGENTS.md` existente completo y agrega/corrige referencias sin perder comandos,

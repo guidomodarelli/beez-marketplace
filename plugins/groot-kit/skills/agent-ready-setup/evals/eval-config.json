@@ -166,9 +166,9 @@
       ]
     },
     {
-      "id": "existing-files-are-skipped",
-      "description": "Conserva archivos existentes y reporta que fueron omitidos.",
-      "input": "Setup agent ready. Asumí que proyecto tiene package.json con React y Nordic, además de .claude/CLAUDE.md y .claude/rules/security.md ya existentes. Explicá qué archivos conserva, cuáles crea y cómo reporta los existentes. No ejecutes Bash ni escribas archivos.",
+      "id": "existing-files-are-synchronized-safely",
+      "description": "Actualiza assets gestionados existentes y preserva instrucciones o conflictos.",
+      "input": "Setup agent ready. Asumí que proyecto tiene package.json con React y Nordic, además de .claude/CLAUDE.md y .claude/rules/security.md ya existentes. Explicá qué assets gestionados actualiza, qué instrucciones conserva y cómo reporta conflictos o archivos existentes. No ejecutes Bash ni escribas archivos.",
       "assertions": [
         {
           "type": "contains",
@@ -182,8 +182,13 @@
         },
         {
           "type": "contains_any",
-          "values": ["SKIP", "skipped", "omitido", "omitidos", "ya existía"],
-          "description": "Reporta archivos existentes como omitidos"
+          "values": ["actualiza", "actualizar", "sync", "template", "gestionado"],
+          "description": "Distingue actualización automática de assets gestionados"
+        },
+        {
+          "type": "contains_any",
+          "values": ["preserva", "conserva", "conflicto", "diferencia", "backup"],
+          "description": "Explica protección de instrucciones y conflictos"
         }
       ]
     },

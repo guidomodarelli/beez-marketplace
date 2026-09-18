@@ -113,6 +113,27 @@ else
   echo "[marketplace-sync] Marketplace upgrade already completed by caller."
 fi
 
+sorted_skill_candidates() {
+  local cache_root="$1"
+  local skill_name="$2"
+
+  # Prefix candidates with zero-padded numeric components before lexical sorting.
+  find "$cache_root" -type f -path "*/skills/$skill_name/SKILL.md" -print 2>/dev/null |
+    awk -F/ '
+      {
+        version = $(NF - 3)
+        if (version !~ /^[0-9]+(\.[0-9]+)?(\.[0-9]+)?([+-].*)?$/) {
+          printf "%020d.%020d.%020d\t%s\n", 0, 0, 0, $0
+          next
+        }
+        split(version, components, /[.+-]/)
+        printf "%020d.%020d.%020d\t%s\n", components[1] + 0, components[2] + 0, components[3] + 0, $0
+      }
+    ' |
+    sort -r |
+    cut -f2-
+}
+
 resolve_skill_dir() {
   local candidate
   local provider_root
@@ -170,7 +191,7 @@ resolve_skill_dir() {
       printf '%s\n' "$candidate"
       return 0
     fi
-  done < <(find "$cache_root" -type f -path "*/skills/$SKILL_NAME/SKILL.md" -print 2>/dev/null | sort -r)
+  done < <(sorted_skill_candidates "$cache_root" "$SKILL_NAME")
 
   if project_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
     candidate="$project_root/plugins/groot-kit/skills/$SKILL_NAME"
@@ -533,8 +554,9 @@ create_skill_adapter() {
   link_claude_asset "skills/$skill_name/SKILL.md"
 }
 
-project_stack_assets() {
-  local source_root="$skill_dir/assets/stacks/$stack"
+project_assets() {
+  local source_root="$1"
+  local project_codex_mcp="$2"
   local source_asset
   local relative_asset
   local skill_name
@@ -544,13 +566,18 @@ project_stack_assets() {
   while IFS= read -r -d '' source_asset; do
     relative_asset="${source_asset#"$source_root/"}"
     case "$relative_asset" in
-      CLAUDE.md|hooks/*)
+      CLAUDE.md|settings.json)
         continue
+        ;;
+      hooks/*)
+        sync_file "$source_asset" "$AGENTS_DIRECTORY/$relative_asset"
         ;;
       mcp.json)
         sync_file "$source_asset" "$AGENTS_DIRECTORY/$relative_asset"
         link_claude_asset "$relative_asset"
-        sync_file "$source_asset" "$CODEX_DIRECTORY/.mcp.json"
+        if [[ "$project_codex_mcp" -eq 1 ]]; then
+          sync_file "$source_asset" "$CODEX_DIRECTORY/.mcp.json"
+        fi
         ;;
       skills/*/SKILL.md)
         skill_name="${relative_asset#skills/}"
@@ -887,18 +914,10 @@ fi
 
 report_groot_ui_version
 
-stack_hooks_directory="$skill_dir/assets/stacks/$stack/hooks"
-if [[ -d "$stack_hooks_directory" ]]; then
-  while IFS= read -r -d '' source_hook; do
-    relative_hook="${source_hook#"$stack_hooks_directory/"}"
-    [[ "$relative_hook" == "sync-marketplace.sh" ]] && continue
-    sync_file "$source_hook" "$AGENTS_DIRECTORY/hooks/$relative_hook"
-  done < <(find "$stack_hooks_directory" -type f -print0)
-fi
-
-# Project all non-hook stack assets before merging instruction references. The
+# Project common and stack assets before merging instruction references. The
 # shared tree remains canonical, while Claude and Codex receive provider views.
-project_stack_assets
+project_assets "$skill_dir/assets/common" 0
+project_assets "$skill_dir/assets/stacks/$stack" 1
 
 # Reuse bootstrap's conservative instruction normalizer so SessionStart also
 # discovers project CLAUDE.md files under directories such as .claude/.
