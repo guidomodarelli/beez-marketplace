@@ -1,0 +1,70 @@
+{
+  "skill_name": "error-observability-diagnostics",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Una API Meli procesa una operación importante y devuelve un error parcial. Necesito un detalle técnico útil para Failure Studio y un mensaje breve para UI, sin exponer payloads ni datos personales. Diseñá el contrato y el punto correcto de emisión.",
+      "expected_output": "Detecta integración Meli/ErrorUX, separa diagnóstico de copy público, define evento allowlisted y emite Failure Studio en boundary relevante con fallback seguro.",
+      "files": [],
+      "expectations": [
+        "Condiciona Failure Studio a integración Meli real",
+        "Separa detalle técnico de mensaje UI",
+        "Incluye operación, etapa, código, outcome y correlación segura",
+        "Evita payloads, causa, stack y PII",
+        "Define fallback si ErrorUX falla"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Un repositorio envía logs a Grafana/Loki. Un upstream retorna body, headers, token, stack y datos de usuario. Agregá trazabilidad para investigar el error, con mensaje detallado y campos buscables, sin filtrar información sensible.",
+      "expected_output": "Log estructurado con route template, dependencia, status, código, severidad, duración y IDs correlacionables; redaction/truncado y ausencia de objetos raw.",
+      "files": [],
+      "expectations": [
+        "No asume una API de Grafana ni agrega dashboard ficticio",
+        "Usa log estructurado y route template",
+        "Redacta secretos, PII, headers y payload",
+        "Propaga correlation/request/trace IDs seguros",
+        "Define severidad y límites de longitud"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Un equipo quiere agregar requestId, runId, usuario y error.message como tags de todas las métricas para filtrar errores en dashboards. Revisá la propuesta y diseñá counters/histograms observables sin cardinalidad explosiva.",
+      "expected_output": "Rechaza IDs y mensajes como tags; propone dimensiones finitas por operación, etapa, outcome, categoría, dependencia, status family y scope, dejando IDs en logs.",
+      "files": [],
+      "expectations": [
+        "Identifica cardinalidad alta y PII en tags",
+        "Propone tags finitos y allowlisted",
+        "Separa métricas de logs detallados",
+        "Mantiene correlación fuera de series temporales",
+        "Incluye tests o guardas de cardinalidad"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Una operación con polling y retry registra el mismo error en cada catch, genera demasiados eventos y pierde relación entre request inicial, retries y job. Diseñá ownership de eventos, correlación y deduplicación sin ocultar fallas importantes.",
+      "expected_output": "Un evento dueño por fase relevante, IDs separados y propagados, fingerprint estable sin IDs, métricas completas, logs deduplicados y eventos terminales/accionables preservados.",
+      "files": [],
+      "expectations": [
+        "Evita duplicación en rethrow",
+        "Distingue request, operación, job/run y trace",
+        "Propaga correlación por polling/retry",
+        "Deduplica por fingerprint de baja cardinalidad",
+        "No altera retry ni estado de negocio"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Durante una caída parcial fallan simultáneamente Failure Studio, el logger y StatsD. Necesito que la operación conserve su resultado y que el próximo diagnóstico indique pérdida de observabilidad sin generar una cascada de errores.",
+      "expected_output": "Aísla sinks, usa fallback rate-limited sin recursión, conserva HTTP/resultado de negocio y reporta la limitación de observabilidad sin reintentar la mutación.",
+      "files": [],
+      "expectations": [
+        "No convierte sink failure en error de negocio",
+        "Evita recursión y flooding",
+        "Conserva respuesta y estado de operación",
+        "Mantiene métricas/log de degradación cuando sea posible",
+        "Explicita qué no pudo observarse"
+      ]
+    }
+  ]
+}

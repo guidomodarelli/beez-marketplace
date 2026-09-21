@@ -1,0 +1,4 @@
+interface:
+  display_name: "Training in App (TIA)"
+  short_description: "Implement and configure TIA in Kraken/Nordic apps"
+  default_prompt: "Implement or update Training in App (TIA) integration using existing Kraken/Nordic patterns in this repository."
