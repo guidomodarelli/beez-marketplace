@@ -21,7 +21,11 @@ These rules apply to payloads that the BFF sends to an upstream endpoint. They c
 ## Validation boundary
 
 - Validate untrusted client input once at the middleend boundary using the repository's approved validation mechanism.
-- Do not add runtime schema validation of an upstream response or error payload. Consume responses according to the adapter contract and use only the minimal structural narrowing required for control flow, as described in the payload-validation boundary rule.
+- Do not add runtime schema validation of an upstream response or error payload. Consume responses according to the adapter contract.
+- When a missing, `null`, `undefined`, or intentionally empty upstream value has a safe contract-approved default, apply that fallback before narrowing: use `??` for nullish values and `||` only when every falsy value is equivalent to absence. The fallback must not invent authorization, eligibility, ownership, success, or provider facts.
+- Use structural narrowing only when it changes control flow or is required for safe access and no safe fallback exists. Narrowing may inspect transport/status metadata or a minimum flow discriminator such as `PROCESSING` or `FINISHED`; it must never become provider-payload validation, a field allowlist, or an error-shape parser.
+- Never introduce `normalize*Response`, `parse*Response`, response-shape guards, or field-by-field response validators for provider payloads. Do not throw a response-invalid error merely because optional fields are absent or a provider shape differs from the expected example.
+- If no safe fallback exists and the minimum flow discriminator is unavailable, use the adapter's safe empty/default projection when the contract permits it; otherwise map a controlled adapter failure without forwarding the raw payload and without introducing full contract validation.
 - Do not treat a payload factory as a reason to revalidate an already validated request or to verify the provider's response shape.
 
 ## Tests
