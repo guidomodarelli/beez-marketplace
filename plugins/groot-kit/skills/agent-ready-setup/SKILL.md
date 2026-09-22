@@ -174,7 +174,9 @@ SKILL_DIR="$(resolve_skill_dir "${SKILL_DIR:-}")"
 Usar path resuelto para ejecutar scripts y leer assets. Después de ejecutar
 `bootstrap.sh`, resolver nuevamente: marketplace upgrade puede reemplazar una
 fuente versionada y dejar path anterior inexistente. No asumir que provider
-actual define ubicación de fuente compartida.
+actual define ubicación de fuente compartida. Resolver prioriza candidato válido
+con mayor versión semver dentro de cache provider-specific; `AGENT_READY_SETUP_SKILL_DIR`
+y source explícito de bootstrap conservan prioridad para desarrollo local.
 
 ---
 

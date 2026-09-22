@@ -201,7 +201,7 @@ npm run create-version
 npm run create-version <plugin-name>
 ```
 
-Updates the `version` field in **both** provider manifests (`.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`) so they stay in sync. Offers a semver bump (`patch`/`minor`/`major`) or a custom exact version, and aborts if the two manifests are not already on the same version. Implemented in `scripts/create-version.js` (zero external deps).
+Updates the `version` field in **both** provider manifests (`.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`) so they stay in sync. Detects changed plugin paths under `plugins/` from the current branch diff against the first available remote base (`origin/develop`, `origin/master`, or `origin/main`) plus working-tree changes, and auto-selects the plugin when exactly one changed, even when other files outside `plugins/` are modified. Offers a semver bump (`patch`/`minor`/`major`) or a custom exact version, and aborts if the two manifests are not already on the same version. After the version is selected, stages and commits all current working-tree changes with a descriptive message; it never pushes. Implemented in `scripts/create-version.js` (zero external deps).
 
 ## Identidad del equipo
 

@@ -188,7 +188,21 @@ resolve_skill_dir() {
   else
     provider_root="$HOME/.codex"
   fi
-  cache_root="$provider_root/plugins/cache/$MARKETPLACE_NAME"
+  cache_root="$provider_root/plugins/cache/$MARKETPLACE_NAME/groot-kit"
+
+  if [[ "$REQUESTED_SKILL_DIR" != "$cache_root"/* ]] && \
+    is_valid_skill_dir "$REQUESTED_SKILL_DIR"; then
+    printf '%s\n' "$REQUESTED_SKILL_DIR"
+    return 0
+  fi
+
+  while IFS= read -r candidate; do
+    candidate="${candidate%/SKILL.md}"
+    if [[ "$candidate" != "$REQUESTED_SKILL_DIR" ]] && is_valid_skill_dir "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done < <(sorted_skill_candidates "$cache_root" "$SKILL_NAME")
 
   if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
     for candidate in \
@@ -201,25 +215,11 @@ resolve_skill_dir() {
     done
   fi
 
-  if [[ "$REQUESTED_SKILL_DIR" != "$cache_root"/* ]] && \
-    is_valid_skill_dir "$REQUESTED_SKILL_DIR"; then
-    printf '%s\n' "$REQUESTED_SKILL_DIR"
-    return 0
-  fi
-
   candidate="$provider_root/skills/$SKILL_NAME"
   if [[ "$candidate" != "$REQUESTED_SKILL_DIR" ]] && is_valid_skill_dir "$candidate"; then
     printf '%s\n' "$candidate"
     return 0
   fi
-
-  while IFS= read -r candidate; do
-    candidate="${candidate%/SKILL.md}"
-    if [[ "$candidate" != "$REQUESTED_SKILL_DIR" ]] && is_valid_skill_dir "$candidate"; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done < <(sorted_skill_candidates "$cache_root" "$SKILL_NAME")
 
   if project_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
     candidate="$project_root/plugins/groot-kit/skills/$SKILL_NAME"
@@ -235,6 +235,18 @@ resolve_skill_dir() {
   fi
 
   return 1
+}
+
+describe_skill_source() {
+  local source="$1"
+  local source_version
+
+  source_version="$(basename "$(dirname "$(dirname "$source")")")"
+  if [[ "$source_version" =~ ^[0-9]+(\.[0-9]+){0,2}([+-].*)?$ ]]; then
+    printf '[marketplace-bootstrap] Using %s cache version %s.\n' "$SKILL_NAME" "$source_version"
+  else
+    printf '[marketplace-bootstrap] Using local %s source.\n' "$SKILL_NAME"
+  fi
 }
 
 validate_skill_source() {
@@ -393,6 +405,7 @@ if ! SKILL_DIR="$(resolve_skill_dir)"; then
   echo "ERROR: could not resolve updated $SKILL_NAME source after marketplace upgrade" >&2
   exit 1
 fi
+describe_skill_source "$SKILL_DIR"
 validate_skill_source
 # shellcheck disable=SC2034
 ASSET_SYNC_SKILL_DIR="$SKILL_DIR"

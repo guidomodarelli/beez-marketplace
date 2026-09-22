@@ -1311,6 +1311,34 @@ EOF
   grep -Fq '# Updated marketplace template' .agents/rules/security.md
 }
 
+@test "bootstrap ignores higher versions from another plugin cache" {
+  cache_root="$test_root/.claude/plugins/cache/groot-marketplace"
+  target_source="$cache_root/groot-kit/1.9.0/skills/agent-ready-setup"
+  unrelated_source="$cache_root/other-plugin/99.0.0/skills/agent-ready-setup"
+  mkdir -p "$target_source" "$unrelated_source"
+  cp -R "$skill_dir"/. "$target_source"/
+  cp -R "$skill_dir"/. "$unrelated_source"/
+  printf '%s\n' '# groot-kit template' > "$target_source/assets/stacks/node/rules/security.md"
+  printf '%s\n' '# unrelated template' > "$unrelated_source/assets/stacks/node/rules/security.md"
+  cat > "$target_source/scripts/merge-instructions.sh" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+  chmod +x "$target_source/scripts/merge-instructions.sh"
+
+  run env HOME="$test_root" PATH="$test_root/bin:$PATH" \
+    bash "$target_source/scripts/bootstrap.sh" \
+      --stack node \
+      --skill-dir "$target_source" \
+      --provider claude \
+      --sync \
+      --yes
+
+  [ "$status" -eq 0 ]
+  grep -Fxq '# groot-kit template' .agents/rules/security.md
+  ! grep -Fxq '# unrelated template' .agents/rules/security.md
+}
+
 @test "resolvers select highest semantic cache version for Claude and Codex" {
   for provider in claude codex; do
     cache_root="$test_root/.$provider/plugins/cache/groot-marketplace/groot-kit"
@@ -1353,6 +1381,41 @@ EOF
 
     [ "$status" -eq 0 ]
     grep -Fxq "# newest $provider template" .agents/rules/security.md
+  done
+}
+
+@test "sync hook prefers newest semantic cache over active old source" {
+  for provider in claude codex; do
+    provider_root="$test_root/.$provider"
+    cache_root="$provider_root/plugins/cache/groot-marketplace/groot-kit"
+    old_source="$cache_root/1.9.0/skills/agent-ready-setup"
+    new_source="$cache_root/1.10.2/skills/agent-ready-setup"
+    mkdir -p "$old_source" "$new_source"
+    cp -R "$skill_dir"/. "$old_source"/
+    cp -R "$skill_dir"/. "$new_source"/
+    printf '%s\n' "# old $provider template" > "$old_source/assets/stacks/node/rules/security.md"
+    printf '%s\n' "# newest $provider template" > "$new_source/assets/stacks/node/rules/security.md"
+    cat > "$new_source/scripts/merge-instructions.sh" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "$new_source/scripts/merge-instructions.sh"
+
+    rm -rf .agents .claude .codex AGENTS.md CLAUDE.md
+    mkdir -p .agents/rules
+    printf '%s\n' "# existing $provider rule" > .agents/rules/security.md
+
+    run env \
+      HOME="$test_root" \
+      PATH="$test_root/bin:$PATH" \
+      CLAUDE_PLUGIN_ROOT="$old_source" \
+      bash "$old_source/assets/common/hooks/sync-marketplace.sh" \
+        --provider "$provider" \
+        --stack node
+
+    [ "$status" -eq 0 ]
+    grep -Fxq "# newest $provider template" .agents/rules/security.md
+    [[ "$output" == *"[marketplace-sync] Using agent-ready-setup cache version 1.10.2."* ]]
   done
 }
 

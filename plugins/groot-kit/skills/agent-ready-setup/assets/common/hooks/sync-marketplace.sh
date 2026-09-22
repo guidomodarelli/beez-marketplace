@@ -168,6 +168,21 @@ resolve_skill_dir() {
     return 1
   fi
 
+  if [[ "$provider" == "claude" ]]; then
+    provider_root="$HOME/.claude"
+  else
+    provider_root="$HOME/.codex"
+  fi
+
+  cache_root="$provider_root/plugins/cache/$MARKETPLACE_NAME/groot-kit"
+  while IFS= read -r candidate; do
+    candidate="${candidate%/SKILL.md}"
+    if is_valid_skill_dir "$candidate" "$require_asset_sync_helper"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done < <(sorted_skill_candidates "$cache_root" "$SKILL_NAME")
+
   if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
     for candidate in \
       "$CLAUDE_PLUGIN_ROOT/skills/$SKILL_NAME" \
@@ -189,26 +204,11 @@ resolve_skill_dir() {
     fi
   done
 
-  if [[ "$provider" == "claude" ]]; then
-    provider_root="$HOME/.claude"
-  else
-    provider_root="$HOME/.codex"
-  fi
-
   candidate="$provider_root/skills/$SKILL_NAME"
   if is_valid_skill_dir "$candidate" "$require_asset_sync_helper"; then
     printf '%s\n' "$candidate"
     return 0
   fi
-
-  cache_root="$provider_root/plugins/cache/$MARKETPLACE_NAME/groot-kit"
-  while IFS= read -r candidate; do
-    candidate="${candidate%/SKILL.md}"
-    if is_valid_skill_dir "$candidate" "$require_asset_sync_helper"; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done < <(sorted_skill_candidates "$cache_root" "$SKILL_NAME")
 
   if project_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
     candidate="$project_root/plugins/groot-kit/skills/$SKILL_NAME"
@@ -219,6 +219,18 @@ resolve_skill_dir() {
   fi
 
   return 1
+}
+
+describe_skill_source() {
+  local source="$1"
+  local source_version
+
+  source_version="$(basename "$(dirname "$(dirname "$source")")")"
+  if [[ "$source_version" =~ ^[0-9]+(\.[0-9]+){0,2}([+-].*)?$ ]]; then
+    printf '[marketplace-sync] Using %s cache version %s.\n' "$SKILL_NAME" "$source_version"
+  else
+    printf '[marketplace-sync] Using local %s source.\n' "$SKILL_NAME"
+  fi
 }
 
 refresh_missing_asset_sync_helper() {
@@ -295,6 +307,8 @@ if ! refresh_missing_asset_sync_helper; then
     "$ASSET_SYNC_HELPER_PATH" >&2
   exit 0
 fi
+
+describe_skill_source "$skill_dir"
 
 # shellcheck disable=SC2034
 ASSET_SYNC_SKILL_DIR="$skill_dir"

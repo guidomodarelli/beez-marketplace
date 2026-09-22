@@ -14,11 +14,13 @@
  *   npm run create-version <plugin>   -> target a plugin directly by name
  */
 
+const childProcess = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-const PLUGINS_DIR = path.join(__dirname, '..', 'plugins');
+const REPOSITORY_ROOT = path.join(__dirname, '..');
+const PLUGINS_DIR = path.join(REPOSITORY_ROOT, 'plugins');
 const CLAUDE_MANIFEST = path.join('.claude-plugin', 'plugin.json');
 const CODEX_MANIFEST = path.join('.codex-plugin', 'plugin.json');
 const SEMVER_PATTERN = /^\d+\.\d+\.\d+$/;
@@ -92,6 +94,78 @@ function bumpVersion(currentVersion, bumpKind) {
 }
 
 /**
+ * Executes a Git command from repository root and returns stdout.
+ *
+ * @param {string[]} args Git command arguments.
+ * @returns {string} Command stdout.
+ */
+function runGit(args) {
+  try {
+    return childProcess.execFileSync('git', args, {
+      cwd: REPOSITORY_ROOT,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  } catch (error) {
+    const stderr = error.stderr ? String(error.stderr).trim() : '';
+    const detail = stderr || error.message;
+    throw new Error(`Git command failed: ${detail}`, { cause: error });
+  }
+}
+
+/**
+ * Finds first supported remote base reference available in the repository.
+ *
+ * @returns {string} Remote base reference, or empty string when none exists.
+ */
+function getRemoteBaseReference() {
+  const candidates = ['origin/develop', 'origin/master', 'origin/main'];
+
+  for (const candidate of candidates) {
+    try {
+      runGit(['show-ref', '--verify', '--quiet', `refs/remotes/${candidate}`]);
+      return candidate;
+    } catch (error) {
+      // Try next supported base reference.
+    }
+  }
+
+  return '';
+}
+
+/**
+ * Returns paths changed in the current branch and working tree, including untracked files.
+ *
+ * @returns {string[]} Changed repository-relative paths.
+ */
+function getChangedPaths() {
+  const remoteBaseReference = getRemoteBaseReference();
+  const committedPaths = remoteBaseReference
+    ? runGit(['diff', '--name-only', `${remoteBaseReference}...HEAD`])
+    : '';
+  const trackedPaths = runGit(['diff', '--name-only', 'HEAD']);
+  const untrackedPaths = runGit(['ls-files', '--others', '--exclude-standard']);
+
+  return [
+    ...new Set(`${committedPaths}\n${trackedPaths}\n${untrackedPaths}`.split('\n').filter(Boolean)),
+  ];
+}
+
+/**
+ * Detects plugin names changed under `plugins/`, ignoring other paths.
+ *
+ * @returns {string[]} Unique changed plugin names.
+ */
+function detectChangedPluginNames() {
+  return [...new Set(
+    getChangedPaths()
+      .map((changedPath) => changedPath.split('/'))
+      .filter(([rootDirectory, pluginName]) => rootDirectory === 'plugins' && pluginName)
+      .map(([, pluginName]) => pluginName)
+  )];
+}
+
+/**
  * Rewrites only the `version` field of a manifest, preserving all other
  * formatting (indentation, key order, inline arrays) to keep diffs minimal.
  *
@@ -105,6 +179,29 @@ function writeManifestVersion(manifestPath, rawContents, newVersion) {
   }
   const updated = rawContents.replace(VERSION_FIELD_PATTERN, `$1${newVersion}$3`);
   fs.writeFileSync(manifestPath, updated);
+}
+
+/**
+ * Commits all current working-tree changes after updating both provider manifests.
+ *
+ * @param {{ name: string, claudePath: string, codexPath: string }} plugin Selected plugin.
+ * @param {string} currentVersion Previous plugin version.
+ * @param {string} newVersion New plugin version.
+ * @returns {{ hash: string, subject: string }} Created commit metadata.
+ */
+function commitVersionBump(plugin, currentVersion, newVersion) {
+  const subject =
+    `Bump the version number from ${currentVersion} to ${newVersion} in both ` +
+    `"plugin.json" files for the "${plugin.name}" plugin`;
+  const commitMessage = `${subject}\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>`;
+
+  runGit(['add', '-A']);
+  runGit(['commit', '-m', commitMessage]);
+
+  return {
+    hash: runGit(['rev-parse', '--short', 'HEAD']).trim(),
+    subject,
+  };
 }
 
 /**
@@ -164,9 +261,10 @@ function createPrompter(rl) {
  * @param {(query: string) => Promise<string>} ask Prompt function.
  * @param {Array} plugins Discovered plugins.
  * @param {string|undefined} requestedName Plugin name passed via CLI.
+ * @param {string[]} changedPluginNames Plugin names detected from working-tree changes.
  * @returns {Promise<object>} The selected plugin descriptor.
  */
-async function resolvePlugin(ask, plugins, requestedName) {
+async function resolvePlugin(ask, plugins, requestedName, changedPluginNames) {
   if (requestedName) {
     const match = plugins.find((plugin) => plugin.name === requestedName);
     if (!match) {
@@ -174,6 +272,22 @@ async function resolvePlugin(ask, plugins, requestedName) {
       throw new Error(`Plugin "${requestedName}" not found. Available: ${available}`);
     }
     return match;
+  }
+
+  if (changedPluginNames.length === 1) {
+    const [changedPluginName] = changedPluginNames;
+    const match = plugins.find((plugin) => plugin.name === changedPluginName);
+    if (!match) {
+      throw new Error(
+        `Plugin "${changedPluginName}" changed under plugins/ but does not expose both provider manifests.`
+      );
+    }
+    console.log(`\nDetected changed plugin: ${match.name}`);
+    return match;
+  }
+
+  if (changedPluginNames.length > 1) {
+    console.log(`\nDetected changed plugins: ${changedPluginNames.join(', ')}`);
   }
 
   console.log('\nAvailable plugins:');
@@ -225,6 +339,7 @@ async function resolveNewVersion(ask, currentVersion) {
 async function main() {
   const requestedName = process.argv[2];
   const plugins = discoverPlugins();
+  const changedPluginNames = detectChangedPluginNames();
 
   if (plugins.length === 0) {
     throw new Error('No plugins with both Claude and Codex manifests were found.');
@@ -234,7 +349,7 @@ async function main() {
   const ask = createPrompter(rl);
 
   try {
-    const plugin = await resolvePlugin(ask, plugins, requestedName);
+    const plugin = await resolvePlugin(ask, plugins, requestedName, changedPluginNames);
 
     const claude = readManifest(plugin.claudePath);
     const codex = readManifest(plugin.codexPath);
@@ -259,9 +374,12 @@ async function main() {
     writeManifestVersion(plugin.claudePath, claude.raw, newVersion);
     writeManifestVersion(plugin.codexPath, codex.raw, newVersion);
 
+    const commit = commitVersionBump(plugin, claude.version, newVersion);
+
     console.log(`\n✅ Updated "${plugin.name}" from ${claude.version} to ${newVersion}`);
     console.log(`   - ${path.relative(process.cwd(), plugin.claudePath)}`);
     console.log(`   - ${path.relative(process.cwd(), plugin.codexPath)}`);
+    console.log(`✅ Created commit ${commit.hash}: ${commit.subject}`);
   } finally {
     rl.close();
   }
