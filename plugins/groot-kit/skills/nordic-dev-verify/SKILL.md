@@ -1,6 +1,6 @@
 ---
 name: nordic-dev-verify
-description: Verifica flujos runtime de aplicaciones web Nordic en entorno local o de desarrollo mediante browser y Chrome DevTools MCP. Activar de forma proactiva siempre que el usuario proporcione una URL Nordic bajo `dev.adminml.com` o `*.adminml.com`, mencione una acción de UI o reporte un stack trace, error de consola, request XHR/fetch, `404`, `5xx`, `JSON.parse`, fallo de red o comportamiento inesperado al ejecutar la aplicación; también cuando pida ejecutar, reproducir, depurar, probar, validar o confirmar un flujo frontend. Usar aunque no diga explícitamente “validar”, no pida una prueba manual o no mencione esta skill por nombre.
+description: Verifica flujos runtime de aplicaciones web Nordic en entorno local o de desarrollo mediante browser y Chrome DevTools MCP, validando también que `config/default.js` tenga un `basePath` correcto antes de levantar la app. Activar de forma proactiva siempre que el usuario proporcione una URL Nordic bajo `dev.adminml.com` o `*.adminml.com`, mencione una acción de UI o reporte un stack trace, error de consola, request XHR/fetch, `404`, `5xx`, `JSON.parse`, fallo de red o comportamiento inesperado al ejecutar la aplicación; también cuando pida ejecutar, reproducir, depurar, probar, validar o confirmar un flujo frontend. Usar aunque no diga explícitamente “validar”, no pida una prueba manual o no mencione esta skill por nombre.
 ---
 
 # Verificar aplicaciones Nordic en desarrollo
@@ -22,22 +22,46 @@ Usar exclusivamente `dev.adminml.com` o subdominios `*.adminml.com` declarados e
 
 Antes de cualquier probe remoto, navegación o interacción con browser:
 
-1. Verificar que exista un proceso escuchando en el puerto local `8443`:
+1. Validar `basePath` en `config/default.js`:
+   - Localizar el archivo `config/default.js` en la raíz del repositorio actual.
+   - Leer la propiedad `ragnar.basePath` o equivalente.
+   - Si `basePath === '/'` o `''`, detener inmediatamente y solicitar al usuario que proporcione el basePath correcto:
+     ```
+     ⚠️  basePath incorrecto en config/default.js
+     
+     basePath: '/' no es válido para esta app. Debería contener una ruta específica.
+     
+     Ejemplo correcto:
+     basePath: '/tools/user-management'
+     
+     Pasá el basePath correcto para continuar con la verificación.
+     ```
+   - Esperar que el usuario proporcione el basePath correcto; no continuar hasta recibirlo. Si el usuario no puede o no quiere proporcionarlo, finalizar como `BLOCKED` con ese motivo.
+   - Al recibirlo, registrar el basePath proporcionado como `basePath` efectivo de la app para toda la verificación. Esta skill nunca modifica `config/default.js`; advertir al usuario que el archivo sigue inválido y que debe corregirlo y reiniciar el server para que el routing quede permanente.
+   - Si falta `config/default.js`, registrar advertencia leve pero continuar (algunos repos pueden tener config dinámica).
+   - Si `basePath` contiene una ruta válida, usar ese valor como `basePath` efectivo y continuar.
+
+2. Verificar que exista un proceso escuchando en el puerto local `8443`:
    - ejecutar `lsof -nP -iTCP:8443 -sTCP:LISTEN` o un probe equivalente disponible en el entorno;
    - registrar resultado como `LISTENING` con proceso identificado, `CLOSED`/`REFUSED`, `TIMEOUT` o `ERROR`;
    - no inferir que server está levantado únicamente porque una URL fue configurada.
-2. Confirmar que server responde en `https://<adminml-host>:8443` usando host permitido seleccionado y timeout corto; usar `http://<adminml-host>:8443` solo si scheme del proyecto lo exige. Un listener sin respuesta de aplicación no cuenta como server levantado. Nunca sustituir `<adminml-host>` por `localhost`, `127.0.0.1` o IP directa.
-3. Si no hay proceso escuchando en `8443`, o server no responde:
+
+3. Confirmar que server responde en `https://<adminml-host>:8443<basePath efectivo>` usando host permitido seleccionado y timeout corto; usar `http://<adminml-host>:8443<basePath efectivo>` solo si scheme del proyecto lo exige. Un listener sin respuesta de aplicación no cuenta como server levantado. Nunca sustituir `<adminml-host>` por `localhost`, `127.0.0.1` o IP directa. Si la app no responde bajo el `basePath` efectivo, tratarlo como server no levantado: advertir que `config/default.js` sigue inválido hasta que el usuario lo corrija y reinicie, y volver al paso 2.
+
+4. Si no hay proceso escuchando en `8443`, o server no responde:
    - detener workflow completo antes de cualquier otro probe, navegación, snapshot, click, lectura de requests, inspección estática o prueba unitaria;
    - informar estado observado sin clasificarlo como fallo de producto;
    - no continuar con ningún fallback mientras el runtime siga bloqueado;
    - ejecutar inmediatamente `AskUserQuestion` y esperar su respuesta antes de cualquier otra acción.
-4. La pregunta interactiva es obligatoria para este bloqueo. Usar `AskUserQuestion` con `multiSelect: false`, header `Runtime`, y una pregunta equivalente a `Levantá la app/server en 8443. ¿Está listo para reintentar el preflight?`. Ofrecer como mínimo estas opciones:
+
+5. La pregunta interactiva es obligatoria para este bloqueo. Usar `AskUserQuestion` con `multiSelect: false`, header `Runtime`, y una pregunta equivalente a `Levantá la app/server en 8443. ¿Está listo para reintentar el preflight?`. Ofrecer como mínimo estas opciones:
    - **Listo** — `Levanté la app/server en 8443; repetir listener y health check desde cero.`
    - **Todavía no** — `Mantener verificación BLOCKED y finalizar sin inspección estática ni pruebas.`
    No reemplazar la llamada por una pregunta abierta, una instrucción textual ni asumir que el usuario ya levantó el server.
-5. Si el usuario elige **Listo**, repetir listener y health check desde cero; no continuar basándose únicamente en esa selección. Si el usuario elige **Todavía no**, o si los checks siguen fallando, finalizar como `BLOCKED` sin abrir browser, ejecutar probes adicionales, inspeccionar código o correr pruebas.
-6. Continuar con browser y flujo runtime solo cuando proceso y server estén confirmados como disponibles. La ausencia de runtime nunca habilita inspección estática o pruebas como sustituto dentro de esta skill.
+
+6. Si el usuario elige **Listo**, repetir listener y health check desde cero; no continuar basándose únicamente en esa selección. Si el usuario elige **Todavía no**, o si los checks siguen fallando, finalizar como `BLOCKED` sin abrir browser, ejecutar probes adicionales, inspeccionar código o correr pruebas.
+
+7. Continuar con browser y flujo runtime solo cuando proceso y server estén confirmados como disponibles. La ausencia de runtime nunca habilita inspección estática o pruebas como sustituto dentro de esta skill.
 
 ## Preparar verificación
 
@@ -45,8 +69,8 @@ Antes de cualquier probe remoto, navegación o interacción con browser:
    - ejecutar `nc -z -w 5 <adminml-host> 8443` o un probe TCP equivalente disponible en el entorno;
    - registrar resultado como `OPEN`, `REFUSED/CLOSED`, `TIMEOUT` o `DNS/ERROR`;
    - no afirmar que el servidor rechaza conexión ni clasificar el entorno como bloqueado por conexión sin este probe y su resultado registrado.
-2. Confirmar servidor disponible en `https://<adminml-host>:8443`.
-3. Abrir la ruta en browser usando `<adminml-host>` y detectar si redirige a Okta u otro proveedor corporativo, o si browser muestra una advertencia de certificado/TLS.
+2. Confirmar servidor disponible en `https://<adminml-host>:8443<basePath efectivo>`.
+3. Abrir la ruta en browser usando `<adminml-host>` y el `basePath` efectivo, anteponiendo `basePath` a la ruta afectada, y detectar si redirige a Okta u otro proveedor corporativo, o si browser muestra una advertencia de certificado/TLS.
 4. Si aparece autenticación Okta:
    - pausar el workflow inmediatamente y dejar browser abierto;
    - informar al usuario que debe completar/aprobar autenticación;

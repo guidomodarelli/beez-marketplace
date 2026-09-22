@@ -88,6 +88,58 @@
           "description": "Redacta información sensible"
         }
       ]
+    },
+    {
+      "id": "basepath-validation-before-runtime",
+      "description": "Valida config/default.js y detecta basePath incorrecto como '/' antes de levantar app.",
+      "input": "Explicá qué debe validar nordic-dev-verify en config/default.js antes de cualquier verificación runtime. Cubrí: dónde busca el archivo, qué propiedad revisa, qué estados son válidos, qué ocurre si basePath es solo '/', cómo interactúa con el usuario si hay error, y si falta el archivo. No ejecutes comandos ni abras el browser.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "config/default.js",
+          "description": "Identifica el archivo de configuración"
+        },
+        {
+          "type": "contains_any",
+          "values": ["basePath", "ragnar.basePath"],
+          "description": "Revisa propiedad basePath"
+        },
+        {
+          "type": "contains_any",
+          "values": ["basePath === '/'", "basePath: '/'", "''", "vacío"],
+          "description": "Detecta basePath incorrecto"
+        },
+        {
+          "type": "contains_any",
+          "values": ["BLOCKED", "bloqueo", "no puede proporcionarlo", "no quiere proporcionarlo"],
+          "description": "Clasifica BLOCKED si el usuario no puede dar basePath"
+        },
+        {
+          "type": "contains_any",
+          "values": ["detener", "pausar", "advertencia", "⚠️"],
+          "description": "Bloquea con advertencia ante basePath incorrecto"
+        },
+        {
+          "type": "contains_any",
+          "values": ["Pasá el basePath correcto", "proporcione el basePath", "solicitar", "solicita"],
+          "description": "Solicita directamente basePath correcto al usuario"
+        },
+        {
+          "type": "contains_any",
+          "values": ["/tools/user-management", "ejemplo correcto", "Ejemplo"],
+          "description": "Proporciona ejemplo de basePath válido"
+        },
+        {
+          "type": "contains_any",
+          "values": ["basePath efectivo", "usar", "navegar", "aplicar"],
+          "description": "Aplica basePath proporcionado en verificación posterior"
+        },
+        {
+          "type": "contains_any",
+          "values": ["nunca modifica", "no modifica", "sin modificar", "debe corregirlo"],
+          "description": "No modifica config/default.js y advierte que debe corregirse"
+        }
+      ]
     }
   ]
 }
