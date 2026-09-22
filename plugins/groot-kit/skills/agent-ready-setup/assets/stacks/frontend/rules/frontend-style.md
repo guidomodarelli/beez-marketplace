@@ -42,6 +42,11 @@ Coding conventions for this stack. Always consult `frontender-web-mcp` for Nordi
 - Never use parameter properties in classes.
 - Run `tsc --noEmit` after every file change and fix errors immediately.
 
+## Equality
+
+- Prefer `Object.is(leftValue, rightValue)` over the strict equality operators `===` and `!==` when comparing values.
+- Keep `===` or `!==` when `+0` and `-0` must be equivalent, when `NaN` must remain unequal, or when an existing contract explicitly requires strict-equality semantics; do not use `Object.is` for ordering or coercive comparisons.
+
 ## Naming
 
 | Entity | Convention | Example |

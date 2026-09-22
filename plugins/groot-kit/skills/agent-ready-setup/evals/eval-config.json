@@ -1149,6 +1149,38 @@
           "description": "Permite detalle técnico únicamente cuando ayuda a resolver un error"
         }
       ]
+    },
+    {
+      "id": "frontend-style-prefers-object-is-over-strict-equality",
+      "description": "Prefiere Object.is frente a los operadores === y !==, conservándolos cuando la semántica lo requiere.",
+      "input": "Leé la regla frontend de agent-ready-setup sobre los operadores de igualdad estricta. Explicá cuándo preferir `Object.is` frente a `===` o `!==` y por qué `NaN`, `+0` y `-0` requieren considerar la semántica elegida. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "Object.is",
+          "description": "Recomienda Object.is para la igualdad de primitivos"
+        },
+        {
+          "type": "contains_any",
+          "values": ["===", "!==", "igualdad estricta", "strict equality"],
+          "description": "Contrasta la preferencia con igualdad estricta"
+        },
+        {
+          "type": "contains",
+          "value": "NaN",
+          "description": "Explica una diferencia relevante de semántica"
+        },
+        {
+          "type": "contains_any",
+          "values": ["NaN debe permanecer desigual", "NaN debe seguir siendo desigual", "NaN no debe ser igual", "NaN !== NaN", "NaN unequal"],
+          "description": "Conserva la semántica cuando NaN debe permanecer desigual"
+        },
+        {
+          "type": "contains_any",
+          "values": ["+0", "-0", "cero negativo", "signed zero"],
+          "description": "Explica la diferencia de ceros con signo"
+        }
+      ]
     }
   ]
 }

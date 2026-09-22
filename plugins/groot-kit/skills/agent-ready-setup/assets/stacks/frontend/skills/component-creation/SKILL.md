@@ -61,6 +61,7 @@ Rules to follow while writing:
 - Never store sensitive data (tokens, PII) in component state.
 - Never render user-provided content as raw HTML — sanitize with `DOMPurify` if unavoidable.
 - Apply the `User-facing copy` section from `frontend-style.md`: keep regular UI text non-technical and reserve necessary technical detail for actionable errors.
+- Apply the `Equality` section from `frontend-style.md`: prefer `Object.is` over `===` and `!==` when comparing values.
 
 ---
 
