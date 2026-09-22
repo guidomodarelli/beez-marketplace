@@ -1124,6 +1124,38 @@
       ]
     },
     {
+      "id": "frontend-bff-error-helper-never-fabricates-upstream-status",
+      "description": "Evita que un helper compartido reporte un status propio del BFF como si fuera el status real del upstream.",
+      "input": "Un BFF Nordic tiene un helper compartido `getUpstreamStatus(error)` que arma el detalle de ErrorUX y los logs estructurados de un flujo. El BFF también define sus propias clases de error tipadas: una marca un payload malformado del proveedor con `status: 502`, y otra marca una regla de negocio no soportada con `status: 422`; ninguna de las dos vino de una respuesta HTTP real del upstream. Explicá qué no debe hacer ese helper compartido con esas clases propias, cómo debe distinguir un status realmente devuelto por el upstream de un status que el BFF le asignó a su propio error, y qué debe reportar el diagnóstico cuando no hay un status real. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["no debe leer", "nunca debe leer", "no debe confiar", "not read", "never read", "no confiar"],
+          "description": "Prohíbe leer el status de las clases de error propias como si fuera upstream"
+        },
+        {
+          "type": "contains_any",
+          "values": ["upstreamStatus", "campo explícito", "explicit field", "campo propio", "propio campo"],
+          "description": "Exige un campo explícito para el status real del upstream"
+        },
+        {
+          "type": "contains_any",
+          "values": ["instanceof", "clases tipadas", "typed error", "propia clase", "jerarquía de errores", "error hierarchy"],
+          "description": "Distingue las clases de error propias del BFF por tipo"
+        },
+        {
+          "type": "contains_any",
+          "values": ["unknown", "desconocido", "sin status"],
+          "description": "Reporta status desconocido cuando no hay uno real"
+        },
+        {
+          "type": "contains_any",
+          "values": ["502", "422"],
+          "description": "Reconoce los statuses de ejemplo como asignados por el BFF, no por el upstream"
+        }
+      ]
+    },
+    {
       "id": "frontend-user-facing-copy-avoids-technical-jargon",
       "description": "Mantiene la interfaz clara para personas no técnicas y reserva detalle técnico para errores accionables.",
       "input": "Leé la regla frontend de agent-ready-setup y explicá cómo escribir textos visibles en una interfaz para personas no técnicas. Incluí qué hacer con etiquetas, botones, estados de carga y mensajes normales; usá el caso `Reintentar preflight` como ejemplo de texto que debe simplificarse; y diferenciá la excepción permitida para errores. No ejecutes Bash ni escribas archivos.",
@@ -1179,6 +1211,43 @@
           "type": "contains_any",
           "values": ["+0", "-0", "cero negativo", "signed zero"],
           "description": "Explica la diferencia de ceros con signo"
+        }
+      ]
+    },
+    {
+      "id": "frontend-style-prefers-semantic-strings-over-boolean-parameters",
+      "description": "Reemplaza parámetros booleanos que cambian comportamiento por strings semánticos de estado.",
+      "input": "Leé la regla frontend de agent-ready-setup sobre parámetros de funciones. En `api/services/users.ts` existe `listUsers(page: number, activeOnly = false, adminOnly = false)` y se llama como `listUsers(page, true, true)`. Explicá qué problema tiene, proponé la firma y la llamada corregidas, y aclará qué booleanos sí pueden quedarse. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": ["boolean", "booleano"],
+          "description": "Identifica el parámetro booleano como el problema"
+        },
+        {
+          "type": "regex",
+          "pattern": "'(all|active|admin)[a-z-]*'",
+          "description": "Propone valores string semánticos de estado"
+        },
+        {
+          "type": "contains_any",
+          "values": ["union", "as const", "unión"],
+          "description": "Declara los valores como union type o const object"
+        },
+        {
+          "type": "contains_any",
+          "values": ["combinaci", "combination"],
+          "description": "Explica que evita combinaciones inválidas u ocultas"
+        },
+        {
+          "type": "contains_any",
+          "values": ["disabled", "checked", "upstream", "payload", "predicado", "predicate"],
+          "description": "Aclara las excepciones que siguen siendo booleanas"
+        },
+        {
+          "type": "not_contains_any",
+          "values": ["enum User"],
+          "description": "No propone un enum"
         }
       ]
     },

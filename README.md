@@ -252,9 +252,13 @@ Usá el script `create-version` para hacer bump a la versión de un plugin. Actu
 ```bash
 npm run create-version              # auto-detecta un plugin único; si no, muestra menú
 npm run create-version groot-queue  # apuntá a un plugin directamente por nombre
+npm run create-version -- --dry-run  # preview sin escribir, commitear ni pushear (shorthand: -n)
+npm run create-version -- groot-kit --bump minor  # sin prompts (patch | minor | major)
+npm run create-version -- --set 2.0.0  # versión exacta sin prompts
+npm run create-version -- --help     # ayuda (shorthand: -h)
 ```
 
-El script compara branch actual contra primera base remota disponible (`origin/develop`, `origin/master` u `origin/main`) y suma cambios locales para detectar qué plugin cambió. Ignora archivos fuera de `plugins/` para esa decisión, pero conserva esos archivos para el commit final. Luego pregunta cómo establecer la nueva versión — un semver bump (`patch` / `minor` / `major`) calculado desde la versión actual, o una versión exacta personalizada — y crea un commit local con todos los cambios actuales. Nunca ejecuta `push`.
+El script compara branch actual contra primera base remota disponible (`origin/develop`, `origin/master` u `origin/main`) y suma cambios locales para detectar qué plugin cambió. Ignora archivos fuera de `plugins/` para esa decisión, pero conserva esos archivos para el commit final. Luego pregunta cómo establecer la nueva versión — un semver bump (`patch` / `minor` / `major`) calculado desde la versión actual, o una versión exacta personalizada — crea un commit con todos los cambios actuales y hace `push` automático de la rama (con `-u origin HEAD` si todavía no tiene upstream). Nunca hace force-push y omite el push en ramas default (`develop`, `master`, `main`); si el push falla, el commit local se conserva y el script termina con error. Con `--dry-run` (o `-n`) recorre los mismos prompts y muestra qué archivos actualizaría, el commit y el push planeados, sin modificar nada. `--bump <kind>` o `--set <version>` evitan el prompt de versión (no se pueden combinar) y `--help` (`-h`) muestra el uso.
 
 > ⚠️ Antes de escribir, valida que ambos manifiestos ya compartan la misma versión y aborta si difieren — nunca vas a hacer bump desde un estado inconsistente.
 

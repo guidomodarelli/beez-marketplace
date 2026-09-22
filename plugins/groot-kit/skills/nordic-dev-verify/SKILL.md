@@ -1,135 +1,157 @@
 ---
 name: nordic-dev-verify
-description: Verifica flujos runtime de aplicaciones web Nordic en entorno local o de desarrollo mediante browser y Chrome DevTools MCP, validando también que `config/default.js` tenga un `basePath` correcto antes de levantar la app. Activar de forma proactiva siempre que el usuario proporcione una URL Nordic bajo `dev.adminml.com` o `*.adminml.com`, mencione una acción de UI o reporte un stack trace, error de consola, request XHR/fetch, `404`, `5xx`, `JSON.parse`, fallo de red o comportamiento inesperado al ejecutar la aplicación; también cuando pida ejecutar, reproducir, depurar, probar, validar o confirmar un flujo frontend. Usar aunque no diga explícitamente “validar”, no pida una prueba manual o no mencione esta skill por nombre.
+description: >-
+  Verifica en runtime apps Nordic bajo *.adminml.com:8443 con Chrome DevTools MCP:
+  preflight de basePath y server, gates Okta/TLS, requests y consola. Usar al
+  reproducir, depurar o validar un flujo de UI, un 404/5xx, un stack trace o un
+  error de consola, aunque no se pida "validar" ni se nombre la skill.
+license: MIT
+metadata:
+  version: "2.0.0"
+  category: "frontend-verification"
+  tags: "nordic, runtime, chrome-devtools-mcp, adminml, okta, basepath, debugging"
+  command: "/nordic-dev-verify"
 ---
 
 # Verificar aplicaciones Nordic en desarrollo
 
 ## Objetivo
 
-Validar comportamiento observable desde UI y requests de red sin exponer credenciales ni dejar datos de prueba modificados. Reportar evidencia suficiente para distinguir resultado exitoso, fallo real o bloqueo de entorno.
+Confirmar comportamiento observable desde UI, red y consola de una app Nordic levantada en desarrollo. El reporte tiene que permitir distinguir tres cosas: el flujo funciona, el producto falla, o el entorno impide saberlo. Nunca exponer credenciales ni dejar datos de prueba modificados.
 
-## Hosts permitidos
+## Principio central: sin runtime no hay verificación
 
-Usar exclusivamente `dev.adminml.com` o subdominios `*.adminml.com` declarados en `/etc/hosts`:
+Esta skill mide lo que la app hace al ejecutarse. Si el runtime no está disponible, cualquier conclusión sacada de leer código o correr tests sería una suposición presentada como verificación. Por eso, mientras el runtime esté bloqueado:
 
-1. Descubrir hosts con dominio `adminml.com` en `/etc/hosts`, ignorando comentarios y duplicados; incluir siempre `dev.adminml.com` como host permitido.
-2. Seleccionar un host descubierto para listener, health check, navegación, browser y diagnóstico de requests.
-3. Rechazar URLs con otros dominios, `localhost`, `127.0.0.1` o IPs directas; solicitar una ruta equivalente bajo host permitido cuando sea necesario.
-4. Si no existe ningún host permitido resoluble, clasificar verificación como `BLOCKED` y reportar que falta alias `adminml.com` válido en `/etc/hosts`.
+- clasificar como `BLOCKED`, informar el estado exacto observado y no tratarlo como fallo de producto;
+- no pasar a inspección estática, lectura de código ni pruebas como sustituto dentro de esta verificación;
+- ofrecer reintentar cuando el usuario levante el server.
 
-## Preflight obligatorio del servidor local
+Si el usuario después pide explícitamente analizar código o correr tests, eso es otra tarea y se reporta por separado, sin el título "Verificación runtime".
 
-Antes de cualquier probe remoto, navegación o interacción con browser:
+## 1. Resolver destino: host, puerto y basePath
 
-1. Validar `basePath` en `config/default.js`:
-   - Localizar el archivo `config/default.js` en la raíz del repositorio actual.
-   - Leer la propiedad `ragnar.basePath` o equivalente.
-   - Si `basePath === '/'` o `''`, detener inmediatamente y solicitar al usuario que proporcione el basePath correcto:
+Resolver los tres valores antes de cualquier probe y registrar de dónde salió cada uno (usuario, config o default), porque el reporte y los mensajes de error dependen de ese origen.
+
+### Host
+
+1. Hosts permitidos: `dev.adminml.com` más los subdominios `*.adminml.com` declarados en `/etc/hosts` (ignorar comentarios y duplicados).
+2. Rechazar `localhost`, `127.0.0.1`, IPs directas y cualquier otro dominio. Esos hosts saltean el routing, las cookies y el SSO que ve un usuario real, así que un resultado ahí no vale como evidencia. Si el usuario pasa una URL así, pedir la ruta equivalente bajo un host permitido.
+3. Elegir el host así: el de la URL del usuario si está permitido; si no, `dev.adminml.com`. Si hay varios alias candidatos y ninguno surge del pedido, preguntar con `AskUserQuestion` en lugar de adivinar.
+4. Si ningún host permitido resuelve, finalizar como `BLOCKED` y avisar que falta un alias `adminml.com` válido en `/etc/hosts`.
+
+### Puerto
+
+Usar `8443` salvo que la URL del usuario o la config del proyecto declare otro puerto de forma explícita; en ese caso usarlo y registrar el origen. Scheme `https`, salvo que el proyecto sirva `http` de forma explícita.
+
+### basePath
+
+Las apps de `adminml.com` comparten host y se montan bajo una ruta propia, así que un `basePath` `'/'` o vacío hace que la app responda en una ruta que no es la suya.
+
+1. Buscar `config/default.js` en la raíz del repositorio y leer la clave `basePath` (habitualmente `ragnar.basePath`, a veces en el nivel superior). No ejecutar ni evaluar el archivo: leerlo como texto.
+2. Según el valor:
+   - **String literal con ruta** (p. ej. `'/tools/user-management'`): usarlo como `basePath` efectivo, con origen `config`.
+   - **`'/'` o `''`**: detenerse y pedir el basePath correcto con este mensaje:
      ```
      ⚠️  basePath incorrecto en config/default.js
-     
+
      basePath: '/' no es válido para esta app. Debería contener una ruta específica.
-     
+
      Ejemplo correcto:
      basePath: '/tools/user-management'
-     
+
      Pasá el basePath correcto para continuar con la verificación.
      ```
-   - Esperar que el usuario proporcione el basePath correcto; no continuar hasta recibirlo. Si el usuario no puede o no quiere proporcionarlo, finalizar como `BLOCKED` con ese motivo.
-   - Al recibirlo, registrar el basePath proporcionado como `basePath` efectivo de la app para toda la verificación. Esta skill nunca modifica `config/default.js`; advertir al usuario que el archivo sigue inválido y que debe corregirlo y reiniciar el server para que el routing quede permanente.
-   - Si falta `config/default.js`, registrar advertencia leve pero continuar (algunos repos pueden tener config dinámica).
-   - Si `basePath` contiene una ruta válida, usar ese valor como `basePath` efectivo y continuar.
+     Esperar la respuesta. Si el usuario no puede o no quiere darlo, finalizar como `BLOCKED` con ese motivo. Al recibirlo, usarlo como `basePath` efectivo con origen `override del usuario`, y advertir que el archivo sigue inválido: el server va a seguir sirviendo en `'/'` hasta que lo corrijan y reinicien.
+   - **Valor calculado** (variable de entorno, función, template, import): no intentar resolverlo. Si la URL del usuario trae la ruta, usar esa ruta con origen `URL del usuario`; si no, pedir el basePath efectivo al usuario.
+3. Si falta `config/default.js`, registrar una advertencia leve y tomar el basePath de la URL del usuario; si tampoco hay, pedirlo.
+4. Esta skill nunca modifica `config/default.js` ni otro archivo del proyecto.
 
-2. Verificar que exista un proceso escuchando en el puerto local `8443`:
-   - ejecutar `lsof -nP -iTCP:8443 -sTCP:LISTEN` o un probe equivalente disponible en el entorno;
-   - registrar resultado como `LISTENING` con proceso identificado, `CLOSED`/`REFUSED`, `TIMEOUT` o `ERROR`;
-   - no inferir que server está levantado únicamente porque una URL fue configurada.
+## 2. Preflight único del server
 
-3. Confirmar que server responde en `https://<adminml-host>:8443<basePath efectivo>` usando host permitido seleccionado y timeout corto; usar `http://<adminml-host>:8443<basePath efectivo>` solo si scheme del proyecto lo exige. Un listener sin respuesta de aplicación no cuenta como server levantado. Nunca sustituir `<adminml-host>` por `localhost`, `127.0.0.1` o IP directa. Si la app no responde bajo el `basePath` efectivo, tratarlo como server no levantado: advertir que `config/default.js` sigue inválido hasta que el usuario lo corrija y reinicie, y volver al paso 2.
+Ejecutar los tres probes en orden, con timeout corto, sobre el destino resuelto. Nunca sustituir el host por `localhost` ni IP. Registrar cada resultado con su estado exacto:
 
-4. Si no hay proceso escuchando en `8443`, o server no responde:
-   - detener workflow completo antes de cualquier otro probe, navegación, snapshot, click, lectura de requests, inspección estática o prueba unitaria;
-   - informar estado observado sin clasificarlo como fallo de producto;
-   - no continuar con ningún fallback mientras el runtime siga bloqueado;
-   - ejecutar inmediatamente `AskUserQuestion` y esperar su respuesta antes de cualquier otra acción.
+| Probe | Comando de referencia | Estados |
+| --- | --- | --- |
+| Listener local | `lsof -nP -iTCP:<puerto> -sTCP:LISTEN` | `LISTENING` (con proceso), `NOT_LISTENING`, `ERROR` |
+| TCP al host | `nc -z -w 5 <host> <puerto>` | `OPEN`, `REFUSED`, `TIMEOUT`, `DNS_ERROR` |
+| HTTP de la app | `curl -sk -o /dev/null -w '%{http_code}' --max-time 10 https://<host>:<puerto><basePath>` | código HTTP, o `NO_RESPONSE` |
 
-5. La pregunta interactiva es obligatoria para este bloqueo. Usar `AskUserQuestion` con `multiSelect: false`, header `Runtime`, y una pregunta equivalente a `Levantá la app/server en 8443. ¿Está listo para reintentar el preflight?`. Ofrecer como mínimo estas opciones:
-   - **Listo** — `Levanté la app/server en 8443; repetir listener y health check desde cero.`
-   - **Todavía no** — `Mantener verificación BLOCKED y finalizar sin inspección estática ni pruebas.`
-   No reemplazar la llamada por una pregunta abierta, una instrucción textual ni asumir que el usuario ya levantó el server.
+No inferir el estado desde la configuración ni desde lo que muestre el browser: solo cuenta lo que devuelvan los probes.
 
-6. Si el usuario elige **Listo**, repetir listener y health check desde cero; no continuar basándose únicamente en esa selección. Si el usuario elige **Todavía no**, o si los checks siguen fallando, finalizar como `BLOCKED` sin abrir browser, ejecutar probes adicionales, inspeccionar código o correr pruebas.
+Interpretar así:
 
-7. Continuar con browser y flujo runtime solo cuando proceso y server estén confirmados como disponibles. La ausencia de runtime nunca habilita inspección estática o pruebas como sustituto dentro de esta skill.
+- **`NOT_LISTENING` o `REFUSED`**: server no levantado → gate de runtime (ver abajo).
+- **`TIMEOUT`, `DNS_ERROR` o `NO_RESPONSE`**: reportar exactamente ese estado, sin convertirlo en "rechaza conexión"; suele indicar un alias de `/etc/hosts`, una VPN o un proceso colgado. Gate de runtime.
+- **`404` bajo el basePath**: la app responde, pero no en esa ruta.
+  - Si el origen del basePath es `override del usuario`, explicar que el server sigue montado en `'/'` porque `config/default.js` sigue inválido, y que hay que corregirlo y reiniciar.
+  - Si el origen es `config` o `URL del usuario`, no decir que la config es inválida: pedir al usuario que confirme la ruta o el basePath.
+  - En ambos casos, gate de runtime.
+- **`2xx`, `3xx` (incluida una redirección a Okta), `401` o `403`**: la app responde. Continuar al browser.
+- **`5xx`**: la app responde con error. Continuar al browser y registrar el `5xx` como evidencia del flujo, no como bloqueo.
 
-## Preparar verificación
+### Gate de runtime
 
-1. Verificar primero disponibilidad TCP del puerto `8443` en `<adminml-host>`, usando únicamente `dev.adminml.com` o un subdominio `*.adminml.com` descubierto en `/etc/hosts`, sin inferirla únicamente desde el browser:
-   - ejecutar `nc -z -w 5 <adminml-host> 8443` o un probe TCP equivalente disponible en el entorno;
-   - registrar resultado como `OPEN`, `REFUSED/CLOSED`, `TIMEOUT` o `DNS/ERROR`;
-   - no afirmar que el servidor rechaza conexión ni clasificar el entorno como bloqueado por conexión sin este probe y su resultado registrado.
-2. Confirmar servidor disponible en `https://<adminml-host>:8443<basePath efectivo>`.
-3. Abrir la ruta en browser usando `<adminml-host>` y el `basePath` efectivo, anteponiendo `basePath` a la ruta afectada, y detectar si redirige a Okta u otro proveedor corporativo, o si browser muestra una advertencia de certificado/TLS.
-4. Si aparece autenticación Okta:
-   - pausar el workflow inmediatamente y dejar browser abierto;
-   - informar al usuario que debe completar/aprobar autenticación;
-   - esperar confirmación explícita del usuario (por ejemplo, `listo` o `aprobado`) antes de continuar;
-   - no solicitar, ingresar, leer ni reportar credenciales, códigos, cookies o tokens;
-   - después de confirmación, verificar que browser volvió a ruta original y que sesión quedó activa; si no, clasificar como `BLOCKED`.
-5. Si una URL empieza con `https://` pero browser muestra `Not secure`, o aparece un intersticial de certificado:
-   - pausar el workflow y dejar browser abierto;
-   - informar al usuario que debe revisar el host y el certificado;
-   - pedirle que pulse `Advanced` y el enlace equivalente a `Proceed/Continue ... (unsafe)` solo si reconoce y acepta el entorno de desarrollo;
-   - esperar confirmación explícita del usuario antes de ejecutar cualquier snapshot, click, probe o lectura de requests;
-   - no hacer click en la excepción TLS por cuenta propia ni ocultar la advertencia;
-   - después de confirmación, verificar que la URL sigue usando `https://` y que el host coincide exactamente con el destino esperado; si no, clasificar como `BLOCKED`.
-6. Identificar ruta afectada, flujo esperado y requests relevantes antes de interactuar.
-7. Si flujo modifica estado, elegir fixture sandbox conocido, registrar estado inicial y definir restauración antes de ejecutar acción.
-8. No usar datos productivos ni fixtures compartidos cuyo estado no pueda restaurarse con seguridad.
+Cuando el runtime queda bloqueado, detener el workflow antes de navegar, sacar snapshots, leer requests o inspeccionar código, e informar el estado observado con este mensaje, reemplazando los valores reales:
 
-## Protocolo de espera por autenticación y seguridad del browser
+`El entorno https://<host>:<puerto><basePath> devolvió <estado del preflight>, así que la verificación runtime queda BLOCKED por ahora. No lo trato como fallo de producto ni sigo con inspección de código o pruebas como sustituto.`
 
-La aprobación del usuario es un punto de sincronización obligatorio, no una instrucción implícita para continuar. Tras abrir Okta o una advertencia TLS/`Not secure`, no ejecutar snapshot final, clicks, probes, lectura de requests de la aplicación ni diagnóstico de negocio hasta recibir confirmación explícita. Mantener el mismo browser/contexto para conservar sesión; nunca reiniciar o reemplazarlo durante la espera salvo que el usuario lo solicite.
+Después, llamar a `AskUserQuestion` con `multiSelect: false`, header `Runtime` y una pregunta equivalente a `Levantá la app/server en <puerto>. ¿Está listo para reintentar el preflight?`, con al menos estas opciones:
 
-No clasificar una pantalla de login, un `401` previo a autenticación, una advertencia TLS o la ausencia de requests de aplicación como `FAIL` del producto. Clasificar como `BLOCKED` y pedir al usuario completar/aprobar el paso interactivo; solo investigar el flujo después de confirmar callback exitoso y conexión HTTPS aceptada conscientemente.
+- **Listo** — `Levanté la app/server; repetir el preflight completo desde cero.`
+- **Todavía no** — `Mantener la verificación BLOCKED y finalizar.`
 
-## Ejecutar flujo
+No reemplazar la llamada por una pregunta abierta ni asumir que el server ya está arriba. Con **Listo**, repetir los tres probes desde cero; la selección por sí sola no prueba nada. Permitir como máximo 2 reintentos: si después del segundo el preflight sigue fallando, o si el usuario elige **Todavía no**, finalizar como `BLOCKED` con el último estado observado.
 
-1. Abrir ruta afectada mediante Chrome DevTools MCP.
-2. Capturar snapshot inicial de página.
-3. Ejecutar flujo desde UI como lo haría usuario.
-4. Inspeccionar requests XHR/fetch con `list_network_requests` y registrar método, ruta sanitizada y status.
-5. No leer headers completos: pueden contener cookies, tokens de sesión o valores CSRF.
-6. Usar `get_network_request` solo cuando body sea imprescindible para diagnóstico y pueda guardarse o mostrarse sanitizado.
-7. Agregar probe read-only adyacente con `evaluate_script` cuando permita confirmar estado final sin mutarlo.
-8. Capturar snapshot final cuando resultado visual sea relevante.
-9. Restaurar fixture a estado inicial y verificar restauración antes de cerrar.
+## 3. Abrir el browser: gates de Okta y TLS
 
-## Clasificar resultado
+Abrir `https://<host>:<puerto><basePath><ruta afectada>` con Chrome DevTools MCP (`navigate_page`) y detectar si aparece una autenticación corporativa o una advertencia de certificado.
 
-- `PASS`: flujo y requests esperados funcionan, estado final coincide con expectativa y fixture quedó restaurado.
-- `FAIL`: comportamiento o request contradice resultado esperado. Incluir paso reproducible y evidencia sanitizada.
-- `BLOCKED`: entorno, autenticación, servidor, permisos o fixture impiden verificar. No presentar bloqueo como éxito.
+Estas pantallas son pasos interactivos del entorno, no fallos del producto. Mientras estén pendientes:
 
-### Regla para rechazo de conexión
+- dejar el browser abierto y mantener el mismo contexto para conservar la sesión;
+- no sacar snapshots, hacer clicks, leer requests ni diagnosticar el flujo;
+- no solicitar, ingresar, leer ni reportar credenciales, códigos, cookies o tokens.
 
-Usar el mensaje `El entorno https://<adminml-host>:8443 rechaza conexión, por lo que verificación runtime queda bloqueada por ahora; no lo trataré como fallo de producto. La inspección seguirá sobre código y pruebas para aislar regresión reproducible localmente.` solo cuando el probe TCP haya devuelto `REFUSED/CLOSED` y la navegación del browser muestre también rechazo de conexión; reemplazar `<adminml-host>` por host permitido real. Si el puerto está `OPEN`, no usar ese mensaje: continuar diagnóstico de HTTP, TLS, autenticación o aplicación. Para `TIMEOUT` o `DNS/ERROR`, reportar exactamente ese estado y no convertirlo en `REFUSED/CLOSED`.
+**Okta u otro SSO**: pedir al usuario que complete la autenticación y esperar una confirmación explícita (`listo`, `aprobado`). Después verificar que el browser volvió a la ruta original con la sesión activa; si no, `BLOCKED`.
 
-## Reportar verificación
+**Advertencia TLS o `Not secure` sobre `https://`**: pedir al usuario que revise host y certificado, y que pulse `Advanced` → `Proceed/Continue ... (unsafe)` solo si reconoce el entorno de desarrollo. No aceptar la excepción por cuenta propia. Después de la confirmación, verificar que la URL sigue en `https://` y que el host coincide exactamente con el destino; si no, `BLOCKED`.
 
-Usar estructura breve:
+Un `401` antes de autenticar, una pantalla de login o la ausencia de requests de la app mientras el gate está pendiente se clasifican como `BLOCKED`, nunca como `FAIL`.
+
+## 4. Ejecutar el flujo
+
+1. Definir antes de interactuar la ruta afectada, el flujo esperado y los requests relevantes.
+2. Si el flujo modifica estado, usar un fixture sandbox conocido, registrar su estado inicial y definir cómo restaurarlo. No usar datos productivos ni fixtures compartidos que no puedan restaurarse con seguridad.
+3. Capturar la línea base: `take_snapshot` y `list_console_messages`. Los errores que ya estén en consola antes de interactuar son ruido preexistente, y separarlos evita atribuirle al flujo algo que no causó.
+4. Ejecutar el flujo desde la UI como lo haría un usuario.
+5. Revisar requests XHR/fetch con `list_network_requests`: registrar método, ruta sanitizada y status. No leer headers completos, porque pueden traer cookies, tokens de sesión o valores CSRF. Usar `get_network_request` solo cuando el body sea imprescindible, y mostrarlo sanitizado.
+6. Volver a llamar a `list_console_messages` y quedarse con los mensajes nuevos respecto de la línea base; abrir el detalle con `get_console_message` solo para los errores relevantes y correlacionarlos con el paso o request que los disparó.
+7. Si ayuda, confirmar el estado final con un probe read-only mediante `evaluate_script`, sin mutar nada.
+8. Sacar un snapshot final cuando el resultado visual importe.
+9. Restaurar el fixture y verificar la restauración antes de cerrar.
+
+## 5. Clasificar
+
+- `PASS`: el flujo, los requests y la consola se comportan como se esperaba, el estado final coincide y el fixture quedó restaurado.
+- `FAIL`: un comportamiento, request o error de consola nuevo contradice lo esperado. Incluir paso reproducible y evidencia sanitizada.
+- `BLOCKED`: entorno, preflight, autenticación, TLS, permisos o fixture impiden verificar. Nunca presentar un bloqueo como éxito ni como fallo de producto.
+
+## 6. Reportar
 
 ```markdown
 ## Verificación runtime
 
 - Resultado: PASS | FAIL | BLOCKED
+- Destino: https://<host>:<puerto><basePath> (basePath desde: config | override del usuario | URL del usuario)
+- Preflight: listener <estado> · TCP <estado> · HTTP <código o estado>
 - Ruta: <ruta verificada>
 - Flujo: <acciones ejecutadas>
 - Requests: <método + ruta sanitizada + status>
+- Consola: <errores nuevos durante el flujo o ninguno>
+- Ruido preexistente: <errores de la línea base o ninguno>
 - Estado: <inicial, final y restauración cuando aplique>
 - Evidencia: <snapshots o probes relevantes>
-- Ruido preexistente: <errores ajenos observados o ninguno>
 - Bloqueos: <detalle accionable o ninguno>
 ```
 

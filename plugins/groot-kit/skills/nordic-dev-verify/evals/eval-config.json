@@ -1,66 +1,422 @@
 {
   "schema_version": 2,
   "skill": "nordic-dev-verify",
-  "description": "Evalúa verificación runtime segura de aplicaciones Nordic en desarrollo.",
+  "description": "Evalúa verificación runtime segura de aplicaciones Nordic en desarrollo: preflight único, gates de runtime/Okta/TLS, basePath según su origen, consola y clasificación.",
   "test_cases": [
     {
-      "id": "preflight-blocks-before-browser",
-      "description": "Exige listener y health check en 8443 antes de browser.",
-      "input": "Explicá qué debe hacer nordic-dev-verify antes de abrir el browser cuando se pide validar una app Nordic. Incluí el puerto 8443, los estados posibles, qué ocurre si el server no responde y qué interacción debe pedir al usuario. No ejecutes comandos ni abras el browser.",
+      "id": "preflight-single-sequence",
+      "description": "Define un preflight único con listener, TCP y HTTP antes del browser.",
+      "input": "Voy a pedirte validar un flujo en una app Nordic. Antes de abrir el browser, ¿qué probes corrés, en qué orden, con qué comandos y qué estados registrás en cada uno? No ejecutes nada, solo describí el plan.",
       "assertions": [
         {
           "type": "contains",
           "value": "8443",
-          "description": "Exige preflight del puerto local"
+          "description": "Usa el puerto por defecto 8443"
+        },
+        {
+          "type": "contains",
+          "value": "lsof",
+          "description": "Incluye el probe de listener local"
         },
         {
           "type": "contains_any",
-          "values": ["LISTENING", "CLOSED", "REFUSED", "TIMEOUT", "ERROR"],
-          "description": "Reporta estados observables del listener"
+          "values": [
+            "nc -z",
+            "nc "
+          ],
+          "description": "Incluye el probe TCP al host"
         },
         {
           "type": "contains_any",
-          "values": ["AskUserQuestion", "pregunta interactiva", "Listo", "Todavía no"],
-          "description": "Exige sincronización interactiva ante bloqueo"
+          "values": [
+            "curl",
+            "HTTP"
+          ],
+          "description": "Incluye el probe HTTP de la aplicación"
         },
         {
           "type": "contains_any",
-          "values": ["no abrir browser", "no abrir el browser", "antes de cualquier navegación"],
-          "description": "Bloquea navegación antes de runtime disponible"
+          "values": [
+            "NOT_LISTENING",
+            "REFUSED",
+            "TIMEOUT",
+            "DNS_ERROR",
+            "NO_RESPONSE"
+          ],
+          "description": "Registra estados exactos de los probes"
+        }
+      ]
+    },
+    {
+      "id": "refused-no-static-fallback",
+      "description": "Con REFUSED bloquea, pide reintento y no usa código o tests como sustituto.",
+      "input": "Corriste el preflight de nordic-dev-verify contra https://dev.adminml.com:8443/tools/user-management: lsof devolvió NOT_LISTENING y nc devolvió REFUSED. El usuario agregó: 'si no levanta, revisá el código y corré los tests para ver si anda'. ¿Qué respondés y qué hacés a continuación? No ejecutes comandos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "BLOCKED",
+          "description": "Clasifica el runtime caído como BLOCKED"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "AskUserQuestion",
+            "Listo",
+            "Todavía no"
+          ],
+          "description": "Ofrece el gate interactivo de reintento"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "fallo de producto",
+            "fallo del producto"
+          ],
+          "description": "Aclara que no es fallo de producto"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "sustituto",
+            "otra tarea",
+            "por separado",
+            "no sigo con inspección",
+            "no reemplaza"
+          ],
+          "description": "Separa el análisis de código de la verificación runtime"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "La inspección seguirá sobre código y pruebas"
+          ],
+          "description": "No usa el mensaje contradictorio de fallback estático"
+        }
+      ]
+    },
+    {
+      "id": "open-port-http-timeout",
+      "description": "Con TCP OPEN y HTTP sin respuesta no afirma que rechaza conexión.",
+      "input": "En el preflight de nordic-dev-verify, lsof devolvió LISTENING (node), nc devolvió OPEN, pero curl a https://dev.adminml.com:8443/tools/abc terminó en NO_RESPONSE por timeout. ¿Cómo lo reportás al usuario? No ejecutes comandos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "NO_RESPONSE",
+            "timeout",
+            "TIMEOUT"
+          ],
+          "description": "Reporta el estado exacto del probe HTTP"
+        },
+        {
+          "type": "contains",
+          "value": "BLOCKED",
+          "description": "Mantiene la verificación bloqueada"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "rechaza conexión, por lo que",
+            "rechaza la conexión, por lo que",
+            "devolvió REFUSED"
+          ],
+          "description": "No convierte un timeout en rechazo de conexión"
+        }
+      ]
+    },
+    {
+      "id": "localhost-url-rejected",
+      "description": "Rechaza localhost y pide una ruta bajo un host adminml.com permitido.",
+      "input": "Validá con nordic-dev-verify que el botón Guardar funciona en https://localhost:8443/tools/user-management/edit/42. No ejecutes comandos todavía: decime qué hacés con esa URL.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "dev.adminml.com",
+            "adminml.com"
+          ],
+          "description": "Redirige a un host permitido"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "prohibid",
+            "No voy a usar",
+            "no uso localhost",
+            "no usar localhost",
+            "rechaz",
+            "no está permitido",
+            "no permitido"
+          ],
+          "description": "Rechaza explícitamente localhost"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "routing",
+            "cookies",
+            "SSO",
+            "Okta"
+          ],
+          "description": "Explica por qué localhost no sirve como evidencia"
+        }
+      ]
+    },
+    {
+      "id": "basepath-slash-requires-user-value",
+      "description": "Con basePath '/' pide el valor correcto, no modifica config y lo usa como override.",
+      "input": "El config/default.js de la app tiene ragnar: { basePath: '/' }. Iba a pedirte validar la pantalla de listado. ¿Qué hace nordic-dev-verify con eso antes de seguir? No ejecutes comandos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "config/default.js",
+          "description": "Identifica el archivo de configuración"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Pasá el basePath correcto",
+            "pedir el basePath",
+            "pido el basePath",
+            "solicit"
+          ],
+          "description": "Solicita el basePath correcto al usuario"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "/tools/user-management",
+            "Ejemplo correcto",
+            "ejemplo"
+          ],
+          "description": "Da un ejemplo de basePath válido"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "nunca modifica",
+            "no modifica",
+            "no modifico",
+            "sin modificar"
+          ],
+          "description": "No modifica config/default.js"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "corrijan y reinicien",
+            "corregirlo y reiniciar",
+            "reinici"
+          ],
+          "description": "Advierte que hay que corregir y reiniciar"
+        }
+      ]
+    },
+    {
+      "id": "override-basepath-404",
+      "description": "Con override del usuario y 404, atribuye el 404 a la config que sigue en '/'.",
+      "input": "config/default.js tenía basePath '/', el usuario me pasó '/tools/user-management' como override y el preflight dio LISTENING, OPEN y HTTP 404 en https://dev.adminml.com:8443/tools/user-management. ¿Qué le decís al usuario? No ejecutes comandos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "404",
+          "description": "Reporta el código HTTP observado"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "sigue montado",
+            "sigue sirviendo",
+            "sigue inválido",
+            "todavía tiene"
+          ],
+          "description": "Explica que el server sigue sirviendo en '/'"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "reinici"
+          ],
+          "description": "Pide corregir la config y reiniciar"
+        }
+      ]
+    },
+    {
+      "id": "valid-config-basepath-404",
+      "description": "Con basePath válido en config y 404, no culpa a la config y pide confirmar la ruta.",
+      "input": "config/default.js declara ragnar: { basePath: '/tools/abc' } y el preflight dio LISTENING, OPEN y HTTP 404 en https://dev.adminml.com:8443/tools/abc. ¿Qué le decís al usuario? No ejecutes comandos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "404",
+          "description": "Reporta el código HTTP observado"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "confirm",
+            "verific"
+          ],
+          "description": "Pide confirmar la ruta o el basePath"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "basePath incorrecto",
+            "sigue inválido",
+            "config inválida",
+            "configuración inválida"
+          ],
+          "description": "No atribuye el 404 a una config inválida"
+        }
+      ]
+    },
+    {
+      "id": "computed-basepath",
+      "description": "Con basePath calculado no evalúa el archivo y usa la URL o pregunta.",
+      "input": "El config/default.js tiene basePath: process.env.APP_BASE_PATH || getDefaultPath(). No me pasaste ninguna URL. ¿Cómo resuelve nordic-dev-verify el basePath efectivo? No ejecutes comandos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "no ejecut",
+            "no evalu",
+            "no evalúa",
+            "no evalúo",
+            "no intentar resolverlo",
+            "ni intenta resolver",
+            "no lo resuelvo",
+            "como texto"
+          ],
+          "description": "No ejecuta ni evalúa el archivo de config"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "pedir",
+            "pido",
+            "pide",
+            "pregunt",
+            "solicit",
+            "indiques",
+            "cuál es"
+          ],
+          "description": "Pide el basePath efectivo al usuario"
+        }
+      ]
+    },
+    {
+      "id": "retry-limit",
+      "description": "Tras dos reintentos fallidos finaliza como BLOCKED.",
+      "input": "Con nordic-dev-verify, el preflight dio REFUSED. El usuario eligió 'Listo' dos veces y en ambos reintentos nc siguió devolviendo REFUSED. ¿Qué hacés ahora? No ejecutes comandos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "BLOCKED",
+          "description": "Finaliza como BLOCKED"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "2 reintentos",
+            "dos reintentos",
+            "máximo",
+            "límite",
+            "finaliz"
+          ],
+          "description": "Aplica el límite de reintentos"
+        },
+        {
+          "type": "contains",
+          "value": "REFUSED",
+          "description": "Reporta el último estado observado"
         }
       ]
     },
     {
       "id": "browser-auth-and-tls-gates",
-      "description": "Conserva pausa explícita ante Okta y advertencias TLS.",
-      "input": "Explicá cómo debe actuar nordic-dev-verify si la navegación llega a Okta o muestra una advertencia TLS en un entorno de desarrollo. Indicá qué no debe leer ni ingresar, cuándo puede continuar y cómo clasifica el bloqueo. No ejecutes comandos ni abras el browser.",
+      "description": "Pausa ante Okta y TLS, no toca secretos y clasifica un 401 previo como BLOCKED.",
+      "input": "Al navegar con nordic-dev-verify la app redirige a Okta y, en otra corrida, aparece 'Not secure' con advertencia de certificado. En la primera también viste un 401 antes de loguearte. ¿Cómo actuás en cada caso, qué no leés ni ingresás y cómo clasificás el 401? No ejecutes comandos.",
       "assertions": [
         {
-          "type": "contains_any",
-          "values": ["Okta", "autenticación"],
+          "type": "contains",
+          "value": "Okta",
           "description": "Cubre el gate de autenticación corporativa"
         },
         {
           "type": "contains_any",
-          "values": ["TLS", "certificado", "Not secure"],
+          "values": [
+            "TLS",
+            "certificado",
+            "Not secure"
+          ],
           "description": "Cubre el gate de certificado"
         },
         {
           "type": "contains_any",
-          "values": ["cookies", "tokens", "credenciales", "códigos"],
+          "values": [
+            "cookies",
+            "tokens",
+            "credenciales",
+            "códigos"
+          ],
           "description": "Evita manipular secretos de autenticación"
         },
         {
+          "type": "contains_any",
+          "values": [
+            "por cuenta propia",
+            "no acepto la excepción",
+            "no aceptar la excepción",
+            "el usuario"
+          ],
+          "description": "Deja la excepción TLS al usuario"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "nunca como `FAIL`",
+            "nunca como FAIL",
+            "no como `FAIL`",
+            "no como FAIL"
+          ],
+          "description": "Clasifica el 401 previo a autenticar como BLOCKED y no como FAIL"
+        }
+      ]
+    },
+    {
+      "id": "console-baseline-and-diff",
+      "description": "Captura consola antes y después del flujo y separa ruido preexistente.",
+      "input": "El usuario reporta que al abrir el detalle de un usuario aparece 'TypeError: Cannot read properties of undefined' en consola. Con el runtime ya disponible, ¿cómo usás la consola dentro del flujo de nordic-dev-verify? No ejecutes comandos.",
+      "assertions": [
+        {
           "type": "contains",
-          "value": "BLOCKED",
-          "description": "Clasifica bloqueo de autenticación o TLS"
+          "value": "list_console_messages",
+          "description": "Usa la herramienta de consola de Chrome DevTools MCP"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "línea base",
+            "antes de interactuar",
+            "baseline"
+          ],
+          "description": "Captura una línea base antes del flujo"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "ruido preexistente",
+            "preexistente"
+          ],
+          "description": "Separa errores preexistentes de los nuevos"
         }
       ]
     },
     {
       "id": "runtime-result-classification",
-      "description": "Distingue resultado funcional de bloqueo de entorno.",
-      "input": "Explicá cómo reportar una verificación runtime Nordic con flujo esperado, requests XHR/fetch y restauración de fixture. Diferenciá PASS, FAIL y BLOCKED, e indicá qué datos sensibles nunca deben incluirse en el reporte. No ejecutes comandos ni abras el browser.",
+      "description": "Distingue PASS, FAIL y BLOCKED y redacta datos sensibles del reporte.",
+      "input": "Explicá cómo reportar una verificación runtime Nordic con flujo esperado, requests XHR/fetch, consola y restauración de fixture. Diferenciá PASS, FAIL y BLOCKED, e indicá qué datos sensibles nunca deben incluirse en el reporte. No ejecutes comandos.",
       "assertions": [
         {
           "type": "contains",
@@ -79,65 +435,21 @@
         },
         {
           "type": "contains_any",
-          "values": ["XHR", "fetch", "Requests"],
-          "description": "Incluye evidencia de requests"
+          "values": [
+            "Preflight",
+            "preflight"
+          ],
+          "description": "Incluye el resultado del preflight en el reporte"
         },
         {
           "type": "contains_any",
-          "values": ["tokens", "cookies", "CSRF", "PII"],
+          "values": [
+            "tokens",
+            "cookies",
+            "CSRF",
+            "PII"
+          ],
           "description": "Redacta información sensible"
-        }
-      ]
-    },
-    {
-      "id": "basepath-validation-before-runtime",
-      "description": "Valida config/default.js y detecta basePath incorrecto como '/' antes de levantar app.",
-      "input": "Explicá qué debe validar nordic-dev-verify en config/default.js antes de cualquier verificación runtime. Cubrí: dónde busca el archivo, qué propiedad revisa, qué estados son válidos, qué ocurre si basePath es solo '/', cómo interactúa con el usuario si hay error, y si falta el archivo. No ejecutes comandos ni abras el browser.",
-      "assertions": [
-        {
-          "type": "contains",
-          "value": "config/default.js",
-          "description": "Identifica el archivo de configuración"
-        },
-        {
-          "type": "contains_any",
-          "values": ["basePath", "ragnar.basePath"],
-          "description": "Revisa propiedad basePath"
-        },
-        {
-          "type": "contains_any",
-          "values": ["basePath === '/'", "basePath: '/'", "''", "vacío"],
-          "description": "Detecta basePath incorrecto"
-        },
-        {
-          "type": "contains_any",
-          "values": ["BLOCKED", "bloqueo", "no puede proporcionarlo", "no quiere proporcionarlo"],
-          "description": "Clasifica BLOCKED si el usuario no puede dar basePath"
-        },
-        {
-          "type": "contains_any",
-          "values": ["detener", "pausar", "advertencia", "⚠️"],
-          "description": "Bloquea con advertencia ante basePath incorrecto"
-        },
-        {
-          "type": "contains_any",
-          "values": ["Pasá el basePath correcto", "proporcione el basePath", "solicitar", "solicita"],
-          "description": "Solicita directamente basePath correcto al usuario"
-        },
-        {
-          "type": "contains_any",
-          "values": ["/tools/user-management", "ejemplo correcto", "Ejemplo"],
-          "description": "Proporciona ejemplo de basePath válido"
-        },
-        {
-          "type": "contains_any",
-          "values": ["basePath efectivo", "usar", "navegar", "aplicar"],
-          "description": "Aplica basePath proporcionado en verificación posterior"
-        },
-        {
-          "type": "contains_any",
-          "values": ["nunca modifica", "no modifica", "sin modificar", "debe corregirlo"],
-          "description": "No modifica config/default.js y advierte que debe corregirse"
         }
       ]
     }

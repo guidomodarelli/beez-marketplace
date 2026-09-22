@@ -7,11 +7,14 @@
  *
  * Updates the `version` field in BOTH provider manifests of a plugin
  * (`.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`), keeping
- * them in sync.
+ * them in sync, then commits all current changes and pushes the branch.
  *
  * Usage:
  *   npm run create-version            -> interactive plugin menu
  *   npm run create-version <plugin>   -> target a plugin directly by name
+ *   npm run create-version -- --dry-run | -n   -> preview without writing, committing or pushing
+ *   npm run create-version -- --bump <kind> | --set <version>   -> skip the version prompt
+ *   npm run create-version -- --help | -h   -> show usage
  */
 
 const childProcess = require('child_process');
@@ -23,6 +26,15 @@ const REPOSITORY_ROOT = path.join(__dirname, '..');
 const PLUGINS_DIR = path.join(REPOSITORY_ROOT, 'plugins');
 const CLAUDE_MANIFEST = path.join('.claude-plugin', 'plugin.json');
 const CODEX_MANIFEST = path.join('.codex-plugin', 'plugin.json');
+const REMOTE_NAME = 'origin';
+const DEFAULT_BRANCHES = ['develop', 'master', 'main'];
+const DRY_RUN_FLAGS = ['--dry-run', '-n'];
+const HELP_FLAGS = ['--help', '-h'];
+const BUMP_FLAG = '--bump';
+const SET_FLAG = '--set';
+const SUPPORTED_OPTIONS = [...DRY_RUN_FLAGS, ...HELP_FLAGS, BUMP_FLAG, SET_FLAG];
+const DRY_RUN_BANNER_MESSAGE = '🧪 DRY RUN · nothing will be written, committed or pushed';
+const DRY_RUN_COMPLETE_MESSAGE = '🧪 DRY RUN complete · run again without --dry-run to apply';
 const SEMVER_PATTERN = /^\d+\.\d+\.\d+$/;
 const VERSION_FIELD_PATTERN = /("version"\s*:\s*")([^"]+)(")/;
 
@@ -32,6 +44,122 @@ const BUMP_KINDS = {
   minor: 'minor',
   major: 'major',
 };
+
+const BOX_WIDTH = 64;
+const ANSI_ESCAPE_PATTERN = /\u001b\[[0-9;]*m/g;
+const ZERO_WIDTH_CODE_POINTS = new Set([0x200d, 0xfe0f]);
+const ANSI_CODES = {
+  bold: '1',
+  dim: '2',
+  red: '31',
+  green: '32',
+  yellow: '33',
+  magenta: '35',
+  cyan: '36',
+  gray: '90',
+  black: '30',
+  yellowBackground: '43',
+};
+
+const isColorEnabled =
+  !process.env.NO_COLOR && (Boolean(process.env.FORCE_COLOR) || Boolean(process.stdout.isTTY));
+
+/**
+ * Wraps text in an ANSI style when colors are enabled.
+ *
+ * @param {string} styleName Key of ANSI_CODES.
+ * @param {string} text Text to style.
+ * @returns {string} Styled text, or the original text when colors are disabled.
+ */
+function paint(styleName, text) {
+  return isColorEnabled ? `\u001b[${ANSI_CODES[styleName]}m${text}\u001b[0m` : text;
+}
+
+/**
+ * Approximates terminal cell width, counting emoji as two cells and ANSI codes as zero.
+ *
+ * @param {string} text Text to measure.
+ * @returns {number} Visible width in terminal cells.
+ */
+function visibleWidth(text) {
+  return [...text.replace(ANSI_ESCAPE_PATTERN, '')].reduce((width, character) => {
+    const codePoint = character.codePointAt(0);
+    if (ZERO_WIDTH_CODE_POINTS.has(codePoint)) {
+      return width;
+    }
+    const isWideSymbol = codePoint >= 0x1f300 || (codePoint >= 0x2600 && codePoint <= 0x27bf);
+    return width + (isWideSymbol ? 2 : 1);
+  }, 0);
+}
+
+/**
+ * Renders a left-bordered panel; omitting the right border keeps emoji alignment stable.
+ *
+ * @param {string} title Panel title shown on the top border.
+ * @param {string[]} lines Panel body lines.
+ * @param {string} [borderStyle='cyan'] Key of ANSI_CODES for the border.
+ * @returns {string} Rendered panel.
+ */
+function renderPanel(title, lines, borderStyle = 'cyan') {
+  const border = (text) => paint(borderStyle, text);
+  const topRuleLength = Math.max(BOX_WIDTH - visibleWidth(title) - 4, 3);
+  return [
+    `${border('╭─')} ${paint('bold', title)} ${border('─'.repeat(topRuleLength))}`,
+    ...lines.map((line) => `${border('│')}  ${line}`),
+    border(`╰${'─'.repeat(BOX_WIDTH - 1)}`),
+  ].join('\n');
+}
+
+/**
+ * Renders a full-width, heavy-bordered banner with a highlighted body line.
+ *
+ * @param {string} message Banner message.
+ * @returns {string} Rendered banner.
+ */
+function renderAlertBanner(message) {
+  const innerWidth = BOX_WIDTH - 2;
+  const bodyText = `  ${message}`;
+  const paddedBody = `${bodyText}${' '.repeat(Math.max(innerWidth - visibleWidth(bodyText), 0))}`;
+  const highlight = (text) => paint('yellowBackground', paint('black', paint('bold', text)));
+  const border = (text) => paint('yellow', paint('bold', text));
+  return [
+    border(`┏${'━'.repeat(innerWidth)}┓`),
+    `${border('┃')}${highlight(paddedBody)}${border('┃')}`,
+    border(`┗${'━'.repeat(innerWidth)}┛`),
+  ].join('\n');
+}
+
+/**
+ * Formats a version transition such as `1.0.0 → 1.0.1`.
+ *
+ * @param {string} fromVersion Previous version.
+ * @param {string} toVersion Next version.
+ * @returns {string} Styled transition.
+ */
+function formatVersionTransition(fromVersion, toVersion) {
+  return `${paint('dim', fromVersion)} ${paint('gray', '→')} ${paint('green', paint('bold', toVersion))}`;
+}
+
+/**
+ * Formats a numbered menu option.
+ *
+ * @param {number} optionNumber Option number typed by the user.
+ * @param {string} label Option label.
+ * @returns {string} Styled option line.
+ */
+function formatMenuOption(optionNumber, label) {
+  return `  ${paint('magenta', paint('bold', String(optionNumber).padStart(2)))}  ${label}`;
+}
+
+/**
+ * Formats an interactive prompt query.
+ *
+ * @param {string} query Prompt text.
+ * @returns {string} Styled prompt.
+ */
+function formatPrompt(query) {
+  return `\n${paint('cyan', '❯')} ${paint('bold', query)} `;
+}
 
 /**
  * Reads the raw text and parsed `version` of a manifest file.
@@ -119,7 +247,7 @@ function runGit(args) {
  * @returns {string} Remote base reference, or empty string when none exists.
  */
 function getRemoteBaseReference() {
-  const candidates = ['origin/develop', 'origin/master', 'origin/main'];
+  const candidates = DEFAULT_BRANCHES.map((branchName) => `${REMOTE_NAME}/${branchName}`);
 
   for (const candidate of candidates) {
     try {
@@ -182,17 +310,27 @@ function writeManifestVersion(manifestPath, rawContents, newVersion) {
 }
 
 /**
- * Commits all current working-tree changes after updating both provider manifests.
+ * Builds the version bump commit subject.
  *
- * @param {{ name: string, claudePath: string, codexPath: string }} plugin Selected plugin.
+ * @param {string} pluginName Selected plugin name.
  * @param {string} currentVersion Previous plugin version.
  * @param {string} newVersion New plugin version.
+ * @returns {string} Commit subject.
+ */
+function buildCommitSubject(pluginName, currentVersion, newVersion) {
+  return (
+    `Bump the version number from ${currentVersion} to ${newVersion} in both ` +
+    `"plugin.json" files for the "${pluginName}" plugin`
+  );
+}
+
+/**
+ * Commits all current working-tree changes after updating both provider manifests.
+ *
+ * @param {string} subject Commit subject.
  * @returns {{ hash: string, subject: string }} Created commit metadata.
  */
-function commitVersionBump(plugin, currentVersion, newVersion) {
-  const subject =
-    `Bump the version number from ${currentVersion} to ${newVersion} in both ` +
-    `"plugin.json" files for the "${plugin.name}" plugin`;
+function commitVersionBump(subject) {
   const commitMessage = `${subject}\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>`;
 
   runGit(['add', '-A']);
@@ -202,6 +340,197 @@ function commitVersionBump(plugin, currentVersion, newVersion) {
     hash: runGit(['rev-parse', '--short', 'HEAD']).trim(),
     subject,
   };
+}
+
+/**
+ * Checks whether the current branch already tracks an upstream branch.
+ *
+ * @returns {boolean} True when an upstream is configured.
+ */
+function hasUpstreamBranch() {
+  try {
+    runGit(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Plans the push for the current branch, setting upstream on first push. Default branches
+ * get no push arguments so bumps always travel through a pull request.
+ *
+ * @returns {{ branchName: string, pushArguments: string[] | null }} Push plan.
+ */
+function planPush() {
+  const branchName = runGit(['rev-parse', '--abbrev-ref', 'HEAD']).trim();
+
+  if (DEFAULT_BRANCHES.includes(branchName)) {
+    return { branchName, pushArguments: null };
+  }
+
+  return {
+    branchName,
+    pushArguments: hasUpstreamBranch() ? ['push'] : ['push', '-u', REMOTE_NAME, 'HEAD'],
+  };
+}
+
+/**
+ * Executes a push plan. Never force-pushes.
+ *
+ * @param {{ branchName: string, pushArguments: string[] }} pushPlan Plan from planPush.
+ */
+function pushVersionBump({ branchName, pushArguments }) {
+  try {
+    runGit(pushArguments);
+  } catch (error) {
+    throw new Error(
+      `Version bump commit was created but "git ${pushArguments.join(' ')}" failed for branch ` +
+        `"${branchName}". Resolve the issue and push manually. ${error.message}`,
+      { cause: error }
+    );
+  }
+}
+
+/**
+ * Splits `--flag=value` into its name and inline value.
+ *
+ * @param {string} cliArgument Raw CLI argument.
+ * @returns {{ flagName: string, inlineValue: string | undefined }} Flag parts.
+ */
+function splitFlag(cliArgument) {
+  const separatorIndex = cliArgument.indexOf('=');
+  if (!cliArgument.startsWith('--') || separatorIndex === -1) {
+    return { flagName: cliArgument, inlineValue: undefined };
+  }
+  return {
+    flagName: cliArgument.slice(0, separatorIndex),
+    inlineValue: cliArgument.slice(separatorIndex + 1),
+  };
+}
+
+/**
+ * Parses CLI arguments into a plugin name and supported flags.
+ *
+ * @param {string[]} cliArguments Arguments after the script path.
+ * @returns {{
+ *   pluginName: string | undefined,
+ *   isDryRun: boolean,
+ *   isHelp: boolean,
+ *   bumpKind: string | undefined,
+ *   exactVersion: string | undefined,
+ * }} Parsed options.
+ */
+function parseCliArguments(cliArguments) {
+  const options = {
+    pluginName: undefined,
+    isDryRun: false,
+    isHelp: false,
+    bumpKind: undefined,
+    exactVersion: undefined,
+  };
+
+  for (let argumentIndex = 0; argumentIndex < cliArguments.length; argumentIndex++) {
+    const cliArgument = cliArguments[argumentIndex];
+    const { flagName, inlineValue } = splitFlag(cliArgument);
+    const readFlagValue = () => {
+      const flagValue = inlineValue ?? cliArguments[++argumentIndex];
+      if (!flagValue || (inlineValue === undefined && flagValue.startsWith('-'))) {
+        throw new Error(`Option "${flagName}" requires a value. Run with --help for usage.`);
+      }
+      return flagValue;
+    };
+
+    if (DRY_RUN_FLAGS.includes(flagName)) {
+      options.isDryRun = true;
+    } else if (HELP_FLAGS.includes(flagName)) {
+      options.isHelp = true;
+    } else if (flagName === BUMP_FLAG) {
+      const bumpKind = readFlagValue();
+      if (!Object.values(BUMP_KINDS).includes(bumpKind)) {
+        throw new Error(
+          `Invalid ${BUMP_FLAG} value "${bumpKind}". Expected one of: ${Object.values(BUMP_KINDS).join(', ')}`
+        );
+      }
+      options.bumpKind = bumpKind;
+    } else if (flagName === SET_FLAG) {
+      const exactVersion = readFlagValue();
+      if (!SEMVER_PATTERN.test(exactVersion)) {
+        throw new Error(`Invalid ${SET_FLAG} value "${exactVersion}". Expected MAJOR.MINOR.PATCH.`);
+      }
+      options.exactVersion = exactVersion;
+    } else if (cliArgument.startsWith('-')) {
+      throw new Error(`Unknown option "${cliArgument}". Supported options: ${SUPPORTED_OPTIONS.join(', ')}`);
+    } else if (options.pluginName) {
+      throw new Error(
+        `Unexpected argument "${cliArgument}": plugin "${options.pluginName}" was already provided.`
+      );
+    } else {
+      options.pluginName = cliArgument;
+    }
+  }
+
+  if (options.bumpKind && options.exactVersion) {
+    throw new Error(`Options ${BUMP_FLAG} and ${SET_FLAG} cannot be used together.`);
+  }
+
+  return options;
+}
+
+/**
+ * Renders CLI usage help.
+ *
+ * @returns {string} Rendered help.
+ */
+function renderHelp() {
+  const command = (text) => paint('cyan', text);
+  const flag = (text) => paint('magenta', paint('bold', text.padEnd(24)));
+  const section = (text) => paint('bold', text);
+  const examples = [
+    ['npm run create-version', 'interactive'],
+    [`npm run create-version -- groot-kit ${BUMP_FLAG} minor`, 'no prompts'],
+    [`npm run create-version -- -n ${SET_FLAG} 2.0.0`, 'preview exact version'],
+  ];
+  const exampleColumnWidth = Math.max(...examples.map(([exampleCommand]) => exampleCommand.length));
+  return renderPanel('🌱 create-version · help', [
+    section('Usage'),
+    `  ${command('npm run create-version -- [plugin] [options]')}`,
+    '',
+    section('Options'),
+    `  ${flag('-n, --dry-run')}Preview without writing, committing or pushing`,
+    `  ${flag(`${BUMP_FLAG} <kind>`)}Bump without prompting: ${Object.values(BUMP_KINDS).join(' | ')}`,
+    `  ${flag(`${SET_FLAG} <version>`)}Set an exact MAJOR.MINOR.PATCH version`,
+    `  ${flag('-h, --help')}Show this help`,
+    '',
+    section('Examples'),
+    ...examples.map(
+      ([exampleCommand, description]) =>
+        `  ${command(exampleCommand.padEnd(exampleColumnWidth))}  ${paint('gray', description)}`
+    ),
+  ]);
+}
+
+/**
+ * Resolves the new version from CLI flags, falling back to the interactive menu.
+ *
+ * @param {(query: string) => Promise<string>} ask Prompt function.
+ * @param {string} currentVersion Current synced version.
+ * @param {{ bumpKind: string | undefined, exactVersion: string | undefined }} versionOptions CLI version options.
+ * @returns {Promise<string>} The validated new version.
+ */
+async function resolveRequestedVersion(ask, currentVersion, { bumpKind, exactVersion }) {
+  if (exactVersion) {
+    console.log(`\n🎯 Using ${SET_FLAG}: ${formatVersionTransition(currentVersion, exactVersion)}`);
+    return exactVersion;
+  }
+  if (bumpKind) {
+    const bumpedVersion = bumpVersion(currentVersion, bumpKind);
+    console.log(
+      `\n🎚️  Using ${BUMP_FLAG} ${paint('bold', bumpKind)}: ${formatVersionTransition(currentVersion, bumpedVersion)}`
+    );
+    return bumpedVersion;
+  }
+  return resolveNewVersion(ask, currentVersion);
 }
 
 /**
@@ -282,18 +611,28 @@ async function resolvePlugin(ask, plugins, requestedName, changedPluginNames) {
         `Plugin "${changedPluginName}" changed under plugins/ but does not expose both provider manifests.`
       );
     }
-    console.log(`\nDetected changed plugin: ${match.name}`);
+    console.log(`\n🔍 Detected changed plugin: ${paint('cyan', paint('bold', match.name))}`);
     return match;
   }
 
   if (changedPluginNames.length > 1) {
-    console.log(`\nDetected changed plugins: ${changedPluginNames.join(', ')}`);
+    console.log(`\n🔍 Detected changed plugins: ${paint('cyan', changedPluginNames.join(', '))}`);
   }
 
-  console.log('\nAvailable plugins:');
-  plugins.forEach((plugin, index) => console.log(`  ${index + 1}) ${plugin.name}`));
+  const changedMarker = paint('yellow', '● changed');
+  console.log(
+    `\n${renderPanel(
+      '🧩 Available plugins',
+      plugins.map((plugin, index) =>
+        formatMenuOption(
+          index + 1,
+          changedPluginNames.includes(plugin.name) ? `${plugin.name}  ${changedMarker}` : plugin.name
+        )
+      )
+    )}`
+  );
 
-  const answer = await ask('\nSelect a plugin by number: ');
+  const answer = await ask(formatPrompt('Select a plugin by number:'));
   const selectedIndex = Number(answer) - 1;
   if (!Number.isInteger(selectedIndex) || selectedIndex < 0 || selectedIndex >= plugins.length) {
     throw new Error(`Invalid selection: "${answer}"`);
@@ -309,13 +648,27 @@ async function resolvePlugin(ask, plugins, requestedName, changedPluginNames) {
  * @returns {Promise<string>} The validated new version.
  */
 async function resolveNewVersion(ask, currentVersion) {
-  console.log('\nHow do you want to set the new version?');
-  console.log(`  1) patch  -> ${bumpVersion(currentVersion, BUMP_KINDS.patch)}`);
-  console.log(`  2) minor  -> ${bumpVersion(currentVersion, BUMP_KINDS.minor)}`);
-  console.log(`  3) major  -> ${bumpVersion(currentVersion, BUMP_KINDS.major)}`);
-  console.log('  4) custom -> type an exact version');
+  const transitionColumnWidth = Math.max(
+    ...Object.values(BUMP_KINDS).map((bumpKind) =>
+      visibleWidth(formatVersionTransition(currentVersion, bumpVersion(currentVersion, bumpKind)))
+    )
+  );
+  const bumpOption = (emoji, bumpKind, hint) => {
+    const transition = formatVersionTransition(currentVersion, bumpVersion(currentVersion, bumpKind));
+    const padding = ' '.repeat(transitionColumnWidth - visibleWidth(transition));
+    return `${emoji} ${paint('bold', bumpKind.padEnd(8))}${transition}${padding}  ${paint('gray', hint)}`;
+  };
 
-  const choice = await ask('\nSelect an option [1-4]: ');
+  console.log(
+    `\n${renderPanel('🎚️  How do you want to set the new version?', [
+      formatMenuOption(1, bumpOption('🩹', BUMP_KINDS.patch, 'fixes')),
+      formatMenuOption(2, bumpOption('✨', BUMP_KINDS.minor, 'new features')),
+      formatMenuOption(3, bumpOption('💥', BUMP_KINDS.major, 'breaking changes')),
+      formatMenuOption(4, `🎯 ${paint('bold', 'custom'.padEnd(8))}${paint('gray', 'type an exact version')}`),
+    ])}`
+  );
+
+  const choice = await ask(formatPrompt('Select an option [1-4]:'));
 
   switch (choice) {
     case '1':
@@ -325,7 +678,7 @@ async function resolveNewVersion(ask, currentVersion) {
     case '3':
       return bumpVersion(currentVersion, BUMP_KINDS.major);
     case '4': {
-      const custom = await ask('Enter the exact version (MAJOR.MINOR.PATCH): ');
+      const custom = await ask(formatPrompt('Enter the exact version (MAJOR.MINOR.PATCH):'));
       if (!SEMVER_PATTERN.test(custom)) {
         throw new Error(`Invalid semver version: "${custom}"`);
       }
@@ -337,12 +690,27 @@ async function resolveNewVersion(ask, currentVersion) {
 }
 
 async function main() {
-  const requestedName = process.argv[2];
+  const cliOptions = parseCliArguments(process.argv.slice(2));
+  const { pluginName: requestedName, isDryRun } = cliOptions;
+
+  if (cliOptions.isHelp) {
+    console.log(`\n${renderHelp()}\n`);
+    return;
+  }
+
   const plugins = discoverPlugins();
   const changedPluginNames = detectChangedPluginNames();
 
   if (plugins.length === 0) {
     throw new Error('No plugins with both Claude and Codex manifests were found.');
+  }
+
+  console.log(
+    `\n🌱 ${paint('green', paint('bold', 'create-version'))} ` +
+      paint('gray', '· plugin version bumper for Claude + Codex')
+  );
+  if (isDryRun) {
+    console.log(`\n${renderAlertBanner(DRY_RUN_BANNER_MESSAGE)}`);
   }
 
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -362,30 +730,85 @@ async function main() {
       );
     }
 
-    console.log(`\nPlugin: ${plugin.name}`);
-    console.log(`Current version (synced): ${claude.version}`);
+    const syncedBadge = paint('green', '✔ Claude · ✔ Codex in sync');
+    console.log(
+      `\n${renderPanel('📦 Plugin', [
+        `${paint('gray', 'Name     ')} ${paint('cyan', paint('bold', plugin.name))}`,
+        `${paint('gray', 'Version  ')} ${paint('bold', claude.version)}  ${syncedBadge}`,
+      ])}`
+    );
 
-    const newVersion = await resolveNewVersion(ask, claude.version);
+    const newVersion = await resolveRequestedVersion(ask, claude.version, cliOptions);
 
     if (newVersion === claude.version) {
       throw new Error(`New version "${newVersion}" matches the current version.`);
     }
 
+    const subject = buildCommitSubject(plugin.name, claude.version, newVersion);
+    const versionHeadline =
+      `${paint('cyan', paint('bold', plugin.name))}  ${formatVersionTransition(claude.version, newVersion)}`;
+    const manifestPaths = [plugin.claudePath, plugin.codexPath].map((manifestPath) =>
+      paint('dim', path.relative(process.cwd(), manifestPath))
+    );
+
+    if (isDryRun) {
+      const pushPlan = planPush();
+      const pushLine = pushPlan.pushArguments
+        ? `🚀 Would push "${paint('cyan', pushPlan.branchName)}" to ${REMOTE_NAME} ` +
+          paint('gray', `(git ${pushPlan.pushArguments.join(' ')})`)
+        : `⚠️  Would skip push: "${pushPlan.branchName}" is a default branch.`;
+
+      console.log(
+        `\n${renderPanel(
+          '🧪 Dry run · no changes were made',
+          [
+            versionHeadline,
+            '',
+            ...manifestPaths.map((manifestPath) => `📝 Would update ${manifestPath}`),
+            `🔖 Would commit all current changes: ${subject}`,
+            pushLine,
+          ],
+          'yellow'
+        )}`
+      );
+      console.log(`\n${renderAlertBanner(DRY_RUN_COMPLETE_MESSAGE)}\n`);
+      return;
+    }
+
     writeManifestVersion(plugin.claudePath, claude.raw, newVersion);
     writeManifestVersion(plugin.codexPath, codex.raw, newVersion);
 
-    const commit = commitVersionBump(plugin, claude.version, newVersion);
+    const commit = commitVersionBump(subject);
 
-    console.log(`\n✅ Updated "${plugin.name}" from ${claude.version} to ${newVersion}`);
-    console.log(`   - ${path.relative(process.cwd(), plugin.claudePath)}`);
-    console.log(`   - ${path.relative(process.cwd(), plugin.codexPath)}`);
-    console.log(`✅ Created commit ${commit.hash}: ${commit.subject}`);
+    console.log(
+      `\n${renderPanel(
+        '✅ Version bumped',
+        [
+          versionHeadline,
+          '',
+          ...manifestPaths.map((manifestPath) => `📝 ${manifestPath}`),
+          `🔖 Created commit ${paint('yellow', commit.hash)}: ${commit.subject}`,
+        ],
+        'green'
+      )}`
+    );
+
+    const pushPlan = planPush();
+    if (pushPlan.pushArguments) {
+      pushVersionBump(pushPlan);
+      console.log(`\n🚀 Pushed "${paint('cyan', pushPlan.branchName)}" to ${REMOTE_NAME}\n`);
+    } else {
+      console.log(
+        `\n${paint('yellow', `⚠️  Skipped push: "${pushPlan.branchName}" is a default branch.`)} ` +
+          'Push from a feature branch.\n'
+      );
+    }
   } finally {
     rl.close();
   }
 }
 
 main().catch((error) => {
-  console.error(`\n❌ ${error.message}`);
+  console.error(`\n${renderPanel('❌ create-version failed', [paint('red', error.message)], 'red')}\n`);
   process.exit(1);
 });

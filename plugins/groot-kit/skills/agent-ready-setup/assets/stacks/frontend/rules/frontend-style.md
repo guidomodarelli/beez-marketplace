@@ -42,6 +42,27 @@ Coding conventions for this stack. Always consult `frontender-web-mcp` for Nordi
 - Never use parameter properties in classes.
 - Run `tsc --noEmit` after every file change and fix errors immediately.
 
+## Function parameters
+
+- Never use boolean parameters to switch a function's behavior. A call like `getItems(locale, true, true)` is unreadable at the call site, is easy to call with arguments in the wrong order, and every extra flag doubles the hidden combinations, including invalid ones.
+- Use a semantic string that names the state or mode instead. When several flags describe one state, collapse them into a single value that only allows valid combinations:
+
+  ```ts
+  // ❌ What do `true, true` mean? Is `featuredOnly` without `activeOnly` valid?
+  function getItems(locale: string, activeOnly = false, featuredOnly = false) {}
+  getItems(locale, true, true);
+
+  // ✅ The call reads as intent and invalid combinations cannot be expressed
+  type ItemListScope = 'all' | 'active' | 'active-featured';
+
+  function getItems(locale: string, scope: ItemListScope = 'all') {}
+  getItems(locale, 'active-featured');
+  ```
+
+- Declare the allowed values as a string union type, or as an `as const` object in `constants/` when the values are reused across modules. Never use `enum` (see TypeScript).
+- When replacing an existing boolean parameter, update every call site in the same change; do not keep the boolean and the string side by side.
+- This rule covers parameters that select behavior. Boolean props that follow Andes or DOM conventions (`disabled`, `checked`, `open`), predicate return values, and boolean fields that come from an upstream payload stay boolean.
+
 ## Equality
 
 - Prefer `Object.is(leftValue, rightValue)` over the strict equality operators `===` and `!==` when comparing values.
