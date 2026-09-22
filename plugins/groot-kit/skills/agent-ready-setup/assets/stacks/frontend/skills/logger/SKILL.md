@@ -1,10 +1,10 @@
 ---
-description: Create a shared logger utility in /api that instantiates nordic/logger with the project name from package.json and exposes logError and logWarning helpers. Use when setting up logging in a Nordic /api folder or when standardizing logger usage across API handlers.
+description: Create a shared logger utility in /utils that instantiates nordic/logger with the project name from package.json and exposes logError and logWarning helpers. Use when setting up logging for Nordic API handlers or standardizing logger usage across API handlers.
 ---
 
 # Logger Setup — Nordic `/api`
 
-Creates `api/logger.ts` — a single shared logger instance named after the project, with typed helpers for error and warning logs.
+Creates `utils/logger.ts` — a single shared logger instance named after the project, with typed helpers for error and warning logs. Keep this shared utility outside API subrouters.
 
 ---
 
@@ -22,18 +22,18 @@ If the command fails, ask the user to add a `name` field to `package.json` befor
 ## Step 2 — Check if logger already exists
 
 ```bash
-test -f api/logger.ts && echo "EXISTS" || echo "MISSING"
+test -f utils/logger.ts && echo "EXISTS" || echo "MISSING"
 ```
 
 If the file exists, report it and stop:
-> "`api/logger.ts` already exists — skipped."
+> "`utils/logger.ts` already exists — skipped."
 
 ---
 
-## Step 3 — Create `api/logger.ts`
+## Step 3 — Create `utils/logger.ts`
 
 ```bash
-mkdir -p api
+mkdir -p utils
 ```
 
 Create the file with this exact content:
@@ -73,7 +73,7 @@ Fix any errors before reporting success.
 Show the created file path and a usage example:
 
 ```ts
-import { logError, logWarning } from '../logger';
+import { logError, logWarning } from '../../utils/logger';
 import { mapKnownErrorToHttpResponse } from '../../src/errors/map-known-error-to-http-response';
 
 try {

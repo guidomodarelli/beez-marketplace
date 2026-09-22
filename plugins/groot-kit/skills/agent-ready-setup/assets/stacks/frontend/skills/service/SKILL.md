@@ -63,7 +63,8 @@ Rules:
 - Services do not validate inputs — that is the responsibility of the server hook or handler.
 - Services let errors propagate — no try/catch here unless translating error types.
 - Never expose internal error details — catch at the handler level.
-- Never log inside a service — logging happens in the handler via `logError`/`logWarning` from `api/logger.ts` (see skill `/logger`).
+- Never log inside a service — logging happens in the handler via `logError`/`logWarning` from `utils/logger.ts` (see skill `/logger`).
+- Keep reusable helpers and domain/configuration constants out of service modules; place them in `utils/` and `constants/` respectively. See `../../rules/frontend-style.md`, section `Module placement`.
 - Never use sequential or predictable identifiers when generating IDs — use `getRandomUUID()` from `websec-crypto-js`.
 - Parallelize independent calls with `Promise.all()`.
 

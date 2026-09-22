@@ -57,6 +57,11 @@ Coding conventions for this stack. Always consult `frontender-web-mcp` for Nordi
 | Constants | UPPER_SNAKE_CASE | `MAX_RETRIES` |
 | Functions & variables | camelCase | `getUserProfile` |
 
+## Module placement
+
+- Keep subrouters and service modules focused on routing, validation, orchestration, and service calls. Do not add shared utilities or reusable constants inside `api/<resource>/`, `api/services/`, or `services/` modules.
+- Place shared or reusable utility functions in `utils/` and domain/configuration constants in `constants/`. Keep only route-local declarations required to mount a router or define its schema inside a subrouter; extract anything reused or carrying domain meaning.
+
 ## Performance
 
 - Never use anonymous functions in JSX event handlers on frequently rendered components.

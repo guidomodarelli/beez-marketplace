@@ -4,7 +4,9 @@ description: Create a Nordic API endpoint — either a server hook (getServerSid
 
 # API Endpoint Creation — Nordic
 
-> **Prerequisite**: run `/logger` first to generate `api/logger.ts` — the logging helpers used in the examples below depend on it.
+> **Prerequisite**: run `/logger` first to generate `utils/logger.ts` — the logging helpers used in the examples below depend on it.
+>
+> Keep subrouters focused on routing, validation, and orchestration. Put reusable helpers in `utils/` and reusable/domain constants in `constants/`; do not add them inside `api/<resource>/`, `api/services/`, or `services/`. See `../../rules/frontend-style.md`, section `Module placement`.
 >
 > For the distinction between middleend request validation and backend/upstream response payloads, follow `../../rules/security.md`, section `Input Validation`.
 >
@@ -63,7 +65,7 @@ Rules:
 ### Implement the handler
 
 ```ts
-import { logError } from '../../../api/logger';
+import { logError } from '../../../utils/logger';
 import { getProduct } from '../../../src/services/product';
 
 export async function getServerSideProps(req) {
@@ -112,7 +114,7 @@ api/
 // api/product/index.ts
 import * as iv from '@meli/input-validation';
 import Ragnar from 'nordic/ragnar';
-import { logError } from '../logger';
+import { logError } from '../../utils/logger';
 import { mapKnownErrorToHttpResponse } from '../../src/errors/map-known-error-to-http-response';
 import { getProduct, createProduct } from '../../src/services/product';
 

@@ -363,7 +363,7 @@ EOF
   run_bootstrap frontend
 
   [ "$status" -eq 0 ]
-  for skill_name in api-endpoint component-creation karpathy-guidelines logger service; do
+  for skill_name in api-endpoint component-creation constants-refactor karpathy-guidelines logger service; do
     skill_path=".agents/skills/$skill_name/SKILL.md"
     [ -f "$skill_path" ]
     [ "$(sed -n '1p' "$skill_path")" = '---' ]

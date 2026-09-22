@@ -1181,6 +1181,60 @@
           "description": "Explica la diferencia de ceros con signo"
         }
       ]
+    },
+    {
+      "id": "frontend-subrouter-keeps-shared-modules-outside",
+      "description": "Mantiene helpers y constantes reutilizables fuera de subrouters y services.",
+      "input": "Leé las reglas frontend de agent-ready-setup y explicá dónde debe ubicarse un helper compartido, un logger y una constante de dominio cuando se implementa `api/orders/index.ts`, `api/services/orders.ts` o `services/orders.ts`. Indicá qué declaraciones locales sí pueden permanecer en un subrouter y qué paths no deben usarse para módulos reutilizables. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "utils/",
+          "description": "Ubica helpers compartidos y logger en utils/"
+        },
+        {
+          "type": "contains",
+          "value": "constants/",
+          "description": "Ubica constantes reutilizables en constants/"
+        },
+        {
+          "type": "contains_any",
+          "values": ["subrouter", "api/orders", "api/services", "services/orders"],
+          "description": "Aplica la regla a archivos de subrouter y service"
+        },
+        {
+          "type": "contains_any",
+          "values": ["router", "schema", "route-local", "locales", "declaraciones locales"],
+          "description": "Conserva declaraciones locales necesarias para route y schema"
+        },
+        {
+          "type": "contains_any",
+          "values": ["no agregar", "no crear", "no ubicar", "fuera de", "no deben", "no debe"],
+          "description": "Evita recomendar módulos reutilizables dentro de subrouters o services"
+        }
+      ]
+    },
+    {
+      "id": "frontend-catalog-exposes-constants-refactor",
+      "description": "Expone skill de refactor de constantes dentro del catálogo frontend.",
+      "input": "Explicá qué skills frontend agrega agent-ready-setup para refactorizar constantes estáticas y dónde queda disponible el workflow. No ejecutes Bash ni escribas archivos; respondé desde la plantilla frontend bundled.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "constants-refactor",
+          "description": "Identifica el skill agregado al catálogo"
+        },
+        {
+          "type": "contains",
+          "value": "constants/",
+          "description": "Indica destino canónico de constantes"
+        },
+        {
+          "type": "contains_any",
+          "values": ["frontend/skills", ".agents/skills", "skills/"],
+          "description": "Ubica el workflow dentro de skills proyectadas"
+        }
+      ]
     }
   ]
 }
