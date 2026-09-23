@@ -115,6 +115,16 @@ acquire_sync_lock() {
   return 1
 }
 
+# Projection touches every managed asset on each SessionStart; parameter
+# expansion and skipping existing directories avoid one fork per path.
+ensure_parent_directory() {
+  local path="$1"
+  local parent_directory="${path%/*}"
+
+  [[ "$parent_directory" == "$path" || -z "$parent_directory" || -d "$parent_directory" ]] && return 0
+  mkdir -p -- "$parent_directory"
+}
+
 validate_destination_parent() {
   local destination="$1"
   local parent_directory
@@ -123,8 +133,8 @@ validate_destination_parent() {
   local relative_parent
   local -a path_components
 
-  parent_directory="$(dirname -- "$destination")"
-  [[ "$parent_directory" == "." ]] && return 0
+  parent_directory="${destination%/*}"
+  [[ "$parent_directory" == "$destination" || "$parent_directory" == "." ]] && return 0
 
   relative_parent="${parent_directory#./}"
   IFS='/' read -r -a path_components <<< "$relative_parent"
@@ -177,19 +187,123 @@ relative_shared_target() {
   printf '%s%s/%s\n' "$prefix" "$SHARED_DIR" "$relative"
 }
 
-render_skill_adapter() {
+# Assets published by agent-ready-setup are always overwritten: projects add
+# their own rules or skills instead of editing managed ones. A symlink at a
+# managed path is replaced, never followed; the link is removed before the
+# rename so a link to a directory cannot redirect the write elsewhere.
+# Consumers define record_conflict and record_updated.
+replace_managed_symlink() {
   local source="$1"
-  local skill_name="$2"
+  local destination="$2"
+  local previous_target
+  local temporary_destination=""
 
-  printf '%s\n' '---'
-  printf 'name: %s\n' "$skill_name"
-  printf 'description: Provider-neutral reusable workflow for %s.\n' "$skill_name"
-  printf '%s\n\n' '---'
-  awk '
-    NR == 1 && $0 == "---" { in_frontmatter = 1; next }
-    in_frontmatter && $0 == "---" { in_frontmatter = 0; next }
-    !in_frontmatter { print }
-  ' "$source"
+  if ! previous_target="$(readlink -- "$destination")"; then
+    record_conflict "could not read symlink $destination; neither was changed"
+    return 0
+  fi
+  if ! temporary_destination="$(mktemp "${destination}.agent-ready-sync.XXXXXX")" || \
+    ! cp -p -- "$source" "$temporary_destination"; then
+    [[ -n "$temporary_destination" ]] && rm -f -- "$temporary_destination"
+    record_conflict "could not stage template content for $destination; neither was changed"
+    return 0
+  fi
+  if [[ ! -L "$destination" || "$(readlink -- "$destination")" != "$previous_target" ]]; then
+    rm -f -- "$temporary_destination"
+    record_conflict "$destination changed during synchronization; neither was changed"
+    return 0
+  fi
+  if ! rm -f -- "$destination" || ! mv -- "$temporary_destination" "$destination"; then
+    rm -f -- "$temporary_destination"
+    record_conflict "could not replace symlink $destination with the template; review it manually"
+    return 0
+  fi
+  record_updated "$destination (symlink replaced with template)"
+}
+
+# Replaces a modified Claude view (regular file or foreign symlink) with the
+# managed symlink to the canonical shared asset.
+replace_with_claude_view() {
+  local destination="$1"
+  local target="$2"
+  local temporary_link="${destination}.agent-ready-link.$$"
+
+  if [[ -e "$temporary_link" || -L "$temporary_link" ]]; then
+    record_conflict "temporary normalization path already exists for $destination; neither was changed"
+    return 0
+  fi
+  if ! ln -s -- "$target" "$temporary_link"; then
+    rm -f -- "$temporary_link"
+    record_conflict "could not stage Claude view $destination; neither was changed"
+    return 0
+  fi
+  if ! rm -f -- "$destination" || ! mv -- "$temporary_link" "$destination"; then
+    rm -f -- "$temporary_link"
+    record_conflict "could not replace Claude view $destination; review it manually"
+    return 0
+  fi
+  record_updated "$destination -> managed view"
+}
+
+# Claude registers agents and commands natively from .claude/agents and
+# .claude/commands. A .claude/skills view of their Codex adapter would register
+# the same workflow twice. The name belongs to agent-ready-setup, so the view is
+# removed even when it was edited; only non-regular paths are left for manual
+# review. Consumers define record_removed.
+remove_claude_skill_view() {
+  local skill_name="$1"
+  local view_directory="$CLAUDE_DIR/skills/$skill_name"
+  local view_path="$view_directory/SKILL.md"
+
+  [[ -e "$view_path" || -L "$view_path" ]] || return 0
+  if [[ ! -L "$view_path" && ! -f "$view_path" ]]; then
+    record_conflict "$view_path duplicates Claude agent or command $skill_name but is not a regular file; preserved"
+    return 0
+  fi
+  if ! rm -f -- "$view_path"; then
+    record_conflict "could not remove duplicate Claude skill view $view_path; preserved"
+    return 0
+  fi
+  record_removed "$view_path"
+  rmdir -- "$view_directory" 2>/dev/null || true
+}
+
+# Rules the repository adds under .agents/rules/ get the same Claude view as
+# template rules, so Claude loads them natively. The renderer owns the
+# definition of a project rule; managed views whose rule was deleted are pruned.
+# Consumers define link_claude_asset and record_removed.
+project_rule_claude_views() {
+  local template_renderer="$1"
+  local template_rules_directory="$2"
+  local relative_path
+  local rule_file
+  local view_path
+
+  [[ -d "$SHARED_DIR/rules" && ! -L "$SHARED_DIR/rules" ]] || return 0
+
+  while IFS=$'\t' read -r relative_path rule_file; do
+    [[ "$rule_file" == "$SHARED_DIR/rules/"* ]] || continue
+    link_claude_asset "rules/$relative_path"
+  done < <(bash "$template_renderer" --list-rules \
+    --rules-dir "$template_rules_directory" \
+    --project-rules-dir "$SHARED_DIR/rules")
+
+  [[ -d "$CLAUDE_DIR/rules" && ! -L "$CLAUDE_DIR/rules" ]] || return 0
+  while IFS= read -r -d '' view_path; do
+    relative_path="${view_path#"$CLAUDE_DIR/"}"
+    [[ -e "$SHARED_DIR/$relative_path" || -L "$SHARED_DIR/$relative_path" ]] && continue
+    [[ "$(readlink -- "$view_path")" == "$(relative_shared_target "$relative_path")" ]] || continue
+    if rm -f -- "$view_path"; then
+      record_removed "$view_path"
+    fi
+  done < <(find "$CLAUDE_DIR/rules" -type l -print0)
+}
+
+# Templates carry their own provider frontmatter, so adapters are verbatim
+# copies. Kept for hooks projected by older versions that call it before
+# restarting with the updated hook.
+render_skill_adapter() {
+  cat -- "$1"
 }
 
 merge_managed_settings() {

@@ -1,11 +1,13 @@
 #!/bin/bash
 # bootstrap.sh
 # Projects Agent Ready templates into Claude, shared-agent, and Codex trees.
-# Existing assets are never overwritten. Instruction files are normalized so
-# AGENTS.md is canonical and every CLAUDE.md is the root proxy template.
+# Managed assets are always synchronized with the templates without prompting;
+# symlinks, non-regular files, and custom content are preserved and reported.
+# Instruction files are normalized so AGENTS.md is canonical and every CLAUDE.md
+# is the root proxy template.
 #
 # Usage:
-#   bash bootstrap.sh --stack <frontend|node|java|go> --skill-dir <path> [--provider <claude|codex>] [--sync] [--yes]
+#   bash bootstrap.sh --stack <frontend|node|java|go> --skill-dir <path> [--provider <claude|codex>]
 #   bash bootstrap.sh --stack <frontend|node|java|go> --skill-dir <path> --normalize-only
 
 set -euo pipefail
@@ -19,8 +21,6 @@ REQUESTED_SKILL_DIR=""
 SKILL_DIR=""
 PROVIDER="${AGENT_READY_SETUP_ACTIVE_PROVIDER:-}"
 MARKETPLACE_ALREADY_UPGRADED="${AGENT_READY_SETUP_MARKETPLACE_UPGRADED:-0}"
-SYNC_MODE=0
-AUTO_CONFIRM=0
 NORMALIZE_ONLY=0
 readonly SYNC_LOCK_DIRECTORY=".agents/.agent-ready-assets.lock"
 # shellcheck disable=SC2034
@@ -50,14 +50,6 @@ while [[ $# -gt 0 ]]; do
       PROVIDER="$2"
       shift 2
       ;;
-    --sync|--update)
-      SYNC_MODE=1
-      shift
-      ;;
-    --yes)
-      AUTO_CONFIRM=1
-      shift
-      ;;
     --normalize-only)
       NORMALIZE_ONLY=1
       shift
@@ -68,11 +60,6 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
-
-if [[ "$AUTO_CONFIRM" -eq 1 && "$SYNC_MODE" -ne 1 ]]; then
-  echo "ERROR: --yes requires --sync or --update" >&2
-  exit 1
-fi
 
 case "$MARKETPLACE_ALREADY_UPGRADED" in
   0|1) ;;
@@ -196,9 +183,11 @@ resolve_skill_dir() {
     return 0
   fi
 
+  # The requested cache version stays eligible: excluding it downgraded callers
+  # that already pass the newest version to the next older cache entry.
   while IFS= read -r candidate; do
     candidate="${candidate%/SKILL.md}"
-    if [[ "$candidate" != "$REQUESTED_SKILL_DIR" ]] && is_valid_skill_dir "$candidate"; then
+    if is_valid_skill_dir "$candidate"; then
       printf '%s\n' "$candidate"
       return 0
     fi
@@ -277,8 +266,8 @@ validate_skill_source() {
     exit 1
   fi
 
-  if [[ ! -f "$SRC/CLAUDE.md" ]]; then
-    echo "ERROR: Stack template is missing CLAUDE.md: $SRC/CLAUDE.md" >&2
+  if [[ ! -f "$SRC/agents-template.md" ]]; then
+    echo "ERROR: Stack template is missing agents-template.md: $SRC/agents-template.md" >&2
     exit 1
   fi
 
@@ -332,7 +321,6 @@ CLAUDE_PROXY="@AGENTS.md"
 CREATED=()
 UPDATED=()
 SKIPPED=()
-PENDING=()
 MIGRATED=()
 RENAMED=()
 REMOVED=()
@@ -391,6 +379,39 @@ upgrade_marketplace() {
   echo "[marketplace-bootstrap] Marketplace upgrade completed."
 }
 
+groot_ui_prefetch_started=0
+
+# The npm registry lookup does not depend on the marketplace upgrade, so it runs
+# concurrently instead of adding its latency after the upgrade. A process
+# substitution on fixed descriptor 9 works with macOS bash 3.2 and leaves no
+# temporary file behind when the script exits early.
+start_groot_ui_version_prefetch() {
+  [[ -z "${AGENT_READY_SETUP_GROOT_UI_LATEST_VERSION:-}" ]] || return 0
+  [[ -f package.json ]] || return 0
+  command -v npm >/dev/null 2>&1 || return 0
+  exec 9< <(npm view groot-ui version 2>/dev/null)
+  groot_ui_prefetch_started=1
+}
+
+# Exports the prefetched version for setup-groot-ui.sh; an empty result lets the
+# helper perform its own lookup and report errors as before.
+collect_groot_ui_version_prefetch() {
+  local prefetched_version=""
+
+  [[ "$groot_ui_prefetch_started" -eq 1 ]] || return 0
+  IFS= read -r prefetched_version <&9 || true
+  exec 9<&-
+  groot_ui_prefetch_started=0
+  prefetched_version="${prefetched_version%$'\r'}"
+  if [[ -n "$prefetched_version" ]]; then
+    export AGENT_READY_SETUP_GROOT_UI_LATEST_VERSION="$prefetched_version"
+  fi
+}
+
+if [[ "$NORMALIZE_ONLY" -eq 0 && "$STACK" == "frontend" ]]; then
+  start_groot_ui_version_prefetch
+fi
+
 if [[ "$NORMALIZE_ONLY" -eq 1 ]]; then
   echo "[marketplace-bootstrap] Instruction normalization only; marketplace upgrade skipped."
 elif [[ "$MARKETPLACE_ALREADY_UPGRADED" -eq 0 ]]; then
@@ -414,13 +435,14 @@ ASSET_SYNC_SKILL_DIR="$SKILL_DIR"
 # shellcheck disable=SC1091
 source "$SKILL_DIR/scripts/asset-sync-common.sh"
 # shellcheck disable=SC2034
-SYNC_LOCK_ENABLED="$SYNC_MODE"
+SYNC_LOCK_ENABLED=$(( 1 - NORMALIZE_ONLY ))
 
-if [[ "$NORMALIZE_ONLY" -eq 0 && "$SYNC_MODE" -eq 1 ]] && ! acquire_sync_lock; then
+if [[ "$NORMALIZE_ONLY" -eq 0 ]] && ! acquire_sync_lock; then
   exit 0
 fi
 
 if [[ "$NORMALIZE_ONLY" -eq 0 && "$STACK" == "frontend" ]]; then
+  collect_groot_ui_version_prefetch
   bash "$SKILL_DIR/scripts/setup-groot-ui.sh" "package.json"
 fi
 
@@ -434,10 +456,6 @@ record_updated() {
 
 record_skipped() {
   SKIPPED+=("$1")
-}
-
-record_pending() {
-  PENDING+=("$1")
 }
 
 is_ignored_path() {
@@ -463,27 +481,6 @@ is_ignored_path() {
   esac
 }
 
-confirm_sync_replacement() {
-  local destination="$1"
-  local answer
-
-  if [[ "$AUTO_CONFIRM" -eq 1 ]]; then
-    return 0
-  fi
-
-  if [[ ! -t 0 || ! -t 1 ]]; then
-    printf 'Skipping %s: sync requires interactive confirmation or --yes.\n' "$destination"
-    return 1
-  fi
-
-  printf 'Replace %s with the template? [y/N] ' "$destination"
-  if ! IFS= read -r answer; then
-    return 1
-  fi
-
-  [[ "$answer" =~ ^([YySs]|[Yy][Ee][Ss])$ ]]
-}
-
 sync_file() {
   local src="$1"
   local dst="$2"
@@ -499,10 +496,10 @@ sync_file() {
   if ! validate_destination_parent "$dst"; then
     return 0
   fi
-  mkdir -p -- "$(dirname -- "$dst")"
+  ensure_parent_directory "$dst"
 
   if [[ -L "$dst" ]]; then
-    CONFLICTS+=("$dst is a symlink; neither it nor its target was changed")
+    replace_managed_symlink "$src" "$dst"
     return 0
   fi
 
@@ -538,16 +535,11 @@ sync_file() {
   expected_destination="$(mktemp "${dst}.agent-ready-expected.XXXXXX")"
   if ! cp -p -- "$dst" "$expected_destination"; then
     rm -f -- "$expected_destination"
-    CONFLICTS+=("could not snapshot $dst before confirmation; neither was changed")
+    CONFLICTS+=("could not snapshot $dst before replacement; neither was changed")
     return 0
   fi
 
   show_sync_diff "$src" "$dst" "$source_description"
-  if ! confirm_sync_replacement "$dst"; then
-    rm -f -- "$expected_destination"
-    record_pending "$dst"
-    return 0
-  fi
 
   temporary_destination="$(mktemp "${dst}.agent-ready-sync.XXXXXX")"
   if ! cp -p -- "$src" "$temporary_destination"; then
@@ -558,7 +550,7 @@ sync_file() {
 
   if [[ -L "$dst" || ! -f "$dst" ]] || ! cmp -s "$dst" "$expected_destination"; then
     rm -f -- "$temporary_destination" "$expected_destination"
-    CONFLICTS+=("$dst changed after confirmation; neither was changed")
+    CONFLICTS+=("$dst changed during synchronization; neither was changed")
     return 0
   fi
 
@@ -571,30 +563,6 @@ sync_file() {
   fi
   rm -f -- "$expected_destination"
   record_updated "$dst"
-}
-
-# Copy a file only when destination is absent, unless explicit sync mode is
-# enabled. Treat symlinks as existing so a broken symlink cannot be replaced.
-copy_if_missing() {
-  local src="$1"
-  local dst="$2"
-
-  if [[ "$SYNC_MODE" -eq 1 ]]; then
-    sync_file "$src" "$dst"
-    return 0
-  fi
-
-  if ! validate_destination_parent "$dst"; then
-    return 0
-  fi
-  mkdir -p -- "$(dirname -- "$dst")"
-
-  if [[ -e "$dst" || -L "$dst" ]]; then
-    record_skipped "$dst"
-  else
-    cp -- "$src" "$dst"
-    record_created "$dst"
-  fi
 }
 
 link_claude_asset() {
@@ -618,38 +586,24 @@ link_claude_asset() {
   if ! validate_destination_parent "$destination"; then
     return 0
   fi
-  mkdir -p -- "$(dirname -- "$destination")"
+  ensure_parent_directory "$destination"
   target=$(relative_shared_target "$relative")
 
   if [[ -L "$destination" ]]; then
-    record_skipped "$destination"
+    if [[ "$(readlink -- "$destination")" == "$target" ]]; then
+      record_skipped "$destination"
+    else
+      replace_with_claude_view "$destination" "$target"
+    fi
     return 0
   fi
 
   if [[ -e "$destination" ]]; then
-    if [[ ! -f "$destination" || ! -f "$source" ]] || ! cmp -s "$destination" "$source"; then
-      CONFLICTS+=("$destination differs from canonical shared asset $source; neither was overwritten")
+    if [[ ! -f "$destination" ]]; then
+      CONFLICTS+=("$destination is not a regular file; neither was changed")
       return 0
     fi
-
-    local temporary_link="${destination}.agent-ready-link.$$"
-    local backup_file="${destination}.agent-ready-backup.$$"
-    if [[ -e "$temporary_link" || -L "$temporary_link" || -e "$backup_file" || -L "$backup_file" ]]; then
-      CONFLICTS+=("temporary normalization path already exists for $destination; neither was changed")
-      return 0
-    fi
-
-    ln -s -- "$target" "$temporary_link"
-    mv -- "$destination" "$backup_file"
-    if mv -- "$temporary_link" "$destination"; then
-      rm -- "$backup_file"
-      MIGRATED+=("$destination -> $source")
-    else
-      mv -- "$backup_file" "$destination"
-      rm -f -- "$temporary_link"
-      echo "ERROR: Could not normalize shared asset: $destination" >&2
-      return 1
-    fi
+    replace_with_claude_view "$destination" "$target"
     return 0
   fi
 
@@ -912,8 +866,10 @@ create_root_agents_from_template() {
   mkdir -p -- "$(dirname -- "$AGENTS_FILE")"
   temporary_agents_file="$(mktemp "${AGENTS_FILE}.agent-ready-template.XXXXXX")"
   if ! bash "$TEMPLATE_RENDERER" \
-    --template "$SRC/CLAUDE.md" \
-    --rules-dir "$SRC/rules" > "$temporary_agents_file"; then
+    --template "$SRC/agents-template.md" \
+    --rules-dir "$SRC/rules" \
+    --project-rules-dir "$SHARED_DIR/rules" \
+    --centralization "$CENTRALIZATION_TEMPLATE" > "$temporary_agents_file"; then
     rm -f -- "$temporary_agents_file"
     echo "ERROR: could not render stack instruction template for $AGENTS_FILE" >&2
     return 1
@@ -974,7 +930,7 @@ normalize_root_instructions() {
 
   if [[ -e "$AGENTS_FILE" || -L "$AGENTS_FILE" ]]; then
     record_skipped "$AGENTS_FILE"
-    copy_if_missing "$ROOT_CLAUDE_TEMPLATE" "$CLAUDE_FILE"
+    sync_file "$ROOT_CLAUDE_TEMPLATE" "$CLAUDE_FILE"
     return
   fi
 
@@ -985,28 +941,11 @@ normalize_root_instructions() {
   record_created "$CLAUDE_FILE"
 }
 
-if [[ "$SYNC_MODE" -eq 0 || "$NORMALIZE_ONLY" -eq 1 ]]; then
-  normalize_instruction_filenames
-  normalize_root_instructions
-fi
+normalize_instruction_filenames
+normalize_root_instructions
 
-ensure_root_centralization_rule() {
-  if [[ ${#CONFLICTS[@]} -gt 0 || ! -f "$AGENTS_FILE" ]]; then
-    return 0
-  fi
-
-  if grep -Fqx '## Centralización recursiva de instrucciones' "$AGENTS_FILE"; then
-    return 0
-  fi
-
-  printf '\n' >> "$AGENTS_FILE"
-  cat "$CENTRALIZATION_TEMPLATE" >> "$AGENTS_FILE"
-  MIGRATED+=("centralization rule -> $AGENTS_FILE")
-}
-
-if [[ "$SYNC_MODE" -eq 0 ]]; then
-  ensure_root_centralization_rule
-fi
+# The centralization rule is part of the managed AGENTS.md block, which
+# merge-instructions.sh copies verbatim from the template on every sync.
 
 normalize_nested_instruction_pair() {
   local directory="$1"
@@ -1111,9 +1050,7 @@ normalize_nested_instructions() {
   done < <(git ls-files --cached --others --exclude-standard -z)
 }
 
-if [[ "$SYNC_MODE" -eq 0 || "$NORMALIZE_ONLY" -eq 1 ]]; then
-  normalize_nested_instructions
-fi
+normalize_nested_instructions
 
 if [[ "$NORMALIZE_ONLY" -eq 1 ]]; then
   printf '\nInstruction normalization completed from %s.\n' "$PROJECT_ROOT"
@@ -1136,33 +1073,13 @@ if [[ "$NORMALIZE_ONLY" -eq 1 ]]; then
   exit 0
 fi
 
+# Templates already carry provider frontmatter, so skill adapters are verbatim
+# copies of their source template.
 create_skill_adapter() {
   local src="$1"
   local skill_name="$2"
-  local dst="$SHARED_DIR/skills/$skill_name/SKILL.md"
-  local temporary_adapter
 
-  if ! validate_destination_parent "$dst"; then
-    return 0
-  fi
-  mkdir -p -- "$(dirname -- "$dst")"
-
-  if [[ "$SYNC_MODE" -eq 0 ]]; then
-    if [[ -e "$dst" || -L "$dst" ]]; then
-      record_skipped "$dst"
-      return
-    fi
-
-    render_skill_adapter "$src" "$skill_name" > "$dst"
-    record_created "$dst"
-    return
-  fi
-
-  temporary_adapter="$(mktemp "${TMPDIR:-/tmp}/agent-ready-adapter.XXXXXX")"
-  render_skill_adapter "$src" "$skill_name" > "$temporary_adapter"
-  chmod 0644 "$temporary_adapter"
-  sync_file "$temporary_adapter" "$dst" "$src"
-  rm -f -- "$temporary_adapter"
+  sync_file "$src" "$SHARED_DIR/skills/$skill_name/SKILL.md"
 }
 
 # Project shared assets into the canonical .agents tree. Claude-specific
@@ -1178,14 +1095,10 @@ project_asset_tree() {
   while IFS= read -r -d '' file; do
     relative="${file#"$source_root/"}"
 
-    if [[ "$relative" == "CLAUDE.md" ]]; then
+    if [[ "$relative" == "agents-template.md" ]]; then
       continue
     elif [[ "$relative" == "settings.json" ]]; then
-      if [[ "$SYNC_MODE" -eq 1 ]]; then
-        sync_claude_settings "$file"
-      else
-        copy_if_missing "$file" "$CLAUDE_DIR/$relative"
-      fi
+      sync_claude_settings "$file"
     else
       case "$relative" in
         skills/*/SKILL.md)
@@ -1194,16 +1107,20 @@ project_asset_tree() {
           create_skill_adapter "$file" "$skill_name"
           ;;
         skills/*/*.md)
-          copy_if_missing "$file" "$SHARED_DIR/$relative"
+          sync_file "$file" "$SHARED_DIR/$relative"
           ;;
         agents/*.md|commands/*.md|skills/*.md)
-          copy_if_missing "$file" "$SHARED_DIR/$relative"
+          sync_file "$file" "$SHARED_DIR/$relative"
           skill_name="${relative##*/}"
           skill_name="${skill_name%.md}"
           create_skill_adapter "$file" "$skill_name"
+          case "$relative" in
+            skills/*.md) link_claude_asset "skills/$skill_name/SKILL.md" ;;
+            *) remove_claude_skill_view "$skill_name" ;;
+          esac
           ;;
         *)
-          copy_if_missing "$file" "$SHARED_DIR/$relative"
+          sync_file "$file" "$SHARED_DIR/$relative"
           ;;
       esac
 
@@ -1216,22 +1133,17 @@ project_asset_tree() {
 
 project_asset_tree "$COMMON_SRC"
 project_asset_tree "$SRC"
+project_rule_claude_views "$TEMPLATE_RENDERER" "$SRC/rules"
 
-if [[ "$SYNC_MODE" -eq 1 ]]; then
-  cleanup_legacy_claude_hooks
-  cleanup_stale_claude_links
-fi
+cleanup_legacy_claude_hooks
+cleanup_stale_claude_links
 
 # Codex-specific plugin assets use Codex's supported names while retaining the
 # same MCP definitions and shared hook scripts.
 if [[ -f "$SRC/mcp.json" ]]; then
-  copy_if_missing "$SRC/mcp.json" "$CODEX_DIR/.mcp.json"
+  sync_file "$SRC/mcp.json" "$CODEX_DIR/.mcp.json"
 fi
-if [[ "$SYNC_MODE" -eq 1 ]]; then
-  sync_file "$CODEX_ASSETS/hooks.json" "$CODEX_DIR/hooks/hooks.json" "$CODEX_ASSETS/hooks.json"
-else
-  copy_if_missing "$CODEX_ASSETS/hooks.json" "$CODEX_DIR/hooks/hooks.json"
-fi
+sync_file "$CODEX_ASSETS/hooks.json" "$CODEX_DIR/hooks/hooks.json" "$CODEX_ASSETS/hooks.json"
 
 # Print report
 printf '\nStack: %s\n' "$STACK"
@@ -1246,12 +1158,6 @@ if [[ ${#UPDATED[@]} -gt 0 ]]; then
   echo ""
   echo "Updated from templates:"
   for file in "${UPDATED[@]}"; do printf '  ↻ %s\n' "$file"; done
-fi
-
-if [[ ${#PENDING[@]} -gt 0 ]]; then
-  echo ""
-  echo "Pending confirmation (not overwritten):"
-  for file in "${PENDING[@]}"; do printf '  ? %s\n' "$file"; done
 fi
 
 if [[ ${#RENAMED[@]} -gt 0 ]]; then

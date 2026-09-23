@@ -1,3 +1,8 @@
+---
+name: a11y-reviewer
+description: Review frontend changes for WCAG 2.1 AA accessibility compliance using Andes component guidance. Use when reviewing UI changes, components, or markup for accessibility.
+---
+
 # Accessibility Reviewer Agent — Frontend
 
 Review changes for WCAG 2.1 AA compliance. Use `frontender-web-mcp` as the primary reference for Andes component accessibility requirements.

@@ -1,4 +1,5 @@
 ---
+name: api-endpoint
 description: Create a Nordic API endpoint — either a server hook (getServerSideProps) or a REST endpoint in the /api folder using Ragnar.router(). Use when adding a new endpoint, server hook, or API route.
 ---
 
@@ -11,6 +12,8 @@ description: Create a Nordic API endpoint — either a server hook (getServerSid
 > For the distinction between middleend request validation and backend/upstream response payloads, follow `../../rules/security.md`, section `Input Validation`.
 >
 > For error-origin and public status mapping, follow `../../rules/security.md`, section `Error Handling`: preserve upstream HTTP statuses, map BFF-owned request/domain failures to 4xx, and use 5xx only for BFF-owned internal or no-status integration failures.
+>
+> For payloads sent upstream, follow `../../rules/upstream-contracts.md`: map validated input explicitly and let the service build the upstream request.
 
 Nordic exposes two ways to handle server-side logic:
 
@@ -56,11 +59,7 @@ export async function getServerSideProps(req) {
 }
 ```
 
-Rules:
-- Validate **all** external inputs: body, query params, path params, headers.
-- Use allowlist — define only what is permitted, reject everything else.
-- Never trust user-provided identifiers — retrieve user identity from session/JWT claims.
-- Never accept PII or tokens via query parameters — use body.
+Validate every client-controlled input (body, query params, path params, headers) with an allowlist schema, as required by `../../rules/security.md`, section `Input Validation`.
 
 ### Implement the handler
 
@@ -84,12 +83,9 @@ export async function getServerSideProps(req) {
 ```
 
 Rules:
-- Never inline business logic — delegate to a service.
-- Never expose stack traces or internal error details.
-- Never create or forward `scope` as a query parameter; API scope must come from the existing environment files under `config/` through the service/client configuration. Do not create a new config file solely for scope. See the `API Configuration` section in `../../rules/frontend-style.md`.
-- Use `new Logger('name')` — never `console.log`.
-- Use `nordic/restclient` for outbound HTTP calls inside the hook.
-- Use GET only for read operations.
+- Never inline business logic or outbound HTTP calls — delegate to a service (skill `/service`), which uses `nordic/restclient`.
+- Log with `logError`/`logWarning` from `utils/logger` (skill `/logger`) — never `console.log`.
+- Never forward `scope` as a query parameter; see `../../rules/api-configuration.md`.
 
 ---
 
@@ -145,8 +141,10 @@ router.get('/product/:id', iv.createValidationMiddleware({ schema: getSchema }),
 });
 
 router.post('/product', iv.createValidationMiddleware({ schema: postSchema }), async (req, res) => {
+  const { name, price } = req.body;
+
   try {
-    const product = await createProduct(req.body);
+    const product = await createProduct({ name, price });
     res.status(201).json(product);
   } catch (error) {
     logError(`[PRODUCT-CREATE] - error: ${error instanceof Error ? error.message : String(error)}`);
@@ -158,7 +156,9 @@ router.post('/product', iv.createValidationMiddleware({ schema: postSchema }), a
 export default router;
 ```
 
-`mapKnownErrorToHttpResponse` must be implemented in the imported module as the project's typed error mapper. It maps BFF-owned client/domain failures to 4xx, preserves an HTTP status received from upstream, and maps BFF-owned internal or no-status integration failures to an appropriate 5xx. If the project uses a different module path, update the import before copying the example; do not leave the mapper as an implicit dependency.
+`mapKnownErrorToHttpResponse` is the project's typed error mapper and must follow the error-origin policy linked at the top of this skill. If the project uses a different module path, update the import before copying the example; do not leave the mapper as an implicit dependency.
+
+The handler maps the validated body explicitly instead of forwarding `req.body`, so client-only fields never reach the service or the upstream request.
 
 ### 2. Mount in `api/index.ts`
 
@@ -176,13 +176,9 @@ export default apiRouter;
 Rules:
 - Use `iv.createValidationMiddleware({ schema })` before every handler — never access `req.body/params/query` without prior validation.
 - For path/query params (always strings), use `iv.coerce` for non-string types: `iv.coerce.number()`, `iv.coerce.boolean()`.
-- Use allowlist strategy — declare only what is permitted in the schema.
-- Never retrieve user identity from user-provided input — use `req.session`.
-- Never log request/response bodies containing PII or tokens.
-- Map BFF-owned client/domain failures to their corresponding 4xx response at the middleend boundary; preserve HTTP statuses received from upstream; and use 5xx only for BFF-owned internal or no-status integration failures. The imported `mapKnownErrorToHttpResponse` must be a project-level typed error mapper and preserve this rule.
-- Never expose internal error details or stack traces in responses.
 - Never inline business logic — delegate to a service.
 - Never disable CSRF without WebSec validation.
+- Everything else (allowlists, PII in logs, error details, status mapping) follows `../../rules/security.md`.
 
 ---
 

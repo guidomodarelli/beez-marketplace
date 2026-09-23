@@ -34,6 +34,7 @@ Avoid snapshot tests as the primary assertion strategy — they detect change, n
 ## Mocking
 
 - **Component tests**: mock internal services with `jest.spyOn`. No real HTTP calls.
+- Never mock component libraries such as `@andes/*` or platform packages (`nordic/*`, `@meli/*`); render and call them for real.
 - **Service tests**: do not mock `nordic/restclient` — use `nordic-dev/mocks` interceptors; HTTP calls are captured as fixtures.
 - Place `jest.mock()` / `vi.mock()` calls after imports.
 - Reset mocks between tests using `beforeEach` / `afterEach`.

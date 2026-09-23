@@ -1,4 +1,5 @@
 ---
+name: karpathy-guidelines
 description: Behavioral guidelines to reduce common LLM coding mistakes. Use when writing, reviewing, or refactoring code to avoid overcomplication, make surgical changes, surface assumptions, and define verifiable success criteria.
 ---
 
@@ -34,6 +35,8 @@ Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, sim
 ## 3. Surgical Changes
 
 **Touch only what you must. Clean up only your own mess.**
+
+Project rules under `../../rules/` take precedence when they require a broader change, such as replacing a util with lodash at every call site.
 
 When editing existing code:
 

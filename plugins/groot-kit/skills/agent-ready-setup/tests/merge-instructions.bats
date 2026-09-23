@@ -8,23 +8,11 @@ setup() {
   fake_bin="$test_root/bin"
   mkdir -p "$project_dir" "$fake_bin" "$test_root/tmp"
   export TMPDIR="$test_root/tmp"
+  # Keeps the SessionStart upgrade window stamp out of the user's real cache.
+  export XDG_CACHE_HOME="$test_root/cache"
   git -C "$project_dir" -c init.defaultBranch=main init -q
   cd "$project_dir"
-  valid_node_rule_block=$'## Rules\n\n<!-- BEGIN AGENT-READY RULE REFERENCES -->\n- Read and follow `.agents/rules/coding-style.md`.\n- Read and follow `.agents/rules/security.md`.\n- Read and follow `.agents/rules/testing.md`.\n<!-- END AGENT-READY RULE REFERENCES -->'
-}
-
-write_auto_claude_response() {
-  local merged_content="$1"
-
-  jq -n \
-    --arg content "$merged_content" \
-    '{status:"auto", merged_content:$content, reason:"Rules are compatible and references are complete.", conflicts:[]}' \
-    > "$test_root/provider-response.json"
-  cat > "$fake_bin/claude" <<EOF
-#!/bin/bash
-cat "$test_root/provider-response.json"
-EOF
-  chmod +x "$fake_bin/claude"
+  managed_placeholder='<!-- AGENT-READY MANAGED BLOCK -->'
 }
 
 teardown() {
@@ -32,54 +20,348 @@ teardown() {
   rm -rf "$test_root"
 }
 
-@test "auto merge preserves unverified legacy-looking files and visible metadata" {
-  printf '%s\n' '# Existing project instructions' > AGENTS.md
-  printf '%s\n' '@AGENTS.md' > CLAUDE.md
-  printf '%s\n' '# Project-owned file' > AGENTS.md.agent-ready-backup.stale
-  write_auto_claude_response $'# Existing project instructions\n\n'"$valid_node_rule_block"
+render_managed_block() {
+  local stack="$1"
+  local source_dir="${2:-$skill_dir}"
 
-  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider claude --stack node --skill-dir "$skill_dir"
+  bash "$source_dir/scripts/render-instruction-template.sh" \
+    --template "$source_dir/assets/stacks/$stack/agents-template.md" \
+    --rules-dir "$source_dir/assets/stacks/$stack/rules" \
+    --centralization "$source_dir/assets/instruction-centralization.md" \
+    --managed-block
+}
+
+write_review_response() {
+  local project_content="$1"
+  local removed_json="${2:-[]}"
+  local inconsistencies_json="${3:-[]}"
+
+  jq -n \
+    --arg content "$project_content" \
+    --argjson removed "$removed_json" \
+    --argjson inconsistencies "$inconsistencies_json" \
+    '{project_content:$content, removed:$removed, inconsistencies:$inconsistencies, reason:"Reviewed project content."}' \
+    > "$test_root/provider-response.json"
+  cat > "$fake_bin/claude" <<EOF
+#!/bin/bash
+printf '%s\\n' called >> "$test_root/provider-calls.log"
+printf '%s\\n' "\$*" > "$test_root/provider-prompt.log"
+cat "$test_root/provider-response.json"
+EOF
+  chmod +x "$fake_bin/claude"
+}
+
+run_merge() {
+  local stack="$1"
+  local source_dir="${2:-$skill_dir}"
+
+  PATH="$fake_bin:$PATH" run bash "$source_dir/scripts/merge-instructions.sh" \
+    --provider claude --stack "$stack" --skill-dir "$source_dir"
+}
+
+provider_call_count() {
+  if [[ -f "$test_root/provider-calls.log" ]]; then
+    wc -l < "$test_root/provider-calls.log" | tr -d ' '
+  else
+    printf '0\n'
+  fi
+}
+
+@test "legacy AGENTS receives the verbatim managed block and keeps project content" {
+  cat > AGENTS.md <<'EOF'
+# Existing project instructions
+
+Run make verify before merging.
+
+## Rules
+
+@./rules/coding-style.md
+@./rules/security.md
+EOF
+  mkdir -p .agents .git/info
+  printf '%s\n' stale > .agents/.agent-ready-instructions-template.sha256
+  printf '%s\n' stale > .git/info/agent-ready-instructions-template.sha256
+  write_review_response $'# Existing project instructions\n\nRun make verify before merging.\n\n'"$managed_placeholder" \
+    '["## Rules — replaced by managed block", "@./rules/coding-style.md — replaced by managed block", "@./rules/security.md — replaced by managed block"]'
+
+  run_merge node
 
   [ "$status" -eq 0 ]
-  [ "$(cat AGENTS.md)" = $'# Existing project instructions\n\n'"$valid_node_rule_block" ]
-  [ "$(cat CLAUDE.md)" = '@AGENTS.md' ]
-  [ "$(cat AGENTS.md.agent-ready-backup.stale)" = '# Project-owned file' ]
-  [ -f AGENTS.md.agent-ready-backup.stale ]
-  [ -f .git/info/agent-ready-instructions-template.sha256 ]
+  [ "$(cat AGENTS.md)" = "$(printf '%s\n\n%s\n\n%s' '# Existing project instructions' 'Run make verify before merging.' "$(render_managed_block node)")" ]
+  ! grep -Eq '@[^[:space:]]*rules/' AGENTS.md
+  [[ "$output" == *"Removed redundant lines outside the managed block:"* ]]
+  [ -f .git/info/agent-ready-instructions-reviewed.sha256 ]
+  [ ! -e .git/info/agent-ready-instructions-template.sha256 ]
   [ ! -e .agents/.agent-ready-instructions-template.sha256 ]
-  hash_files=(.git/info/agent-ready-instructions-template.sha256*)
-  [ "${#hash_files[@]}" -eq 1 ]
-  [[ "$output" == *"Updated AGENTS.md automatically; no backup retained."* ]]
 
   cat > "$fake_bin/claude" <<'EOF'
 #!/bin/bash
 exit 42
 EOF
+  run_merge node
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"already reviewed; AI review not required."* ]]
+}
+
+@test "managed block is replaced verbatim and content outside markers is preserved" {
+  cat > AGENTS.md <<'EOF'
+# Project
+
+Project description.
+
+<!-- BEGIN AGENT-READY MANAGED -->
+## Rules
+
+- Read and follow `.agents/rules/retired.md`.
+Local edit inside the block.
+<!-- END AGENT-READY MANAGED -->
+
+## Ownership
+
+Team Groot owns this service.
+EOF
+  write_review_response $'# Project\n\nProject description.\n\n'"$managed_placeholder"$'\n\n## Ownership\n\nTeam Groot owns this service.'
+
+  run_merge node
+
+  [ "$status" -eq 0 ]
+  expected="$(printf '%s\n\n%s\n\n%s\n%s\n\n%s\n\n%s' '# Project' 'Project description.' \
+    "$(render_managed_block node)" '' '## Ownership' 'Team Groot owns this service.')"
+  [ "$(cat AGENTS.md)" = "$(sed '/^$/N;/^\n$/D' <<< "$expected")" ]
+  ! grep -Fq 'Local edit inside the block.' AGENTS.md
+  ! grep -Fq 'retired.md' AGENTS.md
+  bash "$skill_dir/scripts/render-instruction-template.sh" --validate AGENTS.md \
+    --rules-dir "$skill_dir/assets/stacks/node/rules"
+}
+
+@test "managed block omits skill lists because providers discover skills natively" {
+  printf '%s\n' '# Project' > AGENTS.md
+  write_review_response $'# Project\n\n'"$managed_placeholder"
+
+  run_merge frontend
+
+  [ "$status" -eq 0 ]
+  ! grep -Fxq '## Skills' AGENTS.md
+  ! grep -Fq 'AGENT-READY RULE REFERENCES' AGENTS.md
+  grep -Fq 'Claude Code already loads these rules from `.claude/rules/`; do not read them again.' AGENTS.md
+  ! grep -Fq '{{AGENT_READY_' AGENTS.md
+  grep -Fxq '## Centralización recursiva de instrucciones' AGENTS.md
+  [ "$(grep -c '^<!-- BEGIN AGENT-READY MANAGED -->$' AGENTS.md)" -eq 1 ]
+}
+
+@test "review deletes project lines already covered by rules" {
+  cat > AGENTS.md <<'EOF'
+# Project
+
+Use Jest and React Testing Library for tests.
+Deploy with make release.
+EOF
+  write_review_response $'# Project\n\nDeploy with make release.\n\n'"$managed_placeholder" \
+    '["Use Jest and React Testing Library for tests. — covered by .agents/rules/testing.md"]'
+
+  run_merge frontend
+
+  [ "$status" -eq 0 ]
+  ! grep -Fq 'Use Jest and React Testing Library for tests.' AGENTS.md
+  grep -Fxq 'Deploy with make release.' AGENTS.md
+  [[ "$output" == *"covered by .agents/rules/testing.md"* ]]
+}
+
+@test "review reports inconsistencies and keeps the conflicting content" {
+  cat > AGENTS.md <<'EOF'
+# Project
+
+Mock @andes components in every test.
+EOF
+  write_review_response $'# Project\n\nMock @andes components in every test.\n\n'"$managed_placeholder" '[]' \
+    '["Mock @andes components in every test. — conflicts with .agents/rules/testing.md: Andes components must not be mocked"]'
+
+  run_merge frontend
+
+  [ "$status" -eq 0 ]
+  grep -Fxq 'Mock @andes components in every test.' AGENTS.md
+  [[ "$output" == *"Instruction inconsistencies (manual review required; content preserved):"* ]]
+  [[ "$output" == *"conflicts with .agents/rules/testing.md"* ]]
+}
+
+@test "review that adds or rewrites lines is rejected and only the managed block is applied" {
+  printf '%s\n' '# Keep this file' > AGENTS.md
+  write_review_response $'# Keep this file, reworded\n\n'"$managed_placeholder"
+
+  run_merge node
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"review rejected: reviewed content adds or rewrites a line"* ]]
+  [ "$(cat AGENTS.md)" = "$(printf '%s\n\n%s' '# Keep this file' "$(render_managed_block node)")" ]
+  [ ! -e .git/info/agent-ready-instructions-reviewed.sha256 ]
+}
+
+@test "review output without the placeholder or with fences is rejected" {
+  printf '%s\n' '# Keep this file' > AGENTS.md
+  write_review_response '# Keep this file'
+
+  run_merge node
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"must keep the managed block placeholder exactly once"* ]]
+  grep -Fxq '# Keep this file' AGENTS.md
+
+  write_review_response $'```markdown\n# Keep this file\n'"$managed_placeholder"$'\n```'
+  run_merge node
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"fenced instead of Markdown"* ]]
+  grep -Fxq '# Keep this file' AGENTS.md
+}
+
+@test "provider failure applies the managed block and retries the review next sync" {
+  printf '%s\n' '# Keep this file' > AGENTS.md
+  cat > "$fake_bin/claude" <<EOF
+#!/bin/bash
+printf '%s\\n' called >> "$test_root/provider-calls.log"
+exit 1
+EOF
   chmod +x "$fake_bin/claude"
-  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider claude --stack node --skill-dir "$skill_dir"
+
+  run_merge node
+
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Template and AGENTS.md rule references unchanged; AI instruction merge not required."* ]]
+  [[ "$output" == *"Claude review provider failed; applying the managed block without redundancy review."* ]]
+  [ "$(cat AGENTS.md)" = "$(printf '%s\n\n%s' '# Keep this file' "$(render_managed_block node)")" ]
+
+  run_merge node
+  [ "$status" -eq 0 ]
+  [ "$(provider_call_count)" -eq 2 ]
 }
 
-@test "successful merge replaces AGENTS atomically without temporary residue" {
+@test "invalid structured output keeps project content and applies the managed block" {
+  printf '%s\n' '# Keep this file' > AGENTS.md
+  cat > "$fake_bin/claude" <<'EOF'
+#!/bin/bash
+printf '%s\n' 'not-json'
+EOF
+  chmod +x "$fake_bin/claude"
+
+  run_merge frontend
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"invalid structured output"* ]]
+  grep -Fxq '# Keep this file' AGENTS.md
+  grep -Fxq '<!-- BEGIN AGENT-READY MANAGED -->' AGENTS.md
+}
+
+@test "legacy rule-reference markers are removed when review fails" {
+  cat > AGENTS.md <<'EOF'
+# Project
+
+## Rules
+
+<!-- BEGIN AGENT-READY RULE REFERENCES -->
+- Read and follow `.agents/rules/security.md`.
+<!-- END AGENT-READY RULE REFERENCES -->
+EOF
+  cat > "$fake_bin/claude" <<'EOF'
+#!/bin/bash
+exit 1
+EOF
+  chmod +x "$fake_bin/claude"
+
+  run_merge node
+
+  [ "$status" -eq 0 ]
+  ! grep -Fq 'AGENT-READY RULE REFERENCES' AGENTS.md
+  bash "$skill_dir/scripts/render-instruction-template.sh" --validate AGENTS.md \
+    --rules-dir "$skill_dir/assets/stacks/node/rules"
+}
+
+@test "malformed managed markers require human review without invoking the provider" {
+  cat > AGENTS.md <<'EOF'
+<!-- BEGIN AGENT-READY MANAGED -->
+<!-- BEGIN AGENT-READY MANAGED -->
+<!-- END AGENT-READY MANAGED -->
+EOF
+  before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
+  write_review_response "$managed_placeholder"
+
+  run_merge node
+
+  [ "$status" -eq 2 ]
+  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" = "$before_hash" ]
+  [ "$(provider_call_count)" -eq 0 ]
+  [[ "$output" == *"Human confirmation required"* ]]
+}
+
+@test "provider prompt includes managed block, rule contents, and project content" {
   printf '%s\n' '# Existing project instructions' > AGENTS.md
-  write_auto_claude_response $'# Updated project instructions\n\n'"$valid_node_rule_block"
-  original_inode="$(ls -di AGENTS.md | awk '{print $1}')"
+  write_review_response $'# Existing project instructions\n\n'"$managed_placeholder"
 
-  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider claude --stack node --skill-dir "$skill_dir"
+  run_merge node
 
   [ "$status" -eq 0 ]
-  updated_inode="$(ls -di AGENTS.md | awk '{print $1}')"
-  [ "$updated_inode" != "$original_inode" ]
-  [ "$(cat AGENTS.md)" = $'# Updated project instructions\n\n'"$valid_node_rule_block" ]
-  temporary_files=(.AGENTS.md.agent-ready-merge.*)
-  [ ! -e "${temporary_files[0]}" ]
+  grep -Fq '<rule path=".agents/rules/security.md">' "$test_root/provider-prompt.log"
+  grep -Fq "$(sed -n '1p' "$skill_dir/assets/stacks/node/rules/security.md")" "$test_root/provider-prompt.log"
+  grep -Fq '# Existing project instructions' "$test_root/provider-prompt.log"
+  grep -Fq '<!-- BEGIN AGENT-READY MANAGED -->' "$test_root/provider-prompt.log"
+  ! grep -Fq '{{AGENT_READY_' "$test_root/provider-prompt.log"
 }
 
-@test "template hash metadata is isolated per linked worktree" {
+@test "new rule files enter the managed block and rule changes trigger a new review" {
+  dynamic_skill_dir="$test_root/dynamic-skill"
+  cp -R "$skill_dir" "$dynamic_skill_dir"
+  printf '%s\n' '# Runtime-specific rules' > "$dynamic_skill_dir/assets/stacks/node/rules/runtime.md"
+  printf '%s\n' '# Existing project instructions' > AGENTS.md
+  write_review_response $'# Existing project instructions\n\n'"$managed_placeholder"
+
+  run_merge node "$dynamic_skill_dir"
+
+  [ "$status" -eq 0 ]
+  grep -Fxq -- '- Read and follow `.agents/rules/runtime.md`.' AGENTS.md
+  [ "$(provider_call_count)" -eq 1 ]
+
+  run_merge node "$dynamic_skill_dir"
+  [ "$(provider_call_count)" -eq 1 ]
+
+  printf '%s\n' '# Runtime-specific rules, revised' > "$dynamic_skill_dir/assets/stacks/node/rules/runtime.md"
+  run_merge node "$dynamic_skill_dir"
+  [ "$status" -eq 0 ]
+  [ "$(provider_call_count)" -eq 2 ]
+}
+
+@test "project rules are listed in the managed block and reviewed with template rules" {
+  mkdir -p .agents/rules/area
+  printf '%s\n' '# Team conventions' 'Deploy only on Tuesdays.' > .agents/rules/team-conventions.md
+  printf '%s\n' '# Area rule' > .agents/rules/area/payments.md
+  cp "$skill_dir/assets/stacks/node/rules/security.md" .agents/rules/security.md
+  ln -s /etc/hosts .agents/rules/linked.md
+  printf '%s\n' '# Project' > AGENTS.md
+  write_review_response $'# Project\n\n'"$managed_placeholder"
+
+  run_merge node
+
+  [ "$status" -eq 0 ]
+  grep -Fxq '### Project rules' AGENTS.md
+  grep -Fxq -- '- Read and follow `.agents/rules/team-conventions.md`.' AGENTS.md
+  grep -Fxq -- '- Read and follow `.agents/rules/area/payments.md`.' AGENTS.md
+  [ "$(grep -c 'rules/security.md' AGENTS.md)" -eq 1 ]
+  ! grep -Fq 'linked.md' AGENTS.md
+  grep -Fq '<rule path=".agents/rules/team-conventions.md">' "$test_root/provider-prompt.log"
+  grep -Fq 'Deploy only on Tuesdays.' "$test_root/provider-prompt.log"
+  bash "$skill_dir/scripts/render-instruction-template.sh" --validate AGENTS.md \
+    --rules-dir "$skill_dir/assets/stacks/node/rules" --project-rules-dir .agents/rules
+  [ "$(provider_call_count)" -eq 1 ]
+
+  printf '%s\n' 'Deploy only on Wednesdays.' >> .agents/rules/team-conventions.md
+  run_merge node
+  [ "$status" -eq 0 ]
+  [ "$(provider_call_count)" -eq 2 ]
+
+  rm .agents/rules/team-conventions.md
+  write_review_response "$(awk '/^<!-- BEGIN AGENT-READY MANAGED -->$/ { print "<!-- AGENT-READY MANAGED BLOCK -->"; skip = 1; next } /^<!-- END AGENT-READY MANAGED -->$/ { skip = 0; next } !skip' AGENTS.md)"
+  run_merge node
+  [ "$status" -eq 0 ]
+  ! grep -Fq 'team-conventions.md' AGENTS.md
+}
+
+@test "review metadata is isolated per linked worktree" {
   git config user.email "agent-ready-tests@example.com"
   git config user.name "Agent Ready Tests"
   printf '%s\n' '# Initial repository content' > README.md
@@ -90,267 +372,38 @@ EOF
   git worktree add -q -b linked-worktree "$linked_project_dir"
   printf '%s\n' '# Existing project instructions' > AGENTS.md
   printf '%s\n' '# Existing project instructions' > "$linked_project_dir/AGENTS.md"
+  write_review_response $'# Existing project instructions\n\n'"$managed_placeholder"
 
-  write_auto_claude_response $'# Existing project instructions\n\n'"$valid_node_rule_block"
-  provider_call_log="$test_root/provider-calls.log"
-  cat > "$fake_bin/claude" <<EOF
-#!/bin/bash
-printf '%s\\n' called >> "$provider_call_log"
-cat "$test_root/provider-response.json"
-EOF
-  chmod +x "$fake_bin/claude"
-
-  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider claude --stack node --skill-dir "$skill_dir"
+  run_merge node
   [ "$status" -eq 0 ]
-
   cd "$linked_project_dir"
-  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider claude --stack node --skill-dir "$skill_dir"
+  run_merge node
   [ "$status" -eq 0 ]
 
-  main_git_directory="$(git -C "$project_dir" rev-parse --absolute-git-dir)"
-  linked_git_directory="$(git -C "$linked_project_dir" rev-parse --absolute-git-dir)"
-  main_hash_file="$main_git_directory/info/agent-ready-instructions-template.sha256"
-  linked_hash_file="$linked_git_directory/info/agent-ready-instructions-template.sha256"
-
+  main_hash_file="$(git -C "$project_dir" rev-parse --absolute-git-dir)/info/agent-ready-instructions-reviewed.sha256"
+  linked_hash_file="$(git -C "$linked_project_dir" rev-parse --absolute-git-dir)/info/agent-ready-instructions-reviewed.sha256"
   [ -f "$main_hash_file" ]
   [ -f "$linked_hash_file" ]
   [ "$main_hash_file" != "$linked_hash_file" ]
-  [ "$(wc -l < "$provider_call_log" | tr -d ' ')" -eq 2 ]
+  [ "$(provider_call_count)" -eq 2 ]
 }
 
-@test "provider receives dynamic Codex-readable rule catalog" {
+@test "successful merge replaces AGENTS atomically without temporary residue" {
   printf '%s\n' '# Existing project instructions' > AGENTS.md
-  write_auto_claude_response $'# Existing project instructions\n\n'"$valid_node_rule_block"
-  cat > "$fake_bin/claude" <<'EOF'
-#!/bin/bash
-printf '%s\n' "$*" > "$CLAUDE_PROMPT_LOG"
-cat "$CLAUDE_RESPONSE_FILE"
-EOF
-  chmod +x "$fake_bin/claude"
+  write_review_response $'# Existing project instructions\n\n'"$managed_placeholder"
+  original_inode="$(ls -di AGENTS.md | awk '{print $1}')"
 
-  CLAUDE_PROMPT_LOG="$test_root/claude-prompt.log" \
-    CLAUDE_RESPONSE_FILE="$test_root/provider-response.json" \
-    PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-      --provider claude --stack node --skill-dir "$skill_dir"
+  run_merge node
 
   [ "$status" -eq 0 ]
-  grep -Fq '.agents/rules/coding-style.md' "$test_root/claude-prompt.log"
-  grep -Fq '.agents/rules/security.md' "$test_root/claude-prompt.log"
-  grep -Fq '.agents/rules/testing.md' "$test_root/claude-prompt.log"
-  ! grep -Fq '{{AGENT_READY_RULE_REFERENCES}}' "$test_root/claude-prompt.log"
-}
-
-@test "AI repairs existing Claude-only rule references" {
-  cat > AGENTS.md <<'EOF'
-# Existing project instructions
-
-## Rules
-
-@./rules/coding-style.md
-@./rules/security.md
-@./rules/testing.md
-EOF
-  write_auto_claude_response $'# Existing project instructions\n\n'"$valid_node_rule_block"
-
-  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider claude --stack node --skill-dir "$skill_dir"
-
-  [ "$status" -eq 0 ]
-  ! grep -Eq '@[^[:space:]]*rules/|@path/to/folder' AGENTS.md
-  grep -Fq -- '- Read and follow `.agents/rules/coding-style.md`.' AGENTS.md
-  grep -Fq -- '- Read and follow `.agents/rules/security.md`.' AGENTS.md
-  grep -Fq -- '- Read and follow `.agents/rules/testing.md`.' AGENTS.md
-}
-
-@test "new rule files are included in sync merge template" {
-  dynamic_skill_dir="$test_root/dynamic-skill"
-  cp -R "$skill_dir" "$dynamic_skill_dir"
-  printf '%s\n' '# Runtime-specific rules' > "$dynamic_skill_dir/assets/stacks/node/rules/runtime.md"
-  printf '%s\n' '# Existing project instructions' > AGENTS.md
-  dynamic_merged_content=$'# Existing project instructions\n\n## Rules\n\n<!-- BEGIN AGENT-READY RULE REFERENCES -->\n- Read and follow `.agents/rules/coding-style.md`.\n- Read and follow `.agents/rules/runtime.md`.\n- Read and follow `.agents/rules/security.md`.\n- Read and follow `.agents/rules/testing.md`.\n<!-- END AGENT-READY RULE REFERENCES -->'
-  write_auto_claude_response "$dynamic_merged_content"
-  cat > "$fake_bin/claude" <<'EOF'
-#!/bin/bash
-printf '%s\n' "$*" > "$CLAUDE_PROMPT_LOG"
-cat "$CLAUDE_RESPONSE_FILE"
-EOF
-  chmod +x "$fake_bin/claude"
-
-  CLAUDE_PROMPT_LOG="$test_root/dynamic-prompt.log" \
-    CLAUDE_RESPONSE_FILE="$test_root/provider-response.json" \
-    PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-      --provider claude --stack node --skill-dir "$dynamic_skill_dir"
-
-  [ "$status" -eq 0 ]
-  grep -Fq '.agents/rules/runtime.md' "$test_root/dynamic-prompt.log"
-  grep -Fq '.agents/rules/runtime.md' AGENTS.md
-}
-
-@test "human-required merge falls back with an AGENTS backup" {
-  printf '%s\n' '# Existing policy' > AGENTS.md
-  before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
-  cat > "$fake_bin/claude" <<'EOF'
-#!/bin/bash
-printf '%s\n' '{"status":"human_required","merged_content":"# Existing policy\n\n# Conflicting policy\n","reason":"Policies require a precedence decision.","conflicts":["Existing and template policies disagree."]}'
-EOF
-  chmod +x "$fake_bin/claude"
-
-  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider claude --stack node --skill-dir "$skill_dir"
-
-  [ "$status" -eq 0 ]
-  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" != "$before_hash" ]
-  [[ "$output" == *"Existing and template policies disagree."* ]]
-  [[ "$output" == *"Applied template fallback"* ]]
-  backup_files=("$test_root"/tmp/agent-ready-backups.*/AGENTS.md.agent-ready-backup.*)
-  [ -f "${backup_files[0]}" ]
-  [ "$(cat "${backup_files[0]}")" = '# Existing policy' ]
-}
-
-@test "invalid provider output falls back to template with AGENTS backup" {
-  printf '%s\n' '# Keep this file' > AGENTS.md
-  before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
-  cat > "$fake_bin/claude" <<'EOF'
-#!/bin/bash
-printf '%s\n' 'not-json'
-EOF
-  chmod +x "$fake_bin/claude"
-
-  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider claude --stack frontend --skill-dir "$skill_dir"
-
-  [ "$status" -eq 0 ]
-  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" != "$before_hash" ]
-  [[ "$output" == *"invalid structured output"* ]]
-  [[ "$output" == *"Applied template fallback"* ]]
-  backup_files=("$test_root"/tmp/agent-ready-backups.*/AGENTS.md.agent-ready-backup.*)
-  [ -f "${backup_files[0]}" ]
-  [ "$(cat "${backup_files[0]}")" = '# Keep this file' ]
-}
-
-@test "matching template hash does not skip incomplete rule references" {
-  cat > AGENTS.md <<'EOF'
-# Existing project instructions
-
-## Rules
-
-<!-- BEGIN AGENT-READY RULE REFERENCES -->
-- Read and follow `.agents/rules/coding-style.md`.
-- Read and follow `.agents/rules/security.md`.
-<!-- END AGENT-READY RULE REFERENCES -->
-EOF
-  mkdir -p .agents .git/info
-  candidate_file="$test_root/rendered-template.md"
-  bash "$skill_dir/scripts/render-instruction-template.sh" \
-    --template "$skill_dir/assets/stacks/node/CLAUDE.md" \
-    --rules-dir "$skill_dir/assets/stacks/node/rules" > "$candidate_file"
-  shasum "$candidate_file" | cut -d ' ' -f 1 > .agents/.agent-ready-instructions-template.sha256
-  write_auto_claude_response $'# Existing project instructions\n\n'"$valid_node_rule_block"
-
-  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider claude --stack node --skill-dir "$skill_dir"
-
-  [ "$status" -eq 0 ]
-  grep -Fq -- '- Read and follow `.agents/rules/testing.md`.' AGENTS.md
-  [ ! -e .agents/.agent-ready-instructions-template.sha256 ]
-  [ -f .git/info/agent-ready-instructions-template.sha256 ]
-  [[ "$output" != *"merge not required"* ]]
-}
-
-@test "automatic merge rejects rule paths outside managed block" {
-  printf '%s\n' '# Keep this file' > AGENTS.md
-  before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
-  write_auto_claude_response $'# Invalid merge\n\nPaths mentioned in notes: .agents/rules/coding-style.md, .agents/rules/security.md, .agents/rules/testing.md.\n\n## Rules\n\n<!-- BEGIN AGENT-READY RULE REFERENCES -->\n<!-- END AGENT-READY RULE REFERENCES -->'
-
-  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider claude --stack node --skill-dir "$skill_dir"
-
-  [ "$status" -eq 0 ]
-  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" != "$before_hash" ]
-  [[ "$output" == *"omitted or corrupted portable rule references"* ]]
-  [[ "$output" == *"Applied template fallback"* ]]
-  backup_files=("$test_root"/tmp/agent-ready-backups.*/AGENTS.md.agent-ready-backup.*)
-  [ -f "${backup_files[0]}" ]
-  [ "$(cat "${backup_files[0]}")" = '# Keep this file' ]
-}
-
-@test "automatic merge fails closed when a rule reference is omitted" {
-  printf '%s\n' '# Keep this file' > AGENTS.md
-  before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
-  write_auto_claude_response $'# Incomplete merge\n\n## Rules\n\n<!-- BEGIN AGENT-READY RULE REFERENCES -->\n- Read and follow `.agents/rules/security.md`.\n<!-- END AGENT-READY RULE REFERENCES -->'
-
-  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider claude --stack node --skill-dir "$skill_dir"
-
-  [ "$status" -eq 0 ]
-  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" != "$before_hash" ]
-  [[ "$output" == *"omitted or corrupted portable rule references"* ]]
-  [[ "$output" == *"Applied template fallback"* ]]
-  backup_files=("$test_root"/tmp/agent-ready-backups.*/AGENTS.md.agent-ready-backup.*)
-  [ -f "${backup_files[0]}" ]
-  [ "$(cat "${backup_files[0]}")" = '# Keep this file' ]
-}
-
-@test "automatic merge rejects Claude-only rule references" {
-  printf '%s\n' '# Keep this file' > AGENTS.md
-  before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
-  write_auto_claude_response $'# Invalid merge\n\n## Rules\n\n<!-- BEGIN AGENT-READY RULE REFERENCES -->\n- Read and follow `.agents/rules/coding-style.md`.\n- Read and follow `@./rules/security.md`.\n- Read and follow `.agents/rules/security.md`.\n- Read and follow `.agents/rules/testing.md`.\n<!-- END AGENT-READY RULE REFERENCES -->'
-
-  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider claude --stack node --skill-dir "$skill_dir"
-
-  [ "$status" -eq 0 ]
-  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" != "$before_hash" ]
-  [[ "$output" == *"omitted or corrupted portable rule references"* ]]
-  [[ "$output" == *"Applied template fallback"* ]]
-  backup_files=("$test_root"/tmp/agent-ready-backups.*/AGENTS.md.agent-ready-backup.*)
-  [ -f "${backup_files[0]}" ]
-  [ "$(cat "${backup_files[0]}")" = '# Keep this file' ]
-}
-
-@test "automatic merge rejects stale rule references" {
-  printf '%s\n' '# Keep this file' > AGENTS.md
-  before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
-  write_auto_claude_response $'# Invalid merge\n\n## Rules\n\n<!-- BEGIN AGENT-READY RULE REFERENCES -->\n- Read and follow `.agents/rules/coding-style.md`.\n- Read and follow `.agents/rules/security.md`.\n- Read and follow `.agents/rules/testing.md`.\n- Read and follow `.agents/rules/retired.md`.\n<!-- END AGENT-READY RULE REFERENCES -->'
-
-  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider claude --stack node --skill-dir "$skill_dir"
-
-  [ "$status" -eq 0 ]
-  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" != "$before_hash" ]
-  [[ "$output" == *"omitted or corrupted portable rule references"* ]]
-  [[ "$output" == *"Applied template fallback"* ]]
-  backup_files=("$test_root"/tmp/agent-ready-backups.*/AGENTS.md.agent-ready-backup.*)
-  [ -f "${backup_files[0]}" ]
-  [ "$(cat "${backup_files[0]}")" = '# Keep this file' ]
-}
-
-@test "fenced provider output falls back to template with AGENTS backup" {
-  printf '%s\n' '# Keep this file' > AGENTS.md
-  before_hash="$(shasum AGENTS.md | cut -d ' ' -f 1)"
-  cat > "$fake_bin/claude" <<'EOF'
-#!/bin/bash
-printf '%s\n' '{"status":"auto","merged_content":"```markdown\n# Not a complete response\n```","reason":"Invalid wrapper.","conflicts":[]}'
-EOF
-  chmod +x "$fake_bin/claude"
-
-  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider claude --stack node --skill-dir "$skill_dir"
-
-  [ "$status" -eq 0 ]
-  [ "$(shasum AGENTS.md | cut -d ' ' -f 1)" != "$before_hash" ]
-  [[ "$output" == *"fenced content"* ]]
-  [[ "$output" == *"Applied template fallback"* ]]
-  backup_files=("$test_root"/tmp/agent-ready-backups.*/AGENTS.md.agent-ready-backup.*)
-  [ -f "${backup_files[0]}" ]
-  [ "$(cat "${backup_files[0]}")" = '# Keep this file' ]
+  [ "$(ls -di AGENTS.md | awk '{print $1}')" != "$original_inode" ]
+  temporary_files=(.AGENTS.md.agent-ready-merge.*)
+  [ ! -e "${temporary_files[0]}" ]
 }
 
 @test "concurrent AGENTS changes are not overwritten by a stale merge" {
   printf '%s\n' '# Original instructions' > AGENTS.md
-  write_auto_claude_response $'# Model merge\n\n'"$valid_node_rule_block"
+  write_review_response $'# Original instructions\n\n'"$managed_placeholder"
   cat > "$fake_bin/claude" <<EOF
 #!/bin/bash
 printf '%s\n' '# Newer user instructions' > AGENTS.md
@@ -358,8 +411,7 @@ cat "$test_root/provider-response.json"
 EOF
   chmod +x "$fake_bin/claude"
 
-  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider claude --stack node --skill-dir "$skill_dir"
+  run_merge node
 
   [ "$status" -ne 0 ]
   [ "$(cat AGENTS.md)" = '# Newer user instructions' ]
@@ -368,17 +420,20 @@ EOF
 
 @test "atomic replacement rejects stale descriptor write" {
   printf '%s\n' '# Original instructions' > AGENTS.md
-  write_auto_claude_response $'# Model merge\n\n'"$valid_node_rule_block"
-  cat > "$fake_bin/python3" <<'EOF'
+  write_review_response $'# Original instructions\n\n'"$managed_placeholder"
+  real_python="$(command -v python3)"
+  # Only the four-argument descriptor writer races; split and assembly run first.
+  cat > "$fake_bin/python3" <<EOF
 #!/bin/bash
-printf '%s\n' '# Newer descriptor instructions' > .AGENTS.md.new
-mv .AGENTS.md.new AGENTS.md
-exec /usr/bin/python3 "$@"
+if [[ \$# -eq 4 ]]; then
+  printf '%s\n' '# Newer descriptor instructions' > .AGENTS.md.new
+  mv .AGENTS.md.new AGENTS.md
+fi
+exec "$real_python" "\$@"
 EOF
   chmod +x "$fake_bin/python3"
 
-  PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
-    --provider claude --stack node --skill-dir "$skill_dir"
+  run_merge node
 
   [ "$status" -ne 0 ]
   [ "$(cat AGENTS.md)" = '# Newer descriptor instructions' ]
@@ -386,24 +441,17 @@ EOF
 }
 
 @test "directory lock protects against pathname replacement during atomic update" {
-  printf '%s\n' '# Original instructions' > AGENTS.md
-  write_auto_claude_response $'# Model merge\n\n'"$valid_node_rule_block"
-  python3 - "$test_root/provider-response.json" <<'PY'
-import json
-import sys
-
-
-response_path = sys.argv[1]
-with open(response_path, encoding='utf-8') as response_file:
-    response = json.load(response_file)
-response['merged_content'] = (
-    '# Model merge\\n\\n'
-    + ('# Merge operation in progress\\n' * 250000)
-    + response['merged_content'].split('# Model merge\\n\\n', 1)[-1]
-)
-with open(response_path, 'w', encoding='utf-8') as response_file:
-    json.dump(response, response_file)
+  python3 - <<'PY'
+with open('AGENTS.md', 'w', encoding='utf-8') as agents_file:
+    agents_file.write('# Original instructions\n\n')
+    for index in range(250000):
+        agents_file.write(f'Project line {index}\n')
 PY
+  cat > "$fake_bin/claude" <<'EOF'
+#!/bin/bash
+exit 1
+EOF
+  chmod +x "$fake_bin/claude"
   race_marker="$test_root/race-detected"
   writer_script="$test_root/replace-after-merge.py"
   cat > "$writer_script" <<'PY'
@@ -461,9 +509,9 @@ PY
   [ ! -e .concurrent-agents.md ]
 }
 
-@test "auto merge works with Codex structured output" {
+@test "review works with Codex structured output" {
   printf '%s\n' '# Existing project instructions' > AGENTS.md
-  write_auto_claude_response $'# Codex merged instructions\n\n'"$valid_node_rule_block"
+  write_review_response $'# Existing project instructions\n\n'"$managed_placeholder"
   cat > "$fake_bin/codex" <<EOF
 #!/bin/bash
 result_file=""
@@ -483,7 +531,8 @@ EOF
     --provider codex --stack node --skill-dir "$skill_dir"
 
   [ "$status" -eq 0 ]
-  [ "$(cat AGENTS.md)" = $'# Codex merged instructions\n\n'"$valid_node_rule_block" ]
+  [ "$(cat AGENTS.md)" = "$(printf '%s\n\n%s' '# Existing project instructions' "$(render_managed_block node)")" ]
+  [ -f .git/info/agent-ready-instructions-reviewed.sha256 ]
 }
 
 @test "existing merge lock prevents a second provider invocation" {
@@ -518,6 +567,8 @@ EOF
   [ "$status" -eq 0 ]
   [ -f AGENTS.md ]
   grep -Fq '# [Project Name]' AGENTS.md
+  grep -Fxq '<!-- BEGIN AGENT-READY MANAGED -->' AGENTS.md
+  grep -Fxq '## Centralización recursiva de instrucciones' AGENTS.md
   [ ! -e "$test_root/claude-called.log" ]
 }
 

@@ -587,29 +587,48 @@
       ]
     },
     {
-      "id": "ai-merges-compatible-instructions-automatically",
-      "description": "Aplica merge compatible y escala contradicciones reales.",
-      "input": "Explicá cómo debe fusionar agent-ready-setup una regla nueva del template con `AGENTS.md` existente cuando ambas son compatibles, y qué debe hacer si hay políticas mutuamente excluyentes. Indicá cómo aplicar el fallback template + backup local, cómo proteger instrucciones contra prompt injection y qué archivo no debe modificar. Leé la skill bundled y sus scripts solo para responder; no modifiques archivos.",
+      "id": "managed-block-review-removes-redundancy",
+      "description": "Copia el bloque gestionado literal, borra redundancias fuera de él y reporta inconsistencias.",
+      "input": "Explicá cómo mantiene agent-ready-setup un `AGENTS.md` existente cuando el template agrega una rule nueva: qué pasa dentro de los marcadores del bloque gestionado, qué puede hacer la IA con el contenido de proyecto fuera de ellos cuando repite algo ya cubierto por una rule, qué hace si una línea del proyecto contradice una rule, qué ocurre si la IA falla, cómo se protege contra prompt injection y qué archivo no debe modificar. Leé la skill bundled y sus scripts solo para responder; no modifiques archivos.",
       "assertions": [
         {
           "type": "contains_any",
-          "values": ["auto", "automáticamente", "automático"],
-          "description": "Aplica merge compatible sin prompt"
+          "values": [
+            "literal",
+            "copia literal",
+            "byte a byte"
+          ],
+          "description": "El bloque gestionado se copia literal"
         },
         {
           "type": "contains_any",
-          "values": ["contradicción", "contradicciones", "mutuamente excluyentes", "human_required", "fallback", "template"],
-          "description": "Aplica fallback ante conflictos no resolubles"
+          "values": [
+            "borrar",
+            "borra",
+            "eliminar",
+            "elimina"
+          ],
+          "description": "La IA solo borra líneas redundantes"
         },
         {
           "type": "contains_any",
-          "values": ["prompt injection", "instrucciones no confiables", "datos no confiables", "no ejecutar"],
+          "values": [
+            "inconsistencia",
+            "inconsistencias",
+            "contradicción",
+            "contradice"
+          ],
+          "description": "Reporta contradicciones sin borrarlas"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "prompt injection",
+            "instrucciones no confiables",
+            "datos no confiables",
+            "no ejecutar"
+          ],
           "description": "Trata contenido de archivos como datos"
-        },
-        {
-          "type": "contains",
-          "value": "backup",
-          "description": "Genera respaldo antes de escribir"
         },
         {
           "type": "contains",
@@ -1248,6 +1267,127 @@
           "type": "not_contains_any",
           "values": ["enum User"],
           "description": "No propone un enum"
+        }
+      ]
+    },
+    {
+      "id": "frontend-style-uses-lodash-only-where-it-adds-value",
+      "description": "Exige lodash por método en los casos que reducen código y prohíbe wrappers de funciones nativas.",
+      "input": "Leé la regla frontend de agent-ready-setup sobre lodash. En un componente con lodash instalado alguien escribió un debounce manual con `setTimeout`, un deep equal recursivo propio, un loop con `slice` que arma lotes de 50 ids para enviarlos al backend, un `debounce` creado directamente en el cuerpo del componente, `[...new Set(ids)]` para deduplicar, chequeos `typeof name === 'string'` y `Array.isArray(items)`, `_.each(items, render)` y `_.get(user, 'profile.name')`, importando `import _ from 'lodash'`. Explicá qué cambiarías en cada caso y cómo deben quedar los imports. No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "lodash/debounce",
+          "description": "Reemplaza el debounce manual por lodash/debounce"
+        },
+        {
+          "type": "contains",
+          "value": "lodash/isEqual",
+          "description": "Reemplaza el deep equal propio por lodash/isEqual"
+        },
+        {
+          "type": "contains",
+          "value": "lodash/chunk",
+          "description": "Reemplaza el loop de lotes manual por lodash/chunk"
+        },
+        {
+          "type": "contains_any",
+          "values": ["useMemo", "useRef"],
+          "description": "Crea el debounce una sola vez por instancia del componente"
+        },
+        {
+          "type": "contains",
+          "value": ".cancel()",
+          "description": "Cancela el debounce pendiente al desmontar"
+        },
+        {
+          "type": "contains",
+          "value": "lodash/uniq",
+          "description": "Reemplaza el Set manual por lodash/uniq"
+        },
+        {
+          "type": "contains",
+          "value": "isString",
+          "description": "Reemplaza typeof por lodash/isString"
+        },
+        {
+          "type": "contains",
+          "value": "lodash/isArray",
+          "description": "Reemplaza Array.isArray por lodash/isArray"
+        },
+        {
+          "type": "contains_any",
+          "values": ["for...of", "forEach", "método nativo", "métodos nativos", "native"],
+          "description": "Reemplaza _.each por iteración nativa"
+        },
+        {
+          "type": "contains_any",
+          "values": ["?.", "optional chaining", "encadenamiento opcional"],
+          "description": "Reemplaza _.get por optional chaining"
+        },
+        {
+          "type": "contains_any",
+          "values": ["un método por", "por método", "one method per", "bundle"],
+          "description": "Exige imports por método y explica el costo en el bundle"
+        }
+      ]
+    },
+    {
+      "id": "frontend-style-resolves-lodash-without-extraneous-dependencies",
+      "description": "Resuelve lodash provisto por Nordic sin declarar la dependencia ni silenciar import/no-extraneous-dependencies.",
+      "input": "Leé la regla frontend de agent-ready-setup sobre lodash. En una app Nordic, `lodash` no está en `dependencies` del `package.json`, pero aparece en `node_modules/nordic/package.json`. Necesito `lodash/debounce` y `lodash/chunk`, y ESLint marca `import/no-extraneous-dependencies`. ¿Qué hacés para que el lint pase? No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "import/core-modules",
+          "description": "Registra los subpaths en import/core-modules"
+        },
+        {
+          "type": "contains_any",
+          "values": ["lodash/debounce", "lodash/chunk"],
+          "description": "Registra cada subpath importado"
+        },
+        {
+          "type": "contains_any",
+          "values": ["no agregar", "no agrego", "no lo agrego", "no declarar", "no declaro", "sin agregarlo", "no lo declaro", "do not add"],
+          "description": "No declara lodash en package.json"
+        },
+        {
+          "type": "not_contains_any",
+          "values": ["npm install lodash", "npm i lodash", "// eslint-disable-next-line import/no-extraneous-dependencies"],
+          "description": "No instala lodash ni silencia la regla"
+        }
+      ]
+    },
+    {
+      "id": "frontend-style-replaces-existing-utils-with-lodash",
+      "description": "Reemplaza utils propios que duplican lodash llamando al método directamente y conservando la semántica.",
+      "input": "Leé la regla frontend de agent-ready-setup sobre lodash. El proyecto tiene lodash declarado y un `utils/is-record.ts` con `export const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);`, usado en 12 archivos y con su propio test. También hay un `utils/is-nullish.ts`. ¿Qué hacés con cada util? No ejecutes Bash ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "isPlainObject",
+          "description": "Propone lodash/isPlainObject para isRecord"
+        },
+        {
+          "type": "contains_any",
+          "values": ["directamente", "directo", "sin wrapper", "directly", "en cada llamada"],
+          "description": "Llama a lodash directamente sin wrapper que delegue"
+        },
+        {
+          "type": "contains_any",
+          "values": ["clase", "class", "Date", "Map", "semántica", "semantic"],
+          "description": "Compara la semántica antes de reemplazar"
+        },
+        {
+          "type": "contains",
+          "value": "isNil",
+          "description": "Reemplaza is-nullish por lodash/isNil"
+        },
+        {
+          "type": "contains_any",
+          "values": ["eliminar", "borrar", "delete", "elimino", "borro"],
+          "description": "Elimina los utils duplicados y sus tests"
         }
       ]
     },

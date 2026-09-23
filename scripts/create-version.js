@@ -7,7 +7,7 @@
  *
  * Updates the `version` field in BOTH provider manifests of a plugin
  * (`.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`), keeping
- * them in sync, then commits all current changes and pushes the branch.
+ * them in sync, then commits only those two manifests and pushes the branch.
  *
  * Usage:
  *   npm run create-version            -> interactive plugin menu
@@ -325,16 +325,20 @@ function buildCommitSubject(pluginName, currentVersion, newVersion) {
 }
 
 /**
- * Commits all current working-tree changes after updating both provider manifests.
+ * Commits only the updated provider manifests, leaving any other staged or
+ * unstaged working-tree changes untouched.
  *
  * @param {string} subject Commit subject.
+ * @param {string[]} manifestPaths Absolute paths of the manifests to commit.
  * @returns {{ hash: string, subject: string }} Created commit metadata.
  */
-function commitVersionBump(subject) {
+function commitVersionBump(subject, manifestPaths) {
   const commitMessage = `${subject}\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>`;
+  const relativeManifestPaths = manifestPaths.map((manifestPath) =>
+    path.relative(REPOSITORY_ROOT, manifestPath)
+  );
 
-  runGit(['add', '-A']);
-  runGit(['commit', '-m', commitMessage]);
+  runGit(['commit', '--only', '-m', commitMessage, '--', ...relativeManifestPaths]);
 
   return {
     hash: runGit(['rev-parse', '--short', 'HEAD']).trim(),
@@ -765,7 +769,7 @@ async function main() {
             versionHeadline,
             '',
             ...manifestPaths.map((manifestPath) => `📝 Would update ${manifestPath}`),
-            `🔖 Would commit all current changes: ${subject}`,
+            `🔖 Would commit only both manifests: ${subject}`,
             pushLine,
           ],
           'yellow'
@@ -778,7 +782,7 @@ async function main() {
     writeManifestVersion(plugin.claudePath, claude.raw, newVersion);
     writeManifestVersion(plugin.codexPath, codex.raw, newVersion);
 
-    const commit = commitVersionBump(subject);
+    const commit = commitVersionBump(subject, [plugin.claudePath, plugin.codexPath]);
 
     console.log(
       `\n${renderPanel(

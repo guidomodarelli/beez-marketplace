@@ -85,10 +85,9 @@ Coding conventions for this stack. Always consult `frontender-web-mcp` for Nordi
 
 ## Performance
 
-- Never use anonymous functions in JSX event handlers on frequently rendered components.
-- Use `Array.from()` with callback instead of `.map()` — avoids double iteration.
+- Always use `Array.from(source, callback)` to map collections — arrays and non-array iterables (`Set`, `Map`, `NodeList`) alike — instead of `.map()` or `[...iterable].map()`. It keeps a single mapping idiom and, on non-array iterables, avoids the extra pass of spreading first.
 - Avoid unnecessary object cloning with spread — pass objects directly when no mutation is needed.
-- Use `React.memo`, `useMemo`, and `useCallback` only when profiling confirms a render bottleneck — not preemptively.
+- Use `React.memo`, `useMemo`, and `useCallback` only when profiling confirms a render bottleneck — not preemptively. When it does, stabilize the handlers passed to memoized children with `useCallback` instead of inline functions.
 - Lazy-load routes and heavy components.
 
 ## Imports
@@ -96,12 +95,7 @@ Coding conventions for this stack. Always consult `frontender-web-mcp` for Nordi
 - Import from `nordic/` re-exports when available — never from the underlying package directly.
 - Never install packages that Nordic already bundles (`react`, `react-dom`, `frontend-restclient`, etc.).
 - Check `node_modules/nordic/package.json` before installing any new dependency.
-
-## API Configuration
-
-- Never add or forward `scope` as a query parameter (`?scope=...`, `params: { scope: ... }`, or equivalent URL construction). API scope belongs to client configuration, not request URLs.
-- When an upstream client requires a scope, add a service-specific key to the existing environment files under `config/` (typically `config/local.js`, `config/default.js`, `config/default-production.js`, and `config/sandbox.js`) and consume it through `nordic/config` or the client option designed for configured scopes (for example, `scopeConfig`). Do not create a new config file solely for scope. Never hardcode environment values such as `sandbox` or `prod` in service code.
-- Keep scope values in those existing `config/` files; do not duplicate them in services or handlers.
+- For lodash availability, mandatory and forbidden methods, see `lodash.md`.
 
 ## Comments
 

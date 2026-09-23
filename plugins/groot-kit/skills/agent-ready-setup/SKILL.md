@@ -3,15 +3,16 @@ name: agent-ready-setup
 description: >-
   Inspecciona proyecto, detecta stack (frontend, node, java, go) y prepara siempre
   configuración multi-provider para Claude Code, Codex y futuros agentes: genera
-  .claude/, .agents/, .codex/, AGENTS.md y proxy CLAUDE.md sin sobrescribir
-  configuración existente, y ofrece merge inteligente de AGENTS.md. Usar cuando
+  .claude/, .agents/, .codex/, AGENTS.md y proxy CLAUDE.md, sobrescribe siempre
+  los assets gestionados con los templates, y mantiene el bloque gestionado de
+  AGENTS.md. Usar cuando
   usuario diga "configurar agent ready",
   "setup agent ready", "bootstrap claude", "bootstrap codex", "inicializar
   configuración de agentes", "quiero ser agent ready", "make this repo agent
   ready", o pida pasar Agent Ready Score.
 license: MIT
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
   author: "guponce"
   category: "developer-experience"
   tags: "agent-ready, multi-provider, claude-code, codex, bootstrap, setup, scaffold"
@@ -24,8 +25,11 @@ Detecta stack y prepara configuración para múltiples providers en una sola
 operación. El bootstrap mantiene tres planos con responsabilidades distintas:
 
 - `.agents/`: árbol canónico de reglas, skills y assets compartidos, incluyendo
-  skills descubribles por Codex en `.agents/skills/`. Commands y agents se
-  adaptan a `SKILL.md` porque Codex no los consume como componentes independientes.
+  skills descubribles por Codex en `.agents/skills/`. Commands y agents también
+  se copian como `SKILL.md` porque Codex no los consume como componentes
+  independientes. Todo asset gestionado, salvo `settings.json`, se copia byte a
+  byte desde el template publicado; cada template de skill, agent y command
+  declara su propio frontmatter `name` y `description`.
 - `.claude/`: configuración Claude Code, dimensiones del Agent Ready Score y
   symlinks relativos hacia assets canónicos de `.agents/`; `settings.json` queda
   provider-specific.
@@ -44,14 +48,23 @@ el `AGENTS.md` hermano.
 Assets comunes viven en `assets/common/`; templates y hooks específicos viven en
 `assets/stacks/<stack>/` y reflejan estructura de assets. El marker
 `{{AGENT_READY_RULE_REFERENCES}}` se renderiza dinámicamente con cada archivo de
-`rules/`; no mantener listado duplicado en templates.
+`rules/` del template y con cada rule propia del proyecto; no mantener listado
+duplicado en templates.
 
 Bootstrap requiere ejecución dentro de un worktree Git. Usa `git check-ignore`
 como fuente de verdad para omitir instrucciones anidadas cubiertas por
 `.gitignore`; fuera de un worktree, termina con error antes de escribir assets.
-El flujo directo de la skill ejecuta bootstrap en modo sync no interactivo para
-actualizar assets gestionados; preserva instrucciones del proyecto, symlinks
-custom y conflictos estructurales.
+Bootstrap tiene un solo modo, sin flags de confirmación: sincroniza siempre los
+assets gestionados con los templates sin preguntar y normaliza instrucciones.
+
+Los assets publicados por agent-ready-setup (rules, skills, agents, commands,
+hooks, `mcp.json` y sus vistas en `.claude/`) se sobrescriben siempre, aunque se
+hayan editado: para agregar o cambiar comportamiento, el proyecto crea una rule
+propia bajo `.agents/rules/` o una skill nueva. Un symlink en un path gestionado
+se reemplaza sin seguirlo. Solo quedan como conflicto los directorios en un path
+gestionado y los padres que son symlink. Instrucciones del proyecto
+(`AGENTS.md` fuera del bloque gestionado), `settings.json` custom (merge) y
+assets desconocidos se preservan.
 
 ---
 
@@ -145,7 +158,7 @@ resolve_skill_dir() {
 
   while IFS= read -r candidate; do
     candidate="${candidate%/SKILL.md}"
-    if [[ "$candidate" != "$requested_skill_dir" ]] && is_valid_skill_dir "$candidate"; then
+    if is_valid_skill_dir "$candidate"; then
       printf '%s\n' "$candidate"
       return 0
     fi
@@ -216,7 +229,7 @@ uno de: `frontend`, `node`, `java`, `go`.
 
 Si detección tiene éxito, confirmar:
 
-> `Detected stack: **<STACK>**. Running agent-ready-setup — Claude, shared-agent and Codex-compatible assets will be prepared; existing files are preserved.`
+> `Detected stack: **<STACK>**. Running agent-ready-setup — Claude, shared-agent and Codex-compatible managed assets will be overwritten with the templates; project rules, skills, and instructions are preserved.`
 
 ---
 
@@ -249,16 +262,7 @@ PROVIDER="$(bash "$SKILL_DIR/scripts/resolve-provider.sh" --skill-dir "$SKILL_DI
 bash "$SKILL_DIR/scripts/bootstrap.sh" \
   --stack "$STACK" \
   --skill-dir "$SKILL_DIR" \
-  --provider "$PROVIDER" \
-  --sync \
-  --yes
-
-SKILL_DIR="$(resolve_skill_dir "$SKILL_DIR")"
-bash "$SKILL_DIR/scripts/bootstrap.sh" \
-  --stack "$STACK" \
-  --skill-dir "$SKILL_DIR" \
-  --provider "$PROVIDER" \
-  --normalize-only
+  --provider "$PROVIDER"
 
 SKILL_DIR="$(resolve_skill_dir "$SKILL_DIR")"
 bash "$SKILL_DIR/scripts/merge-instructions.sh" \
@@ -276,11 +280,12 @@ El script actualiza assets compartidos gestionados bajo `.agents/`, crea o
 conserva symlinks relativos para assets no-hook bajo `.claude/` y prepara bridge
 `.codex/`.
 Los scripts de hooks permanecen únicamente bajo `.agents/hooks/`.
-El renderer crea `AGENTS.md` nuevo con catálogo portable; el merge IA analiza
-`AGENTS.md` existente completo y agrega/corrige referencias sin perder comandos,
-arquitectura u ownership. El provider debe ser `claude` o `codex`.
-Copias legacy idénticas bajo `.claude/` se normalizan a symlinks; copias
-divergentes se conservan y se reportan como conflicto. Antes de normalizar las
+El renderer crea `AGENTS.md` nuevo con el bloque gestionado; en `AGENTS.md`
+existente, `merge-instructions.sh` reemplaza ese bloque por copia literal del
+template y la IA solo revisa redundancias fuera de él. El provider debe ser
+`claude` o `codex`.
+Copias bajo `.claude/` de assets gestionados, idénticas o editadas, se
+reemplazan por el symlink canónico. Antes de normalizar las
 instrucciones del proyecto, bootstrap y sync buscan recursivamente en todos
 los niveles y subniveles cualquier archivo cuyo basename coincida con
 `claude.md` sin respetar exactamente mayúsculas (`Claude.md`, `claude.md`,
@@ -321,6 +326,20 @@ raíz:
    para que el agente la analice y continúa con assets. La skill no debe derivar
    automáticamente esta diferencia al usuario.
 
+En `CLAUDE.md` anidados (incluido `.claude/CLAUDE.md`) aplica la misma
+normalización por directorio, siempre con el `AGENTS.md` hermano:
+
+- Si existe solo `AGENTS.md`, crea `CLAUDE.md` como copia exacta de
+  `assets/claude-proxy.md`.
+- Si existe solo `CLAUDE.md`, crea `AGENTS.md` hermano con su contenido
+  (omitiendo únicamente una primera línea exactamente `@AGENTS.md`) y reemplaza
+  `CLAUDE.md` por la copia exacta del asset.
+- Si `CLAUDE.md` ya es el proxy exacto, no lo modifica; si además falta
+  `AGENTS.md`, crea el hermano canónico vacío.
+- Si ambos tienen instrucciones distintas, no sobrescribe ninguno y reporta la
+  diferencia para que el agente la resuelva según «Resolución de diferencias por
+  el agente».
+
 ### Sincronización posterior al upgrade
 
 `fury ai assets marketplace upgrade` actualiza la copia global del marketplace;
@@ -330,13 +349,17 @@ de proyectar assets o adquirir lock local. En `frontend`, también ejecuta el he
 que consulta la última versión disponible de `groot-ui` sin instalarla ni modificar el
 lockfile, compara la versión efectiva, elimina `kraken-translations` de `package.json`
 y configura los scripts.
-El hook canónico `.agents/hooks/sync-marketplace.sh` ejecuta siempre el upgrade,
+El hook canónico `.agents/hooks/sync-marketplace.sh` ejecuta el upgrade salvo que
+haya uno exitoso de menos de 60 minutos para el mismo provider (marca en
+`${XDG_CACHE_HOME:-~/.cache}/agent-ready-setup/marketplace-upgrade-<provider>.stamp`,
+escrita solo tras un upgrade exitoso); `AGENT_READY_SETUP_FORCE_UPGRADE=1` lo
+fuerza y `bootstrap.sh` lo ejecuta siempre. En paralelo con el upgrade,
 consulta la última versión de `groot-ui` en `frontend` sin instalarla ni actualizarla,
 y muestra un aviso con `npm install --save groot-ui@<version>` solo cuando existe una
 versión más nueva. Proyecta todos los assets gestionados, ejecuta la normalización recursiva de
 instrucciones mediante `bootstrap.sh --normalize-only` cuando la versión instalada
-lo soporta y luego ejecuta el merge IA de `AGENTS.md` cuando el helper está
-disponible. La normalización incluye `CLAUDE.md` bajo `.claude/` y conserva
+lo soporta y luego actualiza el bloque gestionado de `AGENTS.md` cuando el
+helper está disponible. La normalización incluye `CLAUDE.md` bajo `.claude/` y conserva
 conflictos, symlinks y archivos no regulares. El usuario debe decidir y ejecutar el
 comando mostrado (o `npm install` si `groot-ui` ya está al día) para actualizar
 `package-lock.json` y quitar `kraken-translations` del lockfile.
@@ -355,14 +378,18 @@ El hook compara cada asset gestionado con el template actualizado y muestra
 `diff -u` antes de reemplazar un archivo existente. Los archivos regulares
 modificados se reemplazan automáticamente y su contenido local se guarda en un
 directorio temporal externo al proyecto; el output muestra path exacto para
-revisarlo o compararlo. Así el template queda aplicado sin perder la versión
-local. Symlinks, destinos no regulares, padres inseguros y cambios concurrentes
-se preservan y se reportan como conflictos estructurales.
+revisarlo o compararlo. Los symlinks en paths gestionados se reemplazan sin
+seguirlos; directorios en paths gestionados, padres inseguros y cambios
+concurrentes se preservan y se reportan como conflictos estructurales.
 
 ### Riesgos del upgrade automático
 
-- Cada ejecución necesita CLI `fury`, autenticación y red; si upgrade falla,
-  bootstrap termina antes de modificar assets locales.
+- Cada upgrade necesita CLI `fury`, autenticación y red; si upgrade falla,
+  bootstrap y hook terminan antes de modificar assets locales y no registran la
+  ventana de 60 minutos.
+- Dentro de esa ventana, una versión recién publicada del marketplace puede
+  tardar hasta 60 minutos en llegar por SessionStart; usar
+  `AGENT_READY_SETUP_FORCE_UPGRADE=1` o `bootstrap.sh` para aplicarla antes.
 - Upgrade global no tiene rollback en este script; la versión descargada puede
   cambiar aunque proyección local quede bloqueada.
 - El hook aplica templates nuevos sobre assets gestionados y conserva cada
@@ -381,8 +408,17 @@ La proyección automática de assets:
 
 - Actualiza assets gestionados bajo `.agents/`, settings específicos de
   `.claude/`, y bridge/configuración bajo `.codex/`.
-- Regenera adapters `SKILL.md` bajo `.agents/skills/` antes de comparar.
-- Conserva symlinks y nunca sigue un symlink para reemplazar su destino.
+- Copia adapters `SKILL.md` bajo `.agents/skills/` byte a byte desde su
+  template, sin reescribir frontmatter: providers eligen skills según
+  `description`, por lo que el template es la única fuente.
+- En `.claude/`, agents y commands se registran una sola vez (`.claude/agents/`,
+  `.claude/commands/`); su adapter en `.agents/skills/` queda solo para Codex.
+  El sync elimina vistas `.claude/skills/<nombre>/` gestionadas que dupliquen un
+  agent o command y preserva y reporta contenido custom.
+- Claude Code carga `.claude/rules/` automáticamente; el bloque gestionado de
+  `AGENTS.md` le indica no volver a leerlas y deja las referencias para Codex.
+- Reemplaza symlinks en paths gestionados sin seguirlos: borra el link y escribe
+  el template, así nunca modifica el destino del link.
 - Elimina symlinks administrados stale bajo `.claude/` y limpia `.claude/hooks/`
   legacy solo cuando queda vacío.
 - Migra referencias `.claude/hooks/` dentro de `.claude/settings.json` como JSON
@@ -391,12 +427,11 @@ La proyección automática de assets:
 - Normaliza `CLAUDE.md` raíz y anidados, incluido `.claude/CLAUDE.md`, mediante
   el modo interno conservador; crea o actualiza únicamente el `AGENTS.md`
   hermano cuando puede preservar el contenido sin ambigüedad.
-- No elimina archivos regulares, symlinks custom ni assets desconocidos; los
-  conserva y reporta para revisión manual.
+- No elimina assets desconocidos (rules, skills o archivos propios del
+  proyecto); solo sobrescribe paths que publica agent-ready-setup.
 
-El merge IA posterior puede actualizar únicamente `AGENTS.md` para preservar
-instrucciones compatibles y reparar referencias de rules; nunca modifica
-`CLAUDE.md` directamente.
+El paso posterior sobre instrucciones actualiza únicamente `AGENTS.md`; nunca
+modifica `CLAUDE.md` directamente.
 
 Para sincronizar manualmente desde un hook existente:
 
@@ -410,63 +445,65 @@ Si la fuente instalada no se puede resolver o el stack no se detecta, el hook
 conserva el upgrade global y muestra cómo indicar `AGENT_READY_SETUP_SKILL_DIR`
 o `--stack frontend|node|java|go`.
 
-### Merge inteligente de `AGENTS.md`
+### Bloque gestionado de `AGENTS.md`
 
-El script `scripts/render-instruction-template.sh` prepara template dinámico:
-enumera cada archivo real bajo `assets/stacks/<stack>/rules/` y materializa
-markers con referencias `.agents/rules/<relative-path>`. Ese script no decide
-cómo fusionar `AGENTS.md`; esa decisión corresponde a IA, porque el archivo
-puede contener instrucciones de proyecto muy variadas.
+Cada template de stack (`assets/stacks/<stack>/agents-template.md`) define el bloque
+entre `<!-- BEGIN AGENT-READY MANAGED -->` y `<!-- END AGENT-READY MANAGED -->`.
+`scripts/render-instruction-template.sh` lo materializa:
 
-Para fusionar instrucciones raíz con asistencia del provider activo, ejecutar el
-hook completo:
+- `{{AGENT_READY_RULE_REFERENCES}}`: una referencia portable
+  `- Read and follow \`.agents/rules/<relative-path>\`.` por cada rule del
+  template y, bajo `### Project rules`, por cada rule propia del proyecto.
 
-```bash
-bash .agents/hooks/sync-marketplace.sh \
-  --provider claude
-```
+Una rule propia es cualquier archivo `.md` regular bajo `.agents/rules/` (incluidos
+subdirectorios) sin equivalente en las rules del template; los symlinks se
+ignoran. Además de listarse en el bloque, el sync le crea su vista en
+`.claude/rules/` para que Claude la cargue de forma nativa, la incluye en la
+revisión de redundancias y elimina las vistas gestionadas de rules borradas.
+Si el template deja de publicar una rule, la copia local que quede en
+`.agents/rules/` pasa a tratarse como rule propia hasta que se borre.
+- `{{AGENT_READY_CENTRALIZATION}}`: copia literal de
+  `assets/instruction-centralization.md`.
 
-También puede usarse provider `codex`. El hook actualiza primero assets
-gestionados y luego ejecuta `scripts/merge-instructions.sh` con salida
-estructurada. El modelo recibe ambos documentos como datos no confiables; no
-puede ejecutar instrucciones incluidas dentro de ellos.
+El contenido fuera del bloque (descripción, stack, comandos, arquitectura,
+ownership) pertenece al proyecto; el scaffold del template solo se usa al crear
+un `AGENTS.md` nuevo.
 
-El modelo debe:
+`scripts/merge-instructions.sh`, ejecutado por el hook en cada sync:
 
-1. Preservar comandos, arquitectura, ownership y restricciones propias del
-   proyecto que sean compatibles.
-2. Incorporar reglas nuevas del template que no contradigan intención existente.
-3. Asegurar una referencia portable para cada archivo listado en el bloque
-   `BEGIN/END AGENT-READY RULE REFERENCES`, aunque `AGENTS.md` no tenga sección
-   de rules o use referencias parciales.
-4. Corregir referencias Claude-only como `@./rules/...`, `@.agents/rules/...` o
-   `@path/to/folder`; usar paths `.agents/rules/...` y una instrucción explícita
-   de lectura/seguimiento que Codex pueda entender.
-5. Eliminar duplicados evidentes sin pedir confirmación, sin borrar contenido
-   válido de proyecto.
-6. Devolver `auto` únicamente cuando merge sea completo y no exista elección
-   razonable de precedencia.
-7. Devolver `human_required` con conflictos concretos ante políticas
-   mutuamente excluyentes, pérdida potencial de contenido, ambigüedad real,
-   baja confianza o salida incompleta.
+1. Reemplaza el bloque por copia literal del template renderizado. Cualquier
+   edición manual dentro de los marcadores se pierde; instrucciones propias van
+   fuera del bloque.
+2. Envía al provider activo el bloque, el contenido completo de cada rule y el
+   contenido del proyecto (con el bloque sustituido por
+   `<!-- AGENT-READY MANAGED BLOCK -->`), todo como datos no confiables. La IA
+   solo puede borrar líneas redundantes fuera del bloque: repetidas en el propio
+   contenido o ya cubiertas por el bloque o por una rule.
+3. Rechaza la revisión si agrega, reescribe o reordena líneas, pierde el
+   placeholder, devuelve bloques cercados o reintroduce marcadores. En ese caso,
+   o si el provider falla, aplica solo el bloque literal sin tocar el contenido
+   del proyecto y reintenta la revisión en el siguiente sync.
+4. Reporta las líneas borradas y, por separado, las inconsistencias: líneas del
+   proyecto que contradicen el bloque o una rule. Las inconsistencias nunca se
+   borran; quedan para revisión manual.
+5. En un `AGENTS.md` legacy sin marcadores, la IA elimina secciones que el
+   bloque reemplaza (lista de rules, centralización) y la lista de skills
+   escrita a mano, porque Claude y Codex descubren skills de forma nativa; y ubica
+   el placeholder. Si la revisión falla, el bloque se agrega al final y solo se
+   quita la lista legacy entre marcadores `AGENT-READY RULE REFERENCES`, que ya
+   no se generan.
+6. Si los marcadores están duplicados o desordenados, no modifica el archivo y
+   termina con código `2` para revisión humana.
 
-Resultado `auto` se valida contra catálogo completo antes de aplicarse
-automáticamente, con reemplazo atómico. El merge conserva instrucciones
-compatibles en el contenido resultante; no crea backup cuando la IA produjo una
-combinación válida. Si la IA falla, devuelve salida inválida o `human_required`,
-el helper aplica el template renderizado y guarda el contenido local como
-un backup temporal externo al proyecto y muestra su path exacto. El helper
-registra el último hash de template en
-`.git/info/agent-ready-instructions-template.sha256` para no invocar IA
-nuevamente mientras template y referencias requeridas no cambien; ese archivo
-se reemplaza, no se acumula, y no aparece como cambio del proyecto. Hash legacy
-bajo `.agents/` se migra y elimina durante primera ejecución. Si `AGENTS.md`
-cambia durante merge, helper detecta hash distinto y cancela antes de reemplazo.
-Si faltan referencias portables o quedan referencias `@...`, no usa hash como
-atajo y vuelve a solicitar análisis IA.
+La revisión completada se registra en
+`.git/info/agent-ready-instructions-reviewed.sha256` (hash de `AGENTS.md` más
+el contenido de las rules del template y propias). Mientras ninguno cambie, el sync no vuelve a
+invocar IA. Hashes legacy (`.agents/.agent-ready-instructions-template.sha256`
+y `.git/info/agent-ready-instructions-template.sha256`) se eliminan. La
+escritura es atómica y se cancela si `AGENTS.md` cambia durante el proceso.
 
 Los hooks generados no pasan flags de confirmación durante `SessionStart`.
-`CLAUDE.md` nunca se modifica durante merge.
+`CLAUDE.md` nunca se modifica durante este paso.
 
 ### Resolución de diferencias por el agente
 
@@ -489,8 +526,8 @@ terminado:
 No llamar “conflicto” a diferencia meramente complementaria. Si agente puede
 resolverla con evidencia local, debe hacerlo y dejar `CLAUDE.md` normalizado.
 
-Bootstrap asegura regla de centralización una sola vez en `AGENTS.md` raíz;
-no la duplica en `AGENTS.md` de subdirectorios. No ejecuta scripts ni hooks
+La regla de centralización vive solo en el bloque gestionado del `AGENTS.md`
+raíz; no se duplica en `AGENTS.md` de subdirectorios. Bootstrap no ejecuta scripts ni hooks
 copiados durante bootstrap. No modifica `~/.codex/config.toml`,
 `~/.claude/settings.json` ni otra configuración global.
 
@@ -498,7 +535,7 @@ copiados durante bootstrap. No modifica `~/.codex/config.toml`,
 
 ## Step 4 — Report
 
-Mostrar output del script sin alterarlo. En respuestas documentales, enumerar paths relevantes de template detectado además del resumen: para Go incluir `coding-style.md`, `security.md`, `testing.md` y `mcp.json`; para frontend incluir `frontend-style.md`, `security.md`, `testing.md`, `no-unnecessary-mocks.md`, `mcp.json` y `skills/component-creation/`. Luego agregar únicamente acciones aplicables, usando estas etiquetas:
+Mostrar output del script sin alterarlo. En respuestas documentales, enumerar paths relevantes de template detectado además del resumen: para Go incluir `coding-style.md`, `security.md`, `testing.md` y `mcp.json`; para frontend incluir `frontend-style.md`, `lodash.md`, `api-configuration.md`, `security.md`, `testing.md`, `no-unnecessary-mocks.md`, `mcp.json` y `skills/component-creation/`. Luego agregar únicamente acciones aplicables, usando estas etiquetas:
 
 - `[AUTO]`: el agente puede comprobarlo de forma determinista y debe reportar `PASS`, `FAIL` o `N/A` con los paths involucrados.
 - `[MANUAL]`: requiere conocimiento específico del proyecto y no debe presentarse como validación ya realizada.
@@ -507,16 +544,16 @@ Mostrar output del script sin alterarlo. En respuestas documentales, enumerar pa
 Next steps:
   1. [MANUAL] Completar `AGENTS.md` solo si todavía faltan descripción, comandos, arquitectura u ownership del proyecto.
   2. [AUTO] Validar que cada `CLAUDE.md`, raíz o anidado —incluido `.claude/CLAUDE.md`— sea byte-a-byte igual a `assets/claude-proxy.md` (incluye `@AGENTS.md` y la regla de centralización), y que cada uno tenga un `AGENTS.md` hermano. Si no hay archivos anidados, reportar `N/A`.
-  3. [AUTO] Si existe `.agents/rules/`, validar que el bloque gestionado de `AGENTS.md` tenga una referencia portable con instrucción explícita de lectura/seguimiento para cada archivo real; rechazar `@./rules/...`, `@.agents/rules/...` y `@path/to/folder`. Si no existe el directorio o no contiene rules, reportar `N/A`, no una tarea pendiente.
+  3. [AUTO] Validar que `AGENTS.md` raíz tenga exactamente un bloque `BEGIN/END AGENT-READY MANAGED`. Si existe `.agents/rules/`, validar que ese bloque tenga una referencia portable con instrucción explícita de lectura/seguimiento para cada archivo real; rechazar `@./rules/...`, `@.agents/rules/...` y `@path/to/folder`. Si no existe el directorio o no contiene rules, reportar `N/A`, no una tarea pendiente.
   4. [AUTO] Si existen archivos bajo `.agents/rules/`, `.agents/skills/` o `.agents/agents/`, detectar comentarios scaffold (`<!-- Add ... -->`, `<!-- Describe ... -->`) y marcadores sin renderizar (`{{...}}`). Reportar cada path. No tratar ejemplos como `<domain>` o `<component-name>` dentro de documentación como placeholders pendientes. Si no existen esos archivos, reportar `N/A`.
   5. [AUTO] Validar JSON, paths y referencias de MCP/hooks bajo `.codex/`. Si `.codex/` no existe, reportar `N/A`.
      [MANUAL] Revisar permisos, credenciales, alcance y si corresponde habilitar MCP/hooks; no presentar esa decisión como validada automáticamente.
   6. [AUTO] Verificar dimensiones de Agent Ready Score solo si existe configuración o reporte bajo `.claude/`; reportar dimensiones faltantes con sus paths. Si no existe score/configuración, reportar `N/A`.
 ```
 
-Si hay archivos omitidos, agregar:
+Si hay archivos preservados por conflicto o contenido custom, agregar:
 
-> `Existing files were not modified. [AUTO] Verify whether omitted files already cover the same dimensions as the templates; report each path and result.`
+> `Preserved files were not modified. [AUTO] Verify whether preserved files already cover the same dimensions as the templates; report each path and result.`
 
 Si queda una contradicción semántica irresoluble, detener solo la normalización
 de esos archivos y mostrar paths, fragmentos afectados y motivo por el que falta

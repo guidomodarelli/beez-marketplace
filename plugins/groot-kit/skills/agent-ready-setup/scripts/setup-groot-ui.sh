@@ -35,15 +35,18 @@ if [[ ! -f "$package_json" ]]; then
   exit 1
 fi
 
-if ! command -v npm >/dev/null 2>&1; then
-  printf 'ERROR: npm is required to look up the latest %s version.\n' "$GROOT_UI_PACKAGE_NAME" >&2
-  exit 1
-fi
-
-latest_version=""
-if ! latest_version="$(npm view "$GROOT_UI_PACKAGE_NAME" version | tr -d '\r\n')"; then
-  printf 'ERROR: could not look up the latest %s version.\n' "$GROOT_UI_PACKAGE_NAME" >&2
-  exit 1
+# Callers may prefetch the registry lookup concurrently with other network work;
+# the value is validated below exactly like a direct npm response.
+latest_version="${AGENT_READY_SETUP_GROOT_UI_LATEST_VERSION:-}"
+if [[ -z "$latest_version" ]]; then
+  if ! command -v npm >/dev/null 2>&1; then
+    printf 'ERROR: npm is required to look up the latest %s version.\n' "$GROOT_UI_PACKAGE_NAME" >&2
+    exit 1
+  fi
+  if ! latest_version="$(npm view "$GROOT_UI_PACKAGE_NAME" version | tr -d '\r\n')"; then
+    printf 'ERROR: could not look up the latest %s version.\n' "$GROOT_UI_PACKAGE_NAME" >&2
+    exit 1
+  fi
 fi
 
 if [[ ! "$latest_version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then

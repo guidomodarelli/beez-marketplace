@@ -8,19 +8,19 @@ Tests are split into two contexts with different mocking strategies. Apply the r
 
 Tests for React components, pages, and UI logic.
 
-**Strategy: mock internal services; use Nordic provider defaults.**
+**Strategy: mock internal services; use Nordic provider defaults; never mock the component libraries or platform packages listed in `testing.md`.**
 
 ### Mock the services the component depends on
 
 Components call services to fetch data. Those services must be mocked so the test controls what the component receives:
 
 ```js
-// services/__tests__/userCard.spec.jsx
+// app/ui-components/user-card/__tests__/user-card.spec.jsx
 import { render, screen } from '@testing-library/react';
 import { NordicTestProviders } from 'nordic-dev/testing-tools';
 
-import UserCard from '../UserCard';
-import * as userService from '../../services/user';
+import { UserCard } from '../index';
+import * as userService from '../../../../src/services/user';
 
 jest.spyOn(userService, 'getUser').mockResolvedValue({ id: 1, name: 'Ada' });
 
@@ -89,7 +89,7 @@ Fixture files are auto-created at `mocks/{NODE_ENV}/{method}/{proto}/{host}/{pat
 Only mock a service dependency when:
 
 - The dependency is **another internal service** (not an HTTP call) with side effects that would break test isolation (e.g., a service that writes to a queue or triggers a notification).
-- The test needs to assert behavior under a **specific error condition** (e.g., 500, 404) and creating a fixture file for that scenario is impractical — in that case, prefer creating the fixture file over mocking.
+- The test needs to assert behavior under a **specific error condition** that cannot be represented as a fixture file (for example, a transport failure without an HTTP response). HTTP error statuses such as 500 or 404 are always covered with a fixture file.
 
 ### Creating error scenario fixtures manually
 

@@ -8,6 +8,8 @@ setup() {
   fake_bin="$test_root/bin"
   mkdir -p "$project_dir" "$fake_bin" "$test_root/tmp"
   export TMPDIR="$test_root/tmp"
+  # Keeps the SessionStart upgrade window stamp out of the user's real cache.
+  export XDG_CACHE_HOME="$test_root/cache"
   cat > "$fake_bin/fury" <<'EOF'
 #!/bin/bash
 exit 0
@@ -91,7 +93,7 @@ run_marketplace_sync() {
   done
   [ ! -f .claude/CLAUDE.md ]
   [ ! -d .codex/agents ]
-  for rule_file in frontend-style.md no-unnecessary-mocks.md security.md testing.md; do
+  for rule_file in api-configuration.md frontend-style.md lodash.md no-unnecessary-mocks.md security.md testing.md; do
     grep -Fq -- "- Read and follow \`.agents/rules/$rule_file\`." AGENTS.md
   done
   grep -Fxq '## Centralización recursiva de instrucciones' AGENTS.md
@@ -118,7 +120,7 @@ run_marketplace_sync() {
   ln -s ../../.agents/hooks/pre-tool-use.md .claude/hooks/pre-tool-use.md
   ln -s ../../.agents/rules/removed-rule.md .claude/rules/removed-rule.md
 
-  run_bootstrap frontend --sync --yes
+  run_bootstrap frontend
 
   [ "$status" -eq 0 ]
   [ ! -e .claude/hooks ]
@@ -140,7 +142,7 @@ run_marketplace_sync() {
   jq '.customSetting = "preserve-me" | .permissions.allow |= map(gsub("\\.agents/hooks/"; ".claude/hooks/") | gsub(" --provider claude\\)$"; " --provider claude --sync-instructions --yes)")) | .permissions.allow += ["Bash(custom-project-command)"] | .hooks.SessionStart[0].hooks[0].command |= (gsub("\\.agents/hooks/"; ".claude/hooks/") | gsub(" --provider claude$"; " --provider claude --sync-instructions --yes")) | .hooks.PostToolUse[0].hooks[0].command |= gsub("\\.agents/hooks/"; ".claude/hooks/") | .hooks.PostToolUse[0].hooks += [{"type":"command","command":"bash .agents/hooks/custom-project-hook.sh"}]' .claude/settings.json > "$test_root/settings.json"
   mv "$test_root/settings.json" .claude/settings.json
 
-  run_bootstrap frontend --sync --yes
+  run_bootstrap frontend
 
   [ "$status" -eq 0 ]
   [ -f .claude/hooks/custom.sh ]
@@ -166,7 +168,7 @@ run_marketplace_sync() {
   jq '.permissions.allow += ["Bash(custom-project-command)"] | .hooks.PostToolUse[0].hooks += [{"type":"command","command":"bash .agents/hooks/custom-project-hook.sh"}]' .claude/settings.json > "$test_root/settings.json"
   mv "$test_root/settings.json" .claude/settings.json
 
-  run_bootstrap frontend --sync --yes
+  run_bootstrap frontend
 
   [ "$status" -eq 0 ]
   jq -e '.permissions.allow | index("Bash(custom-project-command)")' .claude/settings.json >/dev/null
@@ -184,7 +186,7 @@ run_marketplace_sync() {
   ' .claude/settings.json > "$test_root/settings.json"
   mv "$test_root/settings.json" .claude/settings.json
 
-  run_bootstrap frontend --sync --yes
+  run_bootstrap frontend
 
   [ "$status" -eq 0 ]
   jq -e '.permissions.allow[0] == "Bash(custom-before-managed)"' .claude/settings.json >/dev/null
@@ -203,7 +205,7 @@ run_marketplace_sync() {
   ' .claude/settings.json > "$test_root/settings.json"
   mv "$test_root/settings.json" .claude/settings.json
 
-  run_bootstrap frontend --sync --yes
+  run_bootstrap frontend
 
   [ "$status" -eq 0 ]
   jq -e '.permissions.allow | length == 3' .claude/settings.json >/dev/null
@@ -246,7 +248,7 @@ run_marketplace_sync() {
   jq -e '.hooks.PostToolUse[0].hooks | index({"type":"command","command":"bash .agents/hooks/check-harness-consistency.sh"})' .claude/settings.json >/dev/null
 }
 
-@test "autonomous sync normalizes identical legacy Claude copies and preserves divergent copies" {
+@test "autonomous sync replaces identical and edited Claude copies with managed views" {
   dynamic_skill_dir="$test_root/dynamic-skill"
   cp -R "$skill_dir" "$dynamic_skill_dir"
 
@@ -269,9 +271,9 @@ run_marketplace_sync() {
   run_marketplace_sync ".agents/hooks/sync-marketplace.sh" "$dynamic_skill_dir" \
 
   [ "$status" -eq 0 ]
-  [ ! -L .claude/rules/security.md ]
-  grep -Fxq '# Claude-only security override' .claude/rules/security.md
-  [[ "$output" == *".claude/rules/security.md differs from canonical shared asset"* ]]
+  [ "$(readlink .claude/rules/security.md)" = "../../.agents/rules/security.md" ]
+  ! grep -Fq '# Claude-only security override' .agents/rules/security.md
+  [[ "$output" == *".claude/rules/security.md -> managed view"* ]]
 }
 
 @test "autonomous sync normalizes CLAUDE.md under .claude and is idempotent" {
@@ -339,11 +341,11 @@ EOF
 
   [ "$status" -eq 0 ]
   [ -L .claude/rules/security.md ]
-  [[ "$output" == *"Normalized instructions:"* ]]
-  [[ "$output" == *".claude/rules/security.md -> .agents/rules/security.md"* ]]
+  [[ "$output" == *"Updated from templates:"* ]]
+  [[ "$output" == *".claude/rules/security.md -> managed view"* ]]
 }
 
-@test "divergent Claude copies remain untouched and report conflict" {
+@test "edited Claude copies of managed rules are replaced with managed views" {
   run_bootstrap frontend
   [ "$status" -eq 0 ]
 
@@ -353,10 +355,9 @@ EOF
   run_bootstrap frontend
 
   [ "$status" -eq 0 ]
-  [ ! -L .claude/rules/security.md ]
-  grep -Fxq '# Claude-only security override' .claude/rules/security.md
-  [[ "$output" == *"Instruction conflicts or differences (agent resolution may be required):"* ]]
-  [[ "$output" == *".claude/rules/security.md differs from canonical shared asset"* ]]
+  [ "$(readlink .claude/rules/security.md)" = "../../.agents/rules/security.md" ]
+  cmp -s .agents/rules/security.md "$skill_dir/assets/stacks/frontend/rules/security.md"
+  [[ "$output" == *".claude/rules/security.md -> managed view"* ]]
 }
 
 @test "nested skills receive valid Codex adapters with their directory names" {
@@ -373,6 +374,146 @@ EOF
   [ -f .agents/skills/karpathy-guidelines/EXAMPLES.md ]
   [ ! -e .agents/skills/SKILL/SKILL.md ]
   [ ! -e .agents/skills/EXAMPLES/SKILL.md ]
+}
+
+@test "skill adapters are verbatim copies of their templates for every stack" {
+  for stack in frontend go java node; do
+    stack_project="$test_root/$stack-adapters"
+    mkdir -p "$stack_project"
+    git -C "$stack_project" -c init.defaultBranch=main init -q
+    cd "$stack_project"
+
+    run_bootstrap "$stack"
+
+    [ "$status" -eq 0 ]
+    while IFS= read -r template; do
+      relative="${template#"$skill_dir/assets/stacks/$stack/"}"
+      case "$relative" in
+        skills/*/SKILL.md)
+          skill_name="${relative#skills/}"
+          skill_name="${skill_name%/SKILL.md}"
+          cmp -s ".claude/skills/$skill_name/SKILL.md" "$template"
+          ;;
+        *)
+          skill_name="${relative##*/}"
+          skill_name="${skill_name%.md}"
+          cmp -s ".agents/$relative" "$template"
+          cmp -s ".claude/$relative" "$template"
+          ;;
+      esac
+      cmp -s ".agents/skills/$skill_name/SKILL.md" "$template"
+    done < <(find "$skill_dir/assets/stacks/$stack" -type f \( -path '*/skills/*/SKILL.md' -o -path '*/agents/*.md' -o -path '*/commands/*.md' \))
+    cd "$project_dir"
+  done
+}
+
+@test "skill, agent, and command templates declare provider frontmatter" {
+  while IFS= read -r template; do
+    case "$template" in
+      */skills/*/SKILL.md) expected_name="$(basename "$(dirname "$template")")" ;;
+      *) expected_name="$(basename "$template" .md)" ;;
+    esac
+    [ "$(sed -n '1p' "$template")" = '---' ] || { echo "missing frontmatter: $template"; false; }
+    frontmatter="$(sed -n '2,/^---$/p' "$template")"
+    grep -Fxq "name: $expected_name" <<< "$frontmatter" || { echo "missing name: $template"; false; }
+    grep -Eq '^description: .+' <<< "$frontmatter" || { echo "missing description: $template"; false; }
+  done < <(find "$skill_dir/assets/stacks" -type f \( -path '*/skills/*/SKILL.md' -o -path '*/agents/*.md' -o -path '*/commands/*.md' \))
+}
+
+@test "Claude registers each agent and command once while Codex keeps its adapter" {
+  source_dir="$test_root/dynamic-skill"
+  cp -R "$skill_dir" "$source_dir"
+  cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+  run_marketplace_sync "$source_dir/assets/common/hooks/sync-marketplace.sh" "$source_dir"
+  [ "$status" -eq 0 ]
+
+  for workflow in agents/a11y-reviewer agents/lint-reviewer agents/perf-analyzer agents/security-scanner agents/test-reviewer commands/review-pr; do
+    workflow_name="${workflow#*/}"
+    [ -L ".claude/$workflow.md" ]
+    [ -f ".agents/skills/$workflow_name/SKILL.md" ]
+    [ ! -e ".claude/skills/$workflow_name" ]
+  done
+  [ -L .claude/skills/component-creation/SKILL.md ]
+}
+
+@test "sync removes duplicate Claude skill views of agents and commands, even when edited" {
+  source_dir="$test_root/dynamic-skill"
+  cp -R "$skill_dir" "$source_dir"
+  cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+  mkdir -p .claude/skills/a11y-reviewer .claude/skills/lint-reviewer
+  ln -s ../../../.agents/skills/a11y-reviewer/SKILL.md .claude/skills/a11y-reviewer/SKILL.md
+  printf '%s\n' '# Custom lint skill' > .claude/skills/lint-reviewer/SKILL.md
+
+  run_marketplace_sync "$source_dir/assets/common/hooks/sync-marketplace.sh" "$source_dir"
+
+  [ "$status" -eq 0 ]
+  [ ! -e .claude/skills/a11y-reviewer ]
+  [[ "$output" == *"Removed duplicate Claude views:"* ]]
+  [ ! -e .claude/skills/lint-reviewer ]
+  [[ "$output" == *"  - .claude/skills/lint-reviewer/SKILL.md"* ]]
+}
+
+@test "sync links project rules for Claude and prunes views of deleted ones" {
+  source_dir="$test_root/dynamic-skill"
+  cp -R "$skill_dir" "$source_dir"
+  cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+  mkdir -p .agents/rules/area
+  printf '%s\n' '# Team conventions' > .agents/rules/team-conventions.md
+  printf '%s\n' '# Area rule' > .agents/rules/area/payments.md
+
+  run_marketplace_sync "$source_dir/assets/common/hooks/sync-marketplace.sh" "$source_dir"
+
+  [ "$status" -eq 0 ]
+  [ "$(readlink .claude/rules/team-conventions.md)" = "../../.agents/rules/team-conventions.md" ]
+  [ "$(readlink .claude/rules/area/payments.md)" = "../../../.agents/rules/area/payments.md" ]
+  [ -f .agents/rules/team-conventions.md ]
+
+  rm .agents/rules/team-conventions.md
+  run_marketplace_sync "$source_dir/assets/common/hooks/sync-marketplace.sh" "$source_dir"
+
+  [ "$status" -eq 0 ]
+  [ ! -L .claude/rules/team-conventions.md ]
+  [ -L .claude/rules/area/payments.md ]
+  [ -L .claude/rules/security.md ]
+}
+
+@test "sync hook replaces placeholder adapter descriptions from older projections" {
+  source_dir="$test_root/dynamic-skill"
+  cp -R "$skill_dir" "$source_dir"
+  cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+  template="$skill_dir/assets/stacks/frontend/skills/constants-refactor/SKILL.md"
+  {
+    printf '%s\n' '---' 'name: constants-refactor' \
+      'description: Provider-neutral reusable workflow for constants-refactor.' '---' ''
+    sed '1,/^---$/d' "$template"
+  } > .agents/skills/constants-refactor/SKILL.md
+
+  run_marketplace_sync "$source_dir/assets/common/hooks/sync-marketplace.sh" "$source_dir"
+
+  [ "$status" -eq 0 ]
+  cmp -s .agents/skills/constants-refactor/SKILL.md "$template"
+  [[ "$output" == *"↻ .agents/skills/constants-refactor/SKILL.md"* ]]
 }
 
 @test "flat deploy templates become discoverable skills for Claude and shared agents" {
@@ -435,9 +576,7 @@ EOF
   run_bootstrap go
 
   [ "$status" -eq 0 ]
-  grep -Fq '# Existing project instructions' AGENTS.md
-  grep -Fq 'Run the project test command before merging.' AGENTS.md
-  grep -Fxq '## Centralización recursiva de instrucciones' AGENTS.md
+  [ "$(cat AGENTS.md)" = $'# Existing project instructions\n\nRun the project test command before merging.' ]
   cmp -s CLAUDE.md "$skill_dir/assets/claude-proxy.md"
   [[ "$output" == *"Normalized instructions:"* ]]
 }
@@ -453,13 +592,11 @@ EOF
   run_bootstrap java
 
   [ "$status" -eq 0 ]
-  grep -Fq '# Canonical instructions' AGENTS.md
-  grep -Fq 'Keep changes backwards compatible.' AGENTS.md
-  grep -Fxq '## Centralización recursiva de instrucciones' AGENTS.md
+  [ "$(cat AGENTS.md)" = $'# Canonical instructions\n\nKeep changes backwards compatible.' ]
   cmp -s CLAUDE.md "$skill_dir/assets/claude-proxy.md"
 }
 
-@test "normalized root CLAUDE proxy with centralization rule is preserved" {
+@test "normalized root CLAUDE proxy and existing AGENTS are preserved" {
   cat > AGENTS.md <<'EOF'
 # Canonical instructions
 EOF
@@ -470,8 +607,7 @@ EOF
 
   [ "$status" -eq 0 ]
   [ "$(shasum CLAUDE.md | cut -d ' ' -f 1)" = "$claude_hash_before" ]
-  grep -Fq '# Canonical instructions' AGENTS.md
-  grep -Fq '## Centralización recursiva de instrucciones' AGENTS.md
+  [ "$(cat AGENTS.md)" = '# Canonical instructions' ]
 }
 
 @test "orphaned normalized root CLAUDE proxy recreates canonical AGENTS" {
@@ -969,6 +1105,81 @@ EOF
   [[ "$output" == *"[groot-ui] Configured"* ]]
 }
 
+@test "sync hook reuses a marketplace upgrade from the last hour unless forced" {
+  source_dir="$test_root/dynamic-skill"
+  cp -R "$skill_dir" "$source_dir"
+  cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+  fury_log="$test_root/fury.log"
+  cat > "$fake_bin/fury" <<EOF
+#!/bin/bash
+printf '%s\\n' upgrade >> "$fury_log"
+EOF
+  chmod +x "$fake_bin/fury"
+  stamp="$XDG_CACHE_HOME/agent-ready-setup/marketplace-upgrade-claude.stamp"
+
+  run_marketplace_sync "$source_dir/assets/common/hooks/sync-marketplace.sh" "$source_dir"
+  [ "$status" -eq 0 ]
+  [ -f "$stamp" ]
+  [ "$(wc -l < "$fury_log" | tr -d ' ')" -eq 1 ]
+
+  run_marketplace_sync "$source_dir/assets/common/hooks/sync-marketplace.sh" "$source_dir"
+  [ "$status" -eq 0 ]
+  [ "$(wc -l < "$fury_log" | tr -d ' ')" -eq 1 ]
+  [[ "$output" == *"Marketplace upgraded less than 60 minutes ago; upgrade skipped."* ]]
+
+  AGENT_READY_SETUP_FORCE_UPGRADE=1 run_marketplace_sync "$source_dir/assets/common/hooks/sync-marketplace.sh" "$source_dir"
+  [ "$status" -eq 0 ]
+  [ "$(wc -l < "$fury_log" | tr -d ' ')" -eq 2 ]
+
+  touch -t 202001010000 "$stamp"
+  run_marketplace_sync "$source_dir/assets/common/hooks/sync-marketplace.sh" "$source_dir"
+  [ "$status" -eq 0 ]
+  [ "$(wc -l < "$fury_log" | tr -d ' ')" -eq 3 ]
+}
+
+@test "failed marketplace upgrade does not open the upgrade window" {
+  cat > "$fake_bin/fury" <<'EOF'
+#!/bin/bash
+exit 7
+EOF
+  chmod +x "$fake_bin/fury"
+
+  run_marketplace_sync "$skill_dir/assets/common/hooks/sync-marketplace.sh" "$skill_dir"
+
+  [ "$status" -ne 0 ]
+  [ ! -e "$XDG_CACHE_HOME/agent-ready-setup/marketplace-upgrade-claude.stamp" ]
+}
+
+@test "frontend sync looks up groot-ui concurrently with the marketplace upgrade" {
+  event_log="$test_root/network-events.log"
+  printf '%s\n' '{"name":"frontend-project","dependencies":{"react":"1.0.0"}}' > package.json
+  cat > "$fake_bin/fury" <<EOF
+#!/bin/bash
+printf '%s\\n' fury-start >> "$event_log"
+sleep 1
+printf '%s\\n' fury-end >> "$event_log"
+EOF
+  cat > "$fake_bin/npm" <<EOF
+#!/bin/bash
+[[ "\$1" == "view" ]] && printf '%s\\n' npm-view >> "$event_log"
+printf '%s\\n' 2.3.4
+EOF
+  chmod +x "$fake_bin/fury" "$fake_bin/npm"
+
+  AGENT_READY_SETUP_SKILL_DIR="$skill_dir" PATH="$fake_bin:$PATH" \
+    run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" --provider claude
+
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '^npm-view$' "$event_log")" -eq 1 ]
+  npm_line="$(grep -n '^npm-view$' "$event_log" | cut -d: -f1)"
+  fury_end_line="$(grep -n '^fury-end$' "$event_log" | cut -d: -f1)"
+  [ "$npm_line" -lt "$fury_end_line" ]
+  [[ "$output" == *"[groot-ui] Latest available version: groot-ui@2.3.4"* ]]
+}
+
 @test "frontend sync reports latest groot-ui without installing and enforces frontend scripts" {
   npm_log="$test_root/npm-invocation.log"
   cat > package.json <<'EOF'
@@ -998,7 +1209,8 @@ EOF
     run bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" --provider claude
 
   [ "$status" -eq 0 ]
-  grep -Fxq 'view groot-ui version' "$npm_log"
+  [ "$(grep -c '^view groot-ui version$' "$npm_log")" -eq 1 ]
+  [[ "$output" == *"[groot-ui] Latest available version: groot-ui@2.3.4"* ]]
   ! grep -Fq 'install' "$npm_log"
   jq -e '.scripts.i18n == "groot-i18n"' package.json >/dev/null
   jq -e '.scripts.local2prod == "groot-config-sync"' package.json >/dev/null
@@ -1165,22 +1377,22 @@ EOF
   done
 }
 
-@test "sync mode shows diffs and preserves existing assets without confirmation" {
+@test "bootstrap shows diffs and updates changed managed assets without prompting" {
   run_bootstrap frontend
   [ "$status" -eq 0 ]
 
   printf '%s\n' '# Local change' >> .agents/rules/security.md
-  before_hash="$(shasum .agents/rules/security.md | cut -d ' ' -f 1)"
 
-  run_bootstrap frontend --sync
+  run_bootstrap frontend < /dev/null
 
   [ "$status" -eq 0 ]
-  [ "$(shasum .agents/rules/security.md | cut -d ' ' -f 1)" = "$before_hash" ]
+  cmp -s .agents/rules/security.md "$skill_dir/assets/stacks/frontend/rules/security.md"
   [[ "$output" == *"Diff for .agents/rules/security.md"* ]]
-  [[ "$output" == *"Pending confirmation (not overwritten):"* ]]
+  [[ "$output" != *"Pending confirmation"* ]]
+  [[ "$output" != *"Replace .agents/rules/security.md with the template?"* ]]
 }
 
-@test "sync mode updates managed assets with explicit yes and preserves root instructions" {
+@test "bootstrap updates managed assets and preserves root instructions" {
   run_bootstrap frontend
   [ "$status" -eq 0 ]
 
@@ -1189,7 +1401,7 @@ EOF
   cp "$skill_dir/assets/claude-proxy.md" CLAUDE.md
   root_hash_before="$(shasum AGENTS.md CLAUDE.md | shasum | cut -d ' ' -f 1)"
 
-  run_bootstrap frontend --sync --yes
+  run_bootstrap frontend
 
   [ "$status" -eq 0 ]
   cmp -s .agents/rules/security.md "$skill_dir/assets/stacks/frontend/rules/security.md"
@@ -1218,16 +1430,14 @@ EOF
     bash "$source_dir/scripts/bootstrap.sh" \
       --stack frontend \
       --skill-dir "$source_dir" \
-      --provider claude \
-      --sync \
-      --yes
+      --provider claude
   [ "$status" -eq 0 ]
   cmp -s .agents/hooks/sync-marketplace.sh "$source_dir/assets/common/hooks/sync-marketplace.sh"
   cmp -s .claude/settings.json "$source_dir/assets/common/settings.json"
   cmp -s .codex/hooks/hooks.json "$source_dir/assets/codex/hooks.json"
 }
 
-@test "sync mode detects managed destination changes before atomic rename" {
+@test "bootstrap detects managed destination changes before atomic rename" {
   run_bootstrap frontend
   [ "$status" -eq 0 ]
 
@@ -1247,29 +1457,23 @@ EOF
   chmod +x "$fake_bin/cp"
 
   run env PATH="$fake_bin:$PATH" bash "$skill_dir/scripts/bootstrap.sh" \
-    --stack frontend --skill-dir "$skill_dir" --provider claude --sync --yes
+    --stack frontend --skill-dir "$skill_dir" --provider claude
 
   [ "$status" -eq 0 ]
   [ "$(cat .agents/rules/security.md)" = '# Newer destination change' ]
-  [[ "$output" == *".agents/rules/security.md changed after confirmation; neither was changed"* ]]
+  [[ "$output" == *".agents/rules/security.md changed during synchronization; neither was changed"* ]]
 }
 
-@test "update is an alias for sync and yes cannot be used without sync" {
-  run_bootstrap node
-  [ "$status" -eq 0 ]
+@test "bootstrap rejects removed sync and confirmation flags" {
+  for removed_flag in --sync --update --yes; do
+    run bash "$skill_dir/scripts/bootstrap.sh" --stack node --skill-dir "$skill_dir" --provider claude "$removed_flag"
 
-  printf '%s\n' '# Local change' >> .agents/rules/security.md
-  run_bootstrap node --update --yes
-
-  [ "$status" -eq 0 ]
-  cmp -s .agents/rules/security.md "$skill_dir/assets/stacks/node/rules/security.md"
-
-  run bash "$skill_dir/scripts/bootstrap.sh" --stack node --skill-dir "$skill_dir" --provider claude --yes
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"--yes requires --sync or --update"* ]]
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Unknown argument: $removed_flag"* ]]
+  done
 }
 
-@test "sync mode preserves symlinked managed assets" {
+@test "symlinked managed assets are replaced without touching their target" {
   outside_file="$test_root/outside-security.md"
   printf '%s\n' '# Outside asset' > "$outside_file"
   run_bootstrap node
@@ -1278,12 +1482,44 @@ EOF
   rm .agents/rules/security.md
   ln -s "$outside_file" .agents/rules/security.md
 
-  run_bootstrap node --sync --yes
+  run_bootstrap node
 
   [ "$status" -eq 0 ]
-  [ -L .agents/rules/security.md ]
+  [ ! -L .agents/rules/security.md ]
+  cmp -s .agents/rules/security.md "$skill_dir/assets/stacks/node/rules/security.md"
   [ "$(cat "$outside_file")" = '# Outside asset' ]
-  [[ "$output" == *"is a symlink; neither it nor its target was changed"* ]]
+  [[ "$output" == *".agents/rules/security.md (symlink replaced with template)"* ]]
+}
+
+@test "a symlink to a directory at a managed path cannot redirect the write" {
+  outside_directory="$test_root/outside-directory"
+  mkdir -p "$outside_directory"
+  run_bootstrap node
+  [ "$status" -eq 0 ]
+
+  rm .agents/rules/security.md
+  ln -s "$outside_directory" .agents/rules/security.md
+
+  run_bootstrap node
+
+  [ "$status" -eq 0 ]
+  [ -f .agents/rules/security.md ]
+  [ ! -L .agents/rules/security.md ]
+  [ -z "$(ls -A "$outside_directory")" ]
+}
+
+@test "a directory at a managed path is preserved and reported" {
+  run_bootstrap node
+  [ "$status" -eq 0 ]
+
+  rm .agents/rules/security.md
+  mkdir .agents/rules/security.md
+
+  run_bootstrap node
+
+  [ "$status" -eq 0 ]
+  [ -d .agents/rules/security.md ]
+  [[ "$output" == *".agents/rules/security.md is not a regular file"* ]]
 }
 
 @test "bootstrap re-resolves replaced versioned marketplace cache after upgrade" {
@@ -1330,9 +1566,7 @@ EOF
     bash "$target_source/scripts/bootstrap.sh" \
       --stack node \
       --skill-dir "$target_source" \
-      --provider claude \
-      --sync \
-      --yes
+      --provider claude
 
   [ "$status" -eq 0 ]
   grep -Fxq '# groot-kit template' .agents/rules/security.md
@@ -1363,9 +1597,7 @@ EOF
       bash "$old_source/scripts/bootstrap.sh" \
         --stack node \
         --skill-dir "$old_source" \
-        --provider "$provider" \
-        --sync \
-        --yes
+        --provider "$provider"
 
     [ "$status" -eq 0 ]
     grep -Fxq "# newest $provider template" .agents/rules/security.md
@@ -1417,6 +1649,28 @@ EOF
     grep -Fxq "# newest $provider template" .agents/rules/security.md
     [[ "$output" == *"[marketplace-sync] Using agent-ready-setup cache version 1.10.2."* ]]
   done
+}
+
+@test "bootstrap keeps requested newest cache version instead of downgrading" {
+  cache_root="$test_root/.claude/plugins/cache/groot-marketplace/groot-kit"
+  old_source="$cache_root/1.9.0/skills/agent-ready-setup"
+  new_source="$cache_root/1.10.2/skills/agent-ready-setup"
+  mkdir -p "$old_source" "$new_source"
+  cp -R "$skill_dir"/. "$old_source"/
+  cp -R "$skill_dir"/. "$new_source"/
+  printf '%s\n' '# old template' > "$old_source/assets/stacks/node/rules/security.md"
+  printf '%s\n' '# newest template' > "$new_source/assets/stacks/node/rules/security.md"
+
+  run env HOME="$test_root" PATH="$test_root/bin:$PATH" \
+    bash "$new_source/scripts/bootstrap.sh" \
+      --stack node \
+      --skill-dir "$new_source" \
+      --provider claude
+
+  [ "$status" -eq 0 ]
+  grep -Fxq '# newest template' .agents/rules/security.md
+  [[ "$output" == *"Using agent-ready-setup cache version 1.10.2."* ]]
+  [[ "$output" != *"cache version 1.9.0"* ]]
 }
 
 @test "sync hook refreshes missing shared helper before projecting assets" {
@@ -1491,8 +1745,10 @@ EOF
 
   cat > "$test_root/bin/claude" <<'EOF'
 #!/bin/bash
-jq -n --rawfile merged_content AGENTS.md \
-  '{status:"auto", reason:"No changes", conflicts:[], merged_content:$merged_content}'
+awk '/^<!-- BEGIN AGENT-READY MANAGED -->$/ { print "<!-- AGENT-READY MANAGED BLOCK -->"; skip = 1; next }
+  /^<!-- END AGENT-READY MANAGED -->$/ { skip = 0; next }
+  !skip' AGENTS.md |
+  jq -Rs '{project_content:., removed:[], inconsistencies:[], reason:"No changes"}'
 EOF
   chmod +x "$test_root/bin/claude"
 
@@ -1527,8 +1783,10 @@ EOF
 
   cat > "$test_root/bin/claude" <<'EOF'
 #!/bin/bash
-jq -n --rawfile merged_content AGENTS.md \
-  '{status:"auto", reason:"No changes", conflicts:[], merged_content:$merged_content}'
+awk '/^<!-- BEGIN AGENT-READY MANAGED -->$/ { print "<!-- AGENT-READY MANAGED BLOCK -->"; skip = 1; next }
+  /^<!-- END AGENT-READY MANAGED -->$/ { skip = 0; next }
+  !skip' AGENTS.md |
+  jq -Rs '{project_content:., removed:[], inconsistencies:[], reason:"No changes"}'
 EOF
   chmod +x "$test_root/bin/claude"
 
@@ -1659,7 +1917,7 @@ EOF
   chmod +x "$fake_bin/mv"
 
   MV_LOG="$mv_log" run env PATH="$fake_bin:$PATH" bash "$skill_dir/scripts/bootstrap.sh" \
-    --stack frontend --skill-dir "$skill_dir" --provider claude --sync --yes
+    --stack frontend --skill-dir "$skill_dir" --provider claude
 
   [ "$status" -eq 0 ]
   grep -Eq 'agent-ready-sync\.[^ ]+ \.agents/hooks/sync-marketplace\.sh$' "$mv_log"
@@ -1771,7 +2029,7 @@ EOF
   wait "$stale_pid" 2>/dev/null || true
   printf '%s\n' "$stale_pid" > .agents/.agent-ready-assets.lock/owner
 
-  run_bootstrap frontend --sync --yes
+  run_bootstrap frontend
 
   [ "$status" -eq 0 ]
   [ ! -e .agents/.agent-ready-assets.lock ]

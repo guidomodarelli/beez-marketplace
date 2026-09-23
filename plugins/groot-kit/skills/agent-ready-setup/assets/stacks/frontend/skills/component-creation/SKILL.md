@@ -1,10 +1,11 @@
 ---
+name: component-creation
 description: Create a React component following team conventions with Andes UI and Nordic. Use when asked to create a component, widget, or UI element.
 ---
 
 # Component Creation — Frontend (Nordic + React + Andes)
 
-Step-by-step guide for creating a React component following team conventions. Always consult `frontender-web-mcp` (`andes-components` tool) before selecting an Andes component.
+Step-by-step guide for creating a React component following team conventions.
 
 ---
 
@@ -13,7 +14,7 @@ Step-by-step guide for creating a React component following team conventions. Al
 Before writing code, answer:
 - What does this component display or do?
 - Does it need server-side data? → If yes, the data comes from a server hook, not fetched inside the component.
-- Does Andes already have a component for this? → Consult `frontender-web-mcp` first.
+- Does Andes already have a component for this? → Consult `frontender-web-mcp` (`andes-components` tool) first.
 - Is it reusable across multiple pages? → `app/ui-components/<component-name>/`
 - Is it specific to a single page? → `app/nordic-pages/<page>/<component-name>/`
 
@@ -42,11 +43,11 @@ Use PascalCase for component names and kebab-case for directories and filenames.
 ## Step 3 — Write the component (`index.tsx`)
 
 ```tsx
-type Props = {
+interface <ComponentName>Props {
   // Declare all props explicitly — no rest props (...rest)
-};
+}
 
-export function <ComponentName>({ }: Props) {
+export function <ComponentName>({ }: <ComponentName>Props) {
   return (
     // Use Andes components for all UI elements
     // Never use dangerouslySetInnerHTML with untrusted content
@@ -55,13 +56,7 @@ export function <ComponentName>({ }: Props) {
 }
 ```
 
-Rules to follow while writing:
-- Use Andes props (`variant`, `size`, `hierarchy`) before adding any custom CSS.
-- Never override internal Andes component styles.
-- Never store sensitive data (tokens, PII) in component state.
-- Never render user-provided content as raw HTML — sanitize with `DOMPurify` if unavoidable.
-- Apply the `User-facing copy` section from `frontend-style.md`: keep regular UI text non-technical and reserve necessary technical detail for actionable errors.
-- Apply the `Equality` section from `frontend-style.md`: prefer `Object.is` over `===` and `!==` when comparing values.
+While writing, apply `../../rules/frontend-style.md` (sections `Components`, `Andes UI`, `User-facing copy`, `TypeScript`, and `Equality`) and `../../rules/security.md` (sections `Secrets & PII` and `XSS Prevention`).
 
 ---
 
@@ -76,12 +71,17 @@ Only create this file if Andes props are not sufficient. Keep custom CSS minimal
 ```tsx
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { NordicTestProviders } from 'nordic-dev/testing-tools';
 import { <ComponentName> } from '../index';
 
 describe('<ComponentName>', () => {
   it('renders <expected output>', () => {
     // Arrange
-    render(<ComponentName />);
+    render(
+      <NordicTestProviders>
+        <ComponentName />
+      </NordicTestProviders>,
+    );
 
     // Assert
     expect(screen.getByRole('...')).toBeInTheDocument();
@@ -90,7 +90,11 @@ describe('<ComponentName>', () => {
   it('handles <user interaction>', async () => {
     // Arrange
     const user = userEvent.setup();
-    render(<ComponentName />);
+    render(
+      <NordicTestProviders>
+        <ComponentName />
+      </NordicTestProviders>,
+    );
 
     // Act
     await user.click(screen.getByRole('button', { name: /label/i }));
@@ -106,7 +110,8 @@ Test checklist:
 - [ ] Error states render the right feedback.
 - [ ] User interactions produce the expected outcome.
 - [ ] No snapshot tests as the primary assertion.
-- [ ] All external dependencies mocked.
+- [ ] External dependencies mocked at the project boundary: internal services with `jest.spyOn`.
+- [ ] Component libraries and platform packages rendered for real, never mocked (`../../rules/testing.md`, section `Mocking`).
 
 ---
 

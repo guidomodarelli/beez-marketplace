@@ -1,3 +1,8 @@
+---
+name: review-pr
+description: Run a full review of the current PR by orchestrating the specialized review agents and consolidating their results. Use when asked to review a pull request.
+---
+
 # Review PR — Frontend
 
 Run a full review of the current PR by orchestrating all specialized agents in sequence. Each agent focuses on its domain — this command consolidates the results.
@@ -25,11 +30,11 @@ Execute each agent against the diff. Collect findings before reporting.
 
 | Agent | File | Trigger condition |
 |-------|------|-------------------|
-| Security scanner | `.claude/agents/security-scanner.md` | Always |
-| Accessibility reviewer | `.claude/agents/a11y-reviewer.md` | Always |
-| Performance analyzer | `.claude/agents/perf-analyzer.md` | Always |
-| Test reviewer | `.claude/agents/test-reviewer.md` | Diff includes frontend production or test files; use `test-reviewer.md` activation rules |
-| Lint reviewer | `.claude/agents/lint-reviewer.md` | Diff includes `.tsx?` or `.jsx?` |
+| Security scanner | `.agents/agents/security-scanner.md` | Always |
+| Accessibility reviewer | `.agents/agents/a11y-reviewer.md` | Always |
+| Performance analyzer | `.agents/agents/perf-analyzer.md` | Always |
+| Test reviewer | `.agents/agents/test-reviewer.md` | Use the activation rules in `test-reviewer.md` |
+| Lint reviewer | `.agents/agents/lint-reviewer.md` | Use the activation rules in `lint-reviewer.md` |
 
 ### 3. Consolidate and report
 

@@ -7,7 +7,7 @@ Baseline security rules for Nordic applications. These rules are always active a
 ## Secrets & PII
 
 - Never hardcode secrets, tokens, or API keys — use `node-melitk-secrets` for Fury Secrets Service.
-- Never log PII (emails, IDs, addresses) or credentials — use `nordic/logger` with `node-data-privacy-toolkit` to truncate/obfuscate if logging is needed.
+- Never log PII (emails, personal identifiers such as user or buyer IDs, addresses) or credentials — use `nordic/logger` with `node-data-privacy-toolkit` to truncate/obfuscate if logging is needed.
 - Never receive PII or tokens via query parameters — use request body.
 - Never expose sensitive data in React state, Redux, or Context — keep it server-side only.
 

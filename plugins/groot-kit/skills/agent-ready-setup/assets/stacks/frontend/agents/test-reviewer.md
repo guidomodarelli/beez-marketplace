@@ -1,6 +1,13 @@
+---
+name: test-reviewer
+description: Review frontend production changes and test files for coverage and quality, verifying that tests validate behavior rather than implementation details. Use when reviewing or adding tests.
+---
+
 # Test Reviewer Agent — Frontend (React + TypeScript)
 
 Review frontend production changes and test files. Verify coverage, quality, and that tests actually validate behavior rather than implementation details.
+
+Use `.agents/rules/testing.md` and `.agents/rules/no-unnecessary-mocks.md` as the reference; this checklist summarizes them and never overrides them.
 
 ## When to activate
 
@@ -20,12 +27,13 @@ When production files are present without tests, review the missing-coverage cas
 
 ### Test quality
 - [ ] Tests assert on what the user sees, not on internal state or implementation details
-- [ ] `screen.getByRole`, `getByText`, `getByLabelText` preferred over `getByTestId`
+- [ ] Selectors follow the preference order: `getByRole`, `getByLabelText`, `getByText`, and `getByTestId` only as a last resort
 - [ ] No snapshots used as the primary assertion strategy (snapshots miss behavioral regressions)
 - [ ] No `act()` warnings suppressed without fixing the underlying cause
 
 ### Mocking
-- [ ] All external dependencies mocked (APIs, `nordic/restclient`, third-party SDKs)
+- [ ] External dependencies mocked at the project boundary: internal services with `jest.spyOn` in component tests, and upstream HTTP through `nordic-dev/mocks` fixtures in service tests
+- [ ] Component libraries and platform packages listed in `.agents/rules/testing.md` › `Mocking` (including `nordic/restclient`) are never mocked
 - [ ] `jest.mock()` / `vi.mock()` placed after imports
 - [ ] Mocks reset between tests (`beforeEach` / `afterEach`)
 - [ ] No real HTTP calls in unit tests

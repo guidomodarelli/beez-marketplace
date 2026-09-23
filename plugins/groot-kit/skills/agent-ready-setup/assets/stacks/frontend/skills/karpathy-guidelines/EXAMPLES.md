@@ -290,11 +290,9 @@ async function savePreferences(
 **❌ What LLMs Do (Reformat Everything)**
 
 ```diff
-- function uploadFile(filePath: string, destination: string) {
+- async function uploadFile(filePath: string, destination: string) {
 + async function uploadFile(filePath: string, destination: string): Promise<boolean> {
 +   /** Upload file to destination with logging. */
-+   logger.info(`Uploading ${filePath} to ${destination}`);
-+
     try {
 -     const response = await restclient.post(destination, { data: { file: filePath } })
 -     if (response.status === 200) {
@@ -305,16 +303,14 @@ async function savePreferences(
 +     const response = await restclient.post(destination, { data: { file: filePath } });
 +     const success = response.status === 200;
 +
-+     if (success) {
-+       logger.info(`Upload successful: ${filePath}`);
-+     } else {
-+       logger.error(`Upload failed: ${filePath}, status=${response.status}`);
++     if (!success) {
++       logWarning(`[UPLOAD] - error: upload failed, status=${response.status}`);
 +     }
 +
 +     return success;
     } catch (e) {
 -     console.error(`Error: ${e}`)
-+     logger.error(`Upload error for ${filePath}`, { error: e });
++     logError(`[UPLOAD] - error: ${e}`);
       return false
     }
   }
@@ -322,7 +318,7 @@ async function savePreferences(
 
 **Problems:**
 
-- Added `async`/return type nobody asked for
+- Added a return type nobody asked for
 - Added JSDoc
 - Changed semicolon style
 - Reformatted boolean return logic
@@ -330,30 +326,26 @@ async function savePreferences(
 **✅ What Should Happen (Match Existing Style)**
 
 ```diff
-+ import { Logger } from 'nordic/logger';
++ import { logError, logWarning } from '../utils/logger'
 +
-+ const logger = Logger('upload');
-+
-  function uploadFile(filePath: string, destination: string) {
-+   logger.info(`Starting upload: ${filePath}`)
+  async function uploadFile(filePath: string, destination: string) {
     try {
       const response = await restclient.post(destination, { data: { file: filePath } })
       if (response.status === 200) {
-+       logger.info(`Upload successful: ${filePath}`)
         return true
       } else {
-+       logger.error(`Upload failed: ${filePath}, status=${response.status}`)
++       logWarning(`[UPLOAD] - error: upload failed, status=${response.status}`)
         return false
       }
     } catch (e) {
 -     console.error(`Error: ${e}`)
-+     logger.error(`Upload error: ${filePath}`, { error: e })
++     logError(`[UPLOAD] - error: ${e}`)
       return false
     }
   }
 ```
 
-**Matched:** No semicolons, no type annotations, existing boolean pattern, single-quote style.
+**Matched:** No semicolons, no type annotations, existing boolean pattern, single-quote style. Logging uses the project helpers from skill `/logger`.
 
 ---
 

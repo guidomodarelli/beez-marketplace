@@ -1,23 +1,33 @@
 #!/bin/bash
 # render-instruction-template.sh
-# Materializes the stack template's dynamic rule-reference section and validates
-# provider-neutral references returned in AGENTS.md.
+# Materializes the stack template's managed AGENTS.md block (template and
+# project rule references plus the centralization rule) and validates that the
+# managed block references every current rule with a provider-neutral path.
 
 set -euo pipefail
 
 readonly RULE_REFERENCE_PLACEHOLDER='{{AGENT_READY_RULE_REFERENCES}}'
-readonly RULE_REFERENCE_START='<!-- BEGIN AGENT-READY RULE REFERENCES -->'
-readonly RULE_REFERENCE_END='<!-- END AGENT-READY RULE REFERENCES -->'
+readonly CENTRALIZATION_PLACEHOLDER='{{AGENT_READY_CENTRALIZATION}}'
+readonly MANAGED_BLOCK_START='<!-- BEGIN AGENT-READY MANAGED -->'
+readonly MANAGED_BLOCK_END='<!-- END AGENT-READY MANAGED -->'
 
 TEMPLATE_FILE=""
 RULES_DIRECTORY=""
+PROJECT_RULES_DIRECTORY=""
+CENTRALIZATION_FILE=""
 VALIDATE_FILE=""
+MANAGED_BLOCK_ONLY=0
+LIST_RULES=0
 
 usage() {
   cat >&2 <<'EOF'
 Usage:
   render-instruction-template.sh --template <file> --rules-dir <directory>
+    [--project-rules-dir <directory>] [--centralization <file>] [--managed-block]
   render-instruction-template.sh --validate <file> --rules-dir <directory>
+    [--project-rules-dir <directory>]
+  render-instruction-template.sh --list-rules --rules-dir <directory>
+    [--project-rules-dir <directory>]
 EOF
 }
 
@@ -32,6 +42,24 @@ while [[ $# -gt 0 ]]; do
       [[ $# -ge 2 ]] || { echo "ERROR: --rules-dir requires a value" >&2; exit 1; }
       RULES_DIRECTORY="${2%/}"
       shift 2
+      ;;
+    --project-rules-dir)
+      [[ $# -ge 2 ]] || { echo "ERROR: --project-rules-dir requires a value" >&2; exit 1; }
+      PROJECT_RULES_DIRECTORY="${2%/}"
+      shift 2
+      ;;
+    --centralization)
+      [[ $# -ge 2 ]] || { echo "ERROR: --centralization requires a value" >&2; exit 1; }
+      CENTRALIZATION_FILE="$2"
+      shift 2
+      ;;
+    --managed-block)
+      MANAGED_BLOCK_ONLY=1
+      shift
+      ;;
+    --list-rules)
+      LIST_RULES=1
+      shift
       ;;
     --validate)
       [[ $# -ge 2 ]] || { echo "ERROR: --validate requires a value" >&2; exit 1; }
@@ -60,8 +88,8 @@ if [[ -n "$TEMPLATE_FILE" && -n "$VALIDATE_FILE" ]]; then
   exit 1
 fi
 
-if [[ -z "$TEMPLATE_FILE" && -z "$VALIDATE_FILE" ]]; then
-  echo "ERROR: provide --template or --validate" >&2
+if [[ -z "$TEMPLATE_FILE" && -z "$VALIDATE_FILE" && "$LIST_RULES" -eq 0 ]]; then
+  echo "ERROR: provide --template, --validate, or --list-rules" >&2
   usage
   exit 1
 fi
@@ -103,14 +131,74 @@ list_rule_paths() {
   done < <(find "$RULES_DIRECTORY" -type f -print | LC_ALL=C sort)
 }
 
-render_rule_references() {
+# Project rules are Markdown files the repository added under .agents/rules/
+# without a template counterpart. Symlinks are skipped so a rule never points
+# outside the project tree.
+list_project_rule_paths() {
+  local rule_file
   local relative_path
 
-  printf '%s\n' "$RULE_REFERENCE_START"
+  [[ -n "$PROJECT_RULES_DIRECTORY" && -d "$PROJECT_RULES_DIRECTORY" && ! -L "$PROJECT_RULES_DIRECTORY" ]] || return 0
+
+  while IFS= read -r rule_file; do
+    relative_path="${rule_file#"$PROJECT_RULES_DIRECTORY"/}"
+    case "$relative_path" in
+      ""|/*|../*|*/../*|*/..)
+        echo "ERROR: unsafe project rule path: $relative_path" >&2
+        return 1
+        ;;
+    esac
+    [[ -e "$RULES_DIRECTORY/$relative_path" ]] && continue
+    printf '%s\n' "$relative_path"
+  done < <(find "$PROJECT_RULES_DIRECTORY" -type f -name '*.md' -print | LC_ALL=C sort)
+}
+
+list_all_rule_paths() {
+  list_rule_paths
+  list_project_rule_paths
+}
+
+render_rule_references() {
+  local relative_path
+  local project_rule_paths
+
   while IFS= read -r relative_path; do
     printf '%s\n' "- Read and follow \`.agents/rules/$relative_path\`."
   done < <(list_rule_paths)
-  printf '%s\n' "$RULE_REFERENCE_END"
+
+  project_rule_paths="$(list_project_rule_paths)"
+  [[ -n "$project_rule_paths" ]] || return 0
+  printf '\n%s\n\n' '### Project rules'
+  while IFS= read -r relative_path; do
+    printf '%s\n' "- Read and follow \`.agents/rules/$relative_path\`."
+  done <<< "$project_rule_paths"
+}
+
+if [[ "$LIST_RULES" -eq 1 ]]; then
+  while IFS= read -r relative_path; do
+    printf '%s\t%s\n' "$relative_path" "$RULES_DIRECTORY/$relative_path"
+  done < <(list_rule_paths)
+  while IFS= read -r relative_path; do
+    printf '%s\t%s\n' "$relative_path" "$PROJECT_RULES_DIRECTORY/$relative_path"
+  done < <(list_project_rule_paths)
+  exit 0
+fi
+
+render_placeholder_block() {
+  local placeholder="$1"
+
+  case "$placeholder" in
+    "$RULE_REFERENCE_PLACEHOLDER")
+      render_rule_references
+      ;;
+    "$CENTRALIZATION_PLACEHOLDER")
+      if [[ -z "$CENTRALIZATION_FILE" || ! -f "$CENTRALIZATION_FILE" ]]; then
+        echo "ERROR: template uses $CENTRALIZATION_PLACEHOLDER but --centralization is missing" >&2
+        return 1
+      fi
+      cat -- "$CENTRALIZATION_FILE"
+      ;;
+  esac
 }
 
 if [[ -n "$TEMPLATE_FILE" ]]; then
@@ -119,32 +207,65 @@ if [[ -n "$TEMPLATE_FILE" ]]; then
     echo "ERROR: template must contain exactly one $RULE_REFERENCE_PLACEHOLDER placeholder" >&2
     exit 1
   fi
+  if [[ "$MANAGED_BLOCK_ONLY" -eq 1 ]] && { \
+    [[ "$(grep -Fxc "$MANAGED_BLOCK_START" "$TEMPLATE_FILE" || true)" -ne 1 ]] || \
+    [[ "$(grep -Fxc "$MANAGED_BLOCK_END" "$TEMPLATE_FILE" || true)" -ne 1 ]]; }; then
+    echo "ERROR: template must contain exactly one managed block to use --managed-block" >&2
+    exit 1
+  fi
 
-  temporary_block="$(mktemp "${TMPDIR:-/tmp}/agent-ready-rule-references.XXXXXX")"
-  trap 'rm -f -- "$temporary_block"' EXIT
-  render_rule_references > "$temporary_block"
+  temporary_directory="$(mktemp -d "${TMPDIR:-/tmp}/agent-ready-template.XXXXXX")"
+  trap 'rm -rf -- "$temporary_directory"' EXIT
+  for placeholder in "$RULE_REFERENCE_PLACEHOLDER" "$CENTRALIZATION_PLACEHOLDER"; do
+    placeholder_file="$temporary_directory/$(printf '%s' "$placeholder" | tr -cd '[:alnum:]_').md"
+    if grep -Fxq "$placeholder" "$TEMPLATE_FILE"; then
+      render_placeholder_block "$placeholder" > "$placeholder_file"
+    fi
+  done
 
-  awk -v placeholder="$RULE_REFERENCE_PLACEHOLDER" -v block_file="$temporary_block" '
-    BEGIN {
-      rendered_block = ""
-      while ((getline line < block_file) > 0) {
-        rendered_block = rendered_block line ORS
-      }
-      close(block_file)
+  # An empty placeholder also drops its following blank separator so optional
+  # sections leave no double blank line behind.
+  awk \
+    -v block_directory="$temporary_directory" \
+    -v managed_only="$MANAGED_BLOCK_ONLY" \
+    -v managed_start="$MANAGED_BLOCK_START" \
+    -v managed_end="$MANAGED_BLOCK_END" '
+    function placeholder_path(placeholder, name) {
+      name = placeholder
+      gsub(/[^[:alnum:]_]/, "", name)
+      return block_directory "/" name ".md"
     }
-    $0 == placeholder {
-      printf "%s", rendered_block
+    function emit(line) {
+      if (managed_only == 0 || in_managed) {
+        print line
+      }
+    }
+    $0 == managed_start { in_managed = 1; emit($0); next }
+    $0 == managed_end { emit($0); in_managed = 0; next }
+    skip_blank && $0 == "" { skip_blank = 0; next }
+    { skip_blank = 0 }
+    /^\{\{AGENT_READY_[A-Z_]+\}\}$/ {
+      path = placeholder_path($0)
+      rendered = 0
+      while ((getline line < path) > 0) {
+        emit(line)
+        rendered = 1
+      }
+      close(path)
+      if (!rendered) {
+        skip_blank = 1
+      }
       next
     }
-    { print }
+    { emit($0) }
   ' "$TEMPLATE_FILE"
   exit 0
 fi
 
-start_count="$(grep -Fxc "$RULE_REFERENCE_START" "$VALIDATE_FILE" || true)"
-end_count="$(grep -Fxc "$RULE_REFERENCE_END" "$VALIDATE_FILE" || true)"
+start_count="$(grep -Fxc "$MANAGED_BLOCK_START" "$VALIDATE_FILE" || true)"
+end_count="$(grep -Fxc "$MANAGED_BLOCK_END" "$VALIDATE_FILE" || true)"
 if [[ "$start_count" -ne 1 || "$end_count" -ne 1 ]]; then
-  echo "ERROR: AGENTS.md must contain exactly one managed rule-reference block" >&2
+  echo "ERROR: AGENTS.md must contain exactly one managed block" >&2
   exit 1
 fi
 
@@ -160,7 +281,7 @@ fi
 
 managed_block_file="$(mktemp "${TMPDIR:-/tmp}/agent-ready-managed-rules.XXXXXX")"
 trap 'rm -f -- "$managed_block_file"' EXIT
-awk -v start="$RULE_REFERENCE_START" -v end="$RULE_REFERENCE_END" '
+awk -v start="$MANAGED_BLOCK_START" -v end="$MANAGED_BLOCK_END" '
   $0 == start { in_block = 1; next }
   $0 == end { in_block = 0; next }
   in_block { print }
@@ -172,7 +293,7 @@ rule_path_is_current() {
 
   while IFS= read -r relative_path; do
     [[ ".agents/rules/$relative_path" == "$candidate_path" ]] && return 0
-  done < <(list_rule_paths)
+  done < <(list_all_rule_paths)
   return 1
 }
 
@@ -193,19 +314,19 @@ missing_references=0
 while IFS= read -r relative_path; do
   reference_path=".agents/rules/$relative_path"
   if ! grep -Fq -- "$reference_path" "$managed_block_file"; then
-    echo "ERROR: AGENTS.md managed rule block is missing reference: $reference_path" >&2
+    echo "ERROR: AGENTS.md managed block is missing rule reference: $reference_path" >&2
     missing_references=1
   elif ! rule_reference_has_read_instruction "$reference_path"; then
     echo "ERROR: AGENTS.md managed rule reference lacks read/follow instruction: $reference_path" >&2
     missing_references=1
   fi
-done < <(list_rule_paths)
+done < <(list_all_rule_paths)
 
 stale_references=0
 while IFS= read -r reference_path; do
   [[ "$reference_path" == *. ]] && reference_path="${reference_path%.}"
   if ! rule_path_is_current "$reference_path"; then
-    echo "ERROR: AGENTS.md managed rule block contains stale reference: $reference_path" >&2
+    echo "ERROR: AGENTS.md managed block contains stale rule reference: $reference_path" >&2
     stale_references=1
   fi
 done < <(grep -Eo '\.agents/rules/[[:alnum:]_.\/-]+' "$managed_block_file" | LC_ALL=C sort -u || true)

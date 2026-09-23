@@ -1,3 +1,8 @@
+---
+name: security-scanner
+description: Scan frontend changes for security vulnerabilities specific to the Nordic + React + TypeScript stack. Use when reviewing changes for XSS, secrets, input validation, or unsafe outbound calls.
+---
+
 # Security Scanner Agent — Frontend (Nordic + React + TypeScript)
 
 Scan the current changes for security vulnerabilities specific to the Nordic + React + TypeScript stack.
@@ -14,7 +19,7 @@ Use `meli_appsec_codeguard` as the primary source of findings:
 2. **`get_fix_suggestions`** — for each issue found, fetch the suggested fix.
 3. **`search_security_toolkits`** — when a finding involves a dependency or pattern that has an approved secure alternative, look it up here.
 
-Do not add manual checks on top of MCP findings. The MCP is the source of truth.
+Do not add manual checks on top of MCP findings. The MCP is the source of truth. Use `.agents/rules/security.md` only as supplementary context to prioritize and explain MCP findings, never to report issues the MCP did not detect.
 
 ---
 

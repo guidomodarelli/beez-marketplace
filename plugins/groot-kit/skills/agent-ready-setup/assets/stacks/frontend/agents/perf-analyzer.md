@@ -1,3 +1,8 @@
+---
+name: perf-analyzer
+description: Analyze frontend changes for performance regressions and optimization opportunities in the Nordic + React stack. Use when reviewing rendering, bundle size, or data-fetching performance.
+---
+
 # Performance Analyzer Agent — Frontend
 
 Analyze changes for performance regressions and optimization opportunities in the Nordic + React stack.
@@ -13,21 +18,19 @@ Run against a diff or a specific file. Focus on measurable impact — avoid flag
 ## Checklist
 
 ### Bundle size
-- [ ] New dependency added? Check its size impact — prefer packages already bundled by Nordic.
-- [ ] Large package imported entirely when only a subset is used? Use named imports or dynamic import.
-- [ ] Dependency already bundled by Nordic installed separately? Check `node_modules/nordic/package.json`.
+- [ ] New dependency added? Check its size impact; dependencies already bundled by Nordic must not be installed separately (`.agents/rules/frontend-style.md` › `Imports`).
+- [ ] Large package imported entirely when only a subset is used? Use per-method or dynamic imports; for lodash follow `.agents/rules/lodash.md` › `Usage`.
 
 ### React rendering
 - [ ] Components re-rendering unnecessarily? Look for unstable object/array references created inline in JSX.
 - [ ] Missing `key` props in lists — causes full re-renders on list changes.
-- [ ] Heavy computations inside render without `useMemo`.
+- [ ] Heavy computations inside render without `useMemo`, confirmed by profiling.
 - [ ] Callbacks recreated on every render and passed as props — use `useCallback` only if profiling confirms the re-render cost.
 - [ ] `useEffect` with missing or overly broad dependencies causing excessive executions.
 
 ### Array & object operations
-- [ ] `.filter().map()` chained on large arrays — prefer single-pass `.reduce()`.
-- [ ] Unnecessary object spread (`{ ...obj }`) when passing props — pass the object directly.
-- [ ] Rest props pattern (`...rest`) used — declare props explicitly instead.
+- [ ] `.filter().map()` chained on large arrays in a measured hot path — prefer a single pass.
+- [ ] Unnecessary object spread, or `.map()` / `[...iterable].map()` instead of `Array.from(source, callback)` — see `.agents/rules/frontend-style.md` › `Performance`.
 
 ### Network
 - [ ] New API calls that could be batched or cached?

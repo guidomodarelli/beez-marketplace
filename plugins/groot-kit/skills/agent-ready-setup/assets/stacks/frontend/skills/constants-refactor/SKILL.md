@@ -1,13 +1,19 @@
 ---
 name: constants-refactor
-description: Analiza y refactoriza constantes, literales funcionales y contratos cross-layer en cualquier repositorio de código. Invocar siempre que se cree, modifique, elimine, mueva o revise una constante, aunque el cambio parezca puntual; también usar cuando usuario pida revisar constantes, mover valores a constants/, limpiar hardcodes, responder comentarios de PR sobre constantes, centralizar límites/códigos/rutas/regex o reducir duplicación entre capas, aunque no mencione explícitamente una carpeta constants. Mueve siempre cada constante estática a constants/, incluso si hoy tiene un solo consumidor; no uses la cantidad de referencias para decidir su ubicación. Solo distingue variables calculadas, estado mutable y resultados runtime, que no son constantes. Preserva comportamiento y aplica cambios seguros con validación completa.
+description: Analiza y refactoriza constantes, literales con significado de dominio y contratos cross-layer. Usar al crear, modificar, mover o revisar constantes, limpiar hardcodes, centralizar límites/códigos/rutas/regex, responder comentarios de PR sobre constantes o reducir duplicación entre capas. Ubica cada valor según su significado, no según su cantidad de usos, y preserva comportamiento.
 ---
 
 # Constants Refactor
 
 ## Objetivo
 
-Centralizar en `constants/` toda constante estática, aunque exista un solo consumidor actual. La cantidad de usos no decide la ubicación: cada valor debe tener una fuente canónica fuera del módulo consumidor. No confundir constantes con variables calculadas en runtime, estado mutable o resultados de llamadas, que no deben extraerse como constantes.
+Dar una fuente canónica en `constants/` a cada constante estática con significado de dominio o de contrato, aunque exista un solo consumidor actual: la cantidad de usos no decide la ubicación. Aplicar además las rules del proyecto, que prevalecen sobre esta skill:
+
+- `../../rules/frontend-style.md` › `Module placement`: dentro de un subrouter quedan solo las declaraciones route-local necesarias para montarlo o definir su schema; lo reutilizado o con significado de dominio va a `constants/`.
+- `../../rules/security.md` › `Secrets & PII`: secretos, credenciales y tokens nunca se declaran como constantes.
+- `../../rules/api-configuration.md`: scopes y valores por entorno viven en `config/`.
+
+No confundir constantes con variables calculadas en runtime, estado mutable o resultados de llamadas, que no deben extraerse como constantes.
 
 Aplicar workflow completo cuando usuario pida implementar. Entregar solo análisis cuando usuario pida review o informe sin cambios.
 
@@ -54,8 +60,8 @@ Aplicar estas reglas:
 Cuando usuario pida mover constantes de módulo o feature hacia `constants/`:
 
 1. Buscar primero archivo de dominio existente, por ejemplo `constants/<domain>/<feature>.ts`; no crear `constants.ts` genérico.
-2. Mover toda constante estática a `constants/`, incluyendo límites, estados, regex, rutas, códigos, configuración, copy, msgids, estilos, paginación, delays, mapas y valores usados una sola vez. Un único consumidor nunca es motivo para mantenerla local.
-3. Mantener fuera de `constants/` únicamente variables calculadas en runtime, estado mutable y resultados de llamadas, porque no son constantes. No crear excepciones basadas en cantidad de usos, visibilidad o tipo de literal.
+2. Mover a `constants/` toda constante estática con significado de dominio o contrato: límites, estados, regex, rutas, códigos, configuración fija, estilos, paginación, delays y mapas, aunque se usen una sola vez. Un único consumidor nunca es motivo para mantenerla local.
+3. Mantener fuera de `constants/` las variables calculadas en runtime, el estado mutable, los resultados de llamadas y los valores listados en «Mantener fuera de `constants/`» y «Separar destinos».
 4. Separar tipos runtime de UI: constants no deben importar valores desde `app/`, componentes o tipos que dependan de constants.
 5. Mantener specifiers públicos existentes solo cuando el barrel los soporte; no introducir un alias nuevo por uniformidad.
 
@@ -65,14 +71,14 @@ Antes de migrar consumers, recorrer destino y todos sus barrels ascendentes. Si 
 
 ### Atoms escalares y agregados
 
-- Cuando un literal tenga significado unitario y estable, definirlo una sola vez como atom escalar en `constants/`, aunque hoy tenga un solo consumidor: `const SEMANTIC_ATOM = 'value' as const`.
+- Cuando un literal tenga significado de dominio unitario y estable, definirlo una sola vez como atom escalar en `constants/`, aunque hoy tenga un solo consumidor: `const SEMANTIC_ATOM = 'value' as const`.
 - Construir arrays y agregados contractuales desde atoms: `const CONTRACT_VALUES = [SEMANTIC_ATOM, OTHER_ATOM] as const`.
 - Nombrar atoms por rol semántico y dominio (`LABOUR_SHARE_SOURCE_SCANNER`), no por valor genérico (`VALUE`, `ITEM`, `TYPE`).
 - Derivar unions desde el array contractual correspondiente, no desde un array de otro dominio. Mantener arrays distintos cuando tengan semánticas distintas aunque compartan atoms (`mixed` no pertenece a una lista de valores individuales).
 - Compartir atom después de comprobar equivalencia de significado, boundary, serialización y consumers. La coincidencia textual aislada no justifica reutilizar un atom existente, pero tampoco justifica mantenerlo en el consumidor.
 - Mantener atoms puros, sin servicios, permisos, imports server-only ni side effects; los valores estáticos se declaran en `constants/` y no se calculan al importar.
 - Preservar orden, identidad y forma observable. No reemplazar referencias canónicas por `Array.from`, spread, `Object.freeze` o composición dinámica cuando eso cambie identidad, mutabilidad o serialización requerida por consumers.
-- No atomizar variables calculadas, estado mutable, resultados de llamadas ni datos derivados de input. Mover declaraciones constantes estáticas completas —incluidos fixtures, mapas contractuales y literales triviales— aunque tengan un solo consumidor; no fragmentarlas solo por estética.
+- No atomizar variables calculadas, estado mutable, resultados de llamadas ni datos derivados de input. Mover declaraciones constantes estáticas completas —incluidos fixtures y mapas contractuales— aunque tengan un solo consumidor; no fragmentarlas solo por estética.
 - Un refactor de constants debe limitarse a extracción, composición y migración de referencias; no agregar condicionales, guards, normalización ni cambios de validación salvo pedido explícito separado.
 - Priorizar composición simple y legible. Mantener regex literales cuando derivarlas dinámicamente agregue helpers, escapes o complejidad sin reducir un drift comprobado; en ese caso cubrir sincronización con tests.
 - Si patrón canónico ya existe como variable (por ejemplo, string compartido entre schemas legacy), reutilizarlo mediante `new RegExp(CANONICAL_PATTERN)` cuando consumidor requiera `RegExp`; no duplicar equivalente literal solo para evitar una advertencia de lint.
@@ -123,36 +129,36 @@ Para PR:
 
 ### Mover a `constants/`
 
-Mover siempre toda declaración que represente un valor estático, sin exigir reutilización previa:
+Mover toda declaración estática con significado de dominio o contrato, sin exigir reutilización previa:
 
 - constantes de contrato, aunque tengan un solo consumidor;
 - límites, estados, códigos, rutas, regex, allowlists, atributos y claves públicas;
-- configuración, secretos, credenciales, tokens y metadata representados como valores constantes;
+- configuración fija que no varía por entorno y metadata no sensible;
 - runtime constants ubicadas dentro de `interfaces/` o `types/`;
 - literales unitarios y elementos de arrays contractuales, aunque hoy no estén repetidos;
-- copy, labels, msgids, estilos, paths privados, statuses HTTP, timeouts, paginación, delays y mapas estáticos.
+- estilos, statuses HTTP, timeouts, paginación, delays y mapas estáticos.
 
-La decisión de mover no depende de cantidad de referencias, visibilidad ni categoría del literal. Crear o ampliar el archivo de dominio correspondiente aunque el valor aparezca una sola vez.
+La decisión de mover depende del significado del valor, no de la cantidad de referencias. Crear o ampliar el archivo de dominio correspondiente aunque el valor aparezca una sola vez.
 
 ### Mantener fuera de `constants/`
 
-Solo dejar fuera valores que no sean constantes:
+Dejar fuera:
 
-- variables calculadas en runtime;
-- estado mutable;
-- resultados de llamadas, respuestas o datos derivados de input;
-- expresiones cuyo valor cambie durante la ejecución.
+- variables calculadas en runtime, estado mutable, resultados de llamadas, respuestas, datos derivados de input y expresiones cuyo valor cambie durante la ejecución, porque no son constantes;
+- literales triviales sin significado propio (`0`, `1`, `-1`, `true`, `false`, string vacío de inicialización);
+- declaraciones route-local necesarias para montar un subrouter o definir su schema (`frontend-style.md` › `Module placement`); los límites y valores de dominio que ese schema usa sí van a `constants/`.
 
-Si un valor puede declararse y permanecer fijo durante la ejecución, tratarlo como constante y moverlo a `constants/`.
+Si un valor con significado de dominio puede declararse y permanecer fijo durante la ejecución, tratarlo como constante y moverlo a `constants/`.
 
 ### Separar destinos
 
+- secretos, credenciales y tokens → `node-melitk-secrets`; nunca `constants/` ni código fuente;
 - autorización → módulo `permissions/`, `auth/` o equivalente del dominio, no `constants` genérico;
-- valores por entorno/deployment → `config/` o settings, no `constants`;
+- valores por entorno/deployment, base URLs y scopes → `config/` vía `nordic/config`, no `constants`;
 - rutas backend-for-frontend compartidas → `constants/routes.ts` o equivalente;
 - paths upstream privados → cliente/adapter;
-- mensajes user-facing → i18n/localization;
-- regex/estados de parser únicamente locales → parser, salvo contrato cross-layer probado.
+- copy, labels y msgids user-facing → catálogo i18n del proyecto, no `constants/`;
+- estados internos de un parser sin significado de dominio → módulo del parser; si una regex o estado forma parte de un contrato, va a `constants/`.
 
 ## Diseño seguro
 
@@ -186,24 +192,23 @@ Al componer arrays desde atoms, preservar orden, referencia e identidad cuando f
 
 ### Ciclos y tipos
 
-- Usar objetos `as const` y unions derivados cuando lenguaje/configuración lo recomiende.
-- No usar `enum` si configuración TypeScript prohíbe declaraciones no erasables.
+- Usar objetos `as const` y unions derivados.
+- No usar `enum` (`frontend-style.md` › `TypeScript`).
 - Mantener imports type-only desde `interfaces/` o `types/` cuando corresponda.
 - Evitar que `constants/` importe valores desde módulos de tipos si esos módulos deben depender de `constants/`.
 - Preferir dirección unidireccional: `atoms/constants → tipos/consumers` o imports type-only sin ciclo runtime.
 - Derivar tipos desde atoms/agregados del mismo dominio; no importar valores runtime desde `interfaces/` o `types/` hacia `constants/`.
 - Verificar reglas de ciclo, resolución de imports y aliases configurados por el repositorio.
 
-### Documentación
+### Naming y comentarios
 
-- Agregar documentación del lenguaje para nuevas constantes, objetos de configuración, regex, tipos derivados y helpers no obvios.
-- Documentar unidades (`_MS`), límites, formato y consumidor esperado.
-- Mantener headers de módulo en archivos nuevos cuando sea convención del proyecto.
+- Nombrar en `UPPER_SNAKE_CASE` por rol, con unidades en el nombre (`REQUEST_TIMEOUT_MS`), según `frontend-style.md` › `Naming`.
+- Comentar solo el porqué no obvio (origen de un límite upstream, formato esperado), según `frontend-style.md` › `Comments`: sin bloques multilínea ni docstrings.
 
 ## Implementación
 
 1. Crear o ampliar archivo de dominio cohesivo en `constants/`.
-2. Identificar todos los valores estáticos y definirlos allí; crear atoms antes de arrays/agregados contractuales cuando corresponda, aunque cada atom tenga un solo consumidor.
+2. Identificar los valores estáticos con significado de dominio y definirlos allí; crear atoms antes de arrays/agregados contractuales cuando corresponda, aunque cada atom tenga un solo consumidor.
 3. Construir arrays/agregados y tipos derivados desde atoms, conservando contratos separados.
 4. Mantener nombre semántico; no usar nombres genéricos como `VALUE`, `LIMIT`, `DATA`.
 5. Mover valores sin cambiar strings, orden, default, serialización o respuesta.
@@ -248,7 +253,7 @@ Usar este formato salvo que usuario pida otro:
 | Archivo/línea | Valor | Destino | Motivo |
 
 ## Valores fuera de `constants/`
-| Archivo/línea | Valor | Motivo: no es constante estática |
+| Archivo/línea | Valor | Motivo (no es constante, trivial, route-local, secreto, config o i18n) |
 
 ## Cambios aplicados
 - Fuentes canónicas.
