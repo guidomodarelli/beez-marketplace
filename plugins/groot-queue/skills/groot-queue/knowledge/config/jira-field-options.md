@@ -39,8 +39,8 @@ ni en el payload.
 > ```
 >
 > El filtro de la cola Groot es `<SQUAD_FIELD_JQL> = "Groot"`, expandido a
-> `cf[13781] = "Groot"`, respetando el escaping de comillas del contexto de shell
-> (`\"Groot\"` dentro de `--jql "..."`, `"Groot"` dentro de `--jql '...'`).
+> `cf[13781] = "Groot"`. Cargar la query con el patrón de `untrusted-content.md`
+> § **Placeholders en comandos shell**: dentro del heredoc las comillas van sin escapar.
 
 ---
 

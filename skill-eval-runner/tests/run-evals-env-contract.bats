@@ -6,6 +6,7 @@ load 'test_helper/eval-runner'
 
 setup() {
     unset GROOT_MARKETPLACE_EVAL_MODEL
+    unset GROOT_MARKETPLACE_EVAL_REASONING_EFFORT
     setup_eval_runner_fixture
 }
 
@@ -25,6 +26,22 @@ setup() {
     [ "$status" -eq 0 ]
     [ "$(wc -l < "$CLAUDE_ARGS_LOG" | tr -d ' ')" -ge 1 ]
     grep -q -- '--model prefixed-model' "$CLAUDE_ARGS_LOG"
+}
+
+@test "uses the default Claude reasoning effort" {
+    run_eval_runner
+
+    [ "$status" -eq 0 ]
+    grep -q -- '--effort low' "$CLAUDE_ARGS_LOG"
+}
+
+@test "uses the reasoning effort override" {
+    GROOT_MARKETPLACE_EVAL_REASONING_EFFORT='high'
+
+    run_eval_runner
+
+    [ "$status" -eq 0 ]
+    grep -q -- '--effort high' "$CLAUDE_ARGS_LOG"
 }
 
 @test "resolves a relative skill path before building the contract prompt" {

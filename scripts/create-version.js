@@ -294,6 +294,73 @@ function detectChangedPluginNames() {
 }
 
 /**
+ * Resolves the commit where the current branch forked from the remote base.
+ *
+ * @returns {string} Merge-base commit, or empty string when no shared history exists.
+ */
+function getBranchBaseCommit() {
+  const remoteBaseReference = getRemoteBaseReference();
+  if (!remoteBaseReference) {
+    return '';
+  }
+
+  try {
+    return runGit(['merge-base', remoteBaseReference, 'HEAD']).trim();
+  } catch (error) {
+    // Unrelated histories have no merge-base; treat every plugin as not bumped.
+    return '';
+  }
+}
+
+/**
+ * Reads the Claude manifest version a plugin had at the given commit.
+ *
+ * @param {string} baseCommit Commit to read the manifest from.
+ * @param {{ claudePath: string }} plugin Plugin descriptor.
+ * @returns {string} Version at that commit, or empty string when the manifest did not exist there.
+ */
+function readBaseManifestVersion(baseCommit, plugin) {
+  const manifestPath = path.relative(REPOSITORY_ROOT, plugin.claudePath).split(path.sep).join('/');
+
+  try {
+    const parsed = JSON.parse(runGit(['show', `${baseCommit}:${manifestPath}`]));
+    return typeof parsed.version === 'string' ? parsed.version : '';
+  } catch (error) {
+    // New plugins have no manifest at the base commit, so there is no bump to detect.
+    return '';
+  }
+}
+
+/**
+ * Detects changed plugins whose version already differs from the branch base,
+ * either in branch commits or in the working tree.
+ *
+ * @param {Array<{ name: string, claudePath: string }>} plugins Discovered plugins.
+ * @param {string[]} changedPluginNames Plugin names detected from branch and working-tree changes.
+ * @returns {Map<string, { baseVersion: string, currentVersion: string }>} Bumped plugins by name.
+ */
+function detectBumpedPlugins(plugins, changedPluginNames) {
+  const bumpedPlugins = new Map();
+  const baseCommit = getBranchBaseCommit();
+  if (!baseCommit) {
+    return bumpedPlugins;
+  }
+
+  for (const plugin of plugins) {
+    if (!changedPluginNames.includes(plugin.name)) {
+      continue;
+    }
+    const baseVersion = readBaseManifestVersion(baseCommit, plugin);
+    const currentVersion = readManifest(plugin.claudePath).version;
+    if (baseVersion && baseVersion !== currentVersion) {
+      bumpedPlugins.set(plugin.name, { baseVersion, currentVersion });
+    }
+  }
+
+  return bumpedPlugins;
+}
+
+/**
  * Rewrites only the `version` field of a manifest, preserving all other
  * formatting (indentation, key order, inline arrays) to keep diffs minimal.
  *
@@ -595,9 +662,11 @@ function createPrompter(rl) {
  * @param {Array} plugins Discovered plugins.
  * @param {string|undefined} requestedName Plugin name passed via CLI.
  * @param {string[]} changedPluginNames Plugin names detected from working-tree changes.
+ * @param {Map<string, { baseVersion: string, currentVersion: string }>} bumpedPlugins Changed plugins
+ *   whose version already differs from the branch base.
  * @returns {Promise<object>} The selected plugin descriptor.
  */
-async function resolvePlugin(ask, plugins, requestedName, changedPluginNames) {
+async function resolvePlugin(ask, plugins, requestedName, changedPluginNames, bumpedPlugins) {
   if (requestedName) {
     const match = plugins.find((plugin) => plugin.name === requestedName);
     if (!match) {
@@ -607,32 +676,45 @@ async function resolvePlugin(ask, plugins, requestedName, changedPluginNames) {
     return match;
   }
 
-  if (changedPluginNames.length === 1) {
-    const [changedPluginName] = changedPluginNames;
-    const match = plugins.find((plugin) => plugin.name === changedPluginName);
+  if (bumpedPlugins.size > 0) {
+    const bumpedSummaries = [...bumpedPlugins].map(
+      ([pluginName, { baseVersion, currentVersion }]) =>
+        `${paint('cyan', pluginName)} (${formatVersionTransition(baseVersion, currentVersion)})`
+    );
+    console.log(`\n✅ Already bumped in this branch: ${bumpedSummaries.join(', ')}`);
+  }
+
+  const pendingPluginNames = changedPluginNames.filter((pluginName) => !bumpedPlugins.has(pluginName));
+
+  if (pendingPluginNames.length === 1) {
+    const [pendingPluginName] = pendingPluginNames;
+    const match = plugins.find((plugin) => plugin.name === pendingPluginName);
     if (!match) {
       throw new Error(
-        `Plugin "${changedPluginName}" changed under plugins/ but does not expose both provider manifests.`
+        `Plugin "${pendingPluginName}" changed under plugins/ but does not expose both provider manifests.`
       );
     }
     console.log(`\n🔍 Detected changed plugin: ${paint('cyan', paint('bold', match.name))}`);
     return match;
   }
 
-  if (changedPluginNames.length > 1) {
-    console.log(`\n🔍 Detected changed plugins: ${paint('cyan', changedPluginNames.join(', '))}`);
+  if (pendingPluginNames.length > 1) {
+    console.log(`\n🔍 Detected changed plugins: ${paint('cyan', pendingPluginNames.join(', '))}`);
   }
 
   const changedMarker = paint('yellow', '● changed');
+  const formatPluginLabel = (plugin) => {
+    const bumpedPlugin = bumpedPlugins.get(plugin.name);
+    if (bumpedPlugin) {
+      const bumpedMarker = paint('green', '✔ bumped');
+      return `${plugin.name}  ${bumpedMarker} ${formatVersionTransition(bumpedPlugin.baseVersion, bumpedPlugin.currentVersion)}`;
+    }
+    return changedPluginNames.includes(plugin.name) ? `${plugin.name}  ${changedMarker}` : plugin.name;
+  };
   console.log(
     `\n${renderPanel(
       '🧩 Available plugins',
-      plugins.map((plugin, index) =>
-        formatMenuOption(
-          index + 1,
-          changedPluginNames.includes(plugin.name) ? `${plugin.name}  ${changedMarker}` : plugin.name
-        )
-      )
+      plugins.map((plugin, index) => formatMenuOption(index + 1, formatPluginLabel(plugin)))
     )}`
   );
 
@@ -721,7 +803,8 @@ async function main() {
   const ask = createPrompter(rl);
 
   try {
-    const plugin = await resolvePlugin(ask, plugins, requestedName, changedPluginNames);
+    const bumpedPlugins = requestedName ? new Map() : detectBumpedPlugins(plugins, changedPluginNames);
+    const plugin = await resolvePlugin(ask, plugins, requestedName, changedPluginNames, bumpedPlugins);
 
     const claude = readManifest(plugin.claudePath);
     const codex = readManifest(plugin.codexPath);

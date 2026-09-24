@@ -149,6 +149,17 @@ EOF
   [ "$(grep -c '^<!-- BEGIN AGENT-READY MANAGED -->$' AGENTS.md)" -eq 1 ]
 }
 
+@test "Claude review defaults to Sonnet 5 with low effort" {
+  unset AGENT_READY_SETUP_MERGE_MODEL AGENT_READY_SETUP_MERGE_REASONING_EFFORT
+  printf '%s\n' '# Existing project instructions' > AGENTS.md
+  write_review_response $'# Existing project instructions\n\n'"$managed_placeholder"
+
+  run_merge node
+
+  [ "$status" -eq 0 ]
+  grep -Fq -- '--model claude-sonnet-5 --effort low' "$test_root/provider-prompt.log"
+}
+
 @test "review deletes project lines already covered by rules" {
   cat > AGENTS.md <<'EOF'
 # Project
@@ -514,6 +525,7 @@ PY
   write_review_response $'# Existing project instructions\n\n'"$managed_placeholder"
   cat > "$fake_bin/codex" <<EOF
 #!/bin/bash
+printf '%s\\n' "\$*" > "$test_root/codex-args.log"
 result_file=""
 while [[ \$# -gt 0 ]]; do
   if [[ "\$1" == "--output-last-message" ]]; then
@@ -527,10 +539,12 @@ cat "$test_root/provider-response.json" > "\$result_file"
 EOF
   chmod +x "$fake_bin/codex"
 
+  unset AGENT_READY_SETUP_MERGE_MODEL AGENT_READY_SETUP_MERGE_REASONING_EFFORT
   PATH="$fake_bin:$PATH" run bash "$skill_dir/scripts/merge-instructions.sh" \
     --provider codex --stack node --skill-dir "$skill_dir"
 
   [ "$status" -eq 0 ]
+  grep -Fq -- '--model gpt-6-luna -c model_reasoning_effort="high"' "$test_root/codex-args.log"
   [ "$(cat AGENTS.md)" = "$(printf '%s\n\n%s' '# Existing project instructions' "$(render_managed_block node)")" ]
   [ -f .git/info/agent-ready-instructions-reviewed.sha256 ]
 }

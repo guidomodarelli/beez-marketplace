@@ -458,9 +458,11 @@ invoke_claude() {
   local schema_json
   schema_json="$(<"$SCHEMA_FILE")"
   local model="${AGENT_READY_SETUP_MERGE_MODEL:-claude-sonnet-5}"
+  local reasoning_effort="${AGENT_READY_SETUP_MERGE_REASONING_EFFORT:-low}"
 
   env -u CLAUDECODE claude -p "$merge_prompt" \
     --model "$model" \
+    --effort "$reasoning_effort" \
     --output-format json \
     --json-schema "$schema_json" \
     --tools "" \
@@ -469,13 +471,12 @@ invoke_claude() {
 }
 
 invoke_codex() {
-  local model_arguments=()
-  if [[ -n "${AGENT_READY_SETUP_MERGE_MODEL:-}" ]]; then
-    model_arguments=(--model "$AGENT_READY_SETUP_MERGE_MODEL")
-  fi
+  local model="${AGENT_READY_SETUP_MERGE_MODEL:-gpt-6-luna}"
+  local reasoning_effort="${AGENT_READY_SETUP_MERGE_REASONING_EFFORT:-high}"
 
   codex exec \
-    "${model_arguments[@]}" \
+    --model "$model" \
+    -c "model_reasoning_effort=\"$reasoning_effort\"" \
     --cd "$PWD" \
     --skip-git-repo-check \
     --sandbox read-only \

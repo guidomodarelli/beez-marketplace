@@ -57,13 +57,25 @@ Ejecutar tres búsquedas ACLI en paralelo usando `--count`; no usar `--limit` ni
 
 ```bash
 # Abiertos
-acli jira workitem search --count --jql 'project = SSHP AND <SQUAD_FIELD_JQL> = "Groot" AND type IN (Incident, "Service Request") AND resolution = Unresolved'
+OPEN_JQL=$(cat <<'JQL'
+project = SSHP AND <SQUAD_FIELD_JQL> = "Groot" AND type IN (Incident, "Service Request") AND resolution = Unresolved
+JQL
+)
+acli jira workitem search --count --jql "$OPEN_JQL"
 
 # Sin asignar
-acli jira workitem search --count --jql 'project = SSHP AND <SQUAD_FIELD_JQL> = "Groot" AND type IN (Incident, "Service Request") AND resolution = Unresolved AND assignee IS EMPTY'
+UNASSIGNED_JQL=$(cat <<'JQL'
+project = SSHP AND <SQUAD_FIELD_JQL> = "Groot" AND type IN (Incident, "Service Request") AND resolution = Unresolved AND assignee IS EMPTY
+JQL
+)
+acli jira workitem search --count --jql "$UNASSIGNED_JQL"
 
 # Alta prioridad con más de 24h
-acli jira workitem search --count --jql 'project = SSHP AND <SQUAD_FIELD_JQL> = "Groot" AND type IN (Incident, "Service Request") AND resolution = Unresolved AND priority IN (Highest, High) AND created <= -24h'
+HIGH_PRIORITY_JQL=$(cat <<'JQL'
+project = SSHP AND <SQUAD_FIELD_JQL> = "Groot" AND type IN (Incident, "Service Request") AND resolution = Unresolved AND priority IN (Highest, High) AND created <= -24h
+JQL
+)
+acli jira workitem search --count --jql "$HIGH_PRIORITY_JQL"
 ```
 
 > Expandir `<SQUAD_FIELD_JQL>` al field id real antes de ejecutar; la expansión está centralizada en `$SKILL_DIR/knowledge/config/jira-field-options.md` § `customfield_13781`.

@@ -134,6 +134,33 @@ setup() {
   assert_file_contains "$CHILD_LOG" 'fury_global_install=0' "operational Codex must disable global Fury MCP installation"
 }
 
+@test "Claude defaults to Sonnet 5 with low effort" {
+  unset GROOT_MARKETPLACE_EVAL_MODEL GROOT_MARKETPLACE_EVAL_REASONING_EFFORT
+
+  run_launcher --provider claude list
+
+  assert_status 0 "Claude launch with default model should succeed"
+  assert_file_contains "$CHILD_LOG" '--model claude-sonnet-5 --effort low' "Claude child should use the default model and effort"
+}
+
+@test "Codex defaults to gpt-6-luna with high effort" {
+  unset GROOT_MARKETPLACE_EVAL_MODEL GROOT_MARKETPLACE_EVAL_REASONING_EFFORT
+
+  run_launcher --provider codex stats
+
+  assert_status 0 "Codex launch with default model should succeed"
+  assert_file_contains "$CHILD_LOG" '--model gpt-6-luna -c model_reasoning_effort="high"' "Codex child should use the default model and effort"
+}
+
+@test "explicit effort overrides the Claude default" {
+  unset GROOT_MARKETPLACE_EVAL_MODEL GROOT_MARKETPLACE_EVAL_REASONING_EFFORT
+
+  run_launcher --provider claude --reasoning-effort high list
+
+  assert_status 0 "Claude launch with explicit effort should succeed"
+  assert_file_contains "$CHILD_LOG" '--effort high' "Claude child should receive the explicit effort"
+}
+
 @test "invalid launcher options fail before inventory, MCP, Grid, and providers" {
   assert_invalid_launcher_case 'missing provider option value' list --provider
   assert_invalid_launcher_case 'missing model option value' list --model

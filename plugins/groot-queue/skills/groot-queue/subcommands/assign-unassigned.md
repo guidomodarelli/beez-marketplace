@@ -42,7 +42,11 @@ Aplicar **modo DEGRADAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/config/atla
 
 1. Obtener todos los tickets abiertos **soportados por este flujo** (solo `Incident` y `Service Request`; cualquier otro issue type de SSHP/Groot queda fuera de alcance y no debe tocarse). Aplicar el contrato de paginación completa de `$SKILL_DIR/knowledge/config/classification.md`:
    ```bash
-   acli jira workitem search --paginate --jql "project = SSHP AND <SQUAD_FIELD_JQL> = \"Groot\" AND type IN (Incident, \"Service Request\") AND resolution = Unresolved ORDER BY created DESC"
+   JQL=$(cat <<'JQL'
+   project = SSHP AND <SQUAD_FIELD_JQL> = "Groot" AND type IN (Incident, "Service Request") AND resolution = Unresolved ORDER BY created DESC
+   JQL
+   )
+   acli jira workitem search --paginate --jql "$JQL"
    ```
    > Expandir `<SQUAD_FIELD_JQL>` al field id real antes de ejecutar; la expansión está centralizada en `$SKILL_DIR/knowledge/config/jira-field-options.md` § `customfield_13781`.
 2. Sobre la salida paginada completa, filtrar solo los que **no tienen assignee** (campo `assignee` vacío o null) y congelar sus keys como snapshot de la corrida.
@@ -61,7 +65,11 @@ Si no hay tickets sin assignee, mostrar: "✅ No hay tickets sin assignee en la 
 
 3. Leer `$SKILL_DIR/knowledge/config/batch-processing.md`, `$SKILL_DIR/knowledge/config/ticket-evidence.md`, `$SKILL_DIR/knowledge/config/kraken-user-data.md`, `$SKILL_DIR/knowledge/config/labor-share-data.md`, `$SKILL_DIR/knowledge/rules/triage-rules.md` y `$SKILL_DIR/knowledge/teams/support-queues.md` (funciones de cada equipo para desambiguar ownership). Obtener el contenido de los tickets del **lote activo** con concurrencia máxima de cuatro lecturas simultáneas:
    ```bash
-   acli jira workitem view <KEY>
+   TICKET_KEY=$(cat <<'VALUE'
+   <KEY>
+   VALUE
+   )
+   acli jira workitem view "$TICKET_KEY"
    ```
    Para cada ticket, aplicar primero `triage-rules.md` § **Política transversal — configuración de usuarios**. Solicitudes para comparar personas, determinar configuración objetivo o modificar/aplicar roles, permisos o atributos se resuelven por texto sin consultar Kraken. Para demás tickets, aplicar gate de `ticket-evidence.md` y verificar solo facts mínimos que cambien ownership o diagnóstico sistémico sin elegir configuración. Cuando ticket Labour Share incluya un único `labor_share_id` o `facility_type` explícito y esa evidencia pueda cambiar triage, aplicar `labor-share-data.md`. Reutilizar resultados por sujeto, Labor Share ID o facility durante toda corrida y respetar presupuestos.
 
@@ -211,17 +219,29 @@ Mezclar derivaciones y descartes en el mismo loop ordenado por key (no separar e
 
    c. Asignar responsable en una **nueva llamada Bash separada**, después de que la transición haya retornado:
       ```bash
-      acli jira workitem assign --key <KEY> --assignee <email> --yes
+      TICKET_KEY=$(cat <<'VALUE'
+      <KEY>
+      VALUE
+      )
+      ASSIGNEE_EMAIL=$(cat <<'VALUE'
+      <email>
+      VALUE
+      )
+      acli jira workitem assign --key "$TICKET_KEY" --assignee "$ASSIGNEE_EMAIL" --yes
       ```
       - El `<email>` es el que se leyó de `$QUEUE` en el paso 6a. Ya es un email completo del TEAM; no construirlo desde el username.
       - Si falla: reportar el error, **NO eliminar la línea de `$QUEUE`** (la transición ya ocurrió, pero se reporta).
 
    d. Verificar asignación en una **nueva llamada Bash separada**:
       ```bash
-      acli jira workitem view <KEY>
+      TICKET_KEY=$(cat <<'VALUE'
+      <KEY>
+      VALUE
+      )
+      acli jira workitem view "$TICKET_KEY"
       ```
       → leer el campo `Assignee:`
-      - Si `Assignee` != `<email>`: reintentar el assign una vez más (`acli jira workitem assign --key <KEY> --assignee <email> --yes`).
+      - Si `Assignee` != `<email>`: reintentar el assign una vez más, repitiendo el bloque del paso 6c.
         - Si sigue sin coincidir: reportar ⚠️ con el ticket y el assignee incorrecto, **NO eliminar la línea de `$QUEUE`**.
       - Si `Assignee` == `<email>`: continuar al paso e.
 
@@ -270,7 +290,11 @@ Ejecutar este paso al cierre de cada lote, solo para tickets del lote clasificad
    - `$SKILL_DIR/knowledge/templates/assignment-note-template.md`
 2. Obtener el contenido actualizado del ticket en una llamada separada antes de analizarlo:
    ```bash
-   acli jira workitem view <KEY>
+   TICKET_KEY=$(cat <<'VALUE'
+   <KEY>
+   VALUE
+   )
+   acli jira workitem view "$TICKET_KEY"
    ```
    Reutilizar ese output para toda la generación de la nota en este paso.
 3. Con el contenido del ticket recién obtenido:

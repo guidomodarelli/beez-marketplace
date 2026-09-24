@@ -294,11 +294,8 @@ case "$GROOT_MARKETPLACE_EVAL_PROVIDER" in
     *) fail "provider inválido: $GROOT_MARKETPLACE_EVAL_PROVIDER. Usá auto, codex o claude." ;;
 esac
 
-if [ -z "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT" ]; then
-    GROOT_MARKETPLACE_EVAL_REASONING_EFFORT='high'
-fi
 case "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT" in
-    low|medium|high|max) ;;
+    ''|low|medium|high|max) ;;
     *) fail "effort inválido: $GROOT_MARKETPLACE_EVAL_REASONING_EFFORT. Usá low, medium, high o max." ;;
 esac
 
@@ -355,8 +352,15 @@ fi
 
 if [ -z "$GROOT_MARKETPLACE_EVAL_MODEL" ]; then
     case "$RESOLVED_EVAL_PROVIDER" in
-        codex) GROOT_MARKETPLACE_EVAL_MODEL='gpt-5.4-mini' ;;
-        *) GROOT_MARKETPLACE_EVAL_MODEL='claude-sonnet-4-6' ;;
+        codex) GROOT_MARKETPLACE_EVAL_MODEL='gpt-6-luna' ;;
+        *) GROOT_MARKETPLACE_EVAL_MODEL='claude-sonnet-5' ;;
+    esac
+fi
+
+if [ -z "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT" ]; then
+    case "$RESOLVED_EVAL_PROVIDER" in
+        codex) GROOT_MARKETPLACE_EVAL_REASONING_EFFORT='high' ;;
+        *) GROOT_MARKETPLACE_EVAL_REASONING_EFFORT='low' ;;
     esac
 fi
 
@@ -388,6 +392,7 @@ case "$RESOLVED_EVAL_PROVIDER" in
             env -u CLAUDECODE "${CHILD_ENVIRONMENT[@]}" \
                 claude -p "$PROMPT" \
                 --model "$GROOT_MARKETPLACE_EVAL_MODEL" \
+                --effort "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT" \
                 --setting-sources user \
                 --allowedTools 'all'
         )

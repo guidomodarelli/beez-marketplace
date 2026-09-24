@@ -54,12 +54,12 @@ usage() {
     echo "  --jobs N, -j N               Run N cases in parallel (default: 4)"
     echo "                               Each case runs 2 agent calls concurrently,"
     echo "                               so total API calls = N*2. Lower if rate-limited."
-    echo "  --model M, -m M              Agent model to use (defaults: claude-sonnet-5 for Claude,"
-    echo "                               gpt-5.6-luna:high for Codex)"
+    echo "  --model M, -m M              Agent model to use (defaults: claude-sonnet-5:low"
+    echo "                               for Claude, gpt-6-luna:high for Codex)"
     echo "                               Accepts aliases (haiku, sonnet, opus) or full model IDs."
     echo "                               Also configurable via GROOT_MARKETPLACE_EVAL_MODEL env var."
-    echo "  --reasoning-effort E, -e E   Reasoning effort: low, medium, high, max (default: high"
-    echo "                               for all providers)."
+    echo "  --reasoning-effort E, -e E   Reasoning effort: low, medium, high, max (default: low"
+    echo "                               for Claude, high for Codex)."
     echo "                               Also configurable via GROOT_MARKETPLACE_EVAL_REASONING_EFFORT."
     echo "  --provider P                 Agent provider: auto, codex, or claude (default: auto,"
     echo "                               prefers codex > claude)."
@@ -112,13 +112,16 @@ resolve_eval_provider() {
 
     if [ -z "$GROOT_MARKETPLACE_EVAL_MODEL" ]; then
         case "$RESOLVED_EVAL_PROVIDER" in
-            codex) GROOT_MARKETPLACE_EVAL_MODEL="gpt-5.6-luna" ;;
+            codex) GROOT_MARKETPLACE_EVAL_MODEL="gpt-6-luna" ;;
             *)     GROOT_MARKETPLACE_EVAL_MODEL="claude-sonnet-5" ;;
         esac
     fi
 
     if [ -z "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT" ]; then
-        GROOT_MARKETPLACE_EVAL_REASONING_EFFORT="high"
+        case "$RESOLVED_EVAL_PROVIDER" in
+            codex) GROOT_MARKETPLACE_EVAL_REASONING_EFFORT="high" ;;
+            *)     GROOT_MARKETPLACE_EVAL_REASONING_EFFORT="low" ;;
+        esac
     fi
 }
 
@@ -133,6 +136,7 @@ run_agent_prompt() {
         claude)
             (cd "$cwd" && env -u CLAUDECODE claude -p "$input" \
                 --model "$GROOT_MARKETPLACE_EVAL_MODEL" \
+                --effort "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT" \
                 --setting-sources project \
                 --allowedTools "Read,Glob,Grep") \
                 > "$output_file" 2> "$stderr_file"

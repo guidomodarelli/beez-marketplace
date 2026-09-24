@@ -21,7 +21,11 @@ Aplicar **modo ABORTAR** (pasos A + B + C) de `$SKILL_DIR/knowledge/config/atlas
 Usar JQL para obtener directamente tickets abiertos, asignados y **sin el label `groot-guide-posted`**. Mantener la misma definición de cola abierta compartida (`Incident` + `Service Request`):
 
 ```bash
-acli jira workitem search --paginate --jql "project = SSHP AND <SQUAD_FIELD_JQL> = \"Groot\" AND type IN (Incident, \"Service Request\") AND resolution = Unresolved AND assignee IS NOT EMPTY AND (labels not in (\"groot-guide-posted\") OR labels is EMPTY) ORDER BY created DESC"
+JQL=$(cat <<'JQL'
+project = SSHP AND <SQUAD_FIELD_JQL> = "Groot" AND type IN (Incident, "Service Request") AND resolution = Unresolved AND assignee IS NOT EMPTY AND (labels not in ("groot-guide-posted") OR labels is EMPTY) ORDER BY created DESC
+JQL
+)
+acli jira workitem search --paginate --jql "$JQL"
 ```
 
 > Expandir `<SQUAD_FIELD_JQL>` al field id real antes de ejecutar; la expansión está centralizada en `$SKILL_DIR/knowledge/config/jira-field-options.md` § `customfield_13781`.
@@ -34,7 +38,11 @@ Leer y aplicar `$SKILL_DIR/knowledge/config/batch-processing.md`. Congelar keys 
 
 Para cada ticket del lote activo, obtener el contenido completo con concurrencia máxima de cuatro lecturas simultáneas:
 ```bash
-acli jira workitem view <KEY>
+TICKET_KEY=$(cat <<'VALUE'
+<KEY>
+VALUE
+)
+acli jira workitem view "$TICKET_KEY"
 ```
 
 Verificar si el output contiene el slug de detección automática:

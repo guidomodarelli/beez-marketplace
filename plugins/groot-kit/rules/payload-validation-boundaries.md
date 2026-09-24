@@ -6,7 +6,7 @@ Separar estrictamente payloads de input middleend, DTOs públicos del middleend 
 
 ### Backend/upstream
 
-- **NUNCA JAMÁS** aplicar validación completa de schema, negocio, campos o contrato a payloads recibidos desde backend/upstream.
+- No aplicar validación completa de schema, negocio, campos o contrato a payloads recibidos desde backend/upstream: el contrato lo define y garantiza el proveedor, y revalidarlo acopla el middleend a campos que no consume y rompe ante cambios compatibles del upstream.
 - No revalidar respuestas upstream como si fueran input.
 - No agregar Ajv, `@meli/input-validation`, Zod, schemas ni middleware de validación para respuestas upstream.
 - No exigir esta validación en reviews, fixes, verificaciones, closeouts o skills.
@@ -19,10 +19,10 @@ Separar estrictamente payloads de input middleend, DTOs públicos del middleend 
 
 ### Middleend
 
-- **SIEMPRE** validar `req.body`, `req.query` y `req.params` en boundary de entrada del middleend.
+- Validar `req.body`, `req.query` y `req.params` en el boundary de entrada del middleend, porque es input no confiable controlado por el cliente y es el único punto donde se puede rechazar antes de llegar a la lógica.
 - Para validaciones requeridas, preferir Zod o `@meli/input-validation`; usar Ajv solo si Zod y `@meli/input-validation` no están disponibles o no pueden expresar el requisito. Reutilizar el validador ya adoptado por el repositorio cuando exista.
 - Validar una única vez por ruta; handlers deben consumir valores ya validados y conservar únicamente reglas de negocio no expresables en schema.
-- **SIEMPRE** validar el DTO público que el middleend entrega al client/consumer antes de usarlo, mediante el guard o mecanismo runtime aprobado por el repositorio.
+- Validar el DTO público que el middleend entrega al client/consumer antes de usarlo, mediante el guard o mecanismo runtime aprobado por el repositorio: ese DTO es contrato propio del middleend y validarlo evita filtrar campos internos o shapes inconsistentes al consumer.
 - Los tests de validación deben ejercer el validador real y su contrato observable; no mockear el validador sin imposibilidad técnica justificada.
 - Aplicar allowlist de campos públicos, tipos, estados y discriminadores del DTO middleend; rechazar shape no utilizable sin exponer diagnóstico interno.
 - Mantener separadas validación de input middleend, validación de DTO middleend y consumo de respuesta upstream.

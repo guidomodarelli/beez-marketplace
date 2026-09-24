@@ -89,6 +89,9 @@ run_eval_runner() {
     if [[ -n "${GROOT_MARKETPLACE_EVAL_MODEL:-}" ]]; then
         environment+=("GROOT_MARKETPLACE_EVAL_MODEL=${GROOT_MARKETPLACE_EVAL_MODEL}")
     fi
+    if [[ -n "${GROOT_MARKETPLACE_EVAL_REASONING_EFFORT:-}" ]]; then
+        environment+=("GROOT_MARKETPLACE_EVAL_REASONING_EFFORT=${GROOT_MARKETPLACE_EVAL_REASONING_EFFORT}")
+    fi
     if [[ -n "${CLAUDE_RESPONSE_FILE:-}" ]]; then
         environment+=("CLAUDE_RESPONSE_FILE=${CLAUDE_RESPONSE_FILE}")
     fi

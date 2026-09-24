@@ -307,3 +307,53 @@ JSON
   [ "$status" -eq 1 ]
   [[ "$output" == *'Option "--bump" requires a value.'* ]]
 }
+
+add_other_plugin_on_base() {
+  mkdir -p plugins/other-plugin/.claude-plugin plugins/other-plugin/.codex-plugin
+  for provider_directory in .claude-plugin .codex-plugin; do
+    printf '%s\n' '{' '  "name": "other-plugin",' '  "version": "2.0.0"' '}' \
+      > "plugins/other-plugin/$provider_directory/plugin.json"
+  done
+  git add plugins/other-plugin
+  git commit -qm "Add other plugin"
+  git update-ref refs/remotes/origin/main "$(git rev-parse HEAD)"
+  git switch -q -c feature/multi-plugin-change
+}
+
+@test "skips plugins already bumped in the branch and auto-selects the pending one" {
+  add_other_plugin_on_base
+  mkdir -p plugins/groot-kit/docs plugins/other-plugin/docs
+  printf '%s\n' 'groot kit change' > plugins/groot-kit/docs/change.md
+  printf '%s\n' 'other plugin change' > plugins/other-plugin/docs/change.md
+  git add plugins
+  git commit -qm "Change both plugins"
+  node scripts/create-version.js other-plugin --bump minor >/dev/null
+
+  run bash -c "printf '1\\n' | node scripts/create-version.js"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Already bumped in this branch: other-plugin (2.0.0 → 2.1.0)"* ]]
+  [[ "$output" == *"Detected changed plugin: groot-kit"* ]]
+  [[ "$output" != *"Select a plugin by number"* ]]
+  [ "$(node -p "require('./plugins/groot-kit/.claude-plugin/plugin.json').version")" = "1.12.1" ]
+  [ "$(node -p "require('./plugins/other-plugin/.claude-plugin/plugin.json').version")" = "2.1.0" ]
+}
+
+@test "marks bumped plugins in the menu when every changed plugin is bumped" {
+  add_other_plugin_on_base
+  mkdir -p plugins/groot-kit/docs plugins/other-plugin/docs
+  printf '%s\n' 'groot kit change' > plugins/groot-kit/docs/change.md
+  printf '%s\n' 'other plugin change' > plugins/other-plugin/docs/change.md
+  git add plugins
+  git commit -qm "Change both plugins"
+  node scripts/create-version.js groot-kit --bump patch >/dev/null
+  node scripts/create-version.js other-plugin --bump patch >/dev/null
+
+  run bash -c "printf '1\\n1\\n' | node scripts/create-version.js --dry-run"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"groot-kit  ✔ bumped 1.12.0 → 1.12.1"* ]]
+  [[ "$output" == *"other-plugin  ✔ bumped 2.0.0 → 2.0.1"* ]]
+  [[ "$output" == *"Select a plugin by number"* ]]
+  [[ "$output" != *"Detected changed plugin"* ]]
+}

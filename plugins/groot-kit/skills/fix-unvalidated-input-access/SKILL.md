@@ -7,7 +7,7 @@ description: Validates req.query, req.body, and req.params in Nordic/Node.js rou
 
 ## Rules
 
-- **NEVER use AJV directly.** Never use `schemaValidationMiddleware` (it wraps AJV internally). Use `@meli/input-validation` directly.
+- **Use `@meli/input-validation` directly.** Do not introduce AJV or `schemaValidationMiddleware` (it wraps AJV internally) in routes this skill touches; migrate them to the SDK instead.
 - **Prefer `createValidationMiddleware({ schema })` for routes.** Register it before every middleware or handler that reads `req.query`, `req.body`, or `req.params`. It validates declared request parts and returns `422` by default when validation fails.
 - **Use one `.validate()` call for manual validation.** Check its boolean result and reject invalid input before access. Do not require a second `.validate(input, { global: true })` call: official Nordic guidance does not document a two-call pattern.
 - **Fix `UNVALIDATED INPUT ACCESS` at route ordering/schema coverage.** Confirm validation middleware runs before access and schema declares exact request part and property. Do not silence warning by adding redundant validation passes.

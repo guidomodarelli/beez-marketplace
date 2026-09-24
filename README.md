@@ -250,7 +250,7 @@ el repositorio no cambia.
 Usá el script `create-version` para hacer bump a la versión de un plugin. Actualiza el campo `version` en **ambos** manifiestos de proveedor (`.claude-plugin/plugin.json` y `.codex-plugin/plugin.json`) a la vez, manteniéndolos sincronizados.
 
 ```bash
-npm run create-version              # auto-detecta un plugin único; si no, muestra menú
+npm run create-version              # auto-detecta el único plugin cambiado sin bump en la branch; si no, muestra menú
 npm run create-version groot-queue  # apuntá a un plugin directamente por nombre
 npm run create-version -- --dry-run  # preview sin escribir, commitear ni pushear (shorthand: -n)
 npm run create-version -- groot-kit --bump minor  # sin prompts (patch | minor | major)

@@ -59,12 +59,20 @@ Aplicar después de una derivación o descarte cuya acción principal dejó un a
 
 1. Obtener `actorAccountId` mediante la capacidad equivalente a `atlassianUserInfo` del MCP Atlassian. Conservarlo sólo en memoria de la invocación; no imprimirlo ni persistirlo.
 2. Obtener el ticket actualizado y resolver `assignee.accountId` final. Si no se puede resolver actor o assignee, no revertir acción principal: registrar `partial-error` y `watcher_cleanup = identity_unverified`.
-3. Listar watchers con `acli jira workitem list-watchers --key <KEY> --json` y conservar únicamente el conteo y presencia del actor para auditoría.
+3. Listar watchers con `acli jira workitem list-watchers --key "$TICKET_KEY" --json`, cargando `<KEY>` según `untrusted-content.md` § **Placeholders en comandos shell**, y conservar únicamente el conteo y presencia del actor para auditoría.
 4. Si `actorAccountId == assignee.accountId`, conservar watcher del ejecutor y registrar `watcher_cleanup = actor_is_assignee`.
 5. Si actor no está en watchers, registrar `watcher_cleanup = actor_absent`; no hacer mutación.
 6. Si actor está watcher y no es assignee final, ejecutar exclusivamente:
    ```bash
-   acli jira workitem watcher remove --key <KEY> --user <actorAccountId>
+   TICKET_KEY=$(cat <<'VALUE'
+   <KEY>
+   VALUE
+   )
+   ACTOR_ACCOUNT_ID=$(cat <<'VALUE'
+   <actorAccountId>
+   VALUE
+   )
+   acli jira workitem watcher remove --key "$TICKET_KEY" --user "$ACTOR_ACCOUNT_ID"
    ```
 7. Listar watchers nuevamente y verificar que actor no esté. Nunca agregar, remover ni reemplazar otro watcher. Altas concurrentes se preservan porque la única mutación usa el ID exacto del actor.
 8. Si listar, remover o verificar falla, no revertir la acción principal ni tocar otros watchers. Registrar `partial-error` y warning seguro.

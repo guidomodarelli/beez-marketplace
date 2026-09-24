@@ -69,28 +69,40 @@ Partir del **JQL base** de `classification.md` y agregar `assignee IS NOT EMPTY`
 
 > ⚠️ **SIEMPRE usar `--paginate`.** Sin `--paginate`, `acli jira workitem search` devuelve solo la **primera página (~30 resultados)**. La cola Groot suele tener 100+ tickets abiertos y el orden `created DESC` deja los **más viejos —que son los más vencidos— fuera de esa página**, por lo que se pierden exactamente los tickets que este comando debe detectar. La inclusión de un ticket **nunca** puede depender del orden ni de un corte de página.
 
-Ejecutar **tres** búsquedas, todas con `--paginate`. El nombre del SLA se referencia entre comillas simples dentro del `--jql` de comillas dobles: `'Time to resolution' = breached()` (funciones JQL nativas de Jira Service Management).
+Ejecutar **tres** búsquedas, todas con `--paginate`. Cada query se carga con el patrón de `$SKILL_DIR/knowledge/config/untrusted-content.md` § **Placeholders en comandos shell**. El nombre del SLA se referencia entre comillas simples dentro del JQL: `'Time to resolution' = breached()` (funciones JQL nativas de Jira Service Management).
 
 **Fetch B — VENCIDOS autoritativos por SLA "Time to resolution" (`breached()`):**
 ```bash
+JQL=$(cat <<'JQL'
+project = SSHP AND <SQUAD_FIELD_JQL> = "Groot" AND resolution = Unresolved AND assignee IS NOT EMPTY AND 'Time to resolution' = breached() ORDER BY created ASC
+JQL
+)
 acli jira workitem search \
-  --jql "project = SSHP AND <SQUAD_FIELD_JQL> = \"Groot\" AND resolution = Unresolved AND assignee IS NOT EMPTY AND 'Time to resolution' = breached() ORDER BY created ASC" \
+  --jql "$JQL" \
   --paginate --fields "key,assignee,status,priority,summary" --csv
 ```
 **Cada key devuelta por Fetch B está VENCIDA** según la columna "Time to resolution" — lo calcula Jira, en tiempo calendario, y **no depende del MCP**. Guardar como `vencidas`.
 
 **Fetch C — candidatos a POR VENCER (SLA corriendo, aún no vencido):**
 ```bash
+JQL=$(cat <<'JQL'
+project = SSHP AND <SQUAD_FIELD_JQL> = "Groot" AND resolution = Unresolved AND assignee IS NOT EMPTY AND 'Time to resolution' = running() AND 'Time to resolution' != breached() ORDER BY created ASC
+JQL
+)
 acli jira workitem search \
-  --jql "project = SSHP AND <SQUAD_FIELD_JQL> = \"Groot\" AND resolution = Unresolved AND assignee IS NOT EMPTY AND 'Time to resolution' = running() AND 'Time to resolution' != breached() ORDER BY created ASC" \
+  --jql "$JQL" \
   --paginate --fields "key,assignee,status,priority,summary" --csv
 ```
 Guardar como `por_vencer_candidatas`. Solo sobre este subconjunto se calcula el umbral "≤48h calendario" en el paso 3 (nunca sobre las ya vencidas).
 
 **Fetch A — universo completo de alertables (solo se usa en el fallback 3.3):**
 ```bash
+JQL=$(cat <<'JQL'
+project = SSHP AND <SQUAD_FIELD_JQL> = "Groot" AND resolution = Unresolved AND assignee IS NOT EMPTY ORDER BY created ASC
+JQL
+)
 acli jira workitem search \
-  --jql "project = SSHP AND <SQUAD_FIELD_JQL> = \"Groot\" AND resolution = Unresolved AND assignee IS NOT EMPTY ORDER BY created ASC" \
+  --jql "$JQL" \
   --paginate --fields "key,assignee,status,priority,summary" --csv
 ```
 

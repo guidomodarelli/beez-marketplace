@@ -124,7 +124,15 @@ Usar el `cloudId` correspondiente a `mercadolibre.atlassian.net` validado en la 
 1. Revalidar estado con `$SKILL_DIR/knowledge/config/jira-field-options.md` § **Resolver y transicionar de forma segura**. Si pertenece a un estado de espera, resolver y ejecutar transición única hacia `IN_PROGRESS` y verificarla en llamada separada; si ya pertenece a `IN_PROGRESS`, continuar. Estado desconocido, ambiguo o no verificable termina en `SKIP_ESTADO_NO_RECONOCIDO` sin mutaciones.
 2. En una llamada ACLI separada, asignar `discardAssignee`:
    ```bash
-   acli jira workitem assign --key SSHP-XXXXXX --assignee <discardAssignee> --yes
+   TICKET_KEY=$(cat <<'VALUE'
+   SSHP-XXXXXX
+   VALUE
+   )
+   ASSIGNEE_EMAIL=$(cat <<'VALUE'
+   <discardAssignee>
+   VALUE
+   )
+   acli jira workitem assign --key "$TICKET_KEY" --assignee "$ASSIGNEE_EMAIL" --yes
    ```
 3. Verificar assignee mediante `acli jira workitem view`. Si no coincide, reintentar assign una sola vez. Si sigue sin coincidir, registrar `✗ Asignación previa` y no descartar.
 4. Si ticket ya pertenecía a `IN_PROGRESS` según el catálogo, asignar y verificar de la misma forma antes de continuar.

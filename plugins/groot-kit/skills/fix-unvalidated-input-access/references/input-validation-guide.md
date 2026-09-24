@@ -2,7 +2,7 @@
 
 > **Source of truth:** [Nordic Security — Input Validation](https://nordic.adminml.com/docs/input-validation) (last updated 2026-07-16).
 >
-> **Rule:** NUNCA usar AJV. NUNCA usar `schemaValidationMiddleware`. Usar este SDK directamente.
+> **Rule:** usar este SDK directamente; no introducir AJV ni `schemaValidationMiddleware` (wrappea AJV).
 
 ## Installation
 
