@@ -1,0 +1,125 @@
+{
+  "schema_version": 2,
+  "skill": "training-in-app-tia",
+  "description": "Evalúa cómo disparar paths de TIA, anclar coach marks y diagnosticar tours que no aparecen o quedan corridos.",
+  "test_cases": [
+    {
+      "id": "start-path-by-name-with-manual-control",
+      "description": "Dispara un path específico por nombre desde el componente que renderiza el ancla.",
+      "input": "En una página Nordic con TIA en manualControl quiero que el path 'my-feature-summary', creado en TIA, arranque cuando se muestra una sección dentro de un modal. ¿Cómo disparo tia:start y qué le paso en el detail? No ejecutes Bash ni escribas archivos; respondé desde la skill.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "pathName",
+          "description": "Usa pathName en el detail del evento"
+        },
+        {
+          "type": "contains",
+          "value": "tia:start",
+          "description": "Dispara el evento tia:start"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "UUID",
+            "uuid",
+            "path.key",
+            "generated"
+          ],
+          "description": "Advierte que pathKey es el id generado y no el nombre"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "`id`",
+            "id=",
+            "id estable",
+            "stable id",
+            "#my-feature-summary"
+          ],
+          "description": "Pide un id estable en el elemento objetivo"
+        }
+      ]
+    },
+    {
+      "id": "seen-path-does-not-start",
+      "description": "Diagnostica un path que existe pero el usuario ya vio.",
+      "input": "El POST /api/tia/initiatives/tia-my-feature-initiative/paths me devuelve el path en notPendingPaths con pending false y tia:start no muestra nada. ¿Por qué y cómo lo vuelvo a ver para QA? No ejecutes Bash ni escribas archivos; respondé desde la skill.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "tia:reset",
+          "description": "Propone tia:reset para relanzar un path visto"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "pendingPaths",
+            "pending"
+          ],
+          "description": "Explica que tia:start solo busca paths pendientes"
+        }
+      ]
+    },
+    {
+      "id": "shifted-highlight-inside-modal-scroll",
+      "description": "Previene el spotlight corrido cuando el ancla está dentro del scroll de un modal.",
+      "input": "El coach mark de TIA aparece, pero el resaltado queda corrido hacia abajo cuando el botón objetivo está dentro de un modal con scroll interno. ¿Qué hago en el frontend para que se vea bien? No ejecutes Bash ni escribas archivos; respondé desde la skill.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "scrollIntoView",
+          "description": "Propone hacer scroll del objetivo hasta dejarlo visible"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "smooth",
+            "instant",
+            "instantáneo"
+          ],
+          "description": "Pide scroll instantáneo y no smooth"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "before",
+            "antes"
+          ],
+          "description": "Hace el scroll antes de disparar tia:start"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "scrollTop",
+            "scroll container",
+            "contenedor"
+          ],
+          "description": "Relaciona el corrimiento con el scroll interno del contenedor"
+        }
+      ]
+    },
+    {
+      "id": "confirm-tour-rendered-at-runtime",
+      "description": "Distingue en runtime si el frontend disparó el evento y si TIA mostró el path.",
+      "input": "Veo que mi componente despacha tia:start pero no sé si TIA lo mostró o lo ignoró. ¿Qué señales miro en el browser para distinguirlo? No ejecutes Bash ni escribas archivos; respondé desde la skill.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "onChangeState",
+          "description": "Menciona tia:onChangeState como confirmación de render"
+        },
+        {
+          "type": "contains",
+          "value": "tia-widget-container",
+          "description": "Menciona el contenedor del widget"
+        },
+        {
+          "type": "contains",
+          "value": "notPendingPaths",
+          "description": "Revisa la respuesta de paths del usuario"
+        }
+      ]
+    }
+  ]
+}
