@@ -1,0 +1,259 @@
+{
+  "schema_version": 2,
+  "skill": "improve-spec",
+  "description": "Evalúa mejora de specs: aprobación antes de sobrescribir, no inventar datos, fuente confiable de identificadores, orden/fallos entre llamadas, exploración stack-agnóstica, tasks con Verify ejecutable y preservación de secciones de dominio.",
+  "test_cases": [
+    {
+      "id": "approval-before-overwrite",
+      "description": "Muestra resumen y pide aprobación antes de sobrescribir el spec original.",
+      "input": "Usando improve-spec, ya analizaste docs/specs/remove-user-role.md y generaste la versión mejorada. Describí exactamente qué hacés ahora, antes y después de tocar el archivo. No ejecutes nada.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "Aprobar",
+            "aprobación",
+            "aprobás",
+            "Aprobás"
+          ],
+          "description": "Pide aprobación explícita"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Cancelar",
+            "cancela"
+          ],
+          "description": "Ofrece cancelar sin escribir"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Ambigüedades",
+            "ambigüedades"
+          ],
+          "description": "El resumen incluye ambigüedades resueltas"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "antes de escribir",
+            "antes de sobrescribir",
+            "Antes de escribir",
+            "Antes de sobrescribir",
+            "sin escribir"
+          ],
+          "description": "No escribe antes de la aprobación"
+        }
+      ]
+    },
+    {
+      "id": "trusted-source-requester-id",
+      "description": "Convierte un requester-id vago en constraint de fuente server-side confiable.",
+      "input": "Tengo este fragmento de spec: 'Cuando se aprueba el ticket se llama a promover la audiencia usando el id del usuario como requester-id y, si sale bien, se promueve el contexto.' Con improve-spec, ¿qué constraints Must y Must Not agregás para este fragmento? Respondé solo con esas constraints y una línea de justificación cada una.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "server-side",
+            "confiable",
+            "trusted"
+          ],
+          "description": "Exige que el requester-id venga de una fuente confiable"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "input del usuario",
+            "datos del request",
+            "request del usuario",
+            "user input",
+            "body",
+            "input",
+            "consumidor",
+            "consumer",
+            "cliente",
+            "del request",
+            "request"
+          ],
+          "description": "Prohíbe tomar el requester-id de input del usuario"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "antes de",
+            "before",
+            "después de",
+            "solo si",
+            "únicamente si"
+          ],
+          "description": "Define el orden entre promover audiencia y contexto"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "propaga",
+            "no se ejecuta",
+            "no se llama",
+            "no debe llamarse",
+            "falla"
+          ],
+          "description": "Define qué pasa si la primera llamada falla"
+        }
+      ]
+    },
+    {
+      "id": "no-invented-facts",
+      "description": "Ante datos no confirmables, pregunta o deja supuesto explícito en vez de inventar.",
+      "input": "Estoy usando improve-spec sobre un spec que dice 'borrar el rol del usuario'. En el codebase no encontraste si el borrado de roles es soft o hard delete ni qué status devolver si el rol no existe. ¿Qué hacés con esas dos ambigüedades? No ejecutes nada.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "AskUserQuestion",
+            "pregunt"
+          ],
+          "description": "Pregunta al usuario las ambigüedades no resueltas"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "supuesto",
+            "Open Questions",
+            "Out of Scope"
+          ],
+          "description": "Si no se decide, deja supuesto u open question explícito"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no invent",
+            "No invent",
+            "sin inventar",
+            "nunca como hecho",
+            "no asum",
+            "No asum",
+            "hechos"
+          ],
+          "description": "Explicita que no inventa ni asume la decisión"
+        }
+      ]
+    },
+    {
+      "id": "stack-agnostic-exploration",
+      "description": "Detecta el stack antes de explorar y no asume Java en un repo Node.",
+      "input": "Con improve-spec, tenés que completar Current State de un spec que agrega un endpoint DELETE /roles/:id en un repo que tiene package.json (Nordic, Node) y no tiene pom.xml. Listá los comandos de búsqueda que correrías y qué buscás con cada uno. No los ejecutes.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "rg ",
+            "grep -rn",
+            "grep -r"
+          ],
+          "description": "Usa búsqueda de texto en el repo"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "node_modules"
+          ],
+          "description": "Excluye dependencias de la búsqueda"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "*.java",
+            "@DeleteMapping",
+            "--include=\"*.java\""
+          ],
+          "description": "No asume un stack Java"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "test",
+            "Test"
+          ],
+          "description": "Busca tests existentes para convención y Verify"
+        }
+      ]
+    },
+    {
+      "id": "executable-verify",
+      "description": "Reescribe una task con Verify subjetivo en una task con What, Files y Verify ejecutable.",
+      "input": "Con improve-spec, mejorá esta task de un spec de un servicio Java con Maven: 'T3: agregar la validación de estado de la audiencia en el rollback. Verificar que funcione.' El método es ContextService.rollbackToPreviousVersion y la regla es: válido si status FINISHED o (DEPRECATED y active=true). Devolvé solo la task reescrita.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "Files",
+          "description": "Incluye archivos a modificar"
+        },
+        {
+          "type": "contains",
+          "value": "Verify",
+          "description": "Incluye criterio de verificación"
+        },
+        {
+          "type": "contains",
+          "description": "Verify apunta a una clase de test concreta",
+          "value": "Dtest="
+        },
+        {
+          "type": "regex",
+          "description": "Cubre el caso DEPRECATED inactivo como rechazo",
+          "pattern": "DEPRECATED.*(active[[:space:]]*=+[[:space:]]*false|inactiv)"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "Verificar que funcione"
+          ],
+          "description": "Elimina el criterio subjetivo"
+        }
+      ]
+    },
+    {
+      "id": "preserve-domain-sections",
+      "description": "Conserva flujos e identificadores de endpoints del requirement narrativo original.",
+      "input": "Con improve-spec, voy a mejorar un requirement narrativo que tiene secciones 'Flujo actual', 'Flujo propuesto' y un catálogo de endpoints E1, E2, E3 (expuestos), C1–C3 (consumidos) y N1–N2 (nuevos, con curl y respuesta JSON completa de 100 líneas). ¿Qué hacés con esas secciones en el spec mejorado y dónde van? Respondé en máximo 8 líneas.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "conserv",
+            "preserv",
+            "mantener",
+            "mantengo"
+          ],
+          "description": "Conserva el contenido de dominio"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "E1",
+            "N1"
+          ],
+          "description": "Mantiene los identificadores del original"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "campos que",
+            "solo los campos",
+            "resum"
+          ],
+          "description": "Resume payloads a los campos usados"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Current State",
+            "Tasks"
+          ],
+          "description": "Ubica las secciones de dominio en la estructura"
+        }
+      ]
+    }
+  ]
+}
