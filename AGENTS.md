@@ -270,3 +270,11 @@ La referencia `@AGENTS.md` se resuelve relativa al directorio que contiene `CLAU
 - Si ambos archivos son contradictorios, no sobrescribir automáticamente; informar paths exactos y solicitar resolución explícita.
 
 Aplicar búsqueda recursiva cuando se solicite normalizar proyecto completo. Preservar contenido antes de migrarlo. No seguir ni sobrescribir symlinks automáticamente; tratar symlinks, directorios, archivos ilegibles y conflictos como resolución manual. Reportar archivos creados, migrados, normalizados, omitidos y conflictos.
+
+## 4. Plugin-change optimization
+
+After modifying any file under `plugins/<plugin-name>/`, invoke the
+`context-improver:skill-cost-optimizer` skill with `plugins/<plugin-name>` as its
+argument before completing the task. Apply its safe, relevant optimizations and
+report the result. This rule applies even when the edit is limited to a skill
+description, manifest, or documentation.
