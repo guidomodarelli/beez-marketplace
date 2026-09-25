@@ -216,12 +216,107 @@ sorted_skill_candidates() {
     cut -f2-
 }
 
+# Uses the same zero-padded numeric components as sorted_skill_candidates so
+# snapshot and cache versions compare identically.
+semantic_version_key() {
+  printf '%s\n' "$1" |
+    awk '
+      {
+        if ($0 !~ /^[0-9]+(\.[0-9]+)?(\.[0-9]+)?([+-].*)?$/) {
+          printf "%020d.%020d.%020d\n", 0, 0, 0
+          next
+        }
+        split($0, components, /[.+-]/)
+        printf "%020d.%020d.%020d\n", components[1] + 0, components[2] + 0, components[3] + 0
+      }
+    '
+}
+
+# The marketplace upgrade refreshes only the provider marketplace snapshot; the
+# versioned plugin cache advances only after a provider plugin update, so the
+# snapshot is the source that carries the latest published templates.
+marketplace_snapshot_root() {
+  local marketplace_provider="$1"
+  local known_marketplaces="$HOME/.claude/plugins/known_marketplaces.json"
+  local codex_config="$HOME/.codex/config.toml"
+  local configured_location=""
+
+  if [[ "$marketplace_provider" == "claude" ]]; then
+    if [[ -f "$known_marketplaces" ]] && command -v python3 >/dev/null 2>&1; then
+      configured_location="$(python3 - "$known_marketplaces" "$MARKETPLACE_NAME" <<'PY' 2>/dev/null || true
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as known_marketplaces_file:
+    marketplace = json.load(known_marketplaces_file).get(sys.argv[2]) or {}
+install_location = marketplace.get("installLocation") if isinstance(marketplace, dict) else None
+if isinstance(install_location, str):
+    print(install_location)
+PY
+)"
+    fi
+    printf '%s\n' "${configured_location:-$HOME/.claude/plugins/marketplaces/$MARKETPLACE_NAME}"
+    return 0
+  fi
+
+  if [[ -f "$codex_config" ]]; then
+    configured_location="$(awk -v section="[marketplaces.$MARKETPLACE_NAME]" '
+      /^[[:space:]]*\[/ {
+        current = $0
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", current)
+        in_section = (current == section)
+        next
+      }
+      in_section && /^[[:space:]]*source_type[[:space:]]*=/ {
+        source_type = $0
+        sub(/^[^"]*"/, "", source_type)
+        sub(/".*$/, "", source_type)
+      }
+      in_section && /^[[:space:]]*source[[:space:]]*=/ {
+        source_location = $0
+        sub(/^[^"]*"/, "", source_location)
+        sub(/".*$/, "", source_location)
+      }
+      END {
+        if (source_type == "local" && source_location != "") {
+          print source_location
+        }
+      }
+    ' "$codex_config" 2>/dev/null || true)"
+  fi
+  printf '%s\n' "${configured_location:-$HOME/.codex/.tmp/marketplaces/$MARKETPLACE_NAME}"
+}
+
+marketplace_snapshot_skill_dir() {
+  printf '%s/plugins/groot-kit/skills/%s\n' "$(marketplace_snapshot_root "$1")" "$SKILL_NAME"
+}
+
+# Reads the plugin manifest version beside the snapshot skill; both provider
+# manifests share the same version.
+marketplace_snapshot_version() {
+  local plugin_root
+  local manifest
+
+  plugin_root="$(marketplace_snapshot_root "$1")/plugins/groot-kit"
+  for manifest in "$plugin_root/.claude-plugin/plugin.json" "$plugin_root/.codex-plugin/plugin.json"; do
+    if [[ -f "$manifest" ]]; then
+      sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$manifest" | head -n 1
+      return 0
+    fi
+  done
+}
+
+cache_skill_version() {
+  basename "$(dirname "$(dirname "$1")")"
+}
+
 resolve_skill_dir() {
   local candidate
   local provider_root
   local cache_root
   local hook_directory
   local project_root
+  local snapshot_candidate
   local require_asset_sync_helper="${1:-0}"
 
   if [[ -n "${AGENT_READY_SETUP_SKILL_DIR:-}" ]]; then
@@ -240,14 +335,31 @@ resolve_skill_dir() {
     provider_root="$HOME/.codex"
   fi
 
+  snapshot_candidate="$(marketplace_snapshot_skill_dir "$provider")"
+  if ! is_valid_skill_dir "$snapshot_candidate" "$require_asset_sync_helper"; then
+    snapshot_candidate=""
+  fi
+
+  # The snapshot wins unless the cache already holds a newer version, so
+  # projection never waits for a provider plugin update.
   cache_root="$provider_root/plugins/cache/$MARKETPLACE_NAME/groot-kit"
   while IFS= read -r candidate; do
     candidate="${candidate%/SKILL.md}"
     if is_valid_skill_dir "$candidate" "$require_asset_sync_helper"; then
+      if [[ -n "$snapshot_candidate" ]] && \
+        [[ ! "$(semantic_version_key "$(marketplace_snapshot_version "$provider")")" < \
+          "$(semantic_version_key "$(cache_skill_version "$candidate")")" ]]; then
+        candidate="$snapshot_candidate"
+      fi
       printf '%s\n' "$candidate"
       return 0
     fi
   done < <(sorted_skill_candidates "$cache_root" "$SKILL_NAME")
+
+  if [[ -n "$snapshot_candidate" ]]; then
+    printf '%s\n' "$snapshot_candidate"
+    return 0
+  fi
 
   if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
     for candidate in \
@@ -291,7 +403,14 @@ describe_skill_source() {
   local source="$1"
   local source_version
 
-  source_version="$(basename "$(dirname "$(dirname "$source")")")"
+  if [[ "$source" == "$(marketplace_snapshot_skill_dir "$provider")" ]]; then
+    source_version="$(marketplace_snapshot_version "$provider")"
+    printf '[marketplace-sync] Using %s marketplace snapshot version %s.\n' \
+      "$SKILL_NAME" "${source_version:-unknown}"
+    return 0
+  fi
+
+  source_version="$(cache_skill_version "$source")"
   if [[ "$source_version" =~ ^[0-9]+(\.[0-9]+){0,2}([+-].*)?$ ]]; then
     printf '[marketplace-sync] Using %s cache version %s.\n' "$SKILL_NAME" "$source_version"
   else

@@ -1660,6 +1660,144 @@ EOF
   done
 }
 
+create_marketplace_snapshot() {
+  local snapshot_root="$1"
+  local version="$2"
+  local template="$3"
+  local plugin_root="$snapshot_root/plugins/groot-kit"
+  local snapshot_skill="$plugin_root/skills/agent-ready-setup"
+
+  mkdir -p "$snapshot_skill" "$plugin_root/.claude-plugin" "$plugin_root/.codex-plugin"
+  cp -R "$skill_dir"/. "$snapshot_skill"/
+  printf '{\n  "name": "groot-kit",\n  "version": "%s"\n}\n' "$version" \
+    | tee "$plugin_root/.claude-plugin/plugin.json" > "$plugin_root/.codex-plugin/plugin.json"
+  printf '%s\n' "$template" > "$snapshot_skill/assets/stacks/node/rules/security.md"
+  cat > "$snapshot_skill/scripts/merge-instructions.sh" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+  chmod +x "$snapshot_skill/scripts/merge-instructions.sh"
+}
+
+create_cache_source() {
+  local provider_root="$1"
+  local version="$2"
+  local template="$3"
+  local cache_source="$provider_root/plugins/cache/groot-marketplace/groot-kit/$version/skills/agent-ready-setup"
+
+  mkdir -p "$cache_source"
+  cp -R "$skill_dir"/. "$cache_source"/
+  printf '%s\n' "$template" > "$cache_source/assets/stacks/node/rules/security.md"
+  cat > "$cache_source/scripts/merge-instructions.sh" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+  chmod +x "$cache_source/scripts/merge-instructions.sh"
+  printf '%s\n' "$cache_source"
+}
+
+@test "sync hook projects upgraded marketplace snapshot before plugin cache update" {
+  claude_snapshot="$test_root/claude-marketplace"
+  codex_snapshot="$test_root/.codex/.tmp/marketplaces/groot-marketplace"
+  mkdir -p "$test_root/.claude/plugins"
+  printf '{"groot-marketplace": {"installLocation": "%s"}}\n' "$claude_snapshot" \
+    > "$test_root/.claude/plugins/known_marketplaces.json"
+  create_marketplace_snapshot "$claude_snapshot" "2.0.0" "# claude snapshot template"
+  create_marketplace_snapshot "$codex_snapshot" "2.0.0" "# codex snapshot template"
+
+  for provider in claude codex; do
+    old_source="$(create_cache_source "$test_root/.$provider" "1.9.0" "# stale $provider cache template")"
+    rm -rf .agents .claude .codex AGENTS.md CLAUDE.md
+
+    run env HOME="$test_root" PATH="$test_root/bin:$PATH" \
+      bash "$old_source/assets/common/hooks/sync-marketplace.sh" \
+        --provider "$provider" \
+        --stack node
+
+    [ "$status" -eq 0 ]
+    grep -Fxq "# $provider snapshot template" .agents/rules/security.md
+    [[ "$output" == *"[marketplace-sync] Using agent-ready-setup marketplace snapshot version 2.0.0."* ]]
+  done
+}
+
+@test "sync hook reads Codex local marketplace source from config" {
+  local_snapshot="$test_root/local-marketplace"
+  mkdir -p "$test_root/.codex"
+  cat > "$test_root/.codex/config.toml" <<EOF
+[marketplaces.other-marketplace]
+source_type = "local"
+source = "$test_root/other"
+
+[marketplaces.groot-marketplace]
+source_type = "local"
+source = "$local_snapshot"
+EOF
+  create_marketplace_snapshot "$local_snapshot" "3.0.0" "# local snapshot template"
+  old_source="$(create_cache_source "$test_root/.codex" "1.0.0" "# stale cache template")"
+
+  run env HOME="$test_root" PATH="$test_root/bin:$PATH" \
+    bash "$old_source/assets/common/hooks/sync-marketplace.sh" \
+      --provider codex \
+      --stack node
+
+  [ "$status" -eq 0 ]
+  grep -Fxq '# local snapshot template' .agents/rules/security.md
+}
+
+@test "sync hook keeps newer plugin cache over older marketplace snapshot" {
+  create_marketplace_snapshot "$test_root/.claude/plugins/marketplaces/groot-marketplace" \
+    "1.9.0" "# older snapshot template"
+  new_source="$(create_cache_source "$test_root/.claude" "1.10.2" "# newer cache template")"
+
+  run env HOME="$test_root" PATH="$test_root/bin:$PATH" \
+    bash "$new_source/assets/common/hooks/sync-marketplace.sh" \
+      --provider claude \
+      --stack node
+
+  [ "$status" -eq 0 ]
+  grep -Fxq '# newer cache template' .agents/rules/security.md
+  [[ "$output" == *"[marketplace-sync] Using agent-ready-setup cache version 1.10.2."* ]]
+}
+
+@test "bootstrap projects upgraded marketplace snapshot before plugin cache update" {
+  for provider in claude codex; do
+    if [[ "$provider" == "claude" ]]; then
+      snapshot_root="$test_root/.claude/plugins/marketplaces/groot-marketplace"
+    else
+      snapshot_root="$test_root/.codex/.tmp/marketplaces/groot-marketplace"
+    fi
+    create_marketplace_snapshot "$snapshot_root" "2.0.0" "# $provider snapshot template"
+    old_source="$(create_cache_source "$test_root/.$provider" "1.9.0" "# stale $provider cache template")"
+    rm -rf .agents .claude .codex AGENTS.md CLAUDE.md
+
+    run env HOME="$test_root" PATH="$test_root/bin:$PATH" \
+      bash "$old_source/scripts/bootstrap.sh" \
+        --stack node \
+        --skill-dir "$old_source" \
+        --provider "$provider"
+
+    [ "$status" -eq 0 ]
+    grep -Fxq "# $provider snapshot template" .agents/rules/security.md
+    [[ "$output" == *"[marketplace-bootstrap] Using agent-ready-setup marketplace snapshot version 2.0.0."* ]]
+  done
+}
+
+@test "bootstrap keeps newer plugin cache over older marketplace snapshot" {
+  create_marketplace_snapshot "$test_root/.claude/plugins/marketplaces/groot-marketplace" \
+    "1.9.0" "# older snapshot template"
+  new_source="$(create_cache_source "$test_root/.claude" "1.10.2" "# newer cache template")"
+
+  run env HOME="$test_root" PATH="$test_root/bin:$PATH" \
+    bash "$new_source/scripts/bootstrap.sh" \
+      --stack node \
+      --skill-dir "$new_source" \
+      --provider claude
+
+  [ "$status" -eq 0 ]
+  grep -Fxq '# newer cache template' .agents/rules/security.md
+  [[ "$output" == *"Using agent-ready-setup cache version 1.10.2."* ]]
+}
+
 @test "bootstrap keeps requested newest cache version instead of downgrading" {
   cache_root="$test_root/.claude/plugins/cache/groot-marketplace/groot-kit"
   old_source="$cache_root/1.9.0/skills/agent-ready-setup"
