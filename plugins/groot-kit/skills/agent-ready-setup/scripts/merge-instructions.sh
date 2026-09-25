@@ -104,6 +104,7 @@ fi
 
 TEMPLATE_FILE="$SKILL_DIR/assets/stacks/$STACK/agents-template.md"
 RULES_DIRECTORY="$SKILL_DIR/assets/stacks/$STACK/rules"
+COMMON_RULES_DIRECTORY="$SKILL_DIR/assets/common/rules"
 readonly PROJECT_RULES_DIRECTORY=".agents/rules"
 TEMPLATE_RENDERER="$SKILL_DIR/scripts/render-instruction-template.sh"
 CENTRALIZATION_TEMPLATE="$SKILL_DIR/assets/instruction-centralization.md"
@@ -234,8 +235,18 @@ remove_legacy_template_hashes() {
   done
 }
 
+run_template_renderer() {
+  local -a renderer_arguments=("$@")
+
+  if [[ -d "$COMMON_RULES_DIRECTORY" ]]; then
+    renderer_arguments+=(--common-rules-dir "$COMMON_RULES_DIRECTORY")
+  fi
+
+  bash "$TEMPLATE_RENDERER" "${renderer_arguments[@]}"
+}
+
 render_template() {
-  bash "$TEMPLATE_RENDERER" \
+  run_template_renderer \
     --template "$TEMPLATE_FILE" \
     --rules-dir "$RULES_DIRECTORY" \
     --project-rules-dir "$PROJECT_RULES_DIRECTORY" \
@@ -246,7 +257,7 @@ render_template() {
 RULE_FILES_LIST="$TEMPORARY_DIRECTORY/rule-files.tsv"
 # Template and project rules share one catalog so the managed block, the review
 # hash, and the review prompt always see the same set of rules.
-if ! bash "$TEMPLATE_RENDERER" --list-rules \
+if ! run_template_renderer --list-rules \
   --rules-dir "$RULES_DIRECTORY" \
   --project-rules-dir "$PROJECT_RULES_DIRECTORY" > "$RULE_FILES_LIST"; then
   echo "ERROR: could not list template and project rules; $AGENTS_FILE was not changed" >&2

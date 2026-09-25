@@ -862,14 +862,20 @@ is_plain_claude_proxy() {
 
 create_root_agents_from_template() {
   local temporary_agents_file
+  local -a renderer_arguments=(
+    --template "$SRC/agents-template.md"
+    --rules-dir "$SRC/rules"
+    --project-rules-dir "$SHARED_DIR/rules"
+    --centralization "$CENTRALIZATION_TEMPLATE"
+  )
+
+  if [[ -d "$COMMON_SRC/rules" ]]; then
+    renderer_arguments+=(--common-rules-dir "$COMMON_SRC/rules")
+  fi
 
   mkdir -p -- "$(dirname -- "$AGENTS_FILE")"
   temporary_agents_file="$(mktemp "${AGENTS_FILE}.agent-ready-template.XXXXXX")"
-  if ! bash "$TEMPLATE_RENDERER" \
-    --template "$SRC/agents-template.md" \
-    --rules-dir "$SRC/rules" \
-    --project-rules-dir "$SHARED_DIR/rules" \
-    --centralization "$CENTRALIZATION_TEMPLATE" > "$temporary_agents_file"; then
+  if ! bash "$TEMPLATE_RENDERER" "${renderer_arguments[@]}" > "$temporary_agents_file"; then
     rm -f -- "$temporary_agents_file"
     echo "ERROR: could not render stack instruction template for $AGENTS_FILE" >&2
     return 1
@@ -1133,7 +1139,7 @@ project_asset_tree() {
 
 project_asset_tree "$COMMON_SRC"
 project_asset_tree "$SRC"
-project_rule_claude_views "$TEMPLATE_RENDERER" "$SRC/rules"
+project_rule_claude_views "$TEMPLATE_RENDERER" "$SRC/rules" "$COMMON_SRC/rules"
 
 cleanup_legacy_claude_hooks
 cleanup_stale_claude_links

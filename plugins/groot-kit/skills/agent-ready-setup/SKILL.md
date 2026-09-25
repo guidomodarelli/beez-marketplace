@@ -46,10 +46,12 @@ clones de instrucciones en `CLAUDE.md`; las instrucciones específicas viven en
 el `AGENTS.md` hermano.
 
 Assets comunes viven en `assets/common/`; templates y hooks específicos viven en
-`assets/stacks/<stack>/` y reflejan estructura de assets. El marker
-`{{AGENT_READY_RULE_REFERENCES}}` se renderiza dinámicamente con cada archivo de
-`rules/` del template y con cada rule propia del proyecto; no mantener listado
-duplicado en templates.
+`assets/stacks/<stack>/` y reflejan estructura de assets. Las rules que aplican a
+todos los stacks viven una sola vez en `assets/common/rules/`; no duplicarlas en
+`assets/stacks/<stack>/rules/`. Un mismo nombre de rule no puede existir en ambos
+lugares: el renderer falla si ocurre. El marker `{{AGENT_READY_RULE_REFERENCES}}`
+se renderiza dinámicamente con cada archivo de `rules/` común y del stack, y con
+cada rule propia del proyecto; no mantener listado duplicado en templates.
 
 Bootstrap requiere ejecución dentro de un worktree Git. Usa `git check-ignore`
 como fuente de verdad para omitir instrucciones anidadas cubiertas por
@@ -453,7 +455,8 @@ entre `<!-- BEGIN AGENT-READY MANAGED -->` y `<!-- END AGENT-READY MANAGED -->`.
 
 - `{{AGENT_READY_RULE_REFERENCES}}`: una referencia portable
   `- Read and follow \`.agents/rules/<relative-path>\`.` por cada rule del
-  template y, bajo `### Project rules`, por cada rule propia del proyecto.
+  template (comunes de `assets/common/rules/` y del stack, en orden alfabético)
+  y, bajo `### Project rules`, por cada rule propia del proyecto.
 
 Una rule propia es cualquier archivo `.md` regular bajo `.agents/rules/` (incluidos
 subdirectorios) sin equivalente en las rules del template; los symlinks se
@@ -535,7 +538,7 @@ copiados durante bootstrap. No modifica `~/.codex/config.toml`,
 
 ## Step 4 — Report
 
-Mostrar output del script sin alterarlo. En respuestas documentales, enumerar paths relevantes de template detectado además del resumen: para Go incluir `coding-style.md`, `security.md`, `testing.md` y `mcp.json`; para frontend incluir `frontend-style.md`, `lodash.md`, `api-configuration.md`, `security.md`, `testing.md`, `no-unnecessary-mocks.md`, `mcp.json` y `skills/component-creation/`. Luego agregar únicamente acciones aplicables, usando estas etiquetas:
+Mostrar output del script sin alterarlo. En respuestas documentales, enumerar paths relevantes de template detectado además del resumen: para todos los stacks incluir las rules comunes `language-consistency.md` y `lint-gate.md`; para Go, Java y Node incluir `coding-style.md`, `security.md`, `testing.md` y `mcp.json`; para frontend incluir `frontend-style.md`, `lodash.md`, `api-configuration.md`, `security.md`, `testing.md`, `no-unnecessary-mocks.md`, `mcp.json` y `skills/component-creation/`. Luego agregar únicamente acciones aplicables, usando estas etiquetas:
 
 - `[AUTO]`: el agente puede comprobarlo de forma determinista y debe reportar `PASS`, `FAIL` o `N/A` con los paths involucrados.
 - `[MANUAL]`: requiere conocimiento específico del proyecto y no debe presentarse como validación ya realizada.

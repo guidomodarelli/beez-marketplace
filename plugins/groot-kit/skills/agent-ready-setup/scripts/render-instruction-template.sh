@@ -1,6 +1,6 @@
 #!/bin/bash
 # render-instruction-template.sh
-# Materializes the stack template's managed AGENTS.md block (template and
+# Materializes the stack template's managed AGENTS.md block (common, stack and
 # project rule references plus the centralization rule) and validates that the
 # managed block references every current rule with a provider-neutral path.
 
@@ -13,6 +13,7 @@ readonly MANAGED_BLOCK_END='<!-- END AGENT-READY MANAGED -->'
 
 TEMPLATE_FILE=""
 RULES_DIRECTORY=""
+COMMON_RULES_DIRECTORY=""
 PROJECT_RULES_DIRECTORY=""
 CENTRALIZATION_FILE=""
 VALIDATE_FILE=""
@@ -23,11 +24,12 @@ usage() {
   cat >&2 <<'EOF'
 Usage:
   render-instruction-template.sh --template <file> --rules-dir <directory>
-    [--project-rules-dir <directory>] [--centralization <file>] [--managed-block]
+    [--common-rules-dir <directory>] [--project-rules-dir <directory>]
+    [--centralization <file>] [--managed-block]
   render-instruction-template.sh --validate <file> --rules-dir <directory>
-    [--project-rules-dir <directory>]
+    [--common-rules-dir <directory>] [--project-rules-dir <directory>]
   render-instruction-template.sh --list-rules --rules-dir <directory>
-    [--project-rules-dir <directory>]
+    [--common-rules-dir <directory>] [--project-rules-dir <directory>]
 EOF
 }
 
@@ -41,6 +43,11 @@ while [[ $# -gt 0 ]]; do
     --rules-dir)
       [[ $# -ge 2 ]] || { echo "ERROR: --rules-dir requires a value" >&2; exit 1; }
       RULES_DIRECTORY="${2%/}"
+      shift 2
+      ;;
+    --common-rules-dir)
+      [[ $# -ge 2 ]] || { echo "ERROR: --common-rules-dir requires a value" >&2; exit 1; }
+      COMMON_RULES_DIRECTORY="${2%/}"
       shift 2
       ;;
     --project-rules-dir)
@@ -104,32 +111,83 @@ if [[ -n "$VALIDATE_FILE" && (! -f "$VALIDATE_FILE" || -L "$VALIDATE_FILE") ]]; 
   exit 1
 fi
 
-if [[ -L "$RULES_DIRECTORY" ]]; then
-  echo "ERROR: --rules-dir must not be a symlink: $RULES_DIRECTORY" >&2
+if [[ -n "$COMMON_RULES_DIRECTORY" && ! -d "$COMMON_RULES_DIRECTORY" ]]; then
+  echo "ERROR: --common-rules-dir must point to an existing directory: $COMMON_RULES_DIRECTORY" >&2
   exit 1
 fi
 
-first_symlink="$(find "$RULES_DIRECTORY" -type l -print -quit 2>/dev/null || true)"
-if [[ -n "$first_symlink" ]]; then
-  echo "ERROR: rule files must not be symlinks: $first_symlink" >&2
-  exit 1
+TEMPLATE_RULES_DIRECTORIES=("$RULES_DIRECTORY")
+if [[ -n "$COMMON_RULES_DIRECTORY" ]]; then
+  TEMPLATE_RULES_DIRECTORIES=("$COMMON_RULES_DIRECTORY" "$RULES_DIRECTORY")
 fi
 
-list_rule_paths() {
+for template_rules_directory in "${TEMPLATE_RULES_DIRECTORIES[@]}"; do
+  if [[ -L "$template_rules_directory" ]]; then
+    echo "ERROR: template rules directory must not be a symlink: $template_rules_directory" >&2
+    exit 1
+  fi
+
+  first_symlink="$(find "$template_rules_directory" -type l -print -quit 2>/dev/null || true)"
+  if [[ -n "$first_symlink" ]]; then
+    echo "ERROR: rule files must not be symlinks: $first_symlink" >&2
+    exit 1
+  fi
+done
+
+# Common and stack rules are both template rules and are projected into the
+# same .agents/rules/ tree, so one relative path must have a single source.
+list_template_rules() {
+  local template_rules_directory
   local rule_file
   local relative_path
+  local previous_path=""
 
-  while IFS= read -r rule_file; do
-    relative_path="${rule_file#"$RULES_DIRECTORY"/}"
-    case "$relative_path" in
-      ""|/*|../*|*/../*|*/..)
-        echo "ERROR: unsafe rule path: $relative_path" >&2
-        return 1
-        ;;
-    esac
-    printf '%s\n' "$relative_path"
-  done < <(find "$RULES_DIRECTORY" -type f -print | LC_ALL=C sort)
+  for template_rules_directory in "${TEMPLATE_RULES_DIRECTORIES[@]}"; do
+    while IFS= read -r rule_file; do
+      relative_path="${rule_file#"$template_rules_directory"/}"
+      case "$relative_path" in
+        ""|/*|../*|*/../*|*/..)
+          echo "ERROR: unsafe rule path: $relative_path" >&2
+          return 1
+          ;;
+      esac
+      printf '%s\t%s\n' "$relative_path" "$rule_file"
+    done < <(find "$template_rules_directory" -type f -print)
+  done | LC_ALL=C sort -t $'\t' -k1,1 | while IFS=$'\t' read -r relative_path rule_file; do
+    if [[ "$relative_path" == "$previous_path" ]]; then
+      echo "ERROR: rule is defined in both common and stack rules: $relative_path" >&2
+      return 1
+    fi
+    previous_path="$relative_path"
+    printf '%s\t%s\n' "$relative_path" "$rule_file"
+  done
 }
+
+list_rule_paths() {
+  local template_rules
+  local relative_path
+  local rule_file
+
+  template_rules="$(list_template_rules)" || return 1
+  [[ -n "$template_rules" ]] || return 0
+  while IFS=$'\t' read -r relative_path rule_file; do
+    printf '%s\n' "$relative_path"
+  done <<< "$template_rules"
+}
+
+is_template_rule() {
+  local relative_path="$1"
+  local template_rules_directory
+
+  for template_rules_directory in "${TEMPLATE_RULES_DIRECTORIES[@]}"; do
+    [[ -e "$template_rules_directory/$relative_path" ]] && return 0
+  done
+  return 1
+}
+
+# Fail fast: later callers read the catalog through process substitution,
+# which would otherwise hide a duplicate or unsafe rule path.
+list_template_rules > /dev/null || exit 1
 
 # Project rules are Markdown files the repository added under .agents/rules/
 # without a template counterpart. Symlinks are skipped so a rule never points
@@ -148,7 +206,7 @@ list_project_rule_paths() {
         return 1
         ;;
     esac
-    [[ -e "$RULES_DIRECTORY/$relative_path" ]] && continue
+    is_template_rule "$relative_path" && continue
     printf '%s\n' "$relative_path"
   done < <(find "$PROJECT_RULES_DIRECTORY" -type f -name '*.md' -print | LC_ALL=C sort)
 }
@@ -175,9 +233,8 @@ render_rule_references() {
 }
 
 if [[ "$LIST_RULES" -eq 1 ]]; then
-  while IFS= read -r relative_path; do
-    printf '%s\t%s\n' "$relative_path" "$RULES_DIRECTORY/$relative_path"
-  done < <(list_rule_paths)
+  template_rules="$(list_template_rules)"
+  [[ -z "$template_rules" ]] || printf '%s\n' "$template_rules"
   while IFS= read -r relative_path; do
     printf '%s\t%s\n' "$relative_path" "$PROJECT_RULES_DIRECTORY/$relative_path"
   done < <(list_project_rule_paths)

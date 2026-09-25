@@ -27,6 +27,7 @@ render_managed_block() {
   bash "$source_dir/scripts/render-instruction-template.sh" \
     --template "$source_dir/assets/stacks/$stack/agents-template.md" \
     --rules-dir "$source_dir/assets/stacks/$stack/rules" \
+    --common-rules-dir "$source_dir/assets/common/rules" \
     --centralization "$source_dir/assets/instruction-centralization.md" \
     --managed-block
 }
@@ -131,7 +132,8 @@ EOF
   ! grep -Fq 'Local edit inside the block.' AGENTS.md
   ! grep -Fq 'retired.md' AGENTS.md
   bash "$skill_dir/scripts/render-instruction-template.sh" --validate AGENTS.md \
-    --rules-dir "$skill_dir/assets/stacks/node/rules"
+    --rules-dir "$skill_dir/assets/stacks/node/rules" \
+    --common-rules-dir "$skill_dir/assets/common/rules"
 }
 
 @test "managed block omits skill lists because providers discover skills natively" {
@@ -281,7 +283,8 @@ EOF
   [ "$status" -eq 0 ]
   ! grep -Fq 'AGENT-READY RULE REFERENCES' AGENTS.md
   bash "$skill_dir/scripts/render-instruction-template.sh" --validate AGENTS.md \
-    --rules-dir "$skill_dir/assets/stacks/node/rules"
+    --rules-dir "$skill_dir/assets/stacks/node/rules" \
+    --common-rules-dir "$skill_dir/assets/common/rules"
 }
 
 @test "malformed managed markers require human review without invoking the provider" {
@@ -337,6 +340,35 @@ EOF
   [ "$(provider_call_count)" -eq 2 ]
 }
 
+@test "common rules are template rules for every stack and never project rules" {
+  mkdir -p .agents/rules
+  cp "$skill_dir/assets/common/rules/lint-gate.md" .agents/rules/lint-gate.md
+  printf '%s\n' '# Project' > AGENTS.md
+  write_review_response $'# Project\n\n'"$managed_placeholder"
+
+  run_merge go
+
+  [ "$status" -eq 0 ]
+  grep -Fxq -- '- Read and follow `.agents/rules/language-consistency.md`.' AGENTS.md
+  grep -Fxq -- '- Read and follow `.agents/rules/lint-gate.md`.' AGENTS.md
+  [ "$(grep -c 'rules/lint-gate.md' AGENTS.md)" -eq 1 ]
+  ! grep -Fxq '### Project rules' AGENTS.md
+  grep -Fq '<rule path=".agents/rules/language-consistency.md">' "$test_root/provider-prompt.log"
+}
+
+@test "a rule defined in both common and stack rules is rejected" {
+  duplicate_skill_dir="$test_root/duplicate-skill"
+  cp -R "$skill_dir" "$duplicate_skill_dir"
+  cp "$duplicate_skill_dir/assets/common/rules/lint-gate.md" "$duplicate_skill_dir/assets/stacks/node/rules/lint-gate.md"
+
+  run bash "$duplicate_skill_dir/scripts/render-instruction-template.sh" --list-rules \
+    --rules-dir "$duplicate_skill_dir/assets/stacks/node/rules" \
+    --common-rules-dir "$duplicate_skill_dir/assets/common/rules"
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"rule is defined in both common and stack rules: lint-gate.md"* ]]
+}
+
 @test "project rules are listed in the managed block and reviewed with template rules" {
   mkdir -p .agents/rules/area
   printf '%s\n' '# Team conventions' 'Deploy only on Tuesdays.' > .agents/rules/team-conventions.md
@@ -357,7 +389,8 @@ EOF
   grep -Fq '<rule path=".agents/rules/team-conventions.md">' "$test_root/provider-prompt.log"
   grep -Fq 'Deploy only on Tuesdays.' "$test_root/provider-prompt.log"
   bash "$skill_dir/scripts/render-instruction-template.sh" --validate AGENTS.md \
-    --rules-dir "$skill_dir/assets/stacks/node/rules" --project-rules-dir .agents/rules
+    --rules-dir "$skill_dir/assets/stacks/node/rules" \
+    --common-rules-dir "$skill_dir/assets/common/rules" --project-rules-dir .agents/rules
   [ "$(provider_call_count)" -eq 1 ]
 
   printf '%s\n' 'Deploy only on Wednesdays.' >> .agents/rules/team-conventions.md

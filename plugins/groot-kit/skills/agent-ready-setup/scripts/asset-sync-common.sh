@@ -275,18 +275,25 @@ remove_claude_skill_view() {
 project_rule_claude_views() {
   local template_renderer="$1"
   local template_rules_directory="$2"
+  local common_rules_directory="${3:-}"
   local relative_path
   local rule_file
   local view_path
+  local rule_files_list
+  local -a renderer_arguments=(--list-rules --rules-dir "$template_rules_directory")
 
   [[ -d "$SHARED_DIR/rules" && ! -L "$SHARED_DIR/rules" ]] || return 0
+
+  if [[ -n "$common_rules_directory" && -d "$common_rules_directory" ]]; then
+    renderer_arguments+=(--common-rules-dir "$common_rules_directory")
+  fi
+  renderer_arguments+=(--project-rules-dir "$SHARED_DIR/rules")
+  rule_files_list="$(bash "$template_renderer" "${renderer_arguments[@]}")" || return 1
 
   while IFS=$'\t' read -r relative_path rule_file; do
     [[ "$rule_file" == "$SHARED_DIR/rules/"* ]] || continue
     link_claude_asset "rules/$relative_path"
-  done < <(bash "$template_renderer" --list-rules \
-    --rules-dir "$template_rules_directory" \
-    --project-rules-dir "$SHARED_DIR/rules")
+  done <<< "$rule_files_list"
 
   [[ -d "$CLAUDE_DIR/rules" && ! -L "$CLAUDE_DIR/rules" ]] || return 0
   while IFS= read -r -d '' view_path; do

@@ -69,6 +69,9 @@ run_marketplace_sync() {
   [ -L .claude/rules/security.md ]
   [ "$(readlink .claude/rules/security.md)" = "../../.agents/rules/security.md" ]
   [ -f .agents/rules/security.md ]
+  [ -L .claude/rules/lint-gate.md ]
+  [ "$(readlink .claude/rules/lint-gate.md)" = "../../.agents/rules/lint-gate.md" ]
+  cmp -s .agents/rules/lint-gate.md "$skill_dir/assets/common/rules/lint-gate.md"
   [ -L .claude/skills/component-creation/SKILL.md ]
   [ "$(readlink .claude/skills/component-creation/SKILL.md)" = "../../../.agents/skills/component-creation/SKILL.md" ]
   [ -f .agents/skills/component-creation/SKILL.md ]
@@ -93,7 +96,7 @@ run_marketplace_sync() {
   done
   [ ! -f .claude/CLAUDE.md ]
   [ ! -d .codex/agents ]
-  for rule_file in api-configuration.md frontend-style.md lodash.md no-unnecessary-mocks.md security.md testing.md; do
+  for rule_file in api-configuration.md frontend-style.md language-consistency.md lint-gate.md lodash.md no-unnecessary-mocks.md security.md testing.md; do
     grep -Fq -- "- Read and follow \`.agents/rules/$rule_file\`." AGENTS.md
   done
   grep -Fxq '## Centralización recursiva de instrucciones' AGENTS.md
@@ -536,6 +539,12 @@ EOF
     grep -Fq -- '- Read and follow `.agents/rules/coding-style.md`.' AGENTS.md
     grep -Fq -- '- Read and follow `.agents/rules/security.md`.' AGENTS.md
     grep -Fq -- '- Read and follow `.agents/rules/testing.md`.' AGENTS.md
+    for common_rule in language-consistency.md lint-gate.md; do
+      grep -Fq -- "- Read and follow \`.agents/rules/$common_rule\`." AGENTS.md
+      cmp -s ".agents/rules/$common_rule" "$skill_dir/assets/common/rules/$common_rule"
+      [ -L ".claude/rules/$common_rule" ]
+    done
+    ! grep -Fxq '### Project rules' AGENTS.md
     cmp -s .claude/settings.json "$skill_dir/assets/common/settings.json"
     cmp -s .agents/hooks/sync-marketplace.sh "$skill_dir/assets/common/hooks/sync-marketplace.sh"
     cmp -s .codex/hooks/hooks.json "$skill_dir/assets/codex/hooks.json"
@@ -1824,6 +1833,7 @@ EOF
   cp "$skill_dir/assets/common/hooks/sync-marketplace.sh" \
     "$source_dir/assets/common/hooks/sync-marketplace.sh"
   cp "$skill_dir/scripts/asset-sync-common.sh" "$source_dir/scripts/asset-sync-common.sh"
+  cp "$skill_dir/scripts/render-instruction-template.sh" "$source_dir/scripts/render-instruction-template.sh"
   cp "$skill_dir/scripts/merge-managed-settings.py" "$source_dir/scripts/merge-managed-settings.py"
   printf '%s\n' '{"settings":"updated"}' > "$source_dir/assets/common/settings.json"
   printf '%s\n' '# updated common asset' > "$source_dir/assets/common/shared/asset.md"
@@ -2067,11 +2077,16 @@ EOF
 @test "common marketplace assets have no stack duplicates" {
   [ -f "$skill_dir/assets/common/settings.json" ]
   [ -f "$skill_dir/assets/common/hooks/sync-marketplace.sh" ]
+  for common_rule in language-consistency.md lint-gate.md; do
+    [ -f "$skill_dir/assets/common/rules/$common_rule" ]
+  done
   [ -f "$skill_dir/scripts/asset-sync-common.sh" ]
   [ -f "$skill_dir/scripts/merge-managed-settings.py" ]
 
   for stack in frontend node java go; do
     [ ! -e "$skill_dir/assets/stacks/$stack/settings.json" ]
     [ ! -e "$skill_dir/assets/stacks/$stack/hooks/sync-marketplace.sh" ]
+    [ ! -e "$skill_dir/assets/stacks/$stack/rules/language-consistency.md" ]
+    [ ! -e "$skill_dir/assets/stacks/$stack/rules/lint-gate.md" ]
   done
 }

@@ -40,6 +40,12 @@ app/nordic-pages/<route>/
 └── index.hooks.server.ts        ← server-side data + API logic
 ```
 
+The hooks file runs on the server before the page component renders. Besides `getServerSideProps`, it can export `beforeGetServerSideProps`: an array of Express middlewares that run first. Use them for authorization, redirects, request validation, or populating `res.locals`; call services directly from them, never `/api` routes.
+
+```ts
+export const beforeGetServerSideProps = [authorizeByPermission(VIEW_PERMISSION), resolvePageProps];
+```
+
 ### Validate inputs
 
 Use `schema.validate()` for object schemas — returns a boolean and logs errors automatically.

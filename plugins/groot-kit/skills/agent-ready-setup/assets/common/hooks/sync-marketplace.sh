@@ -736,7 +736,8 @@ project_assets "$skill_dir/assets/common" 0
 project_assets "$skill_dir/assets/stacks/$stack" 1
 project_rule_claude_views \
   "$skill_dir/scripts/render-instruction-template.sh" \
-  "$skill_dir/assets/stacks/$stack/rules"
+  "$skill_dir/assets/stacks/$stack/rules" \
+  "$skill_dir/assets/common/rules"
 
 # Reuse bootstrap's conservative instruction normalizer so SessionStart also
 # discovers project CLAUDE.md files under directories such as .claude/.
