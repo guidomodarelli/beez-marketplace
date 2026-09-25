@@ -43,7 +43,9 @@ coverage/
 .nyc_output/
 
 # Claude Code local
-.claude/
+.claude/**
+!.claude/settings.json
+!.codex/config.toml
 
 .rp/
 
@@ -62,3 +64,8 @@ __pycache__/
 
 # groot-queue: per-user audit log of auto/manual derive & discard actions (one file per year)
 audit-log-*.jsonl
+
+# BEGIN AOC
+.agents/metadata/**
+.agents/skills/**
+# END AOC

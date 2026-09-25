@@ -1,0 +1,9 @@
+# Context POM — distributed by AOC (Agent Operating Context).
+# Defines the AI asset profiles to install at session start via fury ai assets.
+schemaVersion: "3.0"
+version: "1.0.0"
+
+# Profiles to install locally. Add entries as:
+#   - your-profile-name
+profiles:
+  - plugin-builder

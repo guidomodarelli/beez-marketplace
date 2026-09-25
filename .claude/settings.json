@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .agents/hooks/build-context.sh",
+            "statusMessage": "Installing AI assets (skills, namespaces, marketplaces)... please wait"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .agents/hooks/plugin-change.sh",
+            "statusMessage": "Checking if plugin context needs optimization..."
+          }
+        ]
+      }
+    ]
+  }
+}
