@@ -99,13 +99,19 @@ Rules:
 
 Nordic mounts the `apiRouter` at `/api` via Ragnar. Use `iv.createValidationMiddleware` as middleware — it handles validation, error responses (422), and trace logging automatically.
 
+Keep REST route schemas and middleware in `api/middlewares/validation/<resource>.(js|ts)`, then import their named exports from `api/middlewares/validation/index.js` or `index.ts`. See `../../rules/api-validation-middleware.md`.
+
 ### File placement
 
 ```
 api/
-├── index.ts              ← mounts all resource routers
+├── index.ts                            ← mounts all resource routers
+├── middlewares/
+│   └── validation/
+│       ├── index.ts                    ← re-exports route validation middleware
+│       └── product.ts                  ← product request schemas and middleware
 └── product/
-    └── index.ts          ← product router
+    └── index.ts                        ← product router
 ```
 
 ### 1. Create the resource router
@@ -114,28 +120,18 @@ api/
 
 ```ts
 // api/product/index.ts
-import * as iv from '@meli/input-validation';
 import Ragnar from 'nordic/ragnar';
+import {
+  createProductValidationMiddleware,
+  getProductValidationMiddleware,
+} from '../middlewares/validation';
 import { logError } from '../../utils/logger';
 import { mapKnownErrorToHttpResponse } from '../../src/errors/map-known-error-to-http-response';
 import { getProduct, createProduct } from '../../src/services/product';
 
 const router = Ragnar.router();
 
-const getSchema = {
-  params: iv.object({
-    id: iv.string().uuid(),
-  }),
-};
-
-const postSchema = {
-  body: iv.object({
-    name: iv.string().secure().min(1).max(100),
-    price: iv.number().positive().max(99999.99),
-  }),
-};
-
-router.get('/product/:id', iv.createValidationMiddleware({ schema: getSchema }), async (req, res) => {
+router.get('/product/:id', getProductValidationMiddleware, async (req, res) => {
   try {
     const product = await getProduct(req.params.id);
     res.json(product);
@@ -146,7 +142,7 @@ router.get('/product/:id', iv.createValidationMiddleware({ schema: getSchema }),
   }
 });
 
-router.post('/product', iv.createValidationMiddleware({ schema: postSchema }), async (req, res) => {
+router.post('/product', createProductValidationMiddleware, async (req, res) => {
   const { name, price } = req.body;
 
   try {
@@ -180,7 +176,7 @@ export default apiRouter;
 ```
 
 Rules:
-- Use `iv.createValidationMiddleware({ schema })` before every handler — never access `req.body/params/query` without prior validation.
+- Define `iv.createValidationMiddleware({ schema })` in `api/middlewares/validation/<resource>.(js|ts)` and mount its named export as the first route middleware — never access `req.body/params/query` without prior validation.
 - For path/query params (always strings), use `iv.coerce` for non-string types: `iv.coerce.number()`, `iv.coerce.boolean()`.
 - Never inline business logic — delegate to a service.
 - Never disable CSRF without WebSec validation.

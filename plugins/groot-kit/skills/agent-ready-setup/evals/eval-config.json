@@ -30,6 +30,11 @@
         },
         {
           "type": "contains",
+          "value": "api-validation-middleware.md",
+          "description": "Reporta regla de organización de validadores API"
+        },
+        {
+          "type": "contains",
           "value": "a11y-reviewer.md",
           "description": "Reporta agente de accesibilidad creado"
         },
@@ -47,6 +52,28 @@
           "type": "contains",
           "value": "review-pr.md",
           "description": "Reporta comando de review creado"
+        }
+      ]
+    },
+    {
+      "id": "frontend-api-validation-middleware-barrel",
+      "description": "Explica la ubicación de los validadores API y su barrel de imports.",
+      "input": "Para un endpoint REST Nordic, ¿dónde van los schemas y middleware de @meli/input-validation, y cómo los importa el router? No ejecutes Bash ni escribas archivos; responde desde las reglas bundled de frontend.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "api/middlewares/validation/",
+          "description": "Ubica schemas y middleware bajo la carpeta de validación API"
+        },
+        {
+          "type": "contains",
+          "value": "api/middlewares/validation/index.js",
+          "description": "Incluye barrel index.js para JavaScript"
+        },
+        {
+          "type": "contains",
+          "value": "createValidationMiddleware",
+          "description": "Mantiene la validación del SDK como middleware"
         }
       ]
     },

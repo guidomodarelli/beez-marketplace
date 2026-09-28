@@ -80,8 +80,9 @@ Coding conventions for this stack. Always consult `frontender-web-mcp` for Nordi
 
 ## Module placement
 
-- Keep subrouters and service modules focused on routing, validation, orchestration, and service calls. Do not add shared utilities or reusable constants inside `api/<resource>/`, `api/services/`, or `services/` modules.
-- Place shared or reusable utility functions in `utils/` and domain/configuration constants in `constants/`. Keep only route-local declarations required to mount a router or define its schema inside a subrouter; extract anything reused or carrying domain meaning.
+- Keep subrouters focused on route registration, middleware mounting, orchestration, and service calls. Do not add shared utilities or reusable constants inside `api/<resource>/`, `api/services/`, or `services/` modules.
+- Place route-specific request schemas and `@meli/input-validation` middleware in `api/middlewares/validation/`, then re-export them from its `index.js` or `index.ts` barrel. Keep the subrouter responsible for mounting the middleware and handler; see `api-validation-middleware.md`.
+- Place shared or reusable utility functions in `utils/` and domain/configuration constants in `constants/`; extract anything reused or carrying domain meaning.
 
 ## Performance
 
