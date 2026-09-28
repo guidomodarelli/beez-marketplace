@@ -51,7 +51,7 @@ Las apps de `adminml.com` comparten host y se montan bajo una ruta propia, así 
 1. Buscar `config/default.js` en la raíz del repositorio y leer la clave `basePath` (habitualmente `ragnar.basePath`, a veces en el nivel superior). No ejecutar ni evaluar el archivo: leerlo como texto.
 2. Según el valor:
    - **String literal con ruta** (p. ej. `'/tools/user-management'`): usarlo como `basePath` efectivo, con origen `config`.
-   - **`'/'` o `''`**: detenerse y pedir el basePath correcto con este mensaje:
+   - **`'/'` o `''`**: no darlo por inválido todavía. En apps Ragnar es válido cuando los routers declaran el prefijo completo de la app (p. ej. `router.use('/tools/auth/users', ...)`); en ese caso la ruta real sale del prefijo, no del `basePath`. Intentar primero el **descubrimiento del prefijo** (ver abajo). Solo si falla, detenerse y pedir el basePath correcto mostrando este mensaje textual, con su ejemplo:
      ```
      ⚠️  basePath incorrecto en config/default.js
 
@@ -66,6 +66,32 @@ Las apps de `adminml.com` comparten host y se montan bajo una ruta propia, así 
    - **Valor calculado** (variable de entorno, función, template, import): no intentar resolverlo. Si la URL del usuario trae la ruta, usar esa ruta con origen `URL del usuario`; si no, pedir el basePath efectivo al usuario.
 3. Si falta `config/default.js`, registrar una advertencia leve y tomar el basePath de la URL del usuario; si tampoco hay, pedirlo.
 4. Esta skill nunca modifica `config/default.js` ni otro archivo del proyecto.
+
+### Descubrimiento del prefijo con basePath `'/'`
+
+Este paso resuelve el destino; no reemplaza la verificación. Primero se descubre el prefijo en runtime, con la sesión activa, porque el browser muestra dónde está montada la app en el server que realmente corre. Leer el código queda como fallback: puede estar en otra rama o tener cambios sin reiniciar, y lo que salga de ahí igual tiene que confirmarse en el browser.
+
+Si el usuario ya informa que las fuentes no comparten un prefijo o que el candidato no se confirmó en el browser, no repetir el descubrimiento: pasar directo al mensaje de basePath incorrecto del paso 2.
+
+1. **No usar el probe HTTP para distinguir rutas antes de autenticar.** En estas apps la autenticación corre antes del routing, así que sin sesión todas las rutas, existan o no, suelen devolver `401`. Ese `401` confirma que la app responde, no que la ruta exista. Un endpoint público como `/ping` con `200` confirma que el server es la app.
+2. **Iniciar la sesión.** Correr el preflight y abrir la URL del usuario o la raíz del host con el flujo normal de gates (sección 3). Cualquier ruta sirve: aunque muestre la vista de "no encontrado", la sesión queda activa. El `callbackURL` que Okta conserva en su redirect solo indica a dónde vuelve después del login; no prueba que la app responda en esa ruta.
+3. **Armar candidatos desde el browser**, con `evaluate_script` en Chrome DevTools MCP o `browser_evaluate` en Playwright MCP, sin mutar nada:
+   - `window.__PRELOADED_STATE__?.baseURL`, cuando la app lo inyecta;
+   - los `href` de links del mismo origen (`document.querySelectorAll('a[href]')`);
+   - las rutas `/api/...` que la página ya pidió (`performance.getEntriesByType('resource')`); quitarles el `/api` para obtener el prefijo de páginas.
+
+   Tomar como candidato el prefijo común de esas fuentes (p. ej. `/tools/auth`) y, si el usuario pidió una pantalla concreta, la ruta completa (p. ej. `/tools/auth/users/shared`).
+4. **Fallback: leer el código como texto**, sin ejecutar nada, solo si la página no expone esas fuentes (p. ej. la raíz no renderiza la app) o si no coinciden en un prefijo:
+   - prefijos montados en el router de páginas (habitualmente `app/server/index.js`) y en el de API (habitualmente `api/index.js`), por ejemplo `router.use('/tools/auth/users/shared', ...)`;
+   - el `baseURL` del cliente HTTP del front (habitualmente `api/client.js` o `api/client/`), por ejemplo `baseURL: '/api/tools/auth'`; quitarle el prefijo `/api` que agrega Ragnar;
+   - rutas absolutas que el código usa para navegar o redirigir, por ejemplo `redirectWithMessage('/tools/auth/users/shared', ...)`.
+
+   Si tampoco así hay un prefijo común, no elegir uno: pasar al mensaje de basePath incorrecto.
+5. **Confirmar el candidato** con la sesión activa, venga del browser o del código. Navegar al candidato: queda confirmado si el documento carga con `2xx` y renderiza la app esperada (título o heading propio, no un 404 ni otra app del host). Para comparar varios candidatos sin navegar uno por uno, hacer `fetch` de solo lectura (`GET`) desde la pestaña autenticada, que envía la sesión, y comparar cada candidato contra una **ruta de control inventada** del mismo host (p. ej. `/tools/auth/no-existe`). No decidir por el status: muchas apps muestran su vista de "no encontrado" con `200`, así que la ruta inventada también responde `200`. Decidir por el contenido: el candidato es real si su `<title>` o heading es el de la app y el de la ruta de control no (p. ej. `Kraken Auth Admin` frente a un título vacío). Si ambos renderizan lo mismo, el candidato no queda confirmado.
+6. **Registrar el resultado.**
+   - Confirmado: usar el candidato como destino con origen `descubierto en runtime` y reportar las fuentes usadas (browser o código). No advertir que `config/default.js` es inválido: `'/'` es correcto para esa app.
+   - No confirmado (404, otra app o sin render), o sin prefijo común: mostrar el mensaje de basePath incorrecto y esperar el valor del usuario, como en el paso 2. Aclarar que la skill no modifica `config/default.js`: si el usuario da el valor, se usa como `override del usuario` y el archivo queda como está hasta que lo corrijan y reinicien.
+7. **API.** Ragnar monta el router de API bajo `/api`, así que los endpoints quedan en `/api` más el prefijo del router (p. ej. `/api/tools/auth/users/shared`). Usar esa ruta para los probes de API desde la página; un `404` en `/api/<ruta sin prefijo>` indica una ruta mal armada, no un fallo del producto.
 
 ## 2. Preflight único del server
 
@@ -117,6 +143,8 @@ Estas pantallas son pasos interactivos del entorno, no fallos del producto. Mien
 
 **Advertencia TLS o `Not secure` sobre `https://`**: pedir al usuario que revise host y certificado, y que pulse `Advanced` → `Proceed/Continue ... (unsafe)` solo si reconoce el entorno de desarrollo. No aceptar la excepción por cuenta propia. Después de la confirmación, verificar que la URL sigue en `https://` y que el host coincide exactamente con el destino; si no, `BLOCKED`.
 
+Si `new_page` o `navigate_page` fallan con un error de certificado como `net::ERR_CERT_AUTHORITY_INVALID`, no tratarlo como fallo de la app ni reintentar en otra pestaña: llamar a `list_pages`, porque la pestaña suele quedar abierta en la advertencia o ya redirigida al SSO. Pedir al usuario que resuelva los gates en esa misma pestaña, para no perder la sesión.
+
 Un `401` antes de autenticar, una pantalla de login o la ausencia de requests de la app mientras el gate está pendiente se clasifican como `BLOCKED`, nunca como `FAIL`.
 
 ## 4. Ejecutar el flujo
@@ -143,7 +171,7 @@ Un `401` antes de autenticar, una pantalla de login o la ausencia de requests de
 ## Verificación runtime
 
 - Resultado: PASS | FAIL | BLOCKED
-- Destino: https://<host>:<puerto><basePath> (basePath desde: config | override del usuario | URL del usuario)
+- Destino: https://<host>:<puerto><basePath> (basePath desde: config | override del usuario | URL del usuario | descubierto en runtime)
 - Preflight: listener <estado> · TCP <estado> · HTTP <código o estado>
 - Ruta: <ruta verificada>
 - Flujo: <acciones ejecutadas>

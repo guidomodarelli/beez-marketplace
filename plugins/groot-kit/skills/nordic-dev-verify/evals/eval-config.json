@@ -164,8 +164,8 @@
     },
     {
       "id": "basepath-slash-requires-user-value",
-      "description": "Con basePath '/' pide el valor correcto, no modifica config y lo usa como override.",
-      "input": "El config/default.js de la app tiene ragnar: { basePath: '/' }. Iba a pedirte validar la pantalla de listado. ¿Qué hace nordic-dev-verify con eso antes de seguir? No ejecutes comandos.",
+      "description": "Con basePath '/' y sin prefijo descubrible, pide el valor correcto, no modifica config y lo usa como override.",
+      "input": "El config/default.js de la app tiene ragnar: { basePath: '/' }. Los routers no montan un prefijo común y, después del login, la ruta candidata dio 404. Iba a pedirte validar la pantalla de listado. ¿Qué hace nordic-dev-verify con eso antes de seguir? No ejecutes comandos.",
       "assertions": [
         {
           "type": "contains",
@@ -209,6 +209,121 @@
             "reinici"
           ],
           "description": "Advierte que hay que corregir y reiniciar"
+        }
+      ]
+    },
+    {
+      "id": "basepath-slash-runtime-discovery",
+      "description": "Con basePath '/' descubre el prefijo desde los routers y lo confirma en el browser antes de pedirlo.",
+      "input": "El config/default.js tiene ragnar: { basePath: '/' }. app/server/index.js monta router.use('/tools/auth/users/shared', ...) y api/client.js usa baseURL: '/api/tools/auth'. Sin sesión, curl a /tools/auth/users/shared y a /tools/nada devuelve 401. ¿Cómo resuelve nordic-dev-verify el destino? No ejecutes comandos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "/tools/auth",
+          "description": "Arma el candidato desde el prefijo de los routers"
+        },
+        {
+          "type": "contains",
+          "value": "401",
+          "description": "Explica que el 401 previo al login no distingue rutas"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "browser",
+            "navegador"
+          ],
+          "description": "Confirma el candidato en el browser"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "descubierto en runtime",
+            "descubrimiento"
+          ],
+          "description": "Registra el origen del basePath como descubierto"
+        },
+        {
+          "type": "not_contains_any",
+          "values": [
+            "sigue inválido",
+            "config inválida",
+            "configuración inválida",
+            "config/default.js es inválido"
+          ],
+          "description": "No declara inválida la config cuando el prefijo se confirma"
+        }
+      ]
+    },
+    {
+      "id": "basepath-slash-browser-first-control-route",
+      "description": "Con basePath '/' descubre el prefijo primero en el browser con sesión activa y lo confirma contra una ruta de control, no por status.",
+      "input": "El config/default.js tiene ragnar: { basePath: '/' } y no tengo el repo a mano. Ya pasé el login de Okta en el browser. Con sesión, fetch a /tools/auth/users/shared y a /tools/auth/no-existe devuelven 200 los dos. ¿Cómo confirma nordic-dev-verify el basePath? No ejecutes comandos.",
+      "assertions": [
+        {
+          "type": "contains_any",
+          "values": [
+            "__PRELOADED_STATE__",
+            "performance.getEntriesByType",
+            "a[href]",
+            "links del mismo origen"
+          ],
+          "description": "Arma candidatos desde fuentes del browser"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "ruta de control",
+            "ruta inventada",
+            "control"
+          ],
+          "description": "Compara contra una ruta de control inventada"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "title",
+            "título",
+            "heading"
+          ],
+          "description": "Decide por el contenido renderizado"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no por el status",
+            "no por status",
+            "no por el código",
+            "no solo el status",
+            "status code",
+            "no decidir por el status",
+            "ambas dan `200`",
+            "ambos dan 200",
+            "los dos 200"
+          ],
+          "description": "No decide por el status 200"
+        }
+      ]
+    },
+    {
+      "id": "api-prefix-under-ragnar",
+      "description": "Arma los endpoints de API bajo /api más el prefijo del router y no toma un 404 mal armado como fallo.",
+      "input": "La app confirmó el destino en https://dev.adminml.com:8443/tools/auth/users/shared. Hice fetch a /api/users/shared desde la página y dio 404. api/index.js monta router.use('/tools/auth/users/shared', usersSharedApiRouter). ¿Qué concluye nordic-dev-verify? No ejecutes comandos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "/api/tools/auth/users/shared",
+          "description": "Corrige la ruta de la API con el prefijo del router"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "mal armad",
+            "ruta incorrecta",
+            "no es un fallo",
+            "no es fallo"
+          ],
+          "description": "No trata el 404 como fallo de producto"
         }
       ]
     },
@@ -286,7 +401,9 @@
             "no intentar resolverlo",
             "ni intenta resolver",
             "no lo resuelvo",
-            "como texto"
+            "como texto",
+            "ni evaluarlo",
+            "resolverlo ni"
           ],
           "description": "No ejecuta ni evalúa el archivo de config"
         },
