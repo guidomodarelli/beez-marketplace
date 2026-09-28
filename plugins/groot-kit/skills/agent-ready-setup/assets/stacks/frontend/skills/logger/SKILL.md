@@ -1,6 +1,8 @@
 ---
 name: logger
 description: Create a shared logger utility in /utils that instantiates nordic/logger with the project name from package.json and exposes logError and logWarning helpers. Use when setting up logging for Nordic API handlers or standardizing logger usage across API handlers.
+metadata:
+  tags: "context-optimized-v1.17.1"
 ---
 
 # Logger Setup — Nordic `/api`

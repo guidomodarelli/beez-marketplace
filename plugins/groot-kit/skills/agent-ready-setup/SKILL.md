@@ -15,7 +15,7 @@ metadata:
   version: "1.3.0"
   author: "guponce"
   category: "developer-experience"
-  tags: "agent-ready, multi-provider, claude-code, codex, bootstrap, setup, scaffold"
+  tags: "agent-ready, multi-provider, claude-code, codex, bootstrap, setup, scaffold, context-optimized-v1.17.1"
   command: "/agent-ready-setup"
 ---
 

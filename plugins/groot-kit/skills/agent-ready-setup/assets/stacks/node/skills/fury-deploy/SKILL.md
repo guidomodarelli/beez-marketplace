@@ -1,6 +1,8 @@
 ---
 name: fury-deploy
 description: Deploy a Node.js service to Fury. Use when preparing Fury deployment steps for Node.js projects.
+metadata:
+  tags: "context-optimized-v1.17.1"
 ---
 
 # Fury Deploy Skill — Node

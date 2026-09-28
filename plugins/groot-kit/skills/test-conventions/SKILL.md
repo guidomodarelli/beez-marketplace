@@ -1,6 +1,8 @@
 ---
 name: test-conventions
 description: Enforces test naming, structure, coverage expectations, mock placement, reporting blocks (Commentary/Validation/Error), ErrorUX/CustomErrorUXSnackbar contracts, stale-error cleanup, and mandatory test execution before completing any change. Use whenever creating, updating, or reviewing automated tests, including Jest/RTL tests for retries, loading, empty states, partial responses, Failure Studio context, or async modal flows.
+metadata:
+  tags: "context-optimized-v1.17.1"
 ---
 
 ## Quick start
