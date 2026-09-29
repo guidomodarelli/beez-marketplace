@@ -372,14 +372,14 @@ EOF
     [ -f "$skill_path" ]
     [ "$(sed -n '1p' "$skill_path")" = '---' ]
     grep -Fxq "name: $skill_name" <(sed -n '2p' "$skill_path")
-    [ "$(sed -n '4p' "$skill_path")" = '---' ]
+    cmp -s "$skill_path" "$skill_dir/assets/stacks/frontend/skills/$skill_name/SKILL.md"
   done
   [ -f .agents/skills/karpathy-guidelines/EXAMPLES.md ]
   [ ! -e .agents/skills/SKILL/SKILL.md ]
   [ ! -e .agents/skills/EXAMPLES/SKILL.md ]
 }
 
-@test "skill adapters are verbatim copies of their templates for every stack" {
+@test "common rules and skill adapters are projected verbatim for every stack" {
   for stack in frontend go java node; do
     stack_project="$test_root/$stack-adapters"
     mkdir -p "$stack_project"
@@ -389,6 +389,11 @@ EOF
     run_bootstrap "$stack"
 
     [ "$status" -eq 0 ]
+    for common_rule in "$skill_dir/assets/common/rules/"*.md; do
+      rule_name="${common_rule##*/}"
+      cmp -s ".agents/rules/$rule_name" "$common_rule"
+      cmp -s ".claude/rules/$rule_name" "$common_rule"
+    done
     while IFS= read -r template; do
       relative="${template#"$skill_dir/assets/stacks/$stack/"}"
       case "$relative" in

@@ -2,7 +2,7 @@
 name: fury-deploy
 description: Build and deploy a Go service to Fury. Use when preparing Fury deployment steps for Go projects.
 metadata:
-  tags: "context-optimized-v1.17.1"
+  tags: "context-optimized-v1.17.2"
 ---
 
 # Fury Deploy Skill — Go

@@ -2,7 +2,7 @@
 name: fix-unvalidated-input-access
 description: Validates req.query, req.body, and req.params in Nordic/Node.js routes using @meli/input-validation. Invoke proactively for InputValidationError, UNVALIDATED INPUT ACCESS, runtime failures at req.query/req.body/req.params, new BFF/API routes, or migrations from AJV/schemaValidationMiddleware. Limit implementation to the reported endpoint/property unless evidence requires wider scope.
 metadata:
-  tags: "context-optimized-v1.17.1"
+  tags: "context-optimized-v1.17.2"
 ---
 
 # @meli/input-validation
