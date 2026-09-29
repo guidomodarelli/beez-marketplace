@@ -2,7 +2,7 @@
 name: image-provider-best-practices
 description: Use ImageProvider and image-loading best practices in MELI/Nordic frontends. Trigger whenever adding, replacing, reviewing, or debugging images, icons, logos, avatars, background assets, broken asset paths, lazy loading, or environment-dependent URLs so relative paths go through ImageProvider and absolute URLs are avoided.
 metadata:
-  tags: "context-optimized-v1.17.2"
+  tags: "context-optimized-v1.17.3"
 ---
 
 # Image Provider Best Practices

@@ -2,7 +2,7 @@
 name: andes-button-action-states
 description: Enforce Andes Button action states (disabled/loading) and contextual progress feedback in MELI/Nordic UIs. Use whenever implementing or reviewing submit, search, pagination, fetch, retry, modal confirmation, mutation, or critical async buttons, including flows with stale errors or ErrorUX feedback, so actions cannot duplicate and progress is visible.
 metadata:
-  tags: "context-optimized-v1.17.2"
+  tags: "context-optimized-v1.17.3"
 ---
 
 # Andes Button Action States

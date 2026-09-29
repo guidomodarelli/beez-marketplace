@@ -2,7 +2,7 @@
 name: api-endpoint
 description: Create a Nordic API endpoint — either a server hook (getServerSideProps) or a REST endpoint in the /api folder using Ragnar.router(). Use when adding a new endpoint, server hook, or API route.
 metadata:
-  tags: "context-optimized-v1.17.2"
+  tags: "context-optimized-v1.17.3"
 ---
 
 # API Endpoint Creation — Nordic

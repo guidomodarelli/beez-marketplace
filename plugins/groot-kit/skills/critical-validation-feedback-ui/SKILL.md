@@ -2,7 +2,7 @@
 name: critical-validation-feedback-ui
 description: Ensure critical UI interactions have pre-action validation and clear, visible feedback (errors or helper text), including stale-error cleanup and ErrorUX/CustomErrorUXSnackbar integration. Use when adding or updating forms, searches, navigations, edits, modals, selectors, or async actions to avoid silent failures, misleading previous errors, or incorrect Failure Studio feedback.
 metadata:
-  tags: "context-optimized-v1.17.2"
+  tags: "context-optimized-v1.17.3"
 ---
 
 # Critical Validation and Feedback

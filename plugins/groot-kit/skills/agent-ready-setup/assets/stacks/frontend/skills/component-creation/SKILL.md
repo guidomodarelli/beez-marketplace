@@ -2,7 +2,7 @@
 name: component-creation
 description: Create a React component following team conventions with Andes UI and Nordic. Use when asked to create a component, widget, or UI element.
 metadata:
-  tags: "context-optimized-v1.17.2"
+  tags: "context-optimized-v1.17.3"
 ---
 
 # Component Creation — Frontend (Nordic + React + Andes)

@@ -2,7 +2,7 @@
 name: constants-refactor
 description: Analiza y refactoriza constantes, literales con significado de dominio y contratos cross-layer. Usar al crear, modificar, mover o revisar constantes, limpiar hardcodes, centralizar límites/códigos/rutas/regex, responder comentarios de PR sobre constantes o reducir duplicación entre capas. Ubica cada valor según su significado, no según su cantidad de usos, y preserva comportamiento.
 metadata:
-  tags: "context-optimized-v1.17.2"
+  tags: "context-optimized-v1.17.3"
 ---
 
 # Constants Refactor

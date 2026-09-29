@@ -18,3 +18,9 @@ type = "command"
 command = 'bash "$(git rev-parse --show-toplevel)/.agents/hooks/plugin-change.sh"'
 timeout = 30
 statusMessage = "Checking plugin context optimization..."
+
+[plugins."marketplace-check-helper@ai-assets-core-plugins-marketplace"]
+enabled = true
+
+[plugins."context-improver@tech-plugins-marketplace"]
+enabled = true
