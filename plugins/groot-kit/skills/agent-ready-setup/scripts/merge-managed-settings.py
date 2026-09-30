@@ -73,6 +73,12 @@ def matches_managed_template(current, expected, allow_nested_template_match):
                 current[key], value, allow_nested_template_match
             )
             for key, value in expected.items()
+            # Progress copy can change without creating a second managed hook.
+            if not (
+                key == "statusMessage"
+                and expected.get("type") == "command"
+                and "command" in expected
+            )
         ):
             return True
         if allow_nested_template_match:

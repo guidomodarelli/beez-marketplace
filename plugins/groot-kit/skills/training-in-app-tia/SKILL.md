@@ -2,7 +2,7 @@
 name: training-in-app-tia
 description: Implement and maintain Training in App (TIA) integration in Nordic/Kraken frontends. Use when enabling TIA globally in layout config, overriding TIA behavior per page, embedding the training-in-app remote module, triggering guided flows with `dispatch('tia:start')`, tagging an element as a coach mark target, or debugging a TIA tour that does not start, points at the wrong element, or shows a shifted highlight inside a modal or scroll container.
 metadata:
-  tags: "context-optimized-v1.17.3"
+  tags: "context-optimized-v1.18.0"
 ---
 
 # Training In App TIA

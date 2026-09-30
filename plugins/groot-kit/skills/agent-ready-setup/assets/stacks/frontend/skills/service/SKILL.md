@@ -2,7 +2,7 @@
 name: service
 description: Create a service layer for external API calls in Nordic. Use when adding a new service, API client, or data-fetching layer.
 metadata:
-  tags: "context-optimized-v1.17.3"
+  tags: "context-optimized-v1.18.0"
 ---
 
 # Service Creation — Frontend (Nordic)

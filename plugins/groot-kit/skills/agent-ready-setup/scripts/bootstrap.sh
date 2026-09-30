@@ -1231,6 +1231,10 @@ project_asset_tree() {
       sync_claude_settings "$file"
     else
       case "$relative" in
+        github/*)
+          sync_file "$file" ".github/${relative#github/}"
+          continue
+          ;;
         skills/*/SKILL.md)
           skill_name="${relative#skills/}"
           skill_name="${skill_name%/SKILL.md}"

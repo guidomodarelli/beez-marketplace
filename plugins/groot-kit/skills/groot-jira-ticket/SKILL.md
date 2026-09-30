@@ -2,7 +2,7 @@
 name: groot-jira-ticket
 type: skill
 description: Crea o actualiza un ticket Jira (parent + subtasks) para trabajo en un repo de Groot. Sin valores hardcodeados — lee la config del proyecto desde memoria, archivo o usuario.
-tags: [jira, groot, ticket, subtask, context-optimized-v1.17.3]
+tags: [jira, groot, ticket, subtask, context-optimized-v1.18.0]
 saved-by: gmodarelli
 saved-at: 2026-06-23
 ---

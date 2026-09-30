@@ -10,7 +10,7 @@ metadata:
   version: "1.0.0"
   author: "gmodarelli"
   category: "spec-driven-development"
-  tags: "spec, requirements, tasks, constraints, current-state, planning, context-optimized-v1.17.3"
+  tags: "spec, requirements, tasks, constraints, current-state, planning, context-optimized-v1.18.0"
   command: "/improve-spec"
 ---
 

@@ -2,7 +2,7 @@
 name: react-i18n-ui-text
 description: Enforces i18n.gettext for all user-facing strings in React (JSX literals, modal titles, buttons, placeholders, helper/error text, toast messages, labels, aria/sr labels) to satisfy @meli-lint/react/i18n-jsx-no-literals. Use proactively whenever changing UI copy, error messages, validation feedback, modal text, retry labels or accessibility labels in MELI/Nordic React, even when the user does not mention i18n. Add useI18n from nordic/i18n and manage gettext catalogs by reusing existing msgids and adding en, es-AR, and pt-BR only when required.
 metadata:
-  tags: "context-optimized-v1.17.3"
+  tags: "context-optimized-v1.18.0"
 ---
 
 # React i18n JSX No Literals

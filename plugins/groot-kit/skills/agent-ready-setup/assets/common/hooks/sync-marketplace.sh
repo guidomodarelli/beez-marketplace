@@ -732,6 +732,9 @@ project_assets() {
   while IFS= read -r -d '' source_asset; do
     relative_asset="${source_asset#"$source_root/"}"
     case "$relative_asset" in
+      github/*)
+        sync_file "$source_asset" ".github/${relative_asset#github/}"
+        ;;
       agents-template.md|settings.json)
         continue
         ;;

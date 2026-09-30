@@ -6,7 +6,7 @@ metadata:
   version: "1.0.0"
   author: "Groot"
   category: "testing"
-  tags: "react, jest, testing-library, act, async, context-optimized-v1.17.3"
+  tags: "react, jest, testing-library, act, async, context-optimized-v1.18.0"
   command: "/react-act-test-fixes"
 ---
 

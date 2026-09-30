@@ -12,17 +12,17 @@ description: >-
   ready", o pida pasar Agent Ready Score.
 license: MIT
 metadata:
-  version: "1.3.0"
+  version: "1.3.1"
   author: "guponce"
   category: "developer-experience"
-  tags: "agent-ready, multi-provider, claude-code, codex, bootstrap, setup, scaffold, context-optimized-v1.17.3"
+  tags: "agent-ready, multi-provider, claude-code, codex, bootstrap, setup, scaffold, context-optimized-v1.18.0"
   command: "/agent-ready-setup"
 ---
 
 # Agent Ready Setup
 
 Detecta stack y prepara configuración para múltiples providers en una sola
-operación. El bootstrap mantiene tres planos con responsabilidades distintas:
+operación. El bootstrap distribuye assets según responsabilidad:
 
 - `.agents/`: árbol canónico de reglas, skills y assets compartidos, incluyendo
   skills descubribles por Codex en `.agents/skills/`. Commands y agents también
@@ -34,6 +34,11 @@ operación. El bootstrap mantiene tres planos con responsabilidades distintas:
   symlinks relativos hacia assets canónicos de `.agents/`; `settings.json` queda
   provider-specific.
 - `.codex/`: bridge provider-specific para MCP (`.mcp.json`) y hooks Codex.
+- `.github/pull_request_template.md`: template estático común para descripción,
+  tipo de cambio, pruebas manuales y secciones opcionales de API y revisión.
+  Bootstrap y SessionStart lo sincronizan como asset gestionado desde
+  `assets/common/github/pull_request_template.md`; no ejecuta scripts ni calcula
+  cantidad de archivos. Hooks incluyen `statusMessage` para mostrar progreso.
 
 `AGENTS.md` es la fuente canónica. Debe incluir una sección de referencias de
 rules que indique a todos los providers leer y seguir cada archivo bajo
@@ -67,8 +72,6 @@ se reemplaza sin seguirlo. Solo quedan como conflicto los directorios en un path
 gestionado y los padres que son symlink. Instrucciones del proyecto
 (`AGENTS.md` fuera del bloque gestionado), `settings.json` custom (merge) y
 assets desconocidos se preservan.
-
----
 
 ## Step 1 — Resolve SKILL_DIR
 
@@ -309,8 +312,6 @@ cache provider-specific tenga una versión semver mayor; en ese caso usa candida
 válido con mayor versión del cache. `AGENT_READY_SETUP_SKILL_DIR` y source explícito
 fuera del cache conservan prioridad para desarrollo local.
 
----
-
 ## Step 2 — Detect stack
 
 Inspeccionar raíz proyecto. Usar prioridad:
@@ -348,8 +349,6 @@ uno de: `frontend`, `node`, `java`, `go`.
 Si detección tiene éxito, confirmar:
 
 > `Detected stack: **<STACK>**. Running agent-ready-setup — Claude, shared-agent and Codex-compatible managed assets will be overwritten with the templates; project rules, skills, and instructions are preserved.`
-
----
 
 ## Step 3 — Run bootstrap script
 
@@ -657,8 +656,6 @@ La regla de centralización vive solo en el bloque gestionado del `AGENTS.md`
 raíz; no se duplica en `AGENTS.md` de subdirectorios. Bootstrap no ejecuta scripts ni hooks
 copiados durante bootstrap. No modifica `~/.codex/config.toml`,
 `~/.claude/settings.json` ni otra configuración global.
-
----
 
 ## Step 4 — Report
 

@@ -2,7 +2,7 @@
 name: andes-tokens-sass-modules
 description: Enforce Andes design tokens and constants in SASS Modules for MELI/Nordic projects (colors, typography, spacing, breakpoints, radius, elevation). Trigger whenever adding, reviewing, or fixing .scss/.module.scss styles, hard-coded colors, spacing, typography, responsive breakpoints, radius, elevation, or theme drift.
 metadata:
-  tags: "context-optimized-v1.17.3"
+  tags: "context-optimized-v1.18.0"
 ---
 
 # Andes Tokens in SASS Modules

@@ -58,6 +58,89 @@ run_marketplace_sync() {
     "$@"
 }
 
+@test "bootstrap installs shared GitHub PR template for every stack" {
+  for stack in frontend node java go; do
+    run_bootstrap "$stack"
+    [ "$status" -eq 0 ]
+    cmp -s .github/pull_request_template.md "$skill_dir/assets/common/github/pull_request_template.md"
+    [ ! -e .agents/github ]
+    [ ! -e .claude/github ]
+    rm .github/pull_request_template.md
+  done
+}
+
+@test "bootstrap refreshes existing PR template and preserves other GitHub files" {
+  mkdir -p .github
+  printf '%s\n' 'Existing template' > .github/pull_request_template.md
+  printf '%s\n' 'Project owners' > .github/CODEOWNERS
+  cp .github/CODEOWNERS "$test_root/expected-owners"
+
+  run_bootstrap frontend
+
+  [ "$status" -eq 0 ]
+  cmp -s .github/pull_request_template.md "$skill_dir/assets/common/github/pull_request_template.md"
+  cmp -s .github/CODEOWNERS "$test_root/expected-owners"
+}
+
+@test "marketplace sync restores PR template and hook progress for both providers" {
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+  for provider in claude codex; do
+    printf '%s\n' 'Stale template' > .github/pull_request_template.md
+    jq 'del(.hooks.SessionStart[].hooks[].statusMessage, .hooks.PostToolUse[].hooks[].statusMessage)' \
+      .claude/settings.json > "$test_root/settings.json"
+    cp "$test_root/settings.json" .claude/settings.json
+    jq 'del(.hooks.SessionStart[].hooks[].statusMessage, .hooks.PostToolUse[].hooks[].statusMessage)' \
+      .codex/hooks/hooks.json > "$test_root/hooks.json"
+    cp "$test_root/hooks.json" .codex/hooks/hooks.json
+
+    run env PATH="$fake_bin:$PATH" AGENT_READY_SETUP_SKILL_DIR="$skill_dir" \
+      bash .agents/hooks/sync-marketplace.sh --provider "$provider" --stack frontend
+
+    [ "$status" -eq 0 ]
+    cmp -s .github/pull_request_template.md "$skill_dir/assets/common/github/pull_request_template.md"
+    for settings_file in .claude/settings.json .codex/hooks/hooks.json; do
+      jq -e '[.hooks[][] | .hooks[] | select(.type == "command") | .statusMessage] | length == 2 and all(.[]; type == "string" and length > 0)' \
+        "$settings_file" >/dev/null
+    done
+  done
+}
+
+@test "PR template projection preserves symlinked GitHub directory" {
+  mkdir "$test_root/external-github"
+  printf '%s\n' 'External template' > "$test_root/external-github/pull_request_template.md"
+  cp "$test_root/external-github/pull_request_template.md" "$test_root/expected-template"
+  ln -s "$test_root/external-github" .github
+
+  run_bootstrap frontend
+  [ "$status" -eq 0 ]
+  cmp -s .github/pull_request_template.md "$test_root/expected-template"
+  [[ "$output" == *'.github'*'symlink'* ]]
+
+  run_marketplace_sync .agents/hooks/sync-marketplace.sh "$skill_dir"
+  [ "$status" -eq 0 ]
+  cmp -s .github/pull_request_template.md "$test_root/expected-template"
+}
+
+@test "PR template projection replaces file symlink without changing its target" {
+  mkdir .github
+  printf '%s\n' 'External template' > "$test_root/external-template"
+  cp "$test_root/external-template" "$test_root/expected-template"
+  for operation in bootstrap sync; do
+    ln -s "$test_root/external-template" .github/pull_request_template.md
+    if [[ "$operation" == bootstrap ]]; then
+      run_bootstrap frontend
+    else
+      run_marketplace_sync .agents/hooks/sync-marketplace.sh "$skill_dir"
+    fi
+    [ "$status" -eq 0 ]
+    [ ! -L .github/pull_request_template.md ]
+    cmp -s .github/pull_request_template.md "$skill_dir/assets/common/github/pull_request_template.md"
+    cmp -s "$test_root/external-template" "$test_root/expected-template"
+    rm .github/pull_request_template.md
+  done
+}
+
 @test "bootstrap projects Claude, shared, and Codex trees" {
   run_bootstrap frontend
 
@@ -199,7 +282,7 @@ run_marketplace_sync() {
   jq -e '.permissions.allow[0] == "Bash(custom-before-managed)"' .claude/settings.json >/dev/null
   jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude)")' .claude/settings.json >/dev/null
   jq -e '.hooks.PostToolUse[0].hooks[0] == {"type":"command","command":"bash .agents/hooks/custom-before-managed.sh"}' .claude/settings.json >/dev/null
-  jq -e '.hooks.PostToolUse[0].hooks | index({"type":"command","command":"bash .agents/hooks/check-harness-consistency.sh"})' .claude/settings.json >/dev/null
+  jq -e '.hooks.PostToolUse[0].hooks | map(select(.type == "command" and .command == "bash .agents/hooks/check-harness-consistency.sh")) | length == 1' .claude/settings.json >/dev/null
 }
 
 @test "sync preserves replaced custom settings entries with equal length" {
@@ -221,7 +304,7 @@ run_marketplace_sync() {
   jq -e '.permissions.allow | index("Bash(.agents/hooks/check-harness-consistency.sh)") != null' .claude/settings.json >/dev/null
   jq -e '.hooks.PostToolUse | length == 2' .claude/settings.json >/dev/null
   jq -e '[.hooks.PostToolUse[].hooks[]] | index({"type":"command","command":"bash .agents/hooks/custom-replaced-hook.sh"}) != null' .claude/settings.json >/dev/null
-  jq -e '[.hooks.PostToolUse[].hooks[]] | index({"type":"command","command":"bash .agents/hooks/check-harness-consistency.sh"}) != null' .claude/settings.json >/dev/null
+  jq -e '[.hooks.PostToolUse[].hooks[]] | map(select(.type == "command" and .command == "bash .agents/hooks/check-harness-consistency.sh")) | length == 1' .claude/settings.json >/dev/null
 }
 
 @test "autonomous sync merges custom Claude settings before instruction merge" {
@@ -252,7 +335,7 @@ run_marketplace_sync() {
   jq -e '.permissions.allow[0] == "Bash(custom-before-managed)"' .claude/settings.json >/dev/null
   jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude)")' .claude/settings.json >/dev/null
   jq -e '.hooks.PostToolUse[0].hooks[0] == {"type":"command","command":"bash .agents/hooks/custom-project-hook.sh"}' .claude/settings.json >/dev/null
-  jq -e '.hooks.PostToolUse[0].hooks | index({"type":"command","command":"bash .agents/hooks/check-harness-consistency.sh"})' .claude/settings.json >/dev/null
+  jq -e '.hooks.PostToolUse[0].hooks | map(select(.type == "command" and .command == "bash .agents/hooks/check-harness-consistency.sh")) | length == 1' .claude/settings.json >/dev/null
 }
 
 @test "autonomous sync replaces identical and edited Claude copies with managed views" {
@@ -1451,7 +1534,9 @@ EOF
       --provider claude
   [ "$status" -eq 0 ]
   cmp -s .agents/hooks/sync-marketplace.sh "$source_dir/assets/common/hooks/sync-marketplace.sh"
-  cmp -s .claude/settings.json "$source_dir/assets/common/settings.json"
+  jq -en --slurpfile actual .claude/settings.json \
+    --slurpfile expected "$source_dir/assets/common/settings.json" \
+    '$actual[0] == $expected[0]' >/dev/null
   cmp -s .codex/hooks/hooks.json "$source_dir/assets/codex/hooks.json"
 }
 

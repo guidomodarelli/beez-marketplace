@@ -2,7 +2,7 @@
 name: refactor-nordic-api-service-restclient
 description: Implements or updates API-only service flows in nordic kraken-* repos, from services/ to api/ routes to app/hooks restclient hooks (the client calls the hook, not the service). Use whenever adding or changing BFF service methods, /api/ routes, server hooks, restclient calls, request/response DTOs, upstream error mapping, or the client hook that calls a Nordic API.
 metadata:
-  tags: "context-optimized-v1.17.3"
+  tags: "context-optimized-v1.18.0"
 ---
 
 # API Service Restclient Hook

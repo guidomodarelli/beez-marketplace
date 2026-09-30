@@ -6,7 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .agents/hooks/sync-marketplace.sh --provider codex"
+            "command": "bash .agents/hooks/sync-marketplace.sh --provider codex",
+            "statusMessage": "Sincronizando configuración Agent Ready con marketplace…"
           }
         ]
       }
@@ -17,7 +18,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .agents/hooks/check-harness-consistency.sh"
+            "command": "bash .agents/hooks/check-harness-consistency.sh",
+            "statusMessage": "Verificando consistencia de configuración Agent Ready…"
           }
         ]
       }

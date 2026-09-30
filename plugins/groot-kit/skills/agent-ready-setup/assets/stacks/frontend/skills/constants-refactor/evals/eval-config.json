@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "skill": "constants-refactor",
+  "description": "Verifica ubicación semántica de constantes preservando comportamiento.",
+  "test_cases": [
+    {
+      "id": "single-consumer-domain-constant",
+      "description": "Extrae constante contractual con un consumidor y separa configuración de entorno.",
+      "input": "Solo análisis, sin escribir archivos: `const LABOUR_SHARE_SOURCE_SCANNER = \"scanner\" as const` vive en un archivo de tipos y tiene un consumidor. `const upstreamUrl = process.env.UPSTREAM_URL` se obtiene por entorno. ¿Dónde debe vivir cada valor y qué comportamiento debe conservarse?",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "constants/",
+          "description": "Da fuente canónica a constante de dominio"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "config/",
+            "configuración"
+          ],
+          "description": "Distingue valor de entorno"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "consumidor",
+            "uso"
+          ],
+          "description": "No condiciona extracción a reutilización"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "comportamiento",
+            "serialización",
+            "scanner"
+          ],
+          "description": "Preserva contrato observable"
+        }
+      ]
+    }
+  ]
+}

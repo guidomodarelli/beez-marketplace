@@ -1471,6 +1471,41 @@
           "description": "Ubica el workflow dentro de skills proyectadas"
         }
       ]
+    },
+    {
+      "id": "github-pr-template-and-hook-progress",
+      "description": "Explica template estático de GitHub y progreso de hooks compartidos.",
+      "input": "Explicá qué pasa con `.github/pull_request_template.md` durante bootstrap y SessionStart, qué secciones incluye, si calcula archivos modificados y para qué sirve statusMessage. No ejecutes Bash ni escribas archivos; respondé desde assets bundled.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": ".github/pull_request_template.md",
+          "description": "Identifica destino GitHub"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "Pruebas Manuales",
+            "pruebas manuales"
+          ],
+          "description": "Incluye validación reproducible"
+        },
+        {
+          "type": "contains",
+          "value": "statusMessage",
+          "description": "Explica feedback de hooks"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "no calcula",
+            "no ejecuta scripts",
+            "sin scripts",
+            "estático"
+          ],
+          "description": "Reconoce límite de template estático"
+        }
+      ]
     }
   ]
 }

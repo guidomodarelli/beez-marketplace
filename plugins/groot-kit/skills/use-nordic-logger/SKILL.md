@@ -2,7 +2,7 @@
 name: use-nordic-logger
 description: Reemplaza console.* por Logger y migra logging legacy desde LoggerFactory, frontend-logger o métodos verbose y silly hacia clase Logger. Usar siempre que aparezca console.log/warn/error, PII o tokens en logs, diagnóstico upstream, request/correlation IDs, ErrorUX/Failure Studio o cualquier error de aplicación Nordic/MELI, aunque el usuario solo pida 'agregar un log'.
 metadata:
-  tags: "context-optimized-v1.17.3"
+  tags: "context-optimized-v1.18.0"
 ---
 
 # Usar Logger de Nordic o MELI
