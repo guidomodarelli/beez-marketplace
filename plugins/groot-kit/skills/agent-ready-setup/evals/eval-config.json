@@ -318,7 +318,7 @@
     {
       "id": "multi-provider-codex-assets",
       "description": "Explica salida neutral compartida y bridge Codex sin duplicar instrucciones.",
-      "input": "Explicá qué genera agent-ready-setup para que el mismo proyecto funcione con Claude Code, Codex y futuros providers. Incluí el rol de AGENTS.md, CLAUDE.md, .agents/skills, .codex/hooks y .codex/.mcp.json. No ejecutes Bash ni escribas archivos.",
+      "input": "Explicá qué genera agent-ready-setup para que el mismo proyecto funcione con Claude Code, Codex y futuros providers. Incluí el rol de AGENTS.md, CLAUDE.md, .agents/skills, .codex/hooks.json y .codex/.mcp.json. No ejecutes Bash ni escribas archivos.",
       "assertions": [
         {
           "type": "contains",
@@ -337,7 +337,7 @@
         },
         {
           "type": "contains",
-          "value": ".codex/hooks",
+          "value": ".codex/hooks.json",
           "description": "Identifica hooks específicos de Codex"
         },
         {
@@ -1504,6 +1504,41 @@
             "estático"
           ],
           "description": "Reconoce límite de template estático"
+        }
+      ]
+    },
+    {
+      "id": "codex-hook-migration-and-payload",
+      "description": "Explica migración completa de hooks Codex y compatibilidad de payloads.",
+      "input": "Explicá cómo agent-ready-setup migra .codex/hooks/hooks.json si ya existe .codex/hooks.json con hooks personalizados. Incluí conservación, eliminación de ruta anterior, idempotencia, confianza de Codex y lectura de archivos de apply_patch. No ejecutes comandos ni escribas archivos.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": ".codex/hooks.json",
+          "description": "Identifica destino descubrible"
+        },
+        {
+          "type": "contains",
+          "value": "tool_input.command",
+          "description": "Identifica payload de parche Codex"
+        },
+        {
+          "type": "contains",
+          "value": "tool_input.file_path",
+          "description": "Conserva compatibilidad Claude"
+        },
+        {
+          "type": "contains",
+          "value": "/hooks",
+          "description": "Explica confianza explícita Codex"
+        },
+        {
+          "type": "contains_any",
+          "values": [
+            "personalizaciones",
+            "personalizados"
+          ],
+          "description": "Conserva hooks propios al combinar configuraciones"
         }
       ]
     }

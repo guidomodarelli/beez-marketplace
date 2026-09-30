@@ -329,7 +329,78 @@ merge_managed_settings() {
   esac
 
   python3 "$ASSET_SYNC_SKILL_DIR/scripts/merge-managed-settings.py" \
-    "${matching_options[@]}" \
+    ${matching_options[@]+"${matching_options[@]}"} \
     "$template_path" \
     "$settings_path"
+}
+
+# Compare against the snapshot used to produce merged content, never a newer copy.
+destination_matches_snapshot() {
+  local destination="$1"
+  local snapshot="$2"
+
+  if [[ "$snapshot" == absent ]]; then
+    [[ ! -e "$destination" && ! -L "$destination" ]]
+  else
+    [[ -f "$destination" && ! -L "$destination" ]] && cmp -s "$destination" "$snapshot"
+  fi
+}
+
+# Migrate both hook sources into Codex's discoverable file. Remove the old file
+# only after the merged output is persisted and both source snapshots still match.
+sync_codex_hooks() {
+  local template="$1"
+  local destination="$CODEX_DIR/hooks.json"
+  local legacy="$CODEX_DIR/hooks/hooks.json"
+  local staged_hooks
+  local hook_path
+  local legacy_snapshot=""
+  local destination_snapshot=""
+
+  validate_destination_parent "$destination" || return 0
+  validate_destination_parent "$legacy" || return 0
+  for hook_path in "$destination" "$legacy"; do
+    if [[ -L "$hook_path" || ( -e "$hook_path" && ! -f "$hook_path" ) ]]; then
+      record_conflict "$hook_path is a symlink or non-file; Codex hooks preserved"
+      return 0
+    fi
+  done
+  if [[ ! -e "$destination" && ! -e "$legacy" ]]; then
+    sync_file "$template" "$destination" "$template" absent
+    return 0
+  fi
+
+  staged_hooks="$(mktemp "${TMPDIR:-/tmp}/agent-ready-codex-hooks.XXXXXX")"
+  if [[ -f "$legacy" ]]; then
+    legacy_snapshot="$(mktemp "${TMPDIR:-/tmp}/agent-ready-legacy-hooks.XXXXXX")"
+    cp -- "$legacy" "$legacy_snapshot"
+  fi
+  if [[ -f "$destination" ]]; then
+    destination_snapshot="$(mktemp "${TMPDIR:-/tmp}/agent-ready-current-hooks.XXXXXX")"
+    cp -- "$destination" "$destination_snapshot"
+  fi
+  if python3 "$ASSET_SYNC_SKILL_DIR/scripts/merge-codex-hooks.py" \
+    "$template" "${destination_snapshot:-$destination}" "${legacy_snapshot:-$legacy}" > "$staged_hooks"; then
+    if { [[ -z "$destination_snapshot" && ! -e "$destination" && ! -L "$destination" ]] || \
+         { [[ ! -L "$destination" ]] && cmp -s "$destination" "$destination_snapshot"; }; } && \
+       { [[ -z "$legacy_snapshot" ]] || { [[ ! -L "$legacy" ]] && cmp -s "$legacy" "$legacy_snapshot"; }; }; then
+      sync_file "$staged_hooks" "$destination" "$template" "${destination_snapshot:-absent}"
+      if [[ -n "$legacy_snapshot" && ! -L "$destination" && ! -L "$legacy" ]] && \
+        cmp -s "$destination" "$staged_hooks" && cmp -s "$legacy" "$legacy_snapshot"; then
+        if rm -- "$legacy"; then
+          record_removed "$legacy"
+          rmdir -- "$CODEX_DIR/hooks" 2>/dev/null || true
+        else
+          record_conflict "could not remove migrated $legacy; merged hooks saved in $destination"
+        fi
+      fi
+    else
+      record_conflict "Codex hooks changed during migration; original files preserved"
+    fi
+  else
+    record_conflict "Codex hooks contain invalid configuration; original files preserved"
+  fi
+  rm -f -- "$staged_hooks"
+  [[ -z "$legacy_snapshot" ]] || rm -f -- "$legacy_snapshot"
+  [[ -z "$destination_snapshot" ]] || rm -f -- "$destination_snapshot"
 }

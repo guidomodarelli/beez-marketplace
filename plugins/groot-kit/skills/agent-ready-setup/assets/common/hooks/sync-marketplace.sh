@@ -580,17 +580,28 @@ sync_file() {
   local destination="$2"
   local expected_destination
   local temporary_destination
+  local supplied_snapshot="${4:-}"
 
   if [[ ! -f "$source" ]]; then
     conflicts+=("$source is not a regular file; $destination was not changed")
     return 0
   fi
+  # A caller may require the exact pre-merge snapshot, including initial absence.
+  if [[ -n "$supplied_snapshot" ]] && ! destination_matches_snapshot "$destination" "$supplied_snapshot"; then
+    record_conflict "$destination changed during synchronization; neither was changed"
+    return 0
+  fi
+
   if ! validate_destination_parent "$destination"; then
     return 0
   fi
   ensure_parent_directory "$destination"
 
   if [[ -L "$destination" ]]; then
+    if [[ -n "$supplied_snapshot" ]]; then
+      record_conflict "$destination changed during synchronization; neither was changed"
+      return 0
+    fi
     replace_managed_symlink "$source" "$destination"
     return 0
   fi
@@ -608,6 +619,11 @@ sync_file() {
       conflicts+=("could not stage new content for $destination; neither was changed")
       return 0
     fi
+    if [[ -n "$supplied_snapshot" ]] && ! destination_matches_snapshot "$destination" "$supplied_snapshot"; then
+      rm -f -- "$temporary_destination"
+      record_conflict "$destination changed during synchronization; neither was changed"
+      return 0
+    fi
     if ! mv -f -- "$temporary_destination" "$destination"; then
       rm -f -- "$temporary_destination"
       conflicts+=("could not create $destination atomically; neither was changed")
@@ -622,7 +638,7 @@ sync_file() {
   fi
 
   expected_destination="$(mktemp "${destination}.agent-ready-expected.XXXXXX")"
-  if ! cp -p -- "$destination" "$expected_destination"; then
+  if ! cp -p -- "${supplied_snapshot:-$destination}" "$expected_destination"; then
     rm -f -- "$expected_destination"
     conflicts+=("could not snapshot $destination; neither was changed")
     return 0
@@ -875,7 +891,7 @@ else
 fi
 
 sync_claude_settings "$skill_dir/assets/common/settings.json"
-sync_file "$skill_dir/assets/codex/hooks.json" "$CODEX_DIR/hooks/hooks.json"
+sync_codex_hooks "$skill_dir/assets/codex/hooks.json"
 
 echo "[marketplace-sync] Local managed asset projection completed for $stack."
 

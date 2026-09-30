@@ -33,7 +33,8 @@ operación. El bootstrap distribuye assets según responsabilidad:
 - `.claude/`: configuración Claude Code, dimensiones del Agent Ready Score y
   symlinks relativos hacia assets canónicos de `.agents/`; `settings.json` queda
   provider-specific.
-- `.codex/`: bridge provider-specific para MCP (`.mcp.json`) y hooks Codex.
+- `.codex/`: bridge provider-specific para MCP (`.mcp.json`) y hooks Codex
+  (`hooks.json`, junto a configuración de proyecto).
 - `.github/pull_request_template.md`: template estático común para descripción,
   tipo de cambio, pruebas manuales y secciones opcionales de API y revisión.
   Bootstrap y SessionStart lo sincronizan como asset gestionado desde
@@ -70,8 +71,8 @@ hayan editado: para agregar o cambiar comportamiento, el proyecto crea una rule
 propia bajo `.agents/rules/` o una skill nueva. Un symlink en un path gestionado
 se reemplaza sin seguirlo. Solo quedan como conflicto los directorios en un path
 gestionado y los padres que son symlink. Instrucciones del proyecto
-(`AGENTS.md` fuera del bloque gestionado), `settings.json` custom (merge) y
-assets desconocidos se preservan.
+(`AGENTS.md` fuera del bloque gestionado), personalizaciones en `settings.json`
+y `.codex/hooks.json` (merge), y assets desconocidos se preservan.
 
 ## Step 1 — Resolve SKILL_DIR
 
@@ -396,7 +397,16 @@ instalación reconocible, termina con error y exige provider explícito.
 El script actualiza assets compartidos gestionados bajo `.agents/`, crea o
 conserva symlinks relativos para assets no-hook bajo `.claude/` y prepara bridge
 `.codex/`.
-Los scripts de hooks permanecen únicamente bajo `.agents/hooks/`.
+Los scripts de hooks permanecen únicamente bajo `.agents/hooks/`. Bootstrap y
+SessionStart migran `.codex/hooks/hooks.json` a `.codex/hooks.json`: combinan
+hooks de ambas ubicaciones, preservan personalizaciones y retiran archivo anterior
+tras verificar escritura. JSON inválido, symlinks y cambios concurrentes se
+preservan como conflictos. Codex requiere confiar hooks nuevos o modificados
+mediante `/hooks`; generar archivo no concede confianza. Hook de consistencia
+consume `tool_input.file_path` de Claude y cabeceras de `tool_input.command` de
+Codex `apply_patch`, incluidos destinos de renombre; revisa cada raíz afectada
+una vez. Matcher `Write|Edit` admite `apply_patch` como alias. Revisión utiliza
+CLI Claude instalada también cuando evento proviene de Codex.
 El renderer crea `AGENTS.md` nuevo con el bloque gestionado; en `AGENTS.md`
 existente, `merge-instructions.sh` reemplaza ese bloque por copia literal del
 template y la IA solo revisa redundancias fuera de él. El provider debe ser

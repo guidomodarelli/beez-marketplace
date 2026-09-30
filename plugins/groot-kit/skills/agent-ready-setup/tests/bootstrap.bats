@@ -4,6 +4,7 @@ setup() {
   repository_root="$(cd "$BATS_TEST_DIRNAME/../../../../.." && pwd)"
   skill_dir="$repository_root/plugins/groot-kit/skills/agent-ready-setup"
   test_root="$(mktemp -d)"
+  test_root="$(cd "$test_root" && pwd -P)"
   project_dir="$test_root/project"
   fake_bin="$test_root/bin"
   mkdir -p "$project_dir" "$fake_bin" "$test_root/tmp"
@@ -91,15 +92,15 @@ run_marketplace_sync() {
       .claude/settings.json > "$test_root/settings.json"
     cp "$test_root/settings.json" .claude/settings.json
     jq 'del(.hooks.SessionStart[].hooks[].statusMessage, .hooks.PostToolUse[].hooks[].statusMessage)' \
-      .codex/hooks/hooks.json > "$test_root/hooks.json"
-    cp "$test_root/hooks.json" .codex/hooks/hooks.json
+      .codex/hooks.json > "$test_root/hooks.json"
+    cp "$test_root/hooks.json" .codex/hooks.json
 
     run env PATH="$fake_bin:$PATH" AGENT_READY_SETUP_SKILL_DIR="$skill_dir" \
       bash .agents/hooks/sync-marketplace.sh --provider "$provider" --stack frontend
 
     [ "$status" -eq 0 ]
     cmp -s .github/pull_request_template.md "$skill_dir/assets/common/github/pull_request_template.md"
-    for settings_file in .claude/settings.json .codex/hooks/hooks.json; do
+    for settings_file in .claude/settings.json .codex/hooks.json; do
       jq -e '[.hooks[][] | .hooks[] | select(.type == "command") | .statusMessage] | length == 2 and all(.[]; type == "string" and length > 0)' \
         "$settings_file" >/dev/null
     done
@@ -175,10 +176,11 @@ run_marketplace_sync() {
   [ -f .agents/hooks/sync-marketplace.sh ]
   [ -f .agents/hooks/check-harness-consistency.sh ]
   [ -f .agents/hooks/pre-tool-use.md ]
-  [ -f .codex/hooks/hooks.json ]
+  [ -f .codex/hooks.json ]
   cmp -s .agents/hooks/sync-marketplace.sh "$skill_dir/assets/common/hooks/sync-marketplace.sh"
-  cmp -s .codex/hooks/hooks.json "$skill_dir/assets/codex/hooks.json"
-  for hook_file in check-harness-consistency.sh pre-tool-use.md; do
+  cmp -s .codex/hooks.json "$skill_dir/assets/codex/hooks.json"
+  cmp -s .agents/hooks/check-harness-consistency.sh "$skill_dir/assets/common/hooks/check-harness-consistency.sh"
+  for hook_file in pre-tool-use.md; do
     cmp -s ".agents/hooks/$hook_file" "$skill_dir/assets/stacks/frontend/hooks/$hook_file"
   done
   [ ! -f .claude/CLAUDE.md ]
@@ -191,12 +193,12 @@ run_marketplace_sync() {
   grep -Fq '# Canonical shared asset' .claude/rules/security.md
   jq -n --slurpfile claude .claude/mcp.json --slurpfile codex .codex/.mcp.json \
     '$claude[0].mcpServers == $codex[0].mcpServers' >/dev/null
-  jq -e '.hooks.SessionStart[0].matcher == "startup|clear|resume"' .codex/hooks/hooks.json >/dev/null
+  jq -e '.hooks.SessionStart[0].matcher == "startup|clear|resume"' .codex/hooks.json >/dev/null
   jq -e '.permissions.allow | index("Bash(.agents/hooks/sync-marketplace.sh --provider claude)")' .claude/settings.json >/dev/null
   jq -e '.permissions.allow | index("Bash(.agents/hooks/check-harness-consistency.sh)")' .claude/settings.json >/dev/null
   jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider claude"' .claude/settings.json >/dev/null
   jq -e '.hooks.PostToolUse[0].hooks[0].command == "bash .agents/hooks/check-harness-consistency.sh"' .claude/settings.json >/dev/null
-  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex"' .codex/hooks/hooks.json >/dev/null
+  jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex"' .codex/hooks.json >/dev/null
   [[ "$output" == *"Providers: Claude Code + Codex-compatible shared tree"* ]]
 }
 
@@ -639,13 +641,14 @@ EOF
     ! grep -Fxq '### Project rules' AGENTS.md
     cmp -s .claude/settings.json "$skill_dir/assets/common/settings.json"
     cmp -s .agents/hooks/sync-marketplace.sh "$skill_dir/assets/common/hooks/sync-marketplace.sh"
-    cmp -s .codex/hooks/hooks.json "$skill_dir/assets/codex/hooks.json"
-    for hook_file in check-harness-consistency.sh pre-tool-use.md; do
+    cmp -s .codex/hooks.json "$skill_dir/assets/codex/hooks.json"
+    cmp -s .agents/hooks/check-harness-consistency.sh "$skill_dir/assets/common/hooks/check-harness-consistency.sh"
+  for hook_file in pre-tool-use.md; do
       cmp -s ".agents/hooks/$hook_file" "$skill_dir/assets/stacks/$stack/hooks/$hook_file"
     done
     jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider claude"' .claude/settings.json >/dev/null
     jq -e '.hooks.PostToolUse[0].hooks[0].command == "bash .agents/hooks/check-harness-consistency.sh"' .claude/settings.json >/dev/null
-    jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex"' .codex/hooks/hooks.json >/dev/null
+    jq -e '.hooks.SessionStart[0].hooks[0].command == "bash .agents/hooks/sync-marketplace.sh --provider codex"' .codex/hooks.json >/dev/null
   done
 }
 
@@ -943,7 +946,7 @@ EOF
   [ "$status" -eq 0 ]
   [ -f .claude/settings.json ]
   [ -f .agents/rules/security.md ]
-  [ -f .codex/hooks/hooks.json ]
+  [ -f .codex/hooks.json ]
 }
 
 @test "identical instruction files collapse to canonical AGENTS" {
@@ -1025,7 +1028,7 @@ EOF
   mkdir -p .claude .agents
 
   for stack in frontend node java go; do
-    hook="$skill_dir/assets/stacks/$stack/hooks/check-harness-consistency.sh"
+    hook="$skill_dir/assets/common/hooks/check-harness-consistency.sh"
     for provider_root in .claude .agents; do
       : > "$invocation_log"
       CLAUDE_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
@@ -1049,7 +1052,7 @@ EOF
   mkdir -p .claude .agents
 
   for stack in frontend node java go; do
-    hook="$skill_dir/assets/stacks/$stack/hooks/check-harness-consistency.sh"
+    hook="$skill_dir/assets/common/hooks/check-harness-consistency.sh"
     for provider_root in .claude .agents; do
       : > "$invocation_log"
       malicious_file_path="$provider_root/rules/security.md; echo INJECTED"
@@ -1073,9 +1076,109 @@ EOF
   chmod +x "$fake_bin/claude"
 
   CLAUDE_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
-    bash "$skill_dir/assets/stacks/frontend/hooks/check-harness-consistency.sh" \
+    bash "$skill_dir/assets/common/hooks/check-harness-consistency.sh" \
     <<< '{"tool_input":{"file_path":"README.md"}}'
   [ ! -e "$invocation_log" ]
+}
+
+
+@test "Codex hooks install at discoverable project path on bootstrap and sync" {
+  for stack in frontend node java go; do
+    rm -f .codex/hooks.json
+    mkdir -p .codex/hooks
+    printf '%s\n' '{"custom":"legacy"}' > .codex/hooks/hooks.json
+    run_bootstrap "$stack"
+    [ "$status" -eq 0 ]
+    [ -f .codex/hooks.json ]
+    jq -e --slurpfile template "$skill_dir/assets/codex/hooks.json" '.hooks == $template[0].hooks' .codex/hooks.json >/dev/null
+    jq -e '.custom == "legacy"' .codex/hooks.json >/dev/null
+    [ ! -e .codex/hooks/hooks.json ]
+    rm .codex/hooks.json
+
+    run env PATH="$fake_bin:$PATH" AGENT_READY_SETUP_SKILL_DIR="$skill_dir" \
+      bash .agents/hooks/sync-marketplace.sh --provider codex --stack "$stack"
+    [ "$status" -eq 0 ]
+    cmp -s .codex/hooks.json "$skill_dir/assets/codex/hooks.json"
+  done
+}
+
+@test "Codex patches trigger harness checks once per affected root" {
+  invocation_log="$test_root/claude-invocation.log"
+  cat > "$fake_bin/claude" <<'EOF'
+#!/bin/bash
+printf '%s\n' "$PWD" >> "$CLAUDE_INVOCATION_LOG"
+EOF
+  chmod +x "$fake_bin/claude"
+  patch='*** Begin Patch
+*** Update File: .agents/rules/testing.md
+@@
+-old
++new
+*** Add File: .agents/skills/new/SKILL.md
++content
+*** Delete File: .claude/rules/old.md
+*** Update File: README.md
+@@
+-old
++new
+*** End Patch'
+  payload="$(jq -n --arg command "$patch" '{tool_name:"apply_patch",tool_input:{command:$command}}')"
+
+  for stack in frontend node java go; do
+    run_bootstrap "$stack"
+    [ "$status" -eq 0 ]
+    : > "$invocation_log"
+    run env CLAUDE_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
+      bash .agents/hooks/check-harness-consistency.sh <<< "$payload"
+    [ "$status" -eq 0 ]
+    [ "$(wc -l < "$invocation_log" | tr -d ' ')" -eq 2 ]
+    grep -Fxq "$project_dir/.agents" "$invocation_log"
+    grep -Fxq "$project_dir/.claude" "$invocation_log"
+  done
+}
+
+@test "Codex patches detect move destinations without reading hunk content as paths" {
+  run_bootstrap node
+  [ "$status" -eq 0 ]
+  invocation_log="$test_root/claude-invocation.log"
+  cat > "$fake_bin/claude" <<'EOF'
+#!/bin/bash
+printf '%s\n' "$PWD" >> "$CLAUDE_INVOCATION_LOG"
+EOF
+  chmod +x "$fake_bin/claude"
+  patch='*** Begin Patch
+*** Update File: README.md
+*** Move to: .agents/rules/moved.md
+@@
+-old
++new
++*** Add File: .claude/rules/not-a-file.md
+*** End Patch'
+  payload="$(jq -n --arg command "$patch" '{tool_name:"apply_patch",tool_input:{command:$command}}')"
+  run env CLAUDE_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
+    bash .agents/hooks/check-harness-consistency.sh <<< "$payload"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$invocation_log")" = "$project_dir/.agents" ]
+}
+
+@test "harness hooks ignore malformed payloads and unrelated Codex patches" {
+  run_bootstrap go
+  [ "$status" -eq 0 ]
+  invocation_log="$test_root/claude-invocation.log"
+  cat > "$fake_bin/claude" <<'EOF'
+#!/bin/bash
+printf '%s\n' "$PWD" >> "$CLAUDE_INVOCATION_LOG"
+EOF
+  chmod +x "$fake_bin/claude"
+  for payload in 'invalid json' 'null' '[]' '{"tool_input":null}' \
+    '{"tool_input":{"command":42}}' \
+    '{"tool_name":"Bash","tool_input":{"command":"*** Add File: .agents/rules/testing.md"}}' \
+    '{"tool_name":"apply_patch","tool_input":{"command":"*** Begin Patch\n*** Update File: README.md\n@@\n-old\n+new\n*** End Patch"}}'; do
+    run env CLAUDE_INVOCATION_LOG="$invocation_log" PATH="$fake_bin:$PATH" \
+      bash .agents/hooks/check-harness-consistency.sh <<< "$payload"
+    [ "$status" -eq 0 ]
+    [ ! -e "$invocation_log" ]
+  done
 }
 
 @test "rejects unsupported stack and missing arguments" {
@@ -1108,7 +1211,7 @@ EOF
 
   [ "$status" -eq 0 ]
   grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider codex' "$invocation_log"
-  [ -f .codex/hooks/hooks.json ]
+  [ -f .codex/hooks.json ]
 }
 
 @test "bootstrap rejects ambiguous skill path without provider override" {
@@ -1139,7 +1242,7 @@ EOF
   [ -f AGENTS.md ]
   [ -f .agents/hooks/sync-marketplace.sh ]
   [ -f .claude/settings.json ]
-  [ -f .codex/hooks/hooks.json ]
+  [ -f .codex/hooks.json ]
   [[ "$output" == *"[marketplace-bootstrap] Marketplace upgrade completed."* ]]
 }
 
@@ -1159,7 +1262,7 @@ EOF
   grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider codex' "$invocation_log"
   [ -f .agents/skills/fury-deploy/SKILL.md ]
   [ -f .claude/settings.json ]
-  [ -f .codex/hooks/hooks.json ]
+  [ -f .codex/hooks.json ]
 }
 
 @test "frontend bootstrap reports latest groot-ui without installing and configures package scripts" {
@@ -1537,7 +1640,7 @@ EOF
   jq -en --slurpfile actual .claude/settings.json \
     --slurpfile expected "$source_dir/assets/common/settings.json" \
     '$actual[0] == $expected[0]' >/dev/null
-  cmp -s .codex/hooks/hooks.json "$source_dir/assets/codex/hooks.json"
+  cmp -s .codex/hooks.json "$source_dir/assets/codex/hooks.json"
 }
 
 @test "bootstrap detects managed destination changes before atomic rename" {
@@ -2070,7 +2173,7 @@ EOF
   printf '%s\n' '{"settings":"updated"}' > "$source_dir/assets/common/settings.json"
   printf '%s\n' '# updated common asset' > "$source_dir/assets/common/shared/asset.md"
   printf '%s\n' '{"hooks":"updated"}' > "$source_dir/assets/codex/hooks.json"
-  printf '%s\n' '#!/bin/bash' > "$source_dir/assets/stacks/go/hooks/check-harness-consistency.sh"
+  printf '%s\n' '#!/bin/bash' > "$source_dir/assets/common/hooks/check-harness-consistency.sh"
   printf '%s\n' '# updated pre-tool hook' > "$source_dir/assets/stacks/go/hooks/pre-tool-use.md"
   printf '%s\n' '# updated coding style' > "$source_dir/assets/stacks/go/rules/coding-style.md"
   printf '%s\n' '# security scanner' > "$source_dir/assets/stacks/go/agents/security-scanner.md"
@@ -2125,7 +2228,7 @@ EOF
   [ ! -e "$bootstrap_log" ]
   grep -Fxq 'ai assets marketplace upgrade --name groot-marketplace --provider claude' "$test_root/fury.log"
   cmp -s .agents/hooks/sync-marketplace.sh "$source_dir/assets/common/hooks/sync-marketplace.sh"
-  cmp -s .agents/hooks/check-harness-consistency.sh "$source_dir/assets/stacks/go/hooks/check-harness-consistency.sh"
+  cmp -s .agents/hooks/check-harness-consistency.sh "$source_dir/assets/common/hooks/check-harness-consistency.sh"
   cmp -s .agents/hooks/pre-tool-use.md "$source_dir/assets/stacks/go/hooks/pre-tool-use.md"
   cmp -s .agents/shared/asset.md "$source_dir/assets/common/shared/asset.md"
   [ -L .claude/shared/asset.md ]
@@ -2140,7 +2243,7 @@ EOF
   [ "$claude_adapter_mode" = "644" ]
   cmp -s .agents/mcp.json "$source_dir/assets/stacks/go/mcp.json"
   cmp -s .claude/settings.json "$source_dir/assets/common/settings.json"
-  cmp -s .codex/hooks/hooks.json "$source_dir/assets/codex/hooks.json"
+  cmp -s .codex/hooks.json "$source_dir/assets/codex/hooks.json"
   cmp -s .codex/.mcp.json "$source_dir/assets/stacks/go/mcp.json"
   [ -L .claude/rules/coding-style.md ]
   [ "$(readlink .claude/rules/coding-style.md)" = "../../.agents/rules/coding-style.md" ]
@@ -2320,5 +2423,137 @@ EOF
     [ ! -e "$skill_dir/assets/stacks/$stack/hooks/sync-marketplace.sh" ]
     [ ! -e "$skill_dir/assets/stacks/$stack/rules/language-consistency.md" ]
     [ ! -e "$skill_dir/assets/stacks/$stack/rules/lint-gate.md" ]
+  done
+}
+
+
+@test "Codex migration combines custom hooks from both files and remains idempotent" {
+  mkdir -p .codex/hooks
+  jq '.hooks.Stop = [{"hooks":[{"type":"command","command":"echo legacy","timeout":17}]}]' \
+    "$skill_dir/assets/codex/hooks.json" > .codex/hooks/hooks.json
+  jq 'del(.hooks.SessionStart[].hooks[].statusMessage) | .hooks.SessionStart[0].hooks[0].timeout = 123 | .hooks.Stop = [{"hooks":[{"type":"command","command":"echo current"}]}]' \
+    "$skill_dir/assets/codex/hooks.json" > .codex/hooks.json
+
+  run_bootstrap node
+  [ "$status" -eq 0 ]
+  [ ! -e .codex/hooks/hooks.json ]
+  jq -e '[.hooks.Stop[].hooks[].command] | sort == ["echo current", "echo legacy"]' .codex/hooks.json >/dev/null
+  jq -e '[.hooks.Stop[].hooks[] | select(.command == "echo legacy")][0].timeout == 17' .codex/hooks.json >/dev/null
+  jq -e '[.hooks.SessionStart[].hooks[]] | length == 1 and .[0].statusMessage != null' .codex/hooks.json >/dev/null
+  jq -e '.hooks.SessionStart[0].hooks[0].timeout == 123' .codex/hooks.json >/dev/null
+  cp .codex/hooks.json "$test_root/expected-hooks.json"
+
+  run_marketplace_sync .agents/hooks/sync-marketplace.sh "$skill_dir"
+  [ "$status" -eq 0 ]
+  cmp -s .codex/hooks.json "$test_root/expected-hooks.json"
+}
+
+@test "Codex sync migrates legacy custom hooks and keeps sibling files" {
+  run_bootstrap node
+  [ "$status" -eq 0 ]
+  mkdir -p .codex/hooks
+  mv .codex/hooks.json .codex/hooks/hooks.json
+  jq '.hooks.Stop = [{"hooks":[{"type":"command","command":"echo legacy"}]}]' \
+    .codex/hooks/hooks.json > "$test_root/hooks.json"
+  mv "$test_root/hooks.json" .codex/hooks/hooks.json
+  printf '%s\n' 'custom script' > .codex/hooks/custom.sh
+
+  run_marketplace_sync .agents/hooks/sync-marketplace.sh "$skill_dir"
+  [ "$status" -eq 0 ]
+  [ ! -e .codex/hooks/hooks.json ]
+  [ "$(cat .codex/hooks/custom.sh)" = 'custom script' ]
+  jq -e '.hooks.Stop[0].hooks[0].command == "echo legacy"' .codex/hooks.json >/dev/null
+}
+
+@test "Codex migration preserves malformed or symlinked input without deleting legacy file" {
+  mkdir -p .codex/hooks
+  printf '%s\n' 'invalid json' > .codex/hooks/hooks.json
+  printf '%s\n' '{"hooks":{}}' > .codex/hooks.json
+  cp .codex/hooks.json "$test_root/expected-hooks.json"
+  run_bootstrap go
+  [ "$status" -eq 0 ]
+  cmp -s .codex/hooks.json "$test_root/expected-hooks.json"
+  [ "$(cat .codex/hooks/hooks.json)" = 'invalid json' ]
+  [[ "$output" == *'Codex hooks contain invalid configuration'* ]]
+
+  rm .codex/hooks/hooks.json
+  printf '%s\n' '{"hooks":{}}' > "$test_root/outside-hooks.json"
+  ln -s "$test_root/outside-hooks.json" .codex/hooks/hooks.json
+  run_bootstrap go
+  [ "$status" -eq 0 ]
+  [ -L .codex/hooks/hooks.json ]
+  cmp -s .codex/hooks.json "$test_root/expected-hooks.json"
+  [[ "$output" == *'Codex hooks preserved'* ]]
+}
+
+
+@test "Codex migration preserves distinct custom handler options for the same command" {
+  mkdir -p .codex/hooks
+  printf '%s\n' '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"echo custom","timeout":10}]}]}}' \
+    > .codex/hooks/hooks.json
+  printf '%s\n' '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"echo custom","timeout":20}]}]}}' \
+    > .codex/hooks.json
+  run_bootstrap node
+  [ "$status" -eq 0 ]
+  [ ! -e .codex/hooks/hooks.json ]
+  jq -e '[.hooks.Stop[].hooks[].timeout] | sort == [10, 20]' .codex/hooks.json >/dev/null
+  cp .codex/hooks.json "$test_root/expected-hooks.json"
+  run_bootstrap node
+  [ "$status" -eq 0 ]
+  cmp -s .codex/hooks.json "$test_root/expected-hooks.json"
+}
+
+@test "Codex migration keeps original snapshot through the final replacement" {
+  for provider in bootstrap sync; do
+    mkdir -p .codex/hooks
+    cp "$skill_dir/assets/codex/hooks.json" .codex/hooks/hooks.json
+    printf '%s\n' '{"hooks":{},"custom":"original"}' > .codex/hooks.json
+    cp .codex/hooks/hooks.json "$test_root/expected-legacy.json"
+    cat > "$fake_bin/mktemp" <<'SCRIPT'
+#!/bin/bash
+for argument in "$@"; do
+  if [[ "$argument" == .codex/hooks.json.agent-ready-expected.* ]]; then
+    printf '%s\n' '{"hooks":{},"custom":"concurrent"}' > .codex/hooks.json
+  fi
+done
+exec /usr/bin/mktemp "$@"
+SCRIPT
+    chmod +x "$fake_bin/mktemp"
+    if [[ "$provider" == bootstrap ]]; then
+      run_bootstrap node
+    else
+      run_marketplace_sync "$skill_dir/assets/common/hooks/sync-marketplace.sh" "$skill_dir"
+    fi
+    [ "$status" -eq 0 ]
+    jq -e '.custom == "concurrent"' .codex/hooks.json >/dev/null
+    cmp -s .codex/hooks/hooks.json "$test_root/expected-legacy.json"
+    [[ "$output" == *'.codex/hooks.json changed during synchronization'* ]]
+  done
+}
+
+@test "Codex migration preserves a destination created concurrently during staging" {
+  for provider in bootstrap sync; do
+    mkdir -p .codex/hooks
+    rm -f .codex/hooks.json
+    cp "$skill_dir/assets/codex/hooks.json" .codex/hooks/hooks.json
+    cat > "$fake_bin/cp" <<'SCRIPT'
+#!/bin/bash
+/bin/cp "$@"
+for argument in "$@"; do
+  if [[ "$argument" == .codex/hooks.json.agent-ready-sync.* ]]; then
+    printf '%s\n' '{"hooks":{},"custom":"concurrent"}' > .codex/hooks.json
+  fi
+done
+SCRIPT
+    chmod +x "$fake_bin/cp"
+    if [[ "$provider" == bootstrap ]]; then
+      run_bootstrap node
+    else
+      run_marketplace_sync "$skill_dir/assets/common/hooks/sync-marketplace.sh" "$skill_dir"
+    fi
+    [ "$status" -eq 0 ]
+    jq -e '.custom == "concurrent"' .codex/hooks.json >/dev/null
+    cmp -s .codex/hooks/hooks.json "$skill_dir/assets/codex/hooks.json"
+    [[ "$output" == *'.codex/hooks.json changed during synchronization'* ]]
   done
 }

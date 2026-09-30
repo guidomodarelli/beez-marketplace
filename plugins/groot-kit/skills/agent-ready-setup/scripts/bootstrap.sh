@@ -611,9 +611,16 @@ sync_file() {
   local source_description="${3:-$src}"
   local expected_destination=""
   local temporary_destination
+  local supplied_snapshot="${4:-}"
 
   if [[ ! -f "$src" ]]; then
     CONFLICTS+=("$source_description is not a regular file; $dst was not changed")
+    return 0
+  fi
+
+  # A caller may require the exact pre-merge snapshot, including initial absence.
+  if [[ -n "$supplied_snapshot" ]] && ! destination_matches_snapshot "$dst" "$supplied_snapshot"; then
+    record_conflict "$dst changed during synchronization; neither was changed"
     return 0
   fi
 
@@ -623,6 +630,10 @@ sync_file() {
   ensure_parent_directory "$dst"
 
   if [[ -L "$dst" ]]; then
+    if [[ -n "$supplied_snapshot" ]]; then
+      record_conflict "$dst changed during synchronization; neither was changed"
+      return 0
+    fi
     replace_managed_symlink "$src" "$dst"
     return 0
   fi
@@ -642,6 +653,11 @@ sync_file() {
       CONFLICTS+=("could not stage new content for $dst; neither was changed")
       return 0
     fi
+    if [[ -n "$supplied_snapshot" ]] && ! destination_matches_snapshot "$dst" "$supplied_snapshot"; then
+      rm -f -- "$temporary_destination"
+      record_conflict "$dst changed during synchronization; neither was changed"
+      return 0
+    fi
     if ! mv -f -- "$temporary_destination" "$dst"; then
       rm -f -- "$temporary_destination"
       CONFLICTS+=("could not create $dst atomically; neither was changed")
@@ -657,7 +673,7 @@ sync_file() {
   fi
 
   expected_destination="$(mktemp "${dst}.agent-ready-expected.XXXXXX")"
-  if ! cp -p -- "$dst" "$expected_destination"; then
+  if ! cp -p -- "${supplied_snapshot:-$dst}" "$expected_destination"; then
     rm -f -- "$expected_destination"
     CONFLICTS+=("could not snapshot $dst before replacement; neither was changed")
     return 0
@@ -1277,7 +1293,7 @@ cleanup_stale_claude_links
 if [[ -f "$SRC/mcp.json" ]]; then
   sync_file "$SRC/mcp.json" "$CODEX_DIR/.mcp.json"
 fi
-sync_file "$CODEX_ASSETS/hooks.json" "$CODEX_DIR/hooks/hooks.json" "$CODEX_ASSETS/hooks.json"
+sync_codex_hooks "$CODEX_ASSETS/hooks.json"
 
 # Print report
 printf '\nStack: %s\n' "$STACK"
