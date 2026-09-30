@@ -2,7 +2,7 @@
 name: fury-deploy
 description: Build and deploy a Java service to Fury. Use when preparing Fury deployment steps for Java projects.
 metadata:
-  tags: "context-optimized-v1.18.0"
+  tags: "context-optimized-v1.18.2"
 ---
 
 # Fury Deploy Skill — Java

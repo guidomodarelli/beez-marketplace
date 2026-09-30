@@ -2,7 +2,7 @@
 name: error-observability-diagnostics
 description: "Diseña, implementa y revisa trazabilidad operativa de errores relevantes mediante logs estructurados, ErrorUX/Failure Studio, CustomErrorUXSnackbar, tracing y correlación segura. Usar siempre cuando una UI Nordic deba mostrar un error accionable o inesperado con ErrorUxContext, o cuando una operación importante agregue/revise logging, diagnóstico, error contexts, Grafana/Loki, request/correlation/trace IDs, severidad, redaction o fallos de sinks. Usar CustomErrorUXSnackbar para fallos accionables e inesperados que deban registrarse en Failure Studio, con detail técnico rico pero sanitizado; usar Message/Snackbar común para loading, información, warnings y estados de negocio esperados. Detectar primero los sinks reales: no asumir Failure Studio fuera de Meli ni Grafana como backend universal. Coordinar con async-operation-error-handling para partial success/polling/retry y con typed-errors-refactor para contratos tipados."
 metadata:
-  tags: "context-optimized-v1.18.0"
+  tags: "context-optimized-v1.18.2"
 ---
 
 # Error Observability Diagnostics

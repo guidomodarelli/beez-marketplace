@@ -5,6 +5,10 @@
 
 set -euo pipefail
 
+# Keep hook stdout empty: progress (including child commands) belongs on stderr.
+# Codex treats output starting with '[' or '{' as JSON, not plain-text logs.
+exec 1>&2
+
 # shellcheck disable=SC2034
 readonly MARKETPLACE_NAME="groot-marketplace"
 readonly SKILL_NAME="agent-ready-setup"

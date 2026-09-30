@@ -59,6 +59,76 @@ run_marketplace_sync() {
     "$@"
 }
 
+@test "SessionStart sync keeps stdout empty and reports progress on stderr for both providers" {
+  bats_require_minimum_version 1.5.0
+  source_dir="$test_root/dynamic-skill"
+  cp -R "$skill_dir" "$source_dir"
+  # Isolate the provider-backed instruction review at the project's own boundary.
+  cat > "$source_dir/scripts/merge-instructions.sh" <<'EOF'
+#!/bin/bash
+printf '%s\n' '[instruction-merge] Review completed'
+EOF
+  cat > "$fake_bin/fury" <<'EOF'
+#!/bin/bash
+printf '%s\n' 'Marketplace command progress'
+EOF
+  chmod +x "$fake_bin/fury"
+
+  for provider in claude codex; do
+    run --separate-stderr env PATH="$fake_bin:$PATH" AGENT_READY_SETUP_SKILL_DIR="$source_dir" \
+      bash "$source_dir/assets/common/hooks/sync-marketplace.sh" --provider "$provider" --stack node
+
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+    [[ "$stderr" == *'Marketplace command progress'* ]]
+    [[ "$stderr" == *'[instruction-merge] Review completed'* ]]
+    [[ "$stderr" == *'Local managed asset projection completed for node.'* ]]
+    [ -f .codex/hooks.json ]
+    [ -f .agents/hooks/sync-marketplace.sh ]
+  done
+}
+
+@test "SessionStart sync preserves upgrade failures without writing stdout" {
+  bats_require_minimum_version 1.5.0
+  cat > "$fake_bin/fury" <<'EOF'
+#!/bin/bash
+printf '%s\n' 'Marketplace upgrade failed'
+exit 17
+EOF
+  chmod +x "$fake_bin/fury"
+
+  run --separate-stderr env PATH="$fake_bin:$PATH" \
+    bash "$skill_dir/assets/common/hooks/sync-marketplace.sh" --provider codex --stack node
+
+  [ "$status" -eq 17 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *'Marketplace upgrade failed'* ]]
+  [ ! -f "$XDG_CACHE_HOME/agent-ready-setup/marketplace-upgrade-codex.stamp" ]
+}
+
+@test "bootstrap keeps stdout empty and reports installed assets on stderr for both providers" {
+  bats_require_minimum_version 1.5.0
+  for provider in claude codex; do
+    run --separate-stderr env PATH="$fake_bin:$PATH" \
+      bash "$skill_dir/scripts/bootstrap.sh" --stack node --skill-dir "$skill_dir" --provider "$provider"
+
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+    [[ "$stderr" == *'Done.'* ]]
+    [ -f .codex/hooks.json ]
+    [ -f .agents/hooks/sync-marketplace.sh ]
+  done
+}
+
+@test "bootstrap reports invalid arguments on stderr without writing stdout" {
+  bats_require_minimum_version 1.5.0
+  run --separate-stderr bash "$skill_dir/scripts/bootstrap.sh" --stack
+
+  [ "$status" -eq 1 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *'ERROR: --stack requires a value'* ]]
+}
+
 @test "bootstrap installs shared GitHub PR template for every stack" {
   for stack in frontend node java go; do
     run_bootstrap "$stack"

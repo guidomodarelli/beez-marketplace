@@ -12,6 +12,9 @@
 
 set -euo pipefail
 
+# Bootstrap may run inside SessionStart; keep diagnostics off hook stdout.
+exec 1>&2
+
 # shellcheck disable=SC2034
 readonly MARKETPLACE_NAME="groot-marketplace"
 readonly SKILL_NAME="agent-ready-setup"
