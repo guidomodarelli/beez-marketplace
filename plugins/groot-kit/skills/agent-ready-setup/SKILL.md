@@ -15,7 +15,7 @@ metadata:
   version: "1.3.1"
   author: "guponce"
   category: "developer-experience"
-  tags: "agent-ready, multi-provider, claude-code, codex, bootstrap, setup, scaffold, context-optimized-v1.18.2"
+  tags: "agent-ready, multi-provider, claude-code, codex, bootstrap, setup, scaffold, context-optimized-v1.19.0"
   command: "/agent-ready-setup"
 ---
 
@@ -352,6 +352,10 @@ Si detección tiene éxito, confirmar:
 > `Detected stack: **<STACK>**. Running agent-ready-setup — Claude, shared-agent and Codex-compatible managed assets will be overwritten with the templates; project rules, skills, and instructions are preserved.`
 
 ## Step 3 — Run bootstrap script
+
+Bootstrap instala browsers automáticamente para ambos providers y todos los stacks.
+Leer [references/browser-setup.md](references/browser-setup.md) para requisitos,
+registro efectivo MCP, recuperación de fallos y opción offline antes de ejecutarlo.
 
 Para `frontend`, el bootstrap ejecuta `scripts/setup-groot-ui.sh` después de resolver la
 fuente actualizada. El helper consulta la última versión publicada con `npm view groot-ui

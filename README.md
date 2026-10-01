@@ -297,6 +297,9 @@ Las suites shell usan [bats-core](https://github.com/bats-core/bats-core) con ve
 # Instalación reproducible
 npm ci
 
+# Preparación explícita de tests browser (Python 3.11+, instala tomlkit en venv local)
+npm run setup:browser-tests
+
 # Suites aisladas: Groot Queue y contrato del eval runner
 npm test
 
@@ -307,6 +310,13 @@ RUN_GROOT_QUEUE_E2E=1 npm run test:e2e
 # Suites aisladas + E2E
 npm run test:all
 ```
+
+`npm run test:browser` ejecuta pruebas de registro browser desde el venv local,
+sin descargar dependencias. La prueba de lanzamiento real es opt-in mediante
+`AGENT_READY_SETUP_BROWSER_SMOKE_ROOT` (directorio administrado de herramientas)
+y `AGENT_READY_SETUP_BROWSER_SMOKE_EXECUTABLE` (path de Chromium instalado).
+Los tests comunes usan parser TOML real; instalación de paquetes y browsers queda
+fuera de la suite aislada.
 
 El E2E real requiere Claude autenticado, plugins Grid Sharing y Fury Services, MCP Fury operativo y acceso de red correspondiente. No se ejecuta durante `npm test`.
 

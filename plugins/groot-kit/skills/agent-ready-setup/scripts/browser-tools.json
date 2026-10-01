@@ -1,0 +1,5 @@
+{
+  "chrome-devtools-mcp": "1.9.0",
+  "@playwright/mcp": "0.0.81",
+  "agent-browser": "0.38.0"
+}

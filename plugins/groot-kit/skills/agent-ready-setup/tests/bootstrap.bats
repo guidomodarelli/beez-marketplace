@@ -11,6 +11,9 @@ setup() {
   export TMPDIR="$test_root/tmp"
   # Keeps the SessionStart upgrade window stamp out of the user's real cache.
   export XDG_CACHE_HOME="$test_root/cache"
+  # Asset-projection tests use the documented offline bootstrap option. Browser
+  # installation and real MCP registration are exercised in their own suite.
+  export AGENT_READY_SETUP_BROWSER_INSTALL=0
   cat > "$fake_bin/fury" <<'EOF'
 #!/bin/bash
 exit 0
@@ -536,6 +539,27 @@ EOF
   [ -f .agents/skills/karpathy-guidelines/EXAMPLES.md ]
   [ ! -e .agents/skills/SKILL/SKILL.md ]
   [ ! -e .agents/skills/EXAMPLES/SKILL.md ]
+}
+
+@test "browser rule is discoverable through both providers for every stack" {
+  for provider in claude codex; do
+    for stack in frontend go java node; do
+      stack_project="$test_root/$provider-$stack-browser"
+      mkdir -p "$stack_project"
+      git -C "$stack_project" -c init.defaultBranch=main init -q
+      cd "$stack_project"
+
+      run_bootstrap "$stack" --provider "$provider"
+
+      [ "$status" -eq 0 ]
+      rule_path=".agents/rules/browser-before-user-questions.md"
+      [ -f "$rule_path" ]
+      cmp -s "$rule_path" "$skill_dir/assets/common/rules/browser-before-user-questions.md"
+      [ -L .claude/rules/browser-before-user-questions.md ]
+      cmp -s .claude/rules/browser-before-user-questions.md "$rule_path"
+      grep -Fq -- "- Read and follow \`$rule_path\`." AGENTS.md
+    done
+  done
 }
 
 @test "common rules and skill adapters are projected verbatim for every stack" {

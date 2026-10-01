@@ -9,7 +9,7 @@ license: MIT
 metadata:
   version: "2.0.0"
   category: "frontend-verification"
-  tags: "nordic, runtime, chrome-devtools-mcp, adminml, okta, basepath, debugging, context-optimized-v1.18.2"
+  tags: "nordic, runtime, chrome-devtools-mcp, adminml, okta, basepath, debugging, context-optimized-v1.19.0"
   command: "/nordic-dev-verify"
 ---
 

@@ -1298,6 +1298,15 @@ if [[ -f "$SRC/mcp.json" ]]; then
 fi
 sync_codex_hooks "$CODEX_ASSETS/hooks.json"
 
+browser_setup_status=0
+case "${AGENT_READY_SETUP_BROWSER_INSTALL:-1}" in
+  1)
+    python3 "$SKILL_DIR/scripts/setup-browser-tools.py" --project "$PWD" || browser_setup_status=$?
+    ;;
+  0) printf 'Browser installation skipped by AGENT_READY_SETUP_BROWSER_INSTALL=0\n' ;;
+  *) printf 'ERROR: AGENT_READY_SETUP_BROWSER_INSTALL must be 0 or 1\n'; browser_setup_status=1 ;;
+esac
+
 # Print report
 printf '\nStack: %s\n' "$STACK"
 printf 'Providers: Claude Code + Codex-compatible shared tree\n\n'
@@ -1351,3 +1360,4 @@ fi
 
 echo ""
 echo "Done."
+exit "$browser_setup_status"
