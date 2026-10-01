@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # run-evals.sh — Central eval runner for the skill marketplace
-# Runs with-skill vs baseline comparisons using eval-config.json
+# Runs with-skill evals (optionally against a no-skill baseline) using eval-config.json
 #
 # Usage:
 #   run-evals [path/to/skill]        Run evals for a specific skill
@@ -9,6 +9,7 @@
 #   run-evals --all                   Run evals for all skills with eval-config.json
 #   run-evals --jobs N [...]          Run N cases in parallel (default: 4, env: EVAL_JOBS)
 #   run-evals --provider codex [...]    Run evals with Codex instead of auto-detecting
+#   run-evals --baseline [...]        Also run a no-skill baseline per case (env: EVAL_BASELINE=1)
 #
 # Each skill only needs evals/eval-config.json — this script handles the rest.
 
@@ -23,9 +24,12 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 # ── Defaults ────────────────────────────────────────────
-# Each job fires 2 concurrent agent calls (with-skill + baseline in parallel).
-# Total concurrent API calls = EVAL_JOBS * 2. Lower EVAL_JOBS if rate-limited.
+# Each job fires 1 agent call (with-skill), or 2 concurrent calls when the
+# baseline is enabled. Lower EVAL_JOBS if rate-limited.
 EVAL_JOBS="${EVAL_JOBS:-4}"
+# The no-skill baseline is opt-in: assertions only score the with-skill
+# response, so the baseline is a manual comparison artifact that doubles cost.
+EVAL_BASELINE="${EVAL_BASELINE:-0}"
 GROOT_MARKETPLACE_EVAL_MODEL="${GROOT_MARKETPLACE_EVAL_MODEL:-}"
 GROOT_MARKETPLACE_EVAL_REASONING_EFFORT="${GROOT_MARKETPLACE_EVAL_REASONING_EFFORT:-}"
 # Machine-readable JSONL is the default so CI, tests, and real eval runs are
@@ -52,13 +56,13 @@ usage() {
     echo ""
     echo "Options:"
     echo "  --jobs N, -j N               Run N cases in parallel (default: 4)"
-    echo "                               Each case runs 2 agent calls concurrently,"
-    echo "                               so total API calls = N*2. Lower if rate-limited."
-    echo "  --model M, -m M              Agent model to use (defaults: claude-sonnet-5:low"
+    echo "                               Each case runs 1 agent call (2 concurrent calls"
+    echo "                               with --baseline). Lower if rate-limited."
+    echo "  --model M, -m M              Agent model to use (defaults: claude-sonnet-5-5:medium"
     echo "                               for Claude, gpt-6-luna:high for Codex)"
     echo "                               Accepts aliases (haiku, sonnet, opus) or full model IDs."
     echo "                               Also configurable via GROOT_MARKETPLACE_EVAL_MODEL env var."
-    echo "  --reasoning-effort E, -e E   Reasoning effort: low, medium, high, max (default: low"
+    echo "  --reasoning-effort E, -e E   Reasoning effort: low, medium, high, max (default: medium"
     echo "                               for Claude, high for Codex)."
     echo "                               Also configurable via GROOT_MARKETPLACE_EVAL_REASONING_EFFORT."
     echo "  --provider P                 Agent provider: auto, codex, or claude (default: auto,"
@@ -68,6 +72,9 @@ usage() {
     echo "                               the default and can also be set with EVAL_JSONL=1."
     echo "  --pretty, -P                 Emit the human-readable colored report instead"
     echo "                               of JSONL. Equivalent to EVAL_JSONL=0."
+    echo "  --baseline, -B               Also run each case without the skill for manual"
+    echo "                               comparison. Not scored; doubles agent calls."
+    echo "                               Equivalent to EVAL_BASELINE=1."
     echo ""
 }
 
@@ -113,14 +120,14 @@ resolve_eval_provider() {
     if [ -z "$GROOT_MARKETPLACE_EVAL_MODEL" ]; then
         case "$RESOLVED_EVAL_PROVIDER" in
             codex) GROOT_MARKETPLACE_EVAL_MODEL="gpt-6-luna" ;;
-            *)     GROOT_MARKETPLACE_EVAL_MODEL="claude-sonnet-5" ;;
+            *)     GROOT_MARKETPLACE_EVAL_MODEL="claude-sonnet-5-5" ;;
         esac
     fi
 
     if [ -z "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT" ]; then
         case "$RESOLVED_EVAL_PROVIDER" in
             codex) GROOT_MARKETPLACE_EVAL_REASONING_EFFORT="high" ;;
-            *)     GROOT_MARKETPLACE_EVAL_REASONING_EFFORT="low" ;;
+            *)     GROOT_MARKETPLACE_EVAL_REASONING_EFFORT="medium" ;;
         esac
     fi
 }
@@ -131,15 +138,43 @@ run_agent_prompt() {
     local output_file="$3"
     local codex_home="${4:-}"
     local stderr_file="${output_file}.stderr"
+    # Drop usage left by a previous run so it is never reported for this one.
+    rm -f "${output_file}.usage.json"
 
     case "$RESOLVED_EVAL_PROVIDER" in
         claude)
+            # Restricting --tools (not only --allowedTools) and skipping user MCP
+            # servers keeps unused tool schemas out of every eval prompt.
+            local claude_json_file="${output_file}.json"
+            local claude_status=0
             (cd "$cwd" && env -u CLAUDECODE claude -p "$input" \
                 --model "$GROOT_MARKETPLACE_EVAL_MODEL" \
                 --effort "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT" \
                 --setting-sources project \
-                --allowedTools "Read,Glob,Grep") \
-                > "$output_file" 2> "$stderr_file"
+                --tools "Read,Glob,Grep" \
+                --allowedTools "Read,Glob,Grep" \
+                --strict-mcp-config \
+                --no-session-persistence \
+                --output-format json) \
+                > "$claude_json_file" 2> "$stderr_file" || claude_status=$?
+
+            # Keep the plain response for assertions and record usage separately;
+            # fall back to the raw output when it is not the expected JSON result.
+            if jq -e 'type == "object" and has("result")' "$claude_json_file" > /dev/null 2>&1; then
+                jq -r '.result // ""' "$claude_json_file" > "$output_file"
+                jq -c '{
+                    cost_usd: (.total_cost_usd // null),
+                    num_turns: (.num_turns // null),
+                    input_tokens: (.usage.input_tokens // null),
+                    cache_creation_input_tokens: (.usage.cache_creation_input_tokens // null),
+                    cache_read_input_tokens: (.usage.cache_read_input_tokens // null),
+                    output_tokens: (.usage.output_tokens // null)
+                }' "$claude_json_file" > "${output_file}.usage.json"
+            else
+                cp "$claude_json_file" "$output_file"
+            fi
+            rm -f "$claude_json_file"
+            return "$claude_status"
             ;;
         codex)
             local event_stream_file
@@ -433,6 +468,15 @@ write_case_result_jsonl() {
     local failed_json="${10}"
     local workspace="${11}"
 
+    local baseline_artifact=""
+    [ "$EVAL_BASELINE" = "1" ] && baseline_artifact="$workspace/without-skill/$id.txt"
+    # Provider usage (Claude only) for the with-skill call; null when unavailable.
+    local usage_json="null"
+    local usage_file="$workspace/with-skill/$id.txt.usage.json"
+    if [ -s "$usage_file" ] && jq -e . "$usage_file" > /dev/null 2>&1; then
+        usage_json=$(jq -c . "$usage_file")
+    fi
+
     jq -nc \
         --arg skill "$skill_name" \
         --arg provider "$RESOLVED_EVAL_PROVIDER" \
@@ -445,8 +489,9 @@ write_case_result_jsonl() {
         --argjson duration "$elapsed" \
         --argjson failed "$failed_json" \
         --arg with_skill "$workspace/with-skill/$id.txt" \
-        --arg baseline "$workspace/without-skill/$id.txt" \
-        '{event: "case", provider: $provider, skill: $skill, id: $id, description: $description, input: $input, index: $index, total: $total, status: $status, duration_seconds: $duration, failed_assertions: $failed, artifacts: {with_skill: $with_skill, baseline: $baseline}}' \
+        --arg baseline "$baseline_artifact" \
+        --argjson usage "$usage_json" \
+        '{event: "case", provider: $provider, skill: $skill, id: $id, description: $description, input: $input, index: $index, total: $total, status: $status, duration_seconds: $duration, failed_assertions: $failed, usage: $usage, artifacts: {with_skill: $with_skill, baseline: (if $baseline == "" then null else $baseline end)}}' \
         > "$result_dir/$case_idx.jsonl"
 }
 
@@ -606,7 +651,8 @@ run_single_case() {
         echo "INPUT: $input"
         echo ""
 
-        # Fire both agent calls in parallel; responses land in workspace files.
+        # Fire agent calls in parallel (baseline only when enabled); responses
+        # land in workspace files.
         # Contract evals must read the full skill before answering so behavior does
         # not depend on provider-specific lazy skill activation.
         local contract_input
@@ -616,17 +662,20 @@ run_single_case() {
         run_agent_prompt "$skill_cwd" "$contract_input" "$workspace/with-skill/$id.txt" "$skill_codex_home" &
         local pid_with=$!
 
-        run_agent_prompt "$baseline_cwd" "$input" "$workspace/without-skill/$id.txt" "$baseline_codex_home" &
-        local pid_base=$!
+        local pid_base=""
+        if [ "$EVAL_BASELINE" = "1" ]; then
+            run_agent_prompt "$baseline_cwd" "$input" "$workspace/without-skill/$id.txt" "$baseline_codex_home" &
+            pid_base=$!
+        fi
 
         local with_status=0
-        local baseline_status=0
         wait "$pid_with" || with_status=$?
-        wait "$pid_base" || baseline_status=$?
+        if [ -n "$pid_base" ]; then
+            wait "$pid_base" || true
+        fi
 
-        local response_with response_base
+        local response_with
         response_with=$(cat "$workspace/with-skill/$id.txt" 2>/dev/null || true)
-        response_base=$(cat "$workspace/without-skill/$id.txt" 2>/dev/null || true)
 
         local with_infrastructure_failure=false
         if [ "$with_status" -ne 0 ] || [ -z "${response_with//[[:space:]]/}" ]; then
@@ -641,10 +690,11 @@ run_single_case() {
         echo "$response_with" | head -30
         echo ""
 
-        # Baseline
-        echo -e "→ ${BLUE}[BASELINE]${NC}"
-        echo "$response_base" | head -30
-        echo ""
+        if [ "$EVAL_BASELINE" = "1" ]; then
+            echo -e "→ ${BLUE}[BASELINE]${NC}"
+            head -30 "$workspace/without-skill/$id.txt" 2>/dev/null || true
+            echo ""
+        fi
 
         # Assertions only run when the with-skill provider completed normally.
         if [ "$with_infrastructure_failure" = true ]; then
@@ -767,6 +817,11 @@ run_skill_evals() {
             echo -e "  Effort:    $GROOT_MARKETPLACE_EVAL_REASONING_EFFORT"
         fi
         echo -e "  Provider:  $RESOLVED_EVAL_PROVIDER"
+        if [ "$EVAL_BASELINE" = "1" ]; then
+            echo -e "  Baseline:  on"
+        else
+            echo -e "  Baseline:  off (use --baseline to compare)"
+        fi
         echo -e "  Results:   $workspace"
         echo ""
     } >&"$header_fd"
@@ -996,6 +1051,10 @@ while [ $# -gt 0 ]; do
             ;;
         --pretty|-P)
             EVAL_JSONL=0
+            shift
+            ;;
+        --baseline|-B)
+            EVAL_BASELINE=1
             shift
             ;;
         *)

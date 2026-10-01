@@ -353,14 +353,14 @@ fi
 if [ -z "$GROOT_MARKETPLACE_EVAL_MODEL" ]; then
     case "$RESOLVED_EVAL_PROVIDER" in
         codex) GROOT_MARKETPLACE_EVAL_MODEL='gpt-6-luna' ;;
-        *) GROOT_MARKETPLACE_EVAL_MODEL='claude-sonnet-5' ;;
+        *) GROOT_MARKETPLACE_EVAL_MODEL='claude-sonnet-5-5' ;;
     esac
 fi
 
 if [ -z "$GROOT_MARKETPLACE_EVAL_REASONING_EFFORT" ]; then
     case "$RESOLVED_EVAL_PROVIDER" in
         codex) GROOT_MARKETPLACE_EVAL_REASONING_EFFORT='high' ;;
-        *) GROOT_MARKETPLACE_EVAL_REASONING_EFFORT='low' ;;
+        *) GROOT_MARKETPLACE_EVAL_REASONING_EFFORT='medium' ;;
     esac
 fi
 

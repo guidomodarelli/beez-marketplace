@@ -134,13 +134,13 @@ setup() {
   assert_file_contains "$CHILD_LOG" 'fury_global_install=0' "operational Codex must disable global Fury MCP installation"
 }
 
-@test "Claude defaults to Sonnet 5 with low effort" {
+@test "Claude defaults to Sonnet 5 with medium effort" {
   unset GROOT_MARKETPLACE_EVAL_MODEL GROOT_MARKETPLACE_EVAL_REASONING_EFFORT
 
   run_launcher --provider claude list
 
   assert_status 0 "Claude launch with default model should succeed"
-  assert_file_contains "$CHILD_LOG" '--model claude-sonnet-5 --effort low' "Claude child should use the default model and effort"
+  assert_file_contains "$CHILD_LOG" '--model claude-sonnet-5-5 --effort medium' "Claude child should use the default model and effort"
 }
 
 @test "Codex defaults to gpt-6-luna with high effort" {

@@ -151,7 +151,7 @@ EOF
   [ "$(grep -c '^<!-- BEGIN AGENT-READY MANAGED -->$' AGENTS.md)" -eq 1 ]
 }
 
-@test "Claude review defaults to Sonnet 5 with low effort" {
+@test "Claude review defaults to Sonnet 5 with medium effort" {
   unset AGENT_READY_SETUP_MERGE_MODEL AGENT_READY_SETUP_MERGE_REASONING_EFFORT
   printf '%s\n' '# Existing project instructions' > AGENTS.md
   write_review_response $'# Existing project instructions\n\n'"$managed_placeholder"
@@ -159,7 +159,7 @@ EOF
   run_merge node
 
   [ "$status" -eq 0 ]
-  grep -Fq -- '--model claude-sonnet-5 --effort low' "$test_root/provider-prompt.log"
+  grep -Fq -- '--model claude-sonnet-5-5 --effort medium' "$test_root/provider-prompt.log"
 }
 
 @test "review deletes project lines already covered by rules" {

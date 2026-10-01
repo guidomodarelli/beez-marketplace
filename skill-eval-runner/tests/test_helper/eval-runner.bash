@@ -41,22 +41,46 @@ JSON
     cat > "${STUB_BIN}/claude" <<'CLAUDE_STUB'
 #!/bin/bash
 
+# Mirrors `claude -p --output-format json`: the response text lives in
+# `.result` next to usage metadata.
+emit_response() {
+  if [[ "$*" == *"--output-format json"* ]]; then
+    jq -n --arg result "$response_text" '{
+      type: "result",
+      is_error: false,
+      result: $result,
+      total_cost_usd: 0.0123,
+      num_turns: 2,
+      usage: {
+        input_tokens: 10,
+        cache_creation_input_tokens: 200,
+        cache_read_input_tokens: 3000,
+        output_tokens: 40
+      }
+    }'
+  else
+    printf '%s\n' "$response_text"
+  fi
+}
+
 case "$*" in
   *eval-provider-ready*)
-    printf 'eval-provider-ready\n'
+    response_text='eval-provider-ready'
+    emit_response "$@"
     ;;
   *)
     printf '%s\n' "$*" >> "$CLAUDE_ARGS_LOG"
     if [[ -n "${CLAUDE_RESPONSE_FILE:-}" ]]; then
       if [[ -f "$CLAUDE_RESPONSE_FILE" ]]; then
-        cat "$CLAUDE_RESPONSE_FILE"
+        response_text="$(cat "$CLAUDE_RESPONSE_FILE")"
       else
         printf 'ERROR: CLAUDE_RESPONSE_FILE not found: %s\n' "$CLAUDE_RESPONSE_FILE" >&2
         exit 1
       fi
     else
-      printf 'ok\n'
+      response_text='ok'
     fi
+    emit_response "$@"
     ;;
 esac
 CLAUDE_STUB

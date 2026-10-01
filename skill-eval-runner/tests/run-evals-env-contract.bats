@@ -15,7 +15,7 @@ setup() {
 
     [ "$status" -eq 0 ]
     [ "$(wc -l < "$CLAUDE_ARGS_LOG" | tr -d ' ')" -ge 1 ]
-    grep -q -- '--model claude-sonnet-5' "$CLAUDE_ARGS_LOG"
+    grep -q -- '--model claude-sonnet-5-5' "$CLAUDE_ARGS_LOG"
 }
 
 @test "uses the model override" {
@@ -32,7 +32,7 @@ setup() {
     run_eval_runner
 
     [ "$status" -eq 0 ]
-    grep -q -- '--effort low' "$CLAUDE_ARGS_LOG"
+    grep -q -- '--effort medium' "$CLAUDE_ARGS_LOG"
 }
 
 @test "uses the reasoning effort override" {
@@ -129,4 +129,50 @@ setup() {
     [[ ! -s "$CLAUDE_ARGS_LOG" ]]
     [[ "$output" == *"INFRASTRUCTURE FAILURE"* ]]
     [[ "$output" == *"FAILED"* ]]
+}
+
+@test "skips the no-skill baseline by default" {
+    run_eval_runner
+
+    [ "$status" -eq 0 ]
+    [ "$(grep -c -- '--model ' "$CLAUDE_ARGS_LOG")" -eq 1 ]
+    grep -Fq -- "$SKILL_DIR/SKILL.md" "$CLAUDE_ARGS_LOG"
+
+    run jq -e 'select(.event == "case" and .artifacts.baseline == null)' <<< "$output"
+    [ "$status" -eq 0 ]
+}
+
+@test "runs the no-skill baseline when requested" {
+    run_eval_runner --baseline
+
+    [ "$status" -eq 0 ]
+    [ "$(grep -c -- '--model ' "$CLAUDE_ARGS_LOG")" -eq 2 ]
+    [ "$(grep -Fc -- "$SKILL_DIR/SKILL.md" "$CLAUDE_ARGS_LOG")" -eq 1 ]
+
+    run jq -e 'select(.event == "case" and (.artifacts.baseline | endswith("/without-skill/contract.txt")))' <<< "$output"
+    [ "$status" -eq 0 ]
+}
+
+@test "limits Claude eval calls to read-only tools without user MCP servers" {
+    run_eval_runner
+
+    [ "$status" -eq 0 ]
+    grep -q -- '--tools Read,Glob,Grep' "$CLAUDE_ARGS_LOG"
+    grep -q -- '--strict-mcp-config' "$CLAUDE_ARGS_LOG"
+    grep -q -- '--no-session-persistence' "$CLAUDE_ARGS_LOG"
+}
+
+@test "reports Claude usage per case in JSONL" {
+    run_eval_runner
+
+    [ "$status" -eq 0 ]
+    run jq -e 'select(
+        .event == "case"
+        and .status == "passed"
+        and .usage.cost_usd == 0.0123
+        and .usage.num_turns == 2
+        and .usage.cache_read_input_tokens == 3000
+        and .usage.output_tokens == 40
+    )' <<< "$output"
+    [ "$status" -eq 0 ]
 }

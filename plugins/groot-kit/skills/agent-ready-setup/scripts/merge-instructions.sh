@@ -468,8 +468,8 @@ EOF
 invoke_claude() {
   local schema_json
   schema_json="$(<"$SCHEMA_FILE")"
-  local model="${AGENT_READY_SETUP_MERGE_MODEL:-claude-sonnet-5}"
-  local reasoning_effort="${AGENT_READY_SETUP_MERGE_REASONING_EFFORT:-low}"
+  local model="${AGENT_READY_SETUP_MERGE_MODEL:-claude-sonnet-5-5}"
+  local reasoning_effort="${AGENT_READY_SETUP_MERGE_REASONING_EFFORT:-medium}"
 
   env -u CLAUDECODE claude -p "$merge_prompt" \
     --model "$model" \

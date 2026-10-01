@@ -337,6 +337,9 @@ run-evals plugins/<plugin-name>/skills/<skill-name> --pretty
 # Override de proveedor (por defecto: auto-detecta Codex o Claude)
 run-evals plugins/<plugin-name>/skills/<skill-name> --provider codex
 
+# Comparar contra una corrida sin skill (opcional; no se evalúa y duplica llamadas)
+run-evals plugins/<plugin-name>/skills/<skill-name> --baseline
+
 # Override persistente de proveedor
 export GROOT_MARKETPLACE_EVAL_PROVIDER=codex
 ```

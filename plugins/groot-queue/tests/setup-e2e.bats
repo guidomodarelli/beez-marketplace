@@ -6,7 +6,7 @@ setup() {
     SCRIPT_DIRECTORY="$(CDPATH= cd -- "$(dirname -- "$BATS_TEST_FILENAME")" && pwd -P)"
     PROJECT_ROOT="$(CDPATH= cd -- "$SCRIPT_DIRECTORY/../../.." && pwd -P)"
     RUNNER="$SCRIPT_DIRECTORY/../scripts/run-groot-queue.sh"
-    MODEL="${GROOT_QUEUE_E2E_MODEL:-claude-sonnet-5}"
+    MODEL="${GROOT_QUEUE_E2E_MODEL:-claude-sonnet-5-5}"
     STDOUT_FILE="$BATS_TEST_TMPDIR/stdout.log"
     STDERR_FILE="$BATS_TEST_TMPDIR/stderr.log"
 }
